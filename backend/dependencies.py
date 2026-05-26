@@ -1,0 +1,86 @@
+"""
+FastAPI 依赖注入 - 数据库连接、API 客户端、认证等
+"""
+import os
+import jwt
+import hashlib
+from datetime import datetime, timedelta
+from fastapi import Depends, HTTPException, Header
+from typing import Optional
+
+from data.data_manager import CacheManager
+
+# JWT 配密钥 (生产环境应从环境变量读取)
+JWT_SECRET = os.getenv("JWT_SECRET", "ai-teaching-assistant-secret-key-2026")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_HOURS = 24
+
+
+def get_api_config() -> dict:
+    """获取 API 配置"""
+    config = CacheManager.load_env_config()
+    return {
+        "api_key": config.get("api_key", ""),
+        "base_url": config.get("base_url", "https://api.moonshot.cn/v1"),
+    }
+
+
+def create_token(user_id: int, username: str, role: str) -> str:
+    """创建 JWT Token"""
+    payload = {
+        "user_id": user_id,
+        "username": username,
+        "role": role,
+        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
+        "iat": datetime.utcnow(),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def decode_token(token: str) -> dict:
+    """解码 JWT Token"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token 已过期")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="无效的 Token")
+
+
+async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
+    """获取当前认证用户 (依赖注入)
+
+    支持两种认证方式:
+    1. Bearer Token: Authorization: Bearer <token>
+    2. 无 Token 时返回游客用户
+    """
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+        payload = decode_token(token)
+        return {
+            "id": payload.get("user_id", 0),
+            "username": payload.get("username", "未知"),
+            "role": payload.get("role", "guest"),
+        }
+
+    # 无 Token 时返回游客
+    return {
+        "id": 0,
+        "username": "游客",
+        "role": "guest",
+    }
+
+
+async def require_auth(user: dict = Depends(get_current_user)) -> dict:
+    """要求用户已认证 (非游客)"""
+    if user["role"] == "guest":
+        raise HTTPException(status_code=401, detail="请先登录")
+    return user
+
+
+async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    """要求管理员角色"""
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    return user
