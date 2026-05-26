@@ -43,6 +43,8 @@ desktop.ini
 learning_data_backup.json
 *.pptx
 !tests/fixtures/*.pptx
+*.pdf
+data/bookshelf-main/
 
 # Uploads
 uploads/*
