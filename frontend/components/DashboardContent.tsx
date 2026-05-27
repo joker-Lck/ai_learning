@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
-import { generateMindmap, generateQuiz, generateDocument, buildStudentProfile, tutorAnswer, generateLearningPath } from '@/lib/kimi-api';
+import { generateMindmap, generateQuiz, generateDocument, tutorAnswer, generateLearningPath } from '@/lib/kimi-api';
 import {
   Sparkles, TrendingUp, Users, Send, User, Brain, Target, BookOpen,
   Lightbulb, Code, BarChart3, Clock, Loader2, ArrowRight, Zap,
@@ -267,25 +267,29 @@ export default function DashboardContent() {
     }, 800);
   };
 
-  // 构建最终画像
+  // 构建最终画像 — 通过后端画像智能体
   const buildFinalProfile = async () => {
     setProfileLoading(true);
     try {
       // 收集所有维度的对话记录
       const conversationLog = Object.values(dimensionChats).flatMap(chat => chat.messages);
 
-      console.log('🚀 开始构建学生画像...');
+      console.log('🚀 开始构建学生画像（后端智能体）...');
 
-      // 前端直接调用AI构建画像
-      const profileData = await buildStudentProfile(conversationLog);
+      // 通过后端画像智能体构建（经过验证 + 持久化）
+      const response: any = await api.buildProfile(conversationLog);
 
-      console.log('✅ 画像构建成功:', profileData);
-
-      if (profileData) {
+      if (response?.success && response?.data?.profile) {
+        const profileData = response.data.profile;
+        console.log('✅ 画像构建成功:', profileData);
         setProfileData(profileData);
+      } else {
+        console.warn('画像构建返回异常:', response?.message);
+        alert(response?.message || '画像构建失败，请重试');
       }
     } catch (error: any) {
       console.error('构建画像失败:', error);
+      alert('构建画像失败：' + (error.message || '网络错误'));
     } finally {
       setProfileLoading(false);
     }

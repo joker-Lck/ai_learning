@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
-import { buildStudentProfile } from '@/lib/kimi-api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -218,14 +217,19 @@ export default function ProfilePage() {
       // 收集所有维度的对话记录
       const conversationLog = Object.values(dimensionChats).flatMap(chat => chat.messages);
 
-      console.log('🚀 开始构建学生画像...');
+      console.log('🚀 开始构建学生画像（后端智能体）...');
 
-      // 前端直接调用AI构建画像
-      const profileData = await buildStudentProfile(conversationLog);
+      // 通过后端画像智能体构建（经过验证 + 持久化）
+      const response: any = await api.buildProfile(conversationLog);
 
-      console.log('✅ 画像构建成功:', profileData);
-
-      setProfile(profileData);
+      if (response?.success && response?.data?.profile) {
+        const profileData = response.data.profile;
+        console.log('✅ 画像构建成功:', profileData);
+        setProfile(profileData);
+      } else {
+        console.warn('画像构建返回异常:', response?.message);
+        alert(response?.message || '画像构建失败，请重试');
+      }
     } catch (err: any) {
       console.error('构建画像失败:', err);
       alert('构建画像失败：' + (err.message || '网络错误'));
