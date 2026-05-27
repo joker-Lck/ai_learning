@@ -3,11 +3,14 @@
 """
 
 import uuid
+import json
+import time
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from typing import Dict, Any
+from typing import Dict, Any, List
 from backend.dependencies import require_auth
 from services.streaming_service import sse_generator, progress_tracker
+from services.resource_agent import resource_agent
 from services.content_safety_service import content_safety_service, anti_hallucination_service
 from core.logger import info, error
 
@@ -58,6 +61,119 @@ async def stream_generate_resource(
             }
         )
         
+    except Exception as e:
+        error(f"流式生成资源失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/generate-resources-real")
+async def stream_generate_resources_real(
+    subject: str,
+    topic: str,
+    resource_types: str,
+    difficulty: str = "intermediate",
+    user: dict = Depends(require_auth)
+):
+    """
+    真实流式生成多种学习资源 - SSE实时推送进度
+
+    参数:
+    - subject: 学科
+    - topic: 主题
+    - resource_types: 逗号分隔的资源类型 (如 "document,quiz,mindmap")
+    - difficulty: 难度 (beginner/intermediate/advanced)
+    """
+    try:
+        user_id = user["id"]
+        types_list = [t.strip() for t in resource_types.split(",") if t.strip()]
+        total = len(types_list)
+
+        if total == 0:
+            raise HTTPException(status_code=400, detail="resource_types 不能为空")
+
+        info(f"用户 {user_id} 请求流式生成 {total} 种资源: {types_list}")
+
+        def _sse(data: dict) -> str:
+            return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+        async def event_generator():
+            for idx, rtype in enumerate(types_list):
+                type_label = {
+                    "document": "课程文档", "mindmap": "思维导图", "quiz": "练习题目",
+                    "video": "视频脚本", "animation": "动画脚本", "code_case": "代码案例",
+                    "reading": "拓展阅读"
+                }.get(rtype, rtype)
+
+                # 通知开始生成该类型
+                yield _sse({
+                    "type": "progress",
+                    "step": "generating",
+                    "resource_type": rtype,
+                    "current": idx + 1,
+                    "total": total,
+                    "progress": round(idx / total * 100),
+                    "message": f"[{idx + 1}/{total}] 🤖 {type_label} 生成中..."
+                })
+
+                t0 = time.time()
+                try:
+                    result = resource_agent.generate_resource(
+                        resource_type=rtype,
+                        subject=subject,
+                        topic=topic,
+                        difficulty=difficulty,
+                        user_id=user_id
+                    )
+                    elapsed = round(time.time() - t0, 1)
+
+                    if result.get("success"):
+                        res_data = result.get("data", {})
+                        yield _sse({
+                            "type": "resource",
+                            "resource_type": rtype,
+                            "title": res_data.get("title", f"{topic} - {type_label}"),
+                            "content_data": res_data.get("content_data", res_data),
+                            "duration_minutes": res_data.get("duration_minutes"),
+                            "elapsed_seconds": elapsed,
+                            "message": f"✅ {type_label} 生成完成 ({elapsed}s)"
+                        })
+                    else:
+                        yield _sse({
+                            "type": "resource_error",
+                            "resource_type": rtype,
+                            "error": result.get("message", "生成失败"),
+                            "elapsed_seconds": elapsed
+                        })
+
+                except Exception as e:
+                    elapsed = round(time.time() - t0, 1)
+                    error(f"资源生成异常 [{rtype}]: {e}")
+                    yield _sse({
+                        "type": "resource_error",
+                        "resource_type": rtype,
+                        "error": str(e),
+                        "elapsed_seconds": elapsed
+                    })
+
+            # 全部完成
+            yield _sse({
+                "type": "complete",
+                "progress": 100,
+                "message": f"✅ 全部 {total} 种资源生成完成!"
+            })
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
+
+    except HTTPException:
+        raise
     except Exception as e:
         error(f"流式生成资源失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
@@ -10,7 +10,7 @@ import {
   Brain, Zap, Clock, CheckCircle, AlertCircle,
   Loader2, FileText, GitBranch, FileCode, Video,
   BookOpen, Code2, Eye, Download, ChevronDown, ChevronUp,
-  Sparkles, Target, Lightbulb
+  Sparkles, Target, Lightbulb, X
 } from 'lucide-react';
 
 // 资源类型定义
@@ -57,10 +57,14 @@ export default function ResourcesPage() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
+  const [generatingType, setGeneratingType] = useState('');
+  const [generateIndex, setGenerateIndex] = useState(0);
+  const [generateTotal, setGenerateTotal] = useState(0);
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [previewResource, setPreviewResource] = useState<ResourceItem | null>(null);
   const [downloadingIdx, setDownloadingIdx] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const toggleType = (type: string) => {
     setSelectedTypes(prev =>
@@ -76,70 +80,71 @@ export default function ResourcesPage() {
     });
   };
 
-  const startGeneration = async () => {
-    if (selectedTypes.length === 0) return;
+  const cancelGeneration = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
+    setCurrentStep('已取消');
+  };
+
+  const startGeneration = () => {
+    if (selectedTypes.length === 0 || loading) return;
 
     setLoading(true);
     setProgress(0);
     setCurrentStep('正在连接多智能体系统...');
-    // 不清空已有结果，追加新资源
+    setGeneratingType('');
+    setGenerateIndex(0);
+    setGenerateTotal(selectedTypes.length);
     setExpandedCards(new Set());
 
-    try {
-      const total = selectedTypes.length;
-      const results: ResourceItem[] = [...resources]; // 保留已有资源
+    const results: ResourceItem[] = [];
 
-      for (let i = 0; i < total; i++) {
-        const type = selectedTypes[i];
-        const typeInfo = RESOURCE_TYPES.find(t => t.value === type);
-        setCurrentStep(`🤖 ${typeInfo?.label || type} 生成中...`);
-        setProgress(Math.round((i / total) * 80));
-
-        try {
-          const response: any = await api.generateResources({
-            subject,
-            topic,
-            resource_types: [type],
-            difficulty,
-          });
-
-          if (response.success && response.data?.resources?.length > 0) {
-            for (const r of response.data.resources) {
-              results.push({
-                type: r.type || type,
-                title: r.title || `${topic} - ${typeInfo?.label}`,
-                content_data: r.content_data || r,
-                status: 'complete',
-                duration_minutes: r.duration_minutes,
-              });
-            }
-          } else {
-            results.push({
-              type,
-              title: `${topic} - ${typeInfo?.label}(生成失败)`,
-              content_data: { error: response.message || '生成失败' },
-              status: 'error',
-            });
-          }
-        } catch (err: any) {
+    const controller = api.generateResourcesStream(
+      { subject, topic, resource_types: selectedTypes, difficulty },
+      {
+        onProgress: (data) => {
+          setProgress(data.progress);
+          setCurrentStep(data.message);
+          setGeneratingType(data.resource_type);
+          setGenerateIndex(data.current);
+          setGenerateTotal(data.total);
+        },
+        onResource: (data) => {
           results.push({
-            type,
-            title: `${topic} - ${typeInfo?.label}(请求失败)`,
-            content_data: { error: err.message || '网络错误' },
+            type: data.resource_type,
+            title: data.title,
+            content_data: data.content_data,
+            status: 'complete',
+            duration_minutes: data.duration_minutes,
+          });
+          setResources([...results]);
+          setCurrentStep(data.message);
+        },
+        onError: (data) => {
+          const typeInfo = RESOURCE_TYPES.find(t => t.value === data.resource_type);
+          results.push({
+            type: data.resource_type,
+            title: `${topic} - ${typeInfo?.label}(生成失败)`,
+            content_data: { error: data.error },
             status: 'error',
           });
-        }
-
-        setResources([...results]);
+          setResources([...results]);
+        },
+        onComplete: (data) => {
+          setProgress(100);
+          setCurrentStep(data.message);
+          setGeneratingType('');
+          setLoading(false);
+        },
+        onFetchError: (err) => {
+          setCurrentStep('❌ ' + err.message);
+          setLoading(false);
+        },
       }
+    );
 
-      setProgress(100);
-      setCurrentStep('✅ 全部完成');
-    } catch (err: any) {
-      setCurrentStep('❌ 生成失败: ' + (err.message || '未知错误'));
-    } finally {
-      setLoading(false);
-    }
+    abortRef.current = controller;
   };
 
   /** 导出单个资源文件 */
@@ -259,14 +264,22 @@ export default function ResourcesPage() {
             </div>
 
             {/* 生成按钮 */}
-            <button onClick={startGeneration} disabled={loading || isGuest || selectedTypes.length === 0}
-              className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 font-medium flex items-center justify-center gap-2">
-              {loading ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> 生成中...</>
-              ) : (
-                <><Sparkles className="w-5 h-5" /> {resources.length > 0 ? '继续生成' : '开始生成资源'}</>
+            <div className="flex gap-2">
+              <button onClick={startGeneration} disabled={loading || isGuest || selectedTypes.length === 0}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 font-medium flex items-center justify-center gap-2">
+                {loading ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> 生成中...</>
+                ) : (
+                  <><Sparkles className="w-5 h-5" /> {resources.length > 0 ? '继续生成' : '开始生成资源'}</>
+                )}
+              </button>
+              {loading && (
+                <button onClick={cancelGeneration}
+                  className="px-4 py-3 border border-red-400/30 bg-red-400/[0.06] text-red-400 rounded-xl hover:bg-red-400/[0.12] transition-colors font-medium flex items-center gap-1">
+                  <X className="w-4 h-4" /> 取消
+                </button>
               )}
-            </button>
+            </div>
 
             {resources.length > 0 && !loading && (
               <button
@@ -289,6 +302,11 @@ export default function ResourcesPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-white/80 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-cyan-400" /> 生成进度
+                  {generateTotal > 0 && (
+                    <span className="text-xs font-normal text-white/40 ml-1">
+                      ({generateIndex}/{generateTotal})
+                    </span>
+                  )}
                 </span>
                 <span className="text-sm font-bold text-cyan-400">{progress}%</span>
               </div>
@@ -296,6 +314,18 @@ export default function ResourcesPage() {
                 <motion.div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full"
                   initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
               </div>
+              {/* 当前生成类型的迷你进度条 */}
+              {loading && generatingType && (
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="flex-1 h-1 bg-white/[0.04] rounded-full overflow-hidden">
+                    <motion.div className="h-full bg-cyan-400/40 rounded-full animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                  <span className="text-xs text-cyan-400 shrink-0 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {RESOURCE_TYPES.find(t => t.value === generatingType)?.label || generatingType}
+                  </span>
+                </div>
+              )}
               <p className="text-xs text-white/30 mt-2 flex items-center gap-1.5">
                 {loading ? <Loader2 className="w-3 h-3 animate-spin text-cyan-400" /> : null}
                 {currentStep}

@@ -106,6 +106,73 @@ class ApiClient {
     });
   }
 
+  /**
+   * 流式生成多种资源 — SSE 实时进度
+   * 返回 AbortController，调用方可通过 controller.abort() 取消
+   */
+  generateResourcesStream(
+    params: { subject: string; topic: string; resource_types: string[]; difficulty?: string },
+    callbacks: {
+      onProgress: (data: { resource_type: string; current: number; total: number; progress: number; message: string }) => void;
+      onResource: (data: { resource_type: string; title: string; content_data: any; duration_minutes?: number; elapsed_seconds?: number; message: string }) => void;
+      onError: (data: { resource_type: string; error: string }) => void;
+      onComplete: (data: { message: string }) => void;
+      onFetchError: (err: Error) => void;
+    }
+  ): AbortController {
+    const controller = new AbortController();
+    const token = this.getToken();
+    const qs = new URLSearchParams({
+      subject: params.subject,
+      topic: params.topic,
+      resource_types: params.resource_types.join(','),
+      difficulty: params.difficulty || 'intermediate',
+    });
+
+    (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/stream/generate-resources-real?${qs}`, {
+          method: 'GET',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || `请求失败 (${response.status})`);
+        }
+
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === 'progress') callbacks.onProgress(data);
+              else if (data.type === 'resource') callbacks.onResource(data);
+              else if (data.type === 'resource_error') callbacks.onError(data);
+              else if (data.type === 'complete') callbacks.onComplete(data);
+            } catch { /* skip malformed lines */ }
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') callbacks.onFetchError(err);
+      }
+    })();
+
+    return controller;
+  }
+
   async planPath(data: any) {
     return this.request('/agent/plan-path', {
       method: 'POST',
