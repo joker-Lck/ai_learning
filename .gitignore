@@ -46,6 +46,7 @@ learning_data_backup.json
 !tests/fixtures/*.pptx
 *.pdf
 data/bookshelf-main/
+data/faiss_index/
 
 # Uploads
 uploads/*

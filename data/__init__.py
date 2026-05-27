@@ -6,7 +6,7 @@
 from .config import get_db_config, get_qa_db_config, get_rag_db_config, get_connection_string
 from .db_operations import Database, db
 from .qa_db_operations import QADatabase, qa_db
-from .rag_knowledge_base import RAGKnowledgeBase, rag_kb
+from .rag_knowledge_base import RAGKnowledgeBase, rag_kb, VectorIndexManager, vector_index
 from .document_parser import DocumentParser
 from .embedding_service import EmbeddingService, embedding_service
 from .data_manager import LearningDataManager
@@ -18,7 +18,7 @@ __all__ = [
     # Database Operations
     'Database', 'db',
     'QADatabase', 'qa_db',
-    'RAGKnowledgeBase', 'rag_kb',
+    'RAGKnowledgeBase', 'rag_kb', 'VectorIndexManager', 'vector_index',
     
     # Document & Embedding
     'DocumentParser',

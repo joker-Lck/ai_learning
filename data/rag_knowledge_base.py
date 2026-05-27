@@ -4,9 +4,11 @@ import mysql.connector
 from mysql.connector import pooling
 import json
 import time
+import threading
 from .config import get_rag_db_config
 from datetime import datetime
 import os
+import numpy as np
 
 # 查询缓存
 _query_cache = {}
@@ -38,6 +40,187 @@ def _clear_search_cache():
     keys_to_delete = [k for k in _query_cache.keys() if k.startswith('rag:')]
     for key in keys_to_delete:
         del _query_cache[key]
+
+
+# ═══════════════════════════════════════════
+# FAISS 向量索引管理器
+# ═══════════════════════════════════════════
+
+_INDEX_DIR = os.path.join(os.path.dirname(__file__), 'faiss_index')
+_INDEX_PATH = os.path.join(_INDEX_DIR, 'knowledge.index')
+_IDS_PATH = os.path.join(_INDEX_DIR, 'doc_ids.json')
+
+
+class VectorIndexManager:
+    """
+    基于 FAISS 的向量索引管理器
+    - 内存驻留索引，O(log n) 近似最近邻检索
+    - 自动持久化到磁盘，重启后快速加载
+    - 文档变更时惰性重建
+    """
+
+    def __init__(self):
+        self._index = None
+        self._doc_ids = []        # 与 FAISS 行号对齐的文档 ID 列表
+        self._dimension = 0
+        self._lock = threading.Lock()
+        self._dirty = False
+        self._faiss_available = False
+        try:
+            import faiss as _faiss
+            self._faiss = _faiss
+            self._faiss_available = True
+        except ImportError:
+            self._faiss = None
+
+    # ── 公开接口 ──────────────────────────────
+
+    def search(self, query_embedding: list, limit: int = 5) -> list:
+        """
+        检索最相似的文档
+
+        返回: [{'id': doc_id, 'score': float}, ...]
+        """
+        with self._lock:
+            if not self._faiss_available or self._index is None or self._index.ntotal == 0:
+                return []
+
+            vec = np.array([query_embedding], dtype='float32')
+            self._faiss.normalize_L2(vec)
+
+            k = min(limit, self._index.ntotal)
+            scores, indices = self._index.search(vec, k)
+
+            results = []
+            for score, idx in zip(scores[0], indices[0]):
+                if idx < 0 or idx >= len(self._doc_ids):
+                    continue
+                results.append({
+                    'id': self._doc_ids[idx],
+                    'score': float(score)
+                })
+            return results
+
+    def add_vectors(self, doc_ids: list, embeddings: list):
+        """增量添加向量"""
+        if not doc_ids or not embeddings:
+            return
+        if not self._faiss_available:
+            return
+
+        with self._lock:
+            dim = len(embeddings[0])
+            if self._index is None:
+                self._dimension = dim
+                self._index = self._create_index(dim)
+            elif dim != self._dimension:
+                self._rebuild_internal([], [])
+
+            vecs = np.array(embeddings, dtype='float32')
+            self._faiss.normalize_L2(vecs)
+            self._index.add(vecs)
+            self._doc_ids.extend(doc_ids)
+            self._dirty = True
+
+    def remove_by_ids(self, doc_ids: set):
+        """按 ID 移除向量（FAISS 不支持原生删除，需重建）"""
+        with self._lock:
+            if not self._faiss_available or self._index is None or not doc_ids:
+                return
+
+            keep_mask = [i for i, did in enumerate(self._doc_ids) if did not in doc_ids]
+            if len(keep_mask) == len(self._doc_ids):
+                return
+
+            if len(keep_mask) == 0:
+                self._index = self._create_index(self._dimension)
+                self._doc_ids = []
+            else:
+                all_vecs = np.array(
+                    [self._index.reconstruct(i) for i in keep_mask], dtype='float32'
+                )
+                self._index = self._create_index(self._dimension)
+                self._index.add(all_vecs)
+                self._doc_ids = [self._doc_ids[i] for i in keep_mask]
+
+            self._dirty = True
+
+    def rebuild(self, doc_ids: list, embeddings: list):
+        """全量重建索引"""
+        with self._lock:
+            self._rebuild_internal(doc_ids, embeddings)
+
+    def save(self):
+        """持久化索引到磁盘"""
+        with self._lock:
+            if not self._dirty or self._index is None:
+                return
+            os.makedirs(_INDEX_DIR, exist_ok=True)
+            try:
+                self._faiss.write_index(self._index, _INDEX_PATH)
+            except Exception:
+                pass
+            try:
+                with open(_IDS_PATH, 'w', encoding='utf-8') as f:
+                    json.dump(self._doc_ids, f)
+            except Exception:
+                pass
+            self._dirty = False
+
+    def load(self) -> bool:
+        """从磁盘加载索引"""
+        with self._lock:
+            if not self._faiss_available:
+                return False
+            if not os.path.exists(_INDEX_PATH) or not os.path.exists(_IDS_PATH):
+                return False
+            try:
+                self._index = self._faiss.read_index(_INDEX_PATH)
+                with open(_IDS_PATH, 'r', encoding='utf-8') as f:
+                    self._doc_ids = json.load(f)
+                self._dimension = self._index.d
+                self._dirty = False
+                return True
+            except Exception:
+                return False
+
+    @property
+    def is_ready(self) -> bool:
+        return self._faiss_available and self._index is not None and self._index.ntotal > 0
+
+    @property
+    def total_vectors(self) -> int:
+        return self._index.ntotal if self._index else 0
+
+    # ── 内部方法 ──────────────────────────────
+
+    def _rebuild_internal(self, doc_ids: list, embeddings: list):
+        """内部重建（需已持有锁）"""
+        if not embeddings:
+            self._index = None
+            self._doc_ids = []
+            self._dimension = 0
+            self._dirty = True
+            return
+
+        self._dimension = len(embeddings[0])
+        self._index = self._create_index(self._dimension)
+        vecs = np.array(embeddings, dtype='float32')
+        self._faiss.normalize_L2(vecs)
+        self._index.add(vecs)
+        self._doc_ids = list(doc_ids)
+        self._dirty = True
+
+    def _create_index(self, dim: int):
+        """创建 FAISS FlatIP 索引（归一化后内积等价余弦相似度）"""
+        if dim <= 0 or not self._faiss_available:
+            return None
+        return self._faiss.IndexFlatIP(dim)
+
+
+# 全局单例
+vector_index = VectorIndexManager()
+
 
 class RAGKnowledgeBase:
     def __init__(self):
@@ -171,7 +354,15 @@ class RAGKnowledgeBase:
             
             # 添加文档后清空搜索缓存
             _clear_search_cache()
-            
+
+            # 增量更新 FAISS 索引
+            if embedding and vector_index._faiss_available:
+                try:
+                    vector_index.add_vectors([doc_id], [embedding])
+                    vector_index.save()
+                except Exception:
+                    pass  # 索引更新失败不影响文档写入
+
             return doc_id
         except Exception as e:
             print(f"❌ 添加文档失败：{str(e)}")
@@ -383,59 +574,134 @@ class RAGKnowledgeBase:
     
     def search_documents_by_vector(self, query_embedding, limit=5):
         """
-        基于向量相似度检索文档
-        
+        基于向量相似度检索文档（优先 FAISS，回退暴力搜索）
+
         参数：
         - query_embedding: 查询文本的向量
         - limit: 返回数量限制
-        
+
         返回：
         - list: 按相似度排序的文档列表
         """
+        # ── 路径 1：FAISS 检索 ──
+        if vector_index.is_ready:
+            return self._faiss_search(query_embedding, limit)
+
+        # 索引未就绪 → 尝试从 DB 加载并构建
+        if vector_index._faiss_available:
+            try:
+                self._build_faiss_index()
+                if vector_index.is_ready:
+                    return self._faiss_search(query_embedding, limit)
+            except Exception as e:
+                print(f"⚠️ FAISS 索引构建失败，回退暴力搜索: {e}")
+
+        # ── 路径 2：原有暴力搜索（兜底）──
+        return self._brute_force_vector_search(query_embedding, limit)
+
+    def _faiss_search(self, query_embedding, limit):
+        """FAISS 检索 + 批量取文档"""
         try:
-            # 导入向量化服务
-            from embedding_service import embedding_service
-            
+            hits = vector_index.search(query_embedding, limit)
+            if not hits:
+                return []
+
+            doc_ids = [h['id'] for h in hits]
+            score_map = {h['id']: h['score'] for h in hits}
+
             self.connect()
-            
-            # 获取所有有向量的文档
-            sql = """SELECT id, title, subject, document_data 
-                    FROM knowledge_documents 
+            placeholders = ','.join(['%s'] * len(doc_ids))
+            sql = f"""SELECT id, title, subject, document_data
+                      FROM knowledge_documents WHERE id IN ({placeholders})"""
+            self.cursor.execute(sql, doc_ids)
+            rows = {row['id']: row for row in self.cursor.fetchall()}
+
+            results = []
+            for did in doc_ids:
+                row = rows.get(did)
+                if not row:
+                    continue
+                doc_data = row.get('document_data')
+                if isinstance(doc_data, str):
+                    doc_data = json.loads(doc_data)
+                raw_text = doc_data.get('content', {}).get('raw_text', '')
+                results.append({
+                    'id': row['id'],
+                    'title': row['title'],
+                    'subject': row['subject'],
+                    'content_text': raw_text[:1000],
+                    'similarity': score_map[did],
+                    'document_data': doc_data
+                })
+            return results
+        except Exception as e:
+            print(f"❌ FAISS 检索异常: {e}")
+            return self._brute_force_vector_search(query_embedding, limit)
+        finally:
+            self.close()
+
+    def _build_faiss_index(self):
+        """从数据库加载所有 embedding 构建 FAISS 索引"""
+        self.connect()
+        sql = """SELECT id, document_data FROM knowledge_documents
+                 WHERE embedding IS NOT NULL"""
+        self.cursor.execute(sql)
+        rows = self.cursor.fetchall()
+
+        doc_ids = []
+        embeddings = []
+        for row in rows:
+            doc_data = row.get('document_data')
+            if isinstance(doc_data, str):
+                doc_data = json.loads(doc_data)
+            emb = doc_data.get('embedding') if doc_data else None
+            if emb:
+                doc_ids.append(row['id'])
+                embeddings.append(emb)
+
+        if embeddings:
+            vector_index.rebuild(doc_ids, embeddings)
+            vector_index.save()
+            print(f"✅ FAISS 索引构建完成: {len(embeddings)} 条向量")
+        self.close()
+
+    def _brute_force_vector_search(self, query_embedding, limit=5):
+        """原有暴力搜索（FAISS 不可用时的回退方案）"""
+        try:
+            from .embedding_service import embedding_service
+
+            self.connect()
+            sql = """SELECT id, title, subject, document_data
+                    FROM knowledge_documents
                     WHERE document_data->>'$.embedding' IS NOT NULL
                     LIMIT 100"""
             self.cursor.execute(sql)
             docs = self.cursor.fetchall()
-            
-            # 计算相似度
+
             results = []
             for doc in docs:
                 doc_data = doc.get('document_data')
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
-                
+
                 doc_embedding = doc_data.get('embedding')
                 if doc_embedding:
-                    # 计算余弦相似度
                     similarity = embedding_service.cosine_similarity(query_embedding, doc_embedding)
-                    
-                    # 提取文本内容
                     raw_text = doc_data.get('content', {}).get('raw_text', '')
-                    
                     results.append({
                         'id': doc['id'],
                         'title': doc['title'],
                         'subject': doc['subject'],
-                        'content_text': raw_text[:1000],  # 限制长度
+                        'content_text': raw_text[:1000],
                         'similarity': float(similarity),
                         'document_data': doc_data
                     })
-            
-            # 按相似度排序
+
             results.sort(key=lambda x: x['similarity'], reverse=True)
             return results[:limit]
-            
+
         except Exception as e:
-            print(f"❌ 向量检索失败：{str(e)}")
+            print(f"❌ 暴力向量检索失败: {str(e)}")
             return []
         finally:
             self.close()
@@ -530,11 +796,21 @@ class RAGKnowledgeBase:
             # 先删除关联的知识点
             sql = "DELETE FROM knowledge_points WHERE doc_id = %s"
             self.cursor.execute(sql, (doc_id,))
-            
+
             # 删除文档
             sql = "DELETE FROM knowledge_documents WHERE id = %s"
             self.cursor.execute(sql, (doc_id,))
             self.conn.commit()
+
+            # 从 FAISS 索引中移除
+            if vector_index._faiss_available:
+                try:
+                    vector_index.remove_by_ids({doc_id})
+                    vector_index.save()
+                except Exception:
+                    pass
+
+            _clear_search_cache()
             return True
         except Exception as e:
             print(f"❌ 删除文档失败：{str(e)}")
