@@ -6,10 +6,9 @@ import { useAuthStore, useUIStore } from '@/stores';
 import {
   LogOut, ChevronLeft, ChevronRight, GraduationCap,
   LayoutDashboard, Brain, Route,
-  Target, Lightbulb, TrendingUp
+  Target, Lightbulb, TrendingUp, Sparkles
 } from 'lucide-react';
 
-// 功能模块导航（不跳转页面，在Dashboard内切换）
 const menuItems = [
   { path: '/dashboard', label: '工作台', icon: LayoutDashboard, module: null },
   { path: '/dashboard?module=profile', label: '学生画像', icon: Target, module: 'profile' },
@@ -25,8 +24,7 @@ export default function Sidebar() {
   const searchParams = useSearchParams();
   const { user, isGuest, logout } = useAuthStore();
   const { sidebarOpen, toggleSidebar } = useUIStore();
-  
-  // 获取当前模块参数
+
   const currentModule = searchParams.get('module');
 
   const handleLogout = () => {
@@ -34,13 +32,10 @@ export default function Sidebar() {
     router.push('/');
   };
 
-  // 处理导航点击 - 使用URL参数而非页面跳转
   const handleNavClick = (item: typeof menuItems[0]) => {
     if (item.module === null) {
-      // 工作台：清除module参数
       router.push('/dashboard');
     } else {
-      // 功能模块：设置module参数
       router.push(`/dashboard?module=${item.module}`);
     }
   };
@@ -60,14 +55,20 @@ export default function Sidebar() {
 
   return (
     <motion.aside
-      className="fixed left-0 top-0 h-full bg-gradient-to-b from-primary-500 to-primary-700 text-white z-50 flex flex-col"
+      className="fixed left-0 top-0 h-full z-50 flex flex-col"
+      style={{
+        background: 'rgba(10, 25, 47, 0.85)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderRight: '1px solid rgba(100, 255, 218, 0.06)',
+      }}
       animate={{ width: sidebarOpen ? 256 : 80 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
       {/* Logo */}
-      <div className="p-4 flex items-center gap-3 border-b border-white/10">
-        <div className="w-10 h-10 rounded-xl bg-accent-cyan/20 flex items-center justify-center flex-shrink-0">
-          <GraduationCap className="w-6 h-6 text-accent-cyan" />
+      <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center flex-shrink-0 shadow-lg" style={{ boxShadow: '0 0 20px rgba(6,182,212,0.2)' }}>
+          <GraduationCap className="w-6 h-6 text-white" />
         </div>
         <AnimatePresence>
           {sidebarOpen && (
@@ -77,8 +78,8 @@ export default function Sidebar() {
               exit={{ opacity: 0, width: 0 }}
               className="overflow-hidden whitespace-nowrap"
             >
-              <h1 className="text-lg font-bold">AI 教学助手</h1>
-              <p className="text-xs text-white/50">v7.2</p>
+              <h1 className="text-lg font-bold text-white">AI 教学助手</h1>
+              <p className="text-[10px] text-white/30 tracking-widest">v7.2 MULTI-AGENT</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -88,8 +89,7 @@ export default function Sidebar() {
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          // 判断是否激活：工作台看pathname和无module参数，其他模块看URL参数
-          const isActive = item.module === null 
+          const isActive = item.module === null
             ? pathname === '/dashboard' && !currentModule
             : currentModule === item.module;
 
@@ -99,16 +99,18 @@ export default function Sidebar() {
               onClick={() => handleNavClick(item)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
                 isActive
-                  ? 'bg-accent-cyan/20 text-accent-cyan'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  ? 'text-cyan-400'
+                  : 'text-white/40 hover:text-white/70'
               }`}
+              style={isActive ? { background: 'rgba(100, 255, 218, 0.08)' } : undefined}
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
             >
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent-cyan rounded-r-full"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-cyan-400 rounded-r-full"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
               <Icon className="w-5 h-5 flex-shrink-0" />
@@ -130,9 +132,9 @@ export default function Sidebar() {
       </nav>
 
       {/* 用户信息 */}
-      <div className="p-3 border-t border-white/10">
+      <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3 px-3 py-2 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
             <span className="text-sm">{roleIcon[user?.role || 'guest']}</span>
           </div>
           <AnimatePresence>
@@ -143,8 +145,8 @@ export default function Sidebar() {
                 exit={{ opacity: 0, width: 0 }}
                 className="overflow-hidden whitespace-nowrap flex-1 min-w-0"
               >
-                <p className="text-sm font-medium truncate">{user?.username || '用户'}</p>
-                <p className="text-xs text-white/50">{roleLabel[user?.role || 'guest']}</p>
+                <p className="text-sm font-medium text-white/80 truncate">{user?.username || '用户'}</p>
+                <p className="text-xs text-white/30">{roleLabel[user?.role || 'guest']}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -152,7 +154,7 @@ export default function Sidebar() {
 
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/30 hover:text-white/60 hover:bg-white/5 transition-all"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
           <AnimatePresence>
@@ -173,7 +175,8 @@ export default function Sidebar() {
       {/* 折叠按钮 */}
       <button
         onClick={toggleSidebar}
-        className="absolute top-1/2 -right-3 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-primary-500 hover:bg-gray-50 transition-colors z-50"
+        className="absolute top-1/2 -right-3 w-6 h-6 rounded-full shadow-md flex items-center justify-center text-cyan-400 transition-colors z-50"
+        style={{ background: 'rgba(10, 25, 47, 0.9)', border: '1px solid rgba(100, 255, 218, 0.2)' }}
       >
         {sidebarOpen ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
       </button>

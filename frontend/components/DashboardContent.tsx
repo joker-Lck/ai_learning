@@ -139,16 +139,16 @@ interface AssessmentResult {
 }
 
 const stats = [
-  { label: '多智能体协同', value: '6个', icon: Brain, color: 'text-purple-500' },
-  { label: '资源类型', value: '7种', icon: Users, color: 'text-blue-500' },
-  { label: '画像维度', value: '8维', icon: Shield, color: 'text-cyan-500' },
-  { label: '防幻觉机制', value: '3层', icon: TrendingUp, color: 'text-green-500' },
+  { label: '多智能体协同', value: '6个', icon: Brain, color: 'text-purple-400' },
+  { label: '资源类型', value: '7种', icon: Users, color: 'text-blue-400' },
+  { label: '画像维度', value: '8维', icon: Shield, color: 'text-cyan-400' },
+  { label: '防幻觉机制', value: '3层', icon: TrendingUp, color: 'text-emerald-400' },
 ];
 
 export default function DashboardContent() {
   const { user, isGuest } = useAuthStore();
   const searchParams = useSearchParams();
-  
+
   // 从 URL 参数读取模块类型
   const moduleParam = searchParams.get('module') as ModuleType;
   const [activeModule, setActiveModule] = useState<ModuleType>(null);
@@ -233,16 +233,16 @@ export default function DashboardContent() {
 
     const userMessage = { role: 'user' as const, content: inputValue.trim() };
     const newMessages = [...currentChat.messages, userMessage];
-    
+
     // 清空输入框
     (document.getElementById('profile-input') as HTMLInputElement).value = '';
-    
+
     setProfileLoading(true);
-    
+
     setTimeout(() => {
       let aiResponse = '';
       const currentQuestionIndex = currentChat.messages.filter(m => m.role === 'assistant').length - 1;
-      
+
       if (currentQuestionIndex < currentDimension.questions.length - 1) {
         // 还有问题要问
         aiResponse = currentDimension.questions[currentQuestionIndex + 1];
@@ -251,7 +251,7 @@ export default function DashboardContent() {
         // 当前维度完成
         aiResponse = `✅ 好的，我已经记录了您的${currentDimension.title}信息。`;
         updateCurrentChat([...newMessages, { role: 'assistant', content: aiResponse }], true);
-        
+
         // 自动进入下一个维度
         setTimeout(() => {
           if (currentStep < PROFILE_DIMENSIONS.length - 1) {
@@ -262,7 +262,7 @@ export default function DashboardContent() {
           }
         }, 1000);
       }
-      
+
       setProfileLoading(false);
     }, 800);
   };
@@ -273,14 +273,14 @@ export default function DashboardContent() {
     try {
       // 收集所有维度的对话记录
       const conversationLog = Object.values(dimensionChats).flatMap(chat => chat.messages);
-      
+
       console.log('🚀 开始构建学生画像...');
-      
+
       // 前端直接调用AI构建画像
       const profileData = await buildStudentProfile(conversationLog);
-      
+
       console.log('✅ 画像构建成功:', profileData);
-      
+
       if (profileData) {
         setProfileData(profileData);
       }
@@ -317,34 +317,34 @@ export default function DashboardContent() {
     try {
       // 前端直接调用AI生成资源
       console.log('🚀 开始前端AI资源生成:', { subject, topic, selectedTypes, difficulty });
-      
+
       const generatedResources: ResourceItem[] = [];
-      
+
       // 并行生成所有选中的资源类型
       const generationPromises = selectedTypes.map(async (type): Promise<ResourceItem | null> => {
         try {
           let contentData: any = {};
-          
+
           switch (type) {
             case 'mindmap':
               contentData = await generateMindmap(subject, topic, difficulty);
               break;
-              
+
             case 'quiz':
               contentData = await generateQuiz(subject, topic, difficulty);
               break;
-              
+
             case 'document':
               contentData = await generateDocument(subject, topic, difficulty);
               break;
-              
+
             default:
               console.warn(`未知的资源类型: ${type}`);
               return null;
           }
-          
+
           console.log(`✅ ${type} 生成成功:`, contentData.title || type);
-          
+
           return {
             type,
             title: contentData.title || `${topic}${getTypeName(type)}`,
@@ -361,13 +361,13 @@ export default function DashboardContent() {
           };
         }
       });
-      
+
       const results = await Promise.all(generationPromises);
       const validResults = results.filter((r): r is ResourceItem => r !== null && r !== undefined);
-      
+
       console.log('✅ 所有资源生成完成:', validResults.length);
       setResources(validResults);
-      
+
     } catch (error: any) {
       console.error('资源生成失败:', error);
       alert(`资源生成失败: ${error.message}`);
@@ -375,7 +375,7 @@ export default function DashboardContent() {
       setResourceLoading(false);
     }
   };
-  
+
   // 获取资源类型中文名
   const getTypeName = (type: string) => {
     const names: Record<string, string> = {
@@ -391,12 +391,12 @@ export default function DashboardContent() {
 
     try {
       console.log('🚀 开始生成学习路径:', { learningGoal });
-      
+
       // 前端直接调用AI生成学习路径
       const pathData = await generateLearningPath(learningGoal, profileData);
-      
+
       console.log('✅ 学习路径生成成功:', pathData);
-      
+
       if (pathData) {
         setLearningPath(pathData);
       }
@@ -409,7 +409,7 @@ export default function DashboardContent() {
 
   const handleAskTutor = async () => {
     if (!question.trim()) return;
-  
+
     const userMessage: TutorMessage = {
       role: 'user',
       content: question.trim(),
@@ -418,15 +418,15 @@ export default function DashboardContent() {
     setTutorMessages(prev => [...prev, userMessage]);
     setQuestion('');
     setTutorLoading(true);
-  
+
     try {
       console.log('🚀 开始AI辅导答疑:', { question: question.trim(), subject: tutorSubject });
-      
+
       // 前端直接调用AI进行辅导
       const answerData = await tutorAnswer(question.trim(), tutorSubject, 'all');
-      
+
       console.log('✅ 辅导回答生成成功');
-      
+
       const assistantMessage: TutorMessage = {
         role: 'assistant',
         content: answerData.text_answer,
@@ -524,44 +524,44 @@ export default function DashboardContent() {
         return (
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
                 <Target className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-800">对话式学生画像构建</h3>
-                <p className="text-sm text-gray-500">通过6个维度的对话，自动构建个性化学习画像</p>
+                <h3 className="text-xl font-bold text-white">对话式学生画像构建</h3>
+                <p className="text-sm text-white/40">通过6个维度的对话，自动构建个性化学习画像</p>
               </div>
             </div>
 
             {/* 进度指示器 */}
-            <div className="bg-white rounded-xl shadow-card p-3">
+            <div className="glass-card rounded-xl p-3">
               <div className="flex items-center justify-between">
                 {PROFILE_DIMENSIONS.map((dim, idx) => {
                   const Icon = dim.icon;
                   const isCompleted = dimensionChats[dim.id]?.completed;
                   const isCurrent = idx === currentStep;
-                  
+
                   return (
                     <div key={dim.id} className="flex items-center">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                        isCompleted ? 'bg-green-500 text-white' :
+                        isCompleted ? 'bg-cyan-500 text-white' :
                         isCurrent ? `bg-gradient-to-r ${dim.color} text-white` :
-                        'bg-gray-200 text-gray-400'
+                        'bg-white/[0.08] text-white/30'
                       }`}>
                         {isCompleted ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                       </div>
                       {idx < PROFILE_DIMENSIONS.length - 1 && (
                         <div className={`w-4 h-0.5 mx-1 ${
-                          isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                          isCompleted ? 'bg-cyan-500' : 'bg-white/[0.08]'
                         }`} />
                       )}
                     </div>
                   );
                 })}
               </div>
-              <div className="flex justify-between mt-1 text-xs text-gray-500">
+              <div className="flex justify-between mt-1 text-xs text-white/30">
                 {PROFILE_DIMENSIONS.map((dim, idx) => (
-                  <span key={dim.id} className={idx === currentStep ? 'font-semibold text-gray-800' : ''}>
+                  <span key={dim.id} className={idx === currentStep ? 'font-semibold text-white' : ''}>
                     {dim.title}
                   </span>
                 ))}
@@ -569,8 +569,8 @@ export default function DashboardContent() {
             </div>
 
             {/* 当前维度对话区域 */}
-            <div className="bg-white rounded-xl shadow-card overflow-hidden">
-              <div className={`p-3 border-b border-gray-100 bg-gradient-to-r ${currentDimension.color} text-white`}>
+            <div className="glass-card rounded-xl overflow-hidden">
+              <div className={`p-3 border-b border-white/[0.06] bg-gradient-to-r ${currentDimension.color} text-white`}>
                 <div className="flex items-center gap-2">
                   <currentDimension.icon className="w-5 h-5" />
                   <h4 className="font-bold">{currentDimension.title}</h4>
@@ -589,50 +589,50 @@ export default function DashboardContent() {
                   >
                     <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
                       msg.role === 'user'
-                        ? `bg-gradient-to-r ${currentDimension.color} text-white`
-                        : 'bg-gray-100 text-gray-800'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
+                        : 'bg-white/[0.06] text-white/80'
                     }`}>
                       {msg.content}
                     </div>
                   </div>
                 ))}
-                
+
                 {profileLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-gray-100 rounded-xl px-3 py-2">
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                    <div className="bg-white/[0.06] rounded-xl px-3 py-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-white/30 border-white/30 border-t-cyan-400" />
                     </div>
                   </div>
                 )}
               </div>
 
               {/* 输入区域 */}
-              <div className="p-3 border-t border-gray-100">
+              <div className="p-3 border-t border-white/[0.06]">
                 <div className="flex gap-2">
                   <input
                     id="profile-input"
                     type="text"
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder={currentDimension.placeholder}
-                    className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
+                    className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none text-sm"
                     disabled={profileLoading}
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={profileLoading}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >
                     {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     发送
                   </button>
                 </div>
-                
+
                 {/* 导航按钮 */}
                 <div className="flex justify-between mt-2">
                   <button
                     onClick={goToPreviousStep}
                     disabled={currentStep === 0}
-                    className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-3 py-1 text-sm text-white/40 hover:bg-white/[0.04] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     上一步
@@ -640,7 +640,7 @@ export default function DashboardContent() {
                   <button
                     onClick={goToNextStep}
                     disabled={currentStep === PROFILE_DIMENSIONS.length - 1}
-                    className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-3 py-1 text-sm text-white/40 hover:bg-white/[0.04] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >
                     下一步
                     <ChevronRight className="w-4 h-4" />
@@ -651,19 +651,19 @@ export default function DashboardContent() {
 
             {/* 画像预览 */}
             {profileData && (
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border-2 border-blue-200">
-                <h4 className="font-bold text-blue-800 mb-3">学生画像</h4>
+              <div className="glass-card rounded-xl p-4 border-cyan-400/20">
+                <h4 className="font-bold text-cyan-400 mb-3">学生画像</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="font-semibold">专业:</span> {profileData.major}</div>
-                  <div><span className="font-semibold">年级:</span> {profileData.grade_level}</div>
-                  <div className="col-span-2"><span className="font-semibold">知识基础:</span> {profileData.knowledge_base}</div>
-                  <div className="col-span-2"><span className="font-semibold">认知风格:</span> {profileData.cognitive_style}</div>
-                  <div className="col-span-2"><span className="font-semibold">学习目标:</span> {profileData.learning_goals}</div>
+                  <div><span className="font-semibold text-white">专业:</span> <span className="text-white/60">{profileData.major}</span></div>
+                  <div><span className="font-semibold text-white">年级:</span> <span className="text-white/60">{profileData.grade_level}</span></div>
+                  <div className="col-span-2"><span className="font-semibold text-white">知识基础:</span> <span className="text-white/60">{profileData.knowledge_base}</span></div>
+                  <div className="col-span-2"><span className="font-semibold text-white">认知风格:</span> <span className="text-white/60">{profileData.cognitive_style}</span></div>
+                  <div className="col-span-2"><span className="font-semibold text-white">学习目标:</span> <span className="text-white/60">{profileData.learning_goals}</span></div>
                   {profileData.weak_points?.length > 0 && (
-                    <div className="col-span-2"><span className="font-semibold">薄弱点:</span> {profileData.weak_points.join(', ')}</div>
+                    <div className="col-span-2"><span className="font-semibold text-white">薄弱点:</span> <span className="text-white/60">{profileData.weak_points.join(', ')}</span></div>
                   )}
                   {profileData.interest_areas?.length > 0 && (
-                    <div className="col-span-2"><span className="font-semibold">兴趣领域:</span> {profileData.interest_areas.join(', ')}</div>
+                    <div className="col-span-2"><span className="font-semibold text-white">兴趣领域:</span> <span className="text-white/60">{profileData.interest_areas.join(', ')}</span></div>
                   )}
                 </div>
               </div>
@@ -674,32 +674,32 @@ export default function DashboardContent() {
       case 'resources':
         return (
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-gray-800">多智能体资源生成</h3>
-            
-            <div className="bg-white rounded-xl p-4 shadow-card space-y-4">
+            <h3 className="text-xl font-bold text-white">多智能体资源生成</h3>
+
+            <div className="glass-card rounded-xl p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">学科</label>
+                  <label className="block text-sm font-medium text-white/60 mb-1">学科</label>
                   <input
                     type="text"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">主题</label>
+                  <label className="block text-sm font-medium text-white/60 mb-1">主题</label>
                   <input
                     type="text"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">资源类型</label>
+                <label className="block text-sm font-medium text-white/60 mb-2">资源类型</label>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { id: 'document', label: ' 文档', icon: FileText },
@@ -719,10 +719,10 @@ export default function DashboardContent() {
                             : [...prev, type.id]
                         );
                       }}
-                      className={`px-3 py-2 rounded-lg border-2 transition-all text-sm ${
+                      className={`px-3 py-2 rounded-lg border transition-all text-sm ${
                         selectedTypes.includes(type.id)
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-200 hover:border-purple-300'
+                          ? 'border-cyan-400/30 bg-cyan-400/10 text-cyan-400'
+                          : 'border-white/[0.08] bg-white/[0.02] text-white/40 hover:border-white/[0.15] hover:text-white/60'
                       }`}
                     >
                       {type.label}
@@ -732,11 +732,11 @@ export default function DashboardContent() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">难度级别</label>
+                <label className="block text-sm font-medium text-white/60 mb-1">难度级别</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white rounded-lg focus:border-cyan-400/30 focus:outline-none"
                 >
                   <option value="beginner">初级</option>
                   <option value="intermediate">中级</option>
@@ -747,7 +747,7 @@ export default function DashboardContent() {
               <button
                 onClick={handleGenerateResources}
                 disabled={resourceLoading || selectedTypes.length === 0}
-                className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
+                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
               >
                 {resourceLoading ? (
                   <>
@@ -765,15 +765,15 @@ export default function DashboardContent() {
 
             {resources.length > 0 && (
               <div className="space-y-3">
-                <h4 className="font-bold text-gray-800">生成的资源 ({resources.length})</h4>
+                <h4 className="font-bold text-white">生成的资源 ({resources.length})</h4>
                 {resources.map((resource, idx) => (
-                  <div key={idx} className="bg-white rounded-xl p-4 shadow-card">
+                  <div key={idx} className="glass-card rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        {resource.type === 'document' && <FileText className="w-5 h-5 text-blue-500" />}
-                        {resource.type === 'mindmap' && <GitBranch className="w-5 h-5 text-green-500" />}
-                        {resource.type === 'quiz' && <FileCode className="w-5 h-5 text-orange-500" />}
-                        <span className="font-semibold">{resource.title}</span>
+                        {resource.type === 'document' && <FileText className="w-5 h-5 text-cyan-400" />}
+                        {resource.type === 'mindmap' && <GitBranch className="w-5 h-5 text-emerald-400" />}
+                        {resource.type === 'quiz' && <FileCode className="w-5 h-5 text-amber-400" />}
+                        <span className="font-semibold text-white">{resource.title}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -782,7 +782,7 @@ export default function DashboardContent() {
                             const previewWindow = window.open('', '_blank');
                             if (previewWindow) {
                               // 修复：使用content_data而不是content
-                              const content = resource.content_data 
+                              const content = resource.content_data
                                 ? JSON.stringify(resource.content_data, null, 2)
                                 : '暂无内容数据';
                               previewWindow.document.write(`
@@ -806,7 +806,7 @@ export default function DashboardContent() {
                               previewWindow.document.close();
                             }
                           }}
-                          className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center gap-1"
+                          className="px-3 py-1 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:opacity-90 transition-colors text-sm flex items-center gap-1"
                         >
                           👁️ 预览
                         </button>
@@ -814,10 +814,10 @@ export default function DashboardContent() {
                           onClick={async () => {
                             try {
                               console.log('📤 开始导出资源:', resource);
-                              
+
                               // 调用后端API导出文件
                               const res: any = await api.exportResource(resource);
-                              
+
                               if (res.success && res.data) {
                                 console.log('✅ 导出成功:', res.data);
 
@@ -833,7 +833,7 @@ export default function DashboardContent() {
                                 document.body.appendChild(a);
                                 a.click();
                                 document.body.removeChild(a);
-                                
+
                                 alert(`✅ 导出成功！\n文件名: ${res.data.filename}\n文件类型: ${res.data.file_type}`);
                               } else {
                                 alert(`❌ 导出失败: ${res.message || '未知错误'}`);
@@ -843,15 +843,15 @@ export default function DashboardContent() {
                               alert(`❌ 导出失败: ${error.message || '网络错误'}`);
                             }
                           }}
-                          className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm flex items-center gap-1"
+                          className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:opacity-90 transition-colors text-sm flex items-center gap-1"
                         >
                           📥 导出
                         </button>
-                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <CheckCircle className="w-5 h-5 text-emerald-400" />
                       </div>
                     </div>
-                    <div className="text-sm text-gray-600 whitespace-pre-wrap">
-                      {resource.content_data 
+                    <div className="text-sm text-white/60 whitespace-pre-wrap">
+                      {resource.content_data
                         ? JSON.stringify(resource.content_data, null, 2)
                         : '暂无内容'}
                     </div>
@@ -865,24 +865,24 @@ export default function DashboardContent() {
       case 'path':
         return (
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-gray-800">个性化学习路径规划</h3>
-            
-            <div className="bg-white rounded-xl p-4 shadow-card space-y-4">
+            <h3 className="text-xl font-bold text-white">个性化学习路径规划</h3>
+
+            <div className="glass-card rounded-xl p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">学习目标</label>
+                <label className="block text-sm font-medium text-white/60 mb-1">学习目标</label>
                 <input
                   type="text"
                   value={learningGoal}
                   onChange={(e) => setLearningGoal(e.target.value)}
                   placeholder="输入你的学习目标..."
-                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none"
                 />
               </div>
 
               <button
                 onClick={handlePlanPath}
                 disabled={pathLoading || !learningGoal.trim()}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
+                className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
               >
                 {pathLoading ? (
                   <>
@@ -899,29 +899,29 @@ export default function DashboardContent() {
             </div>
 
             {learningPath && (
-              <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4 border-2 border-orange-200">
-                <h4 className="font-bold text-orange-800 mb-3">学习路径: {learningPath.goal}</h4>
-                <div className="text-sm text-gray-700 mb-3">
+              <div className="glass-card rounded-xl p-4 border-amber-400/20">
+                <h4 className="font-bold text-amber-400 mb-3">学习路径: {learningPath.goal}</h4>
+                <div className="text-sm text-white/60 mb-3">
                   预计时长: {learningPath.estimated_duration} | 步骤数: {learningPath.total_steps}
                 </div>
                 <div className="space-y-3">
                   {learningPath.steps.map((step, idx) => (
-                    <div key={idx} className="bg-white rounded-lg p-3 shadow-sm">
+                    <div key={idx} className="glass-card rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-sm">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white flex items-center justify-center font-bold text-sm">
                           {step.step_number}
                         </div>
                         <div className="flex-1">
-                          <div className="font-semibold text-gray-800">{step.title}</div>
-                          <div className="text-sm text-gray-600">{step.description}</div>
+                          <div className="font-semibold text-white">{step.title}</div>
+                          <div className="text-sm text-white/60">{step.description}</div>
                         </div>
-                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <div className="flex items-center gap-1 text-sm text-white/40">
                           <Clock className="w-4 h-4" />
                           {step.estimated_time}
                         </div>
                       </div>
                       {step.prerequisites.length > 0 && (
-                        <div className="text-xs text-gray-500 ml-10">
+                        <div className="text-xs text-white/30 ml-10">
                           前置知识: {step.prerequisites.join(', ')}
                         </div>
                       )}
@@ -936,19 +936,19 @@ export default function DashboardContent() {
       case 'tutor':
         return (
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-gray-800">智能辅导系统</h3>
-            
-            <div className="bg-gradient-to-br from-green-50 to-yellow-50 rounded-2xl p-6 shadow-lg min-h-[500px] max-h-[600px] overflow-y-auto border border-green-100">
+            <h3 className="text-xl font-bold text-white">智能辅导系统</h3>
+
+            <div className="glass-card rounded-2xl p-6 min-h-[500px] max-h-[600px] overflow-y-auto">
               {tutorMessages.map((msg, idx) => (
                 <div key={idx} className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-md ${
-                    msg.role === 'user' 
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-br-md' 
-                      : 'bg-white text-gray-800 border border-green-200 rounded-bl-md'
+                  <div className={`max-w-[85%] px-4 py-3 rounded-2xl ${
+                    msg.role === 'user'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
+                      : 'bg-white/[0.06] text-white/80 border border-white/[0.06] rounded-bl-md'
                   }`}>
                     <div className="flex items-start gap-2">
                       {msg.role === 'assistant' && (
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-r from-yellow-400 to-green-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <Lightbulb className="w-3 h-3 text-white" />
                         </div>
                       )}
@@ -958,12 +958,12 @@ export default function DashboardContent() {
                         </div>
                         <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
                         {msg.diagram && (
-                          <div className="mt-2 p-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg text-sm border border-blue-200">
+                          <div className="mt-2 p-2 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
                             📊 {msg.diagram}
                           </div>
                         )}
                         {msg.example && (
-                          <div className="mt-2 p-2 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg text-sm border border-yellow-200">
+                          <div className="mt-2 p-2 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
                              示例: {msg.example}
                           </div>
                         )}
@@ -973,21 +973,21 @@ export default function DashboardContent() {
                 </div>
               ))}
               {tutorLoading && (
-                <div className="flex items-center gap-2 text-gray-500">
+                <div className="flex items-center gap-2 text-white/40">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>AI思考中...</span>
                 </div>
               )}
             </div>
 
-            <div className="bg-white rounded-xl p-4 shadow-card space-y-3">
+            <div className="glass-card rounded-xl p-4 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">学科</label>
+                <label className="block text-sm font-medium text-white/60 mb-1">学科</label>
                 <input
                   type="text"
                   value={tutorSubject}
                   onChange={(e) => setTutorSubject(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -997,13 +997,13 @@ export default function DashboardContent() {
                   onChange={(e) => setQuestion(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleAskTutor()}
                   placeholder="输入你的问题..."
-                  className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                  className="flex-1 px-4 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none"
                   disabled={tutorLoading}
                 />
                 <button
                   onClick={handleAskTutor}
                   disabled={tutorLoading || !question.trim()}
-                  className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {tutorLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   提问
@@ -1016,16 +1016,16 @@ export default function DashboardContent() {
       case 'assessment':
         return (
           <div className="space-y-5">
-            <h3 className="text-xl font-bold text-gray-800">学习效果评估</h3>
+            <h3 className="text-xl font-bold text-white">学习效果评估</h3>
 
             {/* Tab 切换 */}
-            <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
+            <div className="flex gap-2 bg-white/[0.04] rounded-xl p-1 border border-white/[0.06]">
               <button
                 onClick={() => setAssessTab('assess')}
                 className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
                   assessTab === 'assess'
-                    ? 'bg-white text-indigo-600 shadow-md'
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
+                    : 'text-white/40 hover:text-white/60'
                 }`}
               >
                 <span className="flex items-center justify-center gap-2">
@@ -1037,8 +1037,8 @@ export default function DashboardContent() {
                 onClick={() => setAssessTab('analyze')}
                 className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
                   assessTab === 'analyze'
-                    ? 'bg-white text-emerald-600 shadow-md'
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                    : 'text-white/40 hover:text-white/60'
                 }`}
               >
                 <span className="flex items-center justify-center gap-2">
@@ -1053,13 +1053,13 @@ export default function DashboardContent() {
               <div className="space-y-4">
                 {!assessment ? (
                   <div className="text-center py-12">
-                    <BarChart3 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <h4 className="text-lg font-semibold text-gray-600 mb-2">开始学习效果评估</h4>
-                    <p className="text-sm text-gray-500 mb-5">基于您的学习行为和画像特征，进行多维度综合评估</p>
+                    <BarChart3 className="w-16 h-16 mx-auto mb-4 text-white/20" />
+                    <h4 className="text-lg font-semibold text-white/60 mb-2">开始学习效果评估</h4>
+                    <p className="text-sm text-white/40 mb-5">基于您的学习行为和画像特征，进行多维度综合评估</p>
                     <button
                       onClick={handleAssess}
                       disabled={assessLoading}
-                      className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:opacity-90 disabled:opacity-50 font-medium flex items-center gap-2 mx-auto"
+                      className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl hover:opacity-90 disabled:opacity-50 font-medium flex items-center gap-2 mx-auto"
                     >
                       {assessLoading ? (
                         <><Loader2 className="w-5 h-5 animate-spin" /> 评估中...</>
@@ -1070,7 +1070,7 @@ export default function DashboardContent() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl p-6 text-white text-center">
+                    <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white text-center">
                       <h4 className="text-lg font-semibold mb-3">综合评分</h4>
                       <div className="text-5xl font-bold mb-1">{assessment.overall_score}</div>
                       <p className="text-white/80 text-sm">满分 100 分</p>
@@ -1078,43 +1078,43 @@ export default function DashboardContent() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {assessment.dimensions.map((dim, idx) => (
-                        <div key={idx} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                        <div key={idx} className="glass-card rounded-xl p-4">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="font-semibold text-sm">{dim.name}</span>
-                            <span className="text-xs text-gray-500">{dim.score}/{dim.max_score} · {dim.level}</span>
+                            <span className="font-semibold text-sm text-white">{dim.name}</span>
+                            <span className="text-xs text-white/40">{dim.score}/{dim.max_score} · {dim.level}</span>
                           </div>
-                          <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
-                            <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${(dim.score / dim.max_score) * 100}%` }} />
+                          <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
+                            <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style={{ width: `${(dim.score / dim.max_score) * 100}%` }} />
                           </div>
-                          <p className="text-xs text-gray-500">{dim.feedback}</p>
+                          <p className="text-xs text-white/40">{dim.feedback}</p>
                         </div>
                       ))}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="bg-green-50 rounded-xl p-4">
-                        <h5 className="font-semibold text-green-800 mb-2 flex items-center gap-2 text-sm">
+                      <div className="glass-card rounded-xl p-4 border-emerald-400/20">
+                        <h5 className="font-semibold text-emerald-400 mb-2 flex items-center gap-2 text-sm">
                           <CheckCircle className="w-4 h-4" /> 优势
                         </h5>
-                        <ul className="text-sm text-green-700 space-y-1">
+                        <ul className="text-sm text-white/60 space-y-1">
                           {assessment.strengths.map((s, idx) => <li key={idx}>• {s}</li>)}
                         </ul>
                       </div>
-                      <div className="bg-orange-50 rounded-xl p-4">
-                        <h5 className="font-semibold text-orange-800 mb-2 flex items-center gap-2 text-sm">
+                      <div className="glass-card rounded-xl p-4 border-amber-400/20">
+                        <h5 className="font-semibold text-amber-400 mb-2 flex items-center gap-2 text-sm">
                           <AlertCircle className="w-4 h-4" /> 改进建议
                         </h5>
-                        <ul className="text-sm text-orange-700 space-y-1">
+                        <ul className="text-sm text-white/60 space-y-1">
                           {assessment.improvements.map((imp, idx) => <li key={idx}>• {imp}</li>)}
                         </ul>
                       </div>
                     </div>
 
-                    <div className="bg-blue-50 rounded-xl p-4">
-                      <h5 className="font-semibold text-blue-800 mb-2 flex items-center gap-2 text-sm">
+                    <div className="glass-card rounded-xl p-4 border-cyan-400/20">
+                      <h5 className="font-semibold text-cyan-400 mb-2 flex items-center gap-2 text-sm">
                         <Lightbulb className="w-4 h-4" /> 学习建议
                       </h5>
-                      <ul className="text-sm text-blue-700 space-y-1">
+                      <ul className="text-sm text-white/60 space-y-1">
                         {assessment.recommendations.map((rec, idx) => <li key={idx}>• {rec}</li>)}
                       </ul>
                     </div>
@@ -1122,7 +1122,7 @@ export default function DashboardContent() {
                     <button
                       onClick={handleAssess}
                       disabled={assessLoading}
-                      className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:opacity-90 disabled:opacity-50 font-medium flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl hover:opacity-90 disabled:opacity-50 font-medium flex items-center justify-center gap-2"
                     >
                       {assessLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> 重新评估中...</> : <><TrendingUp className="w-5 h-5" /> 重新评估</>}
                     </button>
@@ -1141,7 +1141,7 @@ export default function DashboardContent() {
                   onDragLeave={() => setAnalysisDragOver(false)}
                   onClick={() => analysisFileInputRef.current?.click()}
                   className={`rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
-                    analysisDragOver ? 'border-emerald-400 bg-emerald-50' : 'border-gray-300 bg-white hover:border-emerald-300'
+                    analysisDragOver ? 'border-cyan-400/50 bg-cyan-400/5' : 'border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/30'
                   }`}
                 >
                   <input
@@ -1152,29 +1152,29 @@ export default function DashboardContent() {
                     className="hidden"
                     onChange={(e) => { if (e.target.files) addAnalysisFiles(e.target.files); e.target.value = ''; }}
                   />
-                  <Upload className={`w-10 h-10 mx-auto mb-3 ${analysisDragOver ? 'text-emerald-500' : 'text-gray-400'}`} />
-                  <p className="text-sm font-medium text-gray-700 mb-1">
-                    拖拽文件到此处，或 <span className="text-emerald-600 underline">点击选择</span>
+                  <Upload className={`w-10 h-10 mx-auto mb-3 ${analysisDragOver ? 'text-cyan-400' : 'text-white/30'}`} />
+                  <p className="text-sm font-medium text-white/60 mb-1">
+                    拖拽文件到此处，或 <span className="text-cyan-400 underline">点击选择</span>
                   </p>
-                  <p className="text-xs text-gray-400">支持 PDF、Word、PPT、TXT、Markdown、图片 · 单文件 10MB · 最多 10 个</p>
+                  <p className="text-xs text-white/30">支持 PDF、Word、PPT、TXT、Markdown、图片 · 单文件 10MB · 最多 10 个</p>
                 </div>
 
                 {/* 文件列表 */}
                 {analysisFiles.length > 0 && (
-                  <div className="bg-white rounded-2xl shadow-sm p-4">
+                  <div className="glass-card rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-semibold text-gray-700">
+                      <span className="text-sm font-semibold text-white/60">
                         已选 {analysisFiles.length} 个文件 ({formatFileSize(analysisFiles.reduce((s, f) => s + f.size, 0))})
                       </span>
-                      <button onClick={() => setAnalysisFiles([])} className="text-xs text-red-500 hover:text-red-700">清空</button>
+                      <button onClick={() => setAnalysisFiles([])} className="text-xs text-red-400/80 hover:text-red-400">清空</button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {analysisFiles.map((f, i) => (
-                        <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 text-sm group">
+                        <div key={i} className="flex items-center gap-2 bg-white/[0.06] rounded-lg px-3 py-2 text-sm group">
                           <span>{getFileIcon(f.name)}</span>
-                          <span className="text-gray-700 max-w-[140px] truncate">{f.name}</span>
-                          <span className="text-xs text-gray-400">{formatFileSize(f.size)}</span>
-                          <button onClick={(e) => { e.stopPropagation(); removeAnalysisFile(i); }} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500">
+                          <span className="text-white/60 max-w-[140px] truncate">{f.name}</span>
+                          <span className="text-xs text-white/30">{formatFileSize(f.size)}</span>
+                          <button onClick={(e) => { e.stopPropagation(); removeAnalysisFile(i); }} className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400/80">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -1184,25 +1184,25 @@ export default function DashboardContent() {
                 )}
 
                 {/* 可选参数 */}
-                <div className="bg-white rounded-2xl shadow-sm p-4">
-                  <p className="text-xs text-gray-500 mb-3">以下为可选参数，帮助 AI 更精准分析</p>
+                <div className="glass-card rounded-2xl p-4">
+                  <p className="text-xs text-white/30 mb-3">以下为可选参数，帮助 AI 更精准分析</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <input
                       value={analysisSubject}
                       onChange={(e) => setAnalysisSubject(e.target.value)}
                       placeholder="学科（如：机器学习）"
-                      className="px-3 py-2 border rounded-lg text-sm focus:border-emerald-500 focus:outline-none"
+                      className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg text-sm focus:border-cyan-400/30 focus:outline-none"
                     />
                     <input
                       value={analysisTopic}
                       onChange={(e) => setAnalysisTopic(e.target.value)}
                       placeholder="主题（如：神经网络）"
-                      className="px-3 py-2 border rounded-lg text-sm focus:border-emerald-500 focus:outline-none"
+                      className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg text-sm focus:border-cyan-400/30 focus:outline-none"
                     />
                     <select
                       value={analysisDifficulty}
                       onChange={(e) => setAnalysisDifficulty(e.target.value)}
-                      className="px-3 py-2 border rounded-lg text-sm focus:border-emerald-500 focus:outline-none"
+                      className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white rounded-lg text-sm focus:border-cyan-400/30 focus:outline-none"
                     >
                       <option value="beginner">初级</option>
                       <option value="intermediate">中级</option>
@@ -1236,41 +1236,41 @@ export default function DashboardContent() {
 
                     {/* 知识总览 */}
                     {analysisResult.knowledge_overview && (
-                      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                        <h5 className="font-semibold text-gray-800 mb-2 text-sm">📚 知识总览</h5>
-                        <p className="text-sm text-gray-600 leading-relaxed">{analysisResult.knowledge_overview}</p>
+                      <div className="glass-card rounded-xl p-4">
+                        <h5 className="font-semibold text-white mb-2 text-sm">📚 知识总览</h5>
+                        <p className="text-sm text-white/60 leading-relaxed">{analysisResult.knowledge_overview}</p>
                       </div>
                     )}
 
                     {/* 知识点 */}
                     {analysisResult.knowledge_points?.length > 0 && (
-                      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                        <h5 className="font-semibold text-gray-800 mb-3 text-sm">🎯 知识点分析</h5>
+                      <div className="glass-card rounded-xl p-4">
+                        <h5 className="font-semibold text-white mb-3 text-sm">🎯 知识点分析</h5>
                         <div className="space-y-2">
                           {analysisResult.knowledge_points.map((kp: any, i: number) => (
-                            <div key={i} className="bg-gray-50 rounded-lg p-3">
+                            <div key={i} className="bg-white/[0.04] rounded-lg p-3">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-sm">{kp.point}</span>
+                                <span className="font-medium text-sm text-white">{kp.point}</span>
                                 {kp.importance && (
                                   <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                    kp.importance === 'high' ? 'bg-red-100 text-red-600' :
-                                    kp.importance === 'medium' ? 'bg-yellow-100 text-yellow-600' :
-                                    'bg-green-100 text-green-600'
+                                    kp.importance === 'high' ? 'bg-red-400/15 text-red-400/80' :
+                                    kp.importance === 'medium' ? 'bg-amber-400/15 text-amber-400' :
+                                    'bg-emerald-400/15 text-emerald-400'
                                   }`}>
                                     {kp.importance === 'high' ? '重要' : kp.importance === 'medium' ? '中等' : '了解'}
                                   </span>
                                 )}
                                 {kp.mastery_level && (
                                   <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                    kp.mastery_level === 'good' ? 'bg-green-100 text-green-600' :
-                                    kp.mastery_level === 'moderate' ? 'bg-yellow-100 text-yellow-600' :
-                                    'bg-red-100 text-red-600'
+                                    kp.mastery_level === 'good' ? 'bg-emerald-400/15 text-emerald-400' :
+                                    kp.mastery_level === 'moderate' ? 'bg-amber-400/15 text-amber-400' :
+                                    'bg-red-400/15 text-red-400/80'
                                   }`}>
                                     {kp.mastery_level === 'good' ? '已掌握' : kp.mastery_level === 'moderate' ? '部分掌握' : '需加强'}
                                   </span>
                                 )}
                               </div>
-                              {kp.description && <p className="text-xs text-gray-500">{kp.description}</p>}
+                              {kp.description && <p className="text-xs text-white/40">{kp.description}</p>}
                             </div>
                           ))}
                         </div>
@@ -1280,17 +1280,17 @@ export default function DashboardContent() {
                     {/* 优势与不足 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {analysisResult.strengths?.length > 0 && (
-                        <div className="bg-green-50 rounded-xl p-4">
-                          <h5 className="font-semibold text-green-800 mb-2 text-sm">✅ 学习优势</h5>
-                          <ul className="text-sm text-green-700 space-y-1">
+                        <div className="glass-card rounded-xl p-4 border-emerald-400/20">
+                          <h5 className="font-semibold text-emerald-400 mb-2 text-sm">✅ 学习优势</h5>
+                          <ul className="text-sm text-white/60 space-y-1">
                             {analysisResult.strengths.map((s: string, i: number) => <li key={i}>• {s}</li>)}
                           </ul>
                         </div>
                       )}
                       {analysisResult.weaknesses?.length > 0 && (
-                        <div className="bg-red-50 rounded-xl p-4">
-                          <h5 className="font-semibold text-red-800 mb-2 text-sm">⚠️ 薄弱环节</h5>
-                          <ul className="text-sm text-red-700 space-y-1">
+                        <div className="glass-card rounded-xl p-4 border-red-400/20">
+                          <h5 className="font-semibold text-red-400/80 mb-2 text-sm">⚠️ 薄弱环节</h5>
+                          <ul className="text-sm text-white/60 space-y-1">
                             {analysisResult.weaknesses.map((w: string, i: number) => <li key={i}>• {w}</li>)}
                           </ul>
                         </div>
@@ -1299,9 +1299,9 @@ export default function DashboardContent() {
 
                     {/* 学习缺口 */}
                     {analysisResult.learning_gaps?.length > 0 && (
-                      <div className="bg-orange-50 rounded-xl p-4">
-                        <h5 className="font-semibold text-orange-800 mb-2 text-sm">🔍 学习缺口</h5>
-                        <ul className="text-sm text-orange-700 space-y-1">
+                      <div className="glass-card rounded-xl p-4 border-amber-400/20">
+                        <h5 className="font-semibold text-amber-400 mb-2 text-sm">🔍 学习缺口</h5>
+                        <ul className="text-sm text-white/60 space-y-1">
                           {analysisResult.learning_gaps.map((g: string, i: number) => <li key={i}>• {g}</li>)}
                         </ul>
                       </div>
@@ -1309,23 +1309,23 @@ export default function DashboardContent() {
 
                     {/* 难度评估 */}
                     {analysisResult.difficulty_assessment && (
-                      <div className="bg-purple-50 rounded-xl p-4">
-                        <h5 className="font-semibold text-purple-800 mb-2 text-sm">📊 难度评估</h5>
-                        <p className="text-sm text-purple-700">{analysisResult.difficulty_assessment}</p>
+                      <div className="glass-card rounded-xl p-4 border-purple-400/20">
+                        <h5 className="font-semibold text-purple-400 mb-2 text-sm">📊 难度评估</h5>
+                        <p className="text-sm text-white/60">{analysisResult.difficulty_assessment}</p>
                       </div>
                     )}
 
                     {/* 学习建议 */}
                     {analysisResult.study_recommendations?.length > 0 && (
-                      <div className="bg-blue-50 rounded-xl p-4">
-                        <h5 className="font-semibold text-blue-800 mb-2 text-sm">💡 学习建议</h5>
+                      <div className="glass-card rounded-xl p-4 border-cyan-400/20">
+                        <h5 className="font-semibold text-cyan-400 mb-2 text-sm">💡 学习建议</h5>
                         <div className="space-y-2">
                           {analysisResult.study_recommendations.map((rec: any, i: number) => (
                             <div key={i} className="flex items-start gap-2">
-                              <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
+                              <div className="w-5 h-5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
                                 {i + 1}
                               </div>
-                              <p className="text-sm text-blue-700">{typeof rec === 'string' ? rec : rec.recommendation || rec.title || JSON.stringify(rec)}</p>
+                              <p className="text-sm text-white/60">{typeof rec === 'string' ? rec : rec.recommendation || rec.title || JSON.stringify(rec)}</p>
                             </div>
                           ))}
                         </div>
@@ -1334,9 +1334,9 @@ export default function DashboardContent() {
 
                     {/* AI 总结 */}
                     {analysisResult.summary && (
-                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-200">
-                        <h5 className="font-semibold text-emerald-800 mb-2 text-sm">🤖 AI 总结</h5>
-                        <p className="text-sm text-emerald-700 leading-relaxed">{analysisResult.summary}</p>
+                      <div className="glass-card rounded-xl p-4 border-emerald-400/20">
+                        <h5 className="font-semibold text-emerald-400 mb-2 text-sm">🤖 AI 总结</h5>
+                        <p className="text-sm text-white/60 leading-relaxed">{analysisResult.summary}</p>
                       </div>
                     )}
                   </div>
@@ -1358,9 +1358,10 @@ export default function DashboardContent() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
           className="mb-8"
         >
-          <div className="bg-gradient-to-r from-primary-500 to-primary-700 rounded-2xl p-6 text-white mb-6">
+          <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white mb-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                 <GraduationCap className="w-8 h-8 text-white" />
@@ -1385,16 +1386,16 @@ export default function DashboardContent() {
                   key={stat.label}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-white rounded-xl p-4 shadow-card"
+                  transition={{ delay: index * 0.1, type: 'spring', stiffness: 200, damping: 25 }}
+                  className="glass-card rounded-xl p-4"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center ${stat.color}`}>
+                    <div className={`w-10 h-10 rounded-lg bg-white/[0.06] flex items-center justify-center ${stat.color}`}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-gray-800">{stat.value}</div>
-                      <div className="text-xs text-gray-500">{stat.label}</div>
+                      <div className="text-2xl font-bold text-white">{stat.value}</div>
+                      <div className="text-xs text-white/40">{stat.label}</div>
                     </div>
                   </div>
                 </motion.div>
@@ -1409,39 +1410,39 @@ export default function DashboardContent() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 25 }}
           className="mb-6"
         >
-          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-accent-cyan" />
+          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Zap className="w-5 h-5 text-cyan-400" />
             功能模块
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            { id: 'profile', label: '学生画像', icon: UserCheck, color: 'blue', emoji: '' },
+            { id: 'profile', label: '学生画像', icon: UserCheck, color: 'cyan', emoji: '' },
             { id: 'resources', label: '资源生成', icon: Brain, color: 'purple', emoji: '🤖' },
-            { id: 'path', label: '学习路径', icon: Route, color: 'orange', emoji: '🗺️' },
+            { id: 'path', label: '学习路径', icon: Route, color: 'amber', emoji: '🗺️' },
             { id: 'tutor', label: '智能辅导', icon: Lightbulb, color: 'green', emoji: '💡' },
-            { id: 'assessment', label: '效果评估', icon: TrendingUp, color: 'indigo', emoji: '' }
+            { id: 'assessment', label: '效果评估', icon: TrendingUp, color: 'blue', emoji: '' }
           ].map((module) => {
             const Icon = module.icon;
             const isActive = activeModule === module.id;
             const colorMap: any = {
-              blue: 'from-blue-500 to-cyan-500',
+              cyan: 'from-cyan-500 to-blue-500',
               purple: 'from-purple-500 to-pink-500',
-              orange: 'from-orange-500 to-red-500',
-              green: 'from-green-500 to-emerald-500',
-              indigo: 'from-indigo-500 to-purple-500'
+              amber: 'from-amber-500 to-orange-500',
+              green: 'from-emerald-500 to-teal-500',
+              blue: 'from-blue-500 to-indigo-500'
             };
-            
+
             return (
               <button
                 key={module.id}
                 onClick={() => setActiveModule(module.id as ModuleType)}
                 className={`p-4 rounded-xl transition-all ${
                   isActive
-                    ? `bg-gradient-to-r ${colorMap[module.color]} text-white shadow-lg scale-105`
-                    : 'bg-white hover:bg-gray-50 shadow-card hover:shadow-lg'
+                    ? `bg-gradient-to-r ${colorMap[module.color]} text-white scale-105`
+                    : 'glass-card hover:bg-white/[0.06] text-white/60 hover:text-white'
                 }`}
               >
                 <div className="text-2xl mb-2">{module.emoji}</div>
@@ -1458,7 +1459,8 @@ export default function DashboardContent() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-50 rounded-2xl p-6"
+          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          className="glass-card rounded-2xl p-6"
         >
           {renderModule()}
         </motion.div>
@@ -1469,57 +1471,57 @@ export default function DashboardContent() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="bg-white rounded-2xl p-6 shadow-card"
+          transition={{ delay: 0.6, type: 'spring', stiffness: 200, damping: 25 }}
+          className="glass-card rounded-2xl p-6"
         >
-          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-accent-cyan" />
+          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-cyan-400" />
             快速开始
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => setActiveModule('profile')}
               disabled={isGuest}
-              className="flex items-center gap-3 p-4 rounded-xl border-2 border-gray-100 hover:border-blue-500/30 hover:bg-blue-50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/30 hover:bg-cyan-400/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                <UserCheck className="w-5 h-5 text-blue-500" />
+              <div className="w-10 h-10 rounded-lg bg-cyan-400/10 flex items-center justify-center group-hover:bg-cyan-400/20 transition-colors">
+                <UserCheck className="w-5 h-5 text-cyan-400" />
               </div>
               <div className="text-left">
-                <div className="font-semibold text-gray-800">构建画像</div>
-                <div className="text-xs text-gray-500">对话式8维度画像</div>
+                <div className="font-semibold text-white">构建画像</div>
+                <div className="text-xs text-white/40">对话式8维度画像</div>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 ml-auto group-hover:text-blue-500" />
+              <ArrowRight className="w-4 h-4 text-white/30 ml-auto group-hover:text-cyan-400" />
             </button>
 
             <button
               onClick={() => setActiveModule('resources')}
               disabled={isGuest}
-              className="flex items-center gap-3 p-4 rounded-xl border-2 border-gray-100 hover:border-purple-500/30 hover:bg-purple-50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-purple-400/30 hover:bg-purple-400/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-                <Brain className="w-5 h-5 text-purple-500" />
+              <div className="w-10 h-10 rounded-lg bg-purple-400/10 flex items-center justify-center group-hover:bg-purple-400/20 transition-colors">
+                <Brain className="w-5 h-5 text-purple-400" />
               </div>
               <div className="text-left">
-                <div className="font-semibold text-gray-800">生成资源</div>
-                <div className="text-xs text-gray-500">7种多模态资源</div>
+                <div className="font-semibold text-white">生成资源</div>
+                <div className="text-xs text-white/40">7种多模态资源</div>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 ml-auto group-hover:text-purple-500" />
+              <ArrowRight className="w-4 h-4 text-white/30 ml-auto group-hover:text-purple-400" />
             </button>
 
             <button
               onClick={() => setActiveModule('assessment')}
               disabled={isGuest}
-              className="flex items-center gap-3 p-4 rounded-xl border-2 border-gray-100 hover:border-indigo-500/30 hover:bg-indigo-50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-indigo-400/30 hover:bg-indigo-400/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-                <Award className="w-5 h-5 text-indigo-500" />
+              <div className="w-10 h-10 rounded-lg bg-indigo-400/10 flex items-center justify-center group-hover:bg-indigo-400/20 transition-colors">
+                <Award className="w-5 h-5 text-indigo-400" />
               </div>
               <div className="text-left">
-                <div className="font-semibold text-gray-800">效果评估</div>
-                <div className="text-xs text-gray-500">多维度评估反馈</div>
+                <div className="font-semibold text-white">效果评估</div>
+                <div className="text-xs text-white/40">多维度评估反馈</div>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 ml-auto group-hover:text-indigo-500" />
+              <ArrowRight className="w-4 h-4 text-white/30 ml-auto group-hover:text-indigo-400" />
             </button>
           </div>
         </motion.div>

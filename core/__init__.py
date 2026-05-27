@@ -9,7 +9,7 @@ from .logger import (
     db_operation_success, db_operation_failed,
     ai_request_start, ai_request_success, ai_request_failed,
     user_login, user_upload_file, user_download_file,
-    user_generate_courseware, rag_search, rag_add_document
+    rag_search, rag_add_document
 )
 from .utils import (
     clean_json_string, format_file_size, extract_urls,
@@ -17,8 +17,7 @@ from .utils import (
 )
 from .ui_components import CustomCSS, PageLayout, UIComponents
 from .prompts import (
-    CoursewarePrompts, AnalysisPrompts, 
-    DocumentAnalysisPrompts, ClarificationPrompts, VoiceQAPrompts
+    AnalysisPrompts, DocumentAnalysisPrompts, VoiceQAPrompts
 )
 
 __all__ = [
@@ -28,16 +27,15 @@ __all__ = [
     'db_operation_success', 'db_operation_failed',
     'ai_request_start', 'ai_request_success', 'ai_request_failed',
     'user_login', 'user_upload_file', 'user_download_file',
-    'user_generate_courseware', 'rag_search', 'rag_add_document',
-    
+    'rag_search', 'rag_add_document',
+
     # Utils
     'clean_json_string', 'format_file_size', 'extract_urls',
     'truncate_text', 'safe_get', 'validate_email', 'generate_filename',
-    
+
     # UI Components
     'CustomCSS', 'PageLayout', 'UIComponents',
-    
+
     # Prompts
-    'CoursewarePrompts', 'AnalysisPrompts',
-    'DocumentAnalysisPrompts', 'ClarificationPrompts', 'VoiceQAPrompts'
+    'AnalysisPrompts', 'DocumentAnalysisPrompts', 'VoiceQAPrompts'
 ]

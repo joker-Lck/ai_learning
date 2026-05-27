@@ -21,7 +21,7 @@ const PROFILE_DIMENSIONS = [
     id: 'basic_info',
     title: '基本信息',
     icon: User,
-    color: 'from-blue-500 to-cyan-500',
+    color: 'from-cyan-500 to-blue-500',
     questions: [
       '请问您的专业是什么？',
       '您目前是大几的学生？'
@@ -32,7 +32,7 @@ const PROFILE_DIMENSIONS = [
     id: 'knowledge_base',
     title: '知识基础',
     icon: BookOpen,
-    color: 'from-purple-500 to-pink-500',
+    color: 'from-violet-500 to-purple-500',
     questions: [
       '您对当前学科的基础如何？（初学者/有一定基础/较扎实）',
       '您已经学习了哪些相关课程或知识点？'
@@ -43,7 +43,7 @@ const PROFILE_DIMENSIONS = [
     id: 'cognitive_style',
     title: '认知风格',
     icon: Brain,
-    color: 'from-green-500 to-emerald-500',
+    color: 'from-emerald-500 to-teal-500',
     questions: [
       '您更喜欢哪种学习方式？（视觉型：看图表视频 / 听觉型：听讲解 / 动觉型：动手实践）',
       '您喜欢独自学习还是小组讨论？'
@@ -54,7 +54,7 @@ const PROFILE_DIMENSIONS = [
     id: 'learning_goals',
     title: '学习目标',
     icon: Target,
-    color: 'from-orange-500 to-red-500',
+    color: 'from-amber-500 to-orange-500',
     questions: [
       '您学习这门课程的主要目标是什么？',
       '您希望在多长时间内达到什么水平？'
@@ -65,7 +65,7 @@ const PROFILE_DIMENSIONS = [
     id: 'weak_points',
     title: '薄弱点与困难',
     icon: Lightbulb,
-    color: 'from-yellow-500 to-amber-500',
+    color: 'from-rose-500 to-red-500',
     questions: [
       '您在学习中遇到的最大困难是什么？',
       '有哪些知识点让您感到困惑？'
@@ -76,7 +76,7 @@ const PROFILE_DIMENSIONS = [
     id: 'interest_areas',
     title: '兴趣领域',
     icon: Sparkles,
-    color: 'from-indigo-500 to-purple-500',
+    color: 'from-indigo-500 to-violet-500',
     questions: [
       '您对哪些应用领域最感兴趣？（如：自然语言处理、计算机视觉、推荐系统等）',
       '您有没有特别想做的个人项目？'
@@ -108,23 +108,23 @@ interface ProfileData {
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isGuest } = useAuthStore();
-  
+
   // 当前步骤索引
   const [currentStep, setCurrentStep] = useState(0);
-  
+
   // 每个维度的聊天记录
   const [dimensionChats, setDimensionChats] = useState<Record<string, DimensionChat>>({});
-  
+
   // 当前输入值
   const [inputValue, setInputValue] = useState('');
-  
+
   // 加载状态
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
-  
+
   // 最终画像数据
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  
+
   // 初始化当前维度的聊天
   const currentDimension = PROFILE_DIMENSIONS[currentStep];
   const currentChat = dimensionChats[currentDimension.id] || {
@@ -135,7 +135,7 @@ export default function ProfilePage() {
     }],
     completed: false
   };
-  
+
   // 更新当前维度的聊天
   const updateCurrentChat = (messages: Array<{ role: 'user' | 'assistant'; content: string }>, completed = false) => {
     setDimensionChats(prev => ({
@@ -153,7 +153,7 @@ export default function ProfilePage() {
 
     const userMessage = { role: 'user' as const, content: inputValue.trim() };
     const newMessages = [...currentChat.messages, userMessage];
-    
+
     setInputValue('');
     setLoading(true);
 
@@ -161,10 +161,10 @@ export default function ProfilePage() {
       // 模拟AI回复
       setTimeout(() => {
         let aiResponse = '';
-        
+
         // 根据当前问题生成回复
         const currentQuestionIndex = currentChat.messages.filter(m => m.role === 'assistant').length - 1;
-        
+
         if (currentQuestionIndex < currentDimension.questions.length - 1) {
           // 还有下一个问题
           aiResponse = currentDimension.questions[currentQuestionIndex + 1];
@@ -175,7 +175,7 @@ export default function ProfilePage() {
           setLoading(false);
           return;
         }
-        
+
         updateCurrentChat([...newMessages, { role: 'assistant', content: aiResponse }]);
         setLoading(false);
       }, 800);
@@ -189,12 +189,12 @@ export default function ProfilePage() {
       alert('请先完成当前维度的对话');
       return;
     }
-    
+
     if (currentStep < PROFILE_DIMENSIONS.length - 1) {
       setCurrentStep(currentStep + 1);
     }
   };
-  
+
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
@@ -203,10 +203,10 @@ export default function ProfilePage() {
 
   const buildProfile = async () => {
     // 检查是否所有维度都完成
-    const allCompleted = PROFILE_DIMENSIONS.every(dim => 
+    const allCompleted = PROFILE_DIMENSIONS.every(dim =>
       dimensionChats[dim.id]?.completed
     );
-    
+
     if (!allCompleted) {
       alert('请完成所有维度的对话后再构建画像');
       return;
@@ -217,14 +217,14 @@ export default function ProfilePage() {
     try {
       // 收集所有维度的对话记录
       const conversationLog = Object.values(dimensionChats).flatMap(chat => chat.messages);
-      
+
       console.log('🚀 开始构建学生画像...');
-      
+
       // 前端直接调用AI构建画像
       const profileData = await buildStudentProfile(conversationLog);
-      
+
       console.log('✅ 画像构建成功:', profileData);
-      
+
       setProfile(profileData);
     } catch (err: any) {
       console.error('构建画像失败:', err);
@@ -247,15 +247,16 @@ export default function ProfilePage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
         className="mb-6"
       >
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
             <Target className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">对话式学生画像构建</h1>
-            <p className="text-sm text-gray-500">通过6个维度的对话，自动构建个性化学习画像</p>
+            <h1 className="text-2xl font-bold text-white">对话式学生画像构建</h1>
+            <p className="text-sm text-white/60">通过6个维度的对话，自动构建个性化学习画像</p>
           </div>
         </div>
       </motion.div>
@@ -264,31 +265,32 @@ export default function ProfilePage() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="mb-6 bg-white rounded-2xl shadow-card p-4"
+        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+        className="mb-6 bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-4"
       >
         <div className="flex items-center justify-between">
           {PROFILE_DIMENSIONS.map((dim, idx) => {
             const Icon = dim.icon;
             const isCompleted = dimensionChats[dim.id]?.completed;
             const isCurrent = idx === currentStep;
-            
+
             return (
               <div key={dim.id} className="flex items-center">
                 <div className="flex flex-col items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                    isCompleted ? 'bg-green-500 text-white' :
+                    isCompleted ? 'bg-emerald-500 text-white' :
                     isCurrent ? `bg-gradient-to-r ${dim.color} text-white` :
-                    'bg-gray-200 text-gray-400'
+                    'bg-white/[0.06] text-white/30'
                   }`}>
                     {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                   </div>
-                  <span className={`text-xs mt-1 ${isCurrent ? 'font-semibold text-gray-800' : 'text-gray-500'}`}>
+                  <span className={`text-xs mt-1 ${isCurrent ? 'font-semibold text-white' : 'text-white/40'}`}>
                     {dim.title}
                   </span>
                 </div>
                 {idx < PROFILE_DIMENSIONS.length - 1 && (
                   <div className={`w-8 h-0.5 mx-2 ${
-                    isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                    isCompleted ? 'bg-emerald-500' : 'bg-white/[0.08]'
                   }`} />
                 )}
               </div>
@@ -303,9 +305,10 @@ export default function ProfilePage() {
           key={currentDimension.id}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-2xl shadow-card overflow-hidden"
+          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden"
         >
-          <div className={`p-4 border-b border-gray-100 bg-gradient-to-r ${currentDimension.color} text-white`}>
+          <div className={`p-4 border-b border-white/[0.06] bg-gradient-to-r ${currentDimension.color} text-white`}>
             <div className="flex items-center gap-2">
               <currentDimension.icon className="w-5 h-5" />
               <h2 className="font-bold">{currentDimension.title}</h2>
@@ -324,30 +327,31 @@ export default function ProfilePage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 25 }}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                     msg.role === 'user'
                       ? `bg-gradient-to-r ${currentDimension.color} text-white`
-                      : 'bg-gray-100 text-gray-800'
+                      : 'bg-white/[0.06] text-white/80'
                   }`}>
                     <p className="text-sm">{msg.content}</p>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
-            
+
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl px-4 py-3">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+                <div className="bg-white/[0.06] rounded-2xl px-4 py-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-white/40" />
                 </div>
               </div>
             )}
           </div>
 
           {/* 输入区域 */}
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-white/[0.06]">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -355,34 +359,34 @@ export default function ProfilePage() {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={currentDimension.placeholder}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-accent-cyan text-sm"
+                className="flex-1 px-4 py-2 bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/15 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/20 outline-none rounded-xl"
                 disabled={loading || isGuest || currentChat.completed}
               />
               <button
                 onClick={handleSendMessage}
                 disabled={loading || isGuest || !inputValue.trim() || currentChat.completed}
-                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-5 h-5" />
               </button>
             </div>
-            
+
             {/* 导航按钮 */}
             <div className="flex gap-2 mt-3">
               <button
                 onClick={handlePrevious}
                 disabled={currentStep === 0}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 border border-white/[0.08] bg-white/[0.02] text-white/40 rounded-xl hover:bg-white/[0.06] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center justify-center gap-2"
               >
                 <ChevronLeft className="w-4 h-4" />
                 上一步
               </button>
-              
+
               {currentStep < PROFILE_DIMENSIONS.length - 1 ? (
                 <button
                   onClick={handleNext}
                   disabled={!currentChat.completed}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center justify-center gap-2"
                 >
                   下一步
                   <ChevronRight className="w-4 h-4" />
@@ -391,7 +395,7 @@ export default function ProfilePage() {
                 <button
                   onClick={buildProfile}
                   disabled={profileLoading || isGuest}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center justify-center gap-2"
                 >
                   {profileLoading ? (
                     <>
@@ -414,20 +418,21 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-2xl shadow-card p-6"
+          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6"
         >
           <div className="mb-4">
-            <h2 className="font-bold text-gray-800 flex items-center gap-2">
-              <Target className="w-5 h-5 text-accent-cyan" />
+            <h2 className="font-bold text-white flex items-center gap-2">
+              <Target className="w-5 h-5 text-cyan-400" />
               学生画像
             </h2>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-white/30 mt-1">
               8维度动态画像特征
             </p>
           </div>
 
           {!profile ? (
-            <div className="text-center text-gray-400 py-12">
+            <div className="text-center text-white/30 py-12">
               <Brain className="w-16 h-16 mx-auto mb-4 opacity-20" />
               <p>完成对话后构建画像</p>
               <p className="text-xs mt-2">画像将展示8维度学习特征</p>
@@ -436,63 +441,65 @@ export default function ProfilePage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 25 }}
               className="space-y-4"
             >
               {/* 画像综合分析报告 (Markdown) */}
               {profile.summary && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  className="p-5 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-xl border border-purple-100">
+                  transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                  className="p-5 bg-gradient-to-br from-cyan-400/[0.06] via-violet-400/[0.06] to-pink-400/[0.06] rounded-xl border border-white/[0.06]">
                   <div className="flex items-center gap-2 mb-3">
-                    <FileText className="w-4 h-4 text-purple-500" />
-                    <span className="text-sm font-bold text-gray-800">画像综合分析报告</span>
+                    <FileText className="w-4 h-4 text-violet-400" />
+                    <span className="text-sm font-bold text-white">画像综合分析报告</span>
                   </div>
-                  <div className="prose prose-sm max-w-none prose-headings:text-gray-700 prose-h3:text-base prose-p:text-gray-600 prose-li:text-gray-600">
+                  <div className="prose prose-sm max-w-none prose-invert prose-headings:text-white prose-h3:text-base prose-p:text-white/60 prose-li:text-white/60 prose-strong:text-white/80">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{profile.summary}</ReactMarkdown>
                   </div>
                 </motion.div>
               )}
 
               {/* 基本信息 */}
-              <div className="p-4 bg-blue-50 rounded-xl">
+              <div className="p-4 bg-cyan-400/[0.06] rounded-xl border border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm font-semibold text-gray-800">基本信息</span>
+                  <User className="w-4 h-4 text-cyan-400" />
+                  <span className="text-sm font-semibold text-white">基本信息</span>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-white/60">
                   {profile.major} - {profile.grade_level}
                 </p>
               </div>
 
               {/* 知识基础 */}
-              <div className="p-4 bg-purple-50 rounded-xl">
+              <div className="p-4 bg-violet-400/[0.06] rounded-xl border border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-2">
-                  <BookOpen className="w-4 h-4 text-purple-500" />
-                  <span className="text-sm font-semibold text-gray-800">知识基础</span>
+                  <BookOpen className="w-4 h-4 text-violet-400" />
+                  <span className="text-sm font-semibold text-white">知识基础</span>
                 </div>
-                <p className="text-sm text-gray-600">
-                  {typeof profile.knowledge_base === 'string' 
-                    ? profile.knowledge_base 
+                <p className="text-sm text-white/60">
+                  {typeof profile.knowledge_base === 'string'
+                    ? profile.knowledge_base
                     : JSON.stringify(profile.knowledge_base)}
                 </p>
               </div>
 
               {/* 认知风格 */}
-              <div className="p-4 bg-green-50 rounded-xl">
+              <div className="p-4 bg-emerald-400/[0.06] rounded-xl border border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Brain className="w-4 h-4 text-green-500" />
-                  <span className="text-sm font-semibold text-gray-800">认知风格</span>
+                  <Brain className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm font-semibold text-white">认知风格</span>
                 </div>
-                <p className="text-sm text-gray-600">{profile.cognitive_style}</p>
+                <p className="text-sm text-white/60">{profile.cognitive_style}</p>
               </div>
 
               {/* 学习目标 */}
-              <div className="p-4 bg-orange-50 rounded-xl">
+              <div className="p-4 bg-amber-400/[0.06] rounded-xl border border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Target className="w-4 h-4 text-orange-500" />
-                  <span className="text-sm font-semibold text-gray-800">学习目标</span>
+                  <Target className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-semibold text-white">学习目标</span>
                 </div>
-                <p className="text-sm text-gray-600">
-                  {Array.isArray(profile.learning_goals) 
+                <p className="text-sm text-white/60">
+                  {Array.isArray(profile.learning_goals)
                     ? profile.learning_goals.join('、')
                     : typeof profile.learning_goals === 'string'
                     ? profile.learning_goals
@@ -501,60 +508,60 @@ export default function ProfilePage() {
               </div>
 
               {/* 薄弱点 */}
-              <div className="p-4 bg-red-50 rounded-xl">
+              <div className="p-4 bg-red-400/[0.06] rounded-xl border border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb className="w-4 h-4 text-red-500" />
-                  <span className="text-sm font-semibold text-gray-800">薄弱点</span>
+                  <Lightbulb className="w-4 h-4 text-red-400" />
+                  <span className="text-sm font-semibold text-white">薄弱点</span>
                 </div>
                 {profile.weak_points && profile.weak_points.length > 0 ? (
                   <ul className="mt-2 space-y-1">
                     {profile.weak_points.map((point, idx) => (
-                      <li key={idx} className="text-xs text-red-600 flex items-start gap-1">
-                        <span className="text-red-500 mt-0.5">!</span>
+                      <li key={idx} className="text-xs text-red-400/80 flex items-start gap-1">
+                        <span className="text-red-400 mt-0.5">!</span>
                         {point}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-gray-500">暂无记录</p>
+                  <p className="text-sm text-white/30">暂无记录</p>
                 )}
               </div>
 
               {/* 兴趣领域 */}
-              <div className="p-4 bg-indigo-50 rounded-xl">
+              <div className="p-4 bg-indigo-400/[0.06] rounded-xl border border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-indigo-500" />
-                  <span className="text-sm font-semibold text-gray-800">兴趣领域</span>
+                  <Sparkles className="w-4 h-4 text-indigo-400" />
+                  <span className="text-sm font-semibold text-white">兴趣领域</span>
                 </div>
                 {profile.interest_areas && profile.interest_areas.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {profile.interest_areas.map((area, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs">
+                      <span key={idx} className="px-3 py-1 bg-indigo-400/[0.1] text-indigo-400 rounded-full text-xs">
                         {area}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">暂无记录</p>
+                  <p className="text-sm text-white/30">暂无记录</p>
                 )}
               </div>
 
               {/* 资源偏好 */}
-              <div className="p-4 bg-cyan-50 rounded-xl">
+              <div className="p-4 bg-cyan-400/[0.06] rounded-xl border border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Code className="w-4 h-4 text-cyan-500" />
-                  <span className="text-sm font-semibold text-gray-800">资源偏好</span>
+                  <Code className="w-4 h-4 text-cyan-400" />
+                  <span className="text-sm font-semibold text-white">资源偏好</span>
                 </div>
                 {profile.preferred_resources && profile.preferred_resources.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {profile.preferred_resources.map((res, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs">
+                      <span key={idx} className="px-3 py-1 bg-cyan-400/[0.1] text-cyan-400 rounded-full text-xs">
                         {res}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">暂无记录</p>
+                  <p className="text-sm text-white/30">暂无记录</p>
                 )}
               </div>
             </motion.div>

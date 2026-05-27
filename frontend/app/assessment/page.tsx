@@ -76,14 +76,14 @@ interface DocAnalysisResult {
 function getFileIcon(filename: string) {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext))
-    return <Image className="w-5 h-5 text-pink-500" />;
+    return <Image className="w-5 h-5 text-pink-400" />;
   if (['pdf'].includes(ext))
-    return <FileText className="w-5 h-5 text-red-500" />;
+    return <FileText className="w-5 h-5 text-red-400" />;
   if (['doc', 'docx'].includes(ext))
-    return <FileText className="w-5 h-5 text-blue-500" />;
+    return <FileText className="w-5 h-5 text-cyan-400" />;
   if (['ppt', 'pptx'].includes(ext))
-    return <FileSpreadsheet className="w-5 h-5 text-orange-500" />;
-  return <File className="w-5 h-5 text-gray-500" />;
+    return <FileSpreadsheet className="w-5 h-5 text-amber-400" />;
+  return <File className="w-5 h-5 text-white/40" />;
 }
 
 function formatFileSize(bytes: number) {
@@ -198,29 +198,29 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
   };
 
   const getImportanceColor = (imp: string) => {
-    if (imp === '核心') return 'bg-red-100 text-red-700 border-red-200';
-    if (imp === '重要') return 'bg-orange-100 text-orange-700 border-orange-200';
-    return 'bg-gray-100 text-gray-600 border-gray-200';
+    if (imp === '核心') return 'bg-red-400/[0.1] text-red-400 border-red-400/20';
+    if (imp === '重要') return 'bg-amber-400/[0.1] text-amber-400 border-amber-400/20';
+    return 'bg-white/[0.06] text-white/40 border-white/[0.08]';
   };
 
   const getMasteryColor = (m: string) => {
-    if (m === '已掌握') return 'text-green-600';
-    if (m === '需巩固') return 'text-orange-600';
-    return 'text-red-600';
+    if (m === '已掌握') return 'text-emerald-400';
+    if (m === '需巩固') return 'text-amber-400';
+    return 'text-red-400';
   };
 
   const getPriorityColor = (p: string) => {
     if (p === '高') return 'bg-red-500';
-    if (p === '中') return 'bg-orange-500';
-    return 'bg-blue-500';
+    if (p === '中') return 'bg-amber-500';
+    return 'bg-cyan-500';
   };
 
   return (
     <div className="space-y-5">
       {/* 文件解析状态 */}
-      <div className="bg-white rounded-2xl shadow-card p-5">
-        <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-indigo-500" />
+      <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
+        <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-indigo-400" />
           文件解析结果
         </h3>
         <div className="flex flex-wrap gap-2">
@@ -229,10 +229,10 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
               key={i}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border ${
                 f.status === 'success'
-                  ? 'bg-green-50 border-green-200 text-green-700'
+                  ? 'bg-emerald-400/[0.06] border-emerald-400/20 text-emerald-400'
                   : f.status === 'warning'
-                  ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
-                  : 'bg-red-50 border-red-200 text-red-700'
+                  ? 'bg-amber-400/[0.06] border-amber-400/20 text-amber-400'
+                  : 'bg-red-400/[0.06] border-red-400/20 text-red-400'
               }`}
             >
               {getFileIcon(f.filename)}
@@ -260,16 +260,16 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
             导出报告
           </button>
         </div>
-        <div className="md:col-span-2 bg-white rounded-2xl shadow-card p-5">
+        <div className="md:col-span-2 bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
           <button
             onClick={() => toggle('overview')}
             className="w-full flex items-center justify-between"
           >
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-indigo-500" />
+            <h3 className="font-bold text-white flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-indigo-400" />
               知识覆盖概览
             </h3>
-            {expanded.overview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {expanded.overview ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
           </button>
           <AnimatePresence>
             {expanded.overview && (
@@ -280,25 +280,25 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
                 className="overflow-hidden"
               >
                 <div className="mt-4 space-y-3">
-                  <p className="text-sm text-gray-700 leading-relaxed">{analysis.knowledge_overview.coverage_summary}</p>
+                  <p className="text-sm text-white/60 leading-relaxed">{analysis.knowledge_overview.coverage_summary}</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">涉及知识点:</span>
-                    <span className="text-sm font-semibold text-indigo-600">{analysis.knowledge_overview.total_knowledge_points} 个</span>
+                    <span className="text-xs text-white/40">涉及知识点:</span>
+                    <span className="text-sm font-semibold text-indigo-400">{analysis.knowledge_overview.total_knowledge_points} 个</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {analysis.knowledge_overview.main_topics.map((t, i) => (
-                      <span key={i} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">
+                      <span key={i} className="px-3 py-1 bg-indigo-400/[0.1] text-indigo-400 rounded-full text-xs font-medium">
                         {t}
                       </span>
                     ))}
                   </div>
                   {analysis.difficulty_assessment && (
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-gray-500">难度评估:</span>
-                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                      <span className="text-xs text-white/40">难度评估:</span>
+                      <span className="px-2 py-0.5 bg-violet-400/[0.1] text-violet-400 rounded text-xs font-medium">
                         {analysis.difficulty_assessment.overall_level}
                       </span>
-                      <span className="text-xs text-gray-400">{analysis.difficulty_assessment.reasoning}</span>
+                      <span className="text-xs text-white/30">{analysis.difficulty_assessment.reasoning}</span>
                     </div>
                   )}
                 </div>
@@ -310,16 +310,16 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
 
       {/* 知识点列表 */}
       {analysis.knowledge_points?.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-card p-5">
+        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
           <button
             onClick={() => toggle('knowledge')}
             className="w-full flex items-center justify-between"
           >
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <Brain className="w-5 h-5 text-purple-500" />
+            <h3 className="font-bold text-white flex items-center gap-2">
+              <Brain className="w-5 h-5 text-violet-400" />
               知识点分析 ({analysis.knowledge_points.length})
             </h3>
-            {expanded.knowledge ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {expanded.knowledge ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
           </button>
           <AnimatePresence>
             {expanded.knowledge && (
@@ -331,9 +331,9 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
               >
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                   {analysis.knowledge_points.map((kp, i) => (
-                    <div key={i} className="border border-gray-100 rounded-xl p-4 hover:border-indigo-200 transition-colors">
+                    <div key={i} className="border border-white/[0.06] rounded-xl p-4 hover:border-indigo-400/20 transition-colors">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="font-semibold text-gray-800 text-sm">{kp.name}</span>
+                        <span className="font-semibold text-white text-sm">{kp.name}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getImportanceColor(kp.importance)}`}>
                           {kp.importance}
                         </span>
@@ -341,7 +341,7 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
                           {kp.mastery_hint}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-600 leading-relaxed">{kp.description}</p>
+                      <p className="text-xs text-white/60 leading-relaxed">{kp.description}</p>
                     </div>
                   ))}
                 </div>
@@ -353,37 +353,37 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
 
       {/* 优势 & 薄弱 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl shadow-card p-5">
-          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-500" />
+        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
+          <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-emerald-400" />
             已掌握领域
           </h3>
           <ul className="space-y-2">
             {(analysis.strengths || []).map((s, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span>
+              <li key={i} className="flex items-start gap-2 text-sm text-white/60">
+                <span className="text-emerald-400 mt-0.5 flex-shrink-0">✓</span>
                 {s}
               </li>
             ))}
             {(!analysis.strengths || analysis.strengths.length === 0) && (
-              <li className="text-sm text-gray-400">暂无数据</li>
+              <li className="text-sm text-white/30">暂无数据</li>
             )}
           </ul>
         </div>
-        <div className="bg-white rounded-2xl shadow-card p-5">
-          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-orange-500" />
+        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
+          <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-400" />
             薄弱环节
           </h3>
           <ul className="space-y-2">
             {(analysis.weaknesses || []).map((w, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                <span className="text-orange-500 mt-0.5 flex-shrink-0">!</span>
+              <li key={i} className="flex items-start gap-2 text-sm text-white/60">
+                <span className="text-amber-400 mt-0.5 flex-shrink-0">!</span>
                 {w}
               </li>
             ))}
             {(!analysis.weaknesses || analysis.weaknesses.length === 0) && (
-              <li className="text-sm text-gray-400">暂无数据</li>
+              <li className="text-sm text-white/30">暂无数据</li>
             )}
           </ul>
         </div>
@@ -391,16 +391,16 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
 
       {/* 知识缺口 */}
       {analysis.learning_gaps?.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-card p-5">
+        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
           <button
             onClick={() => toggle('gaps')}
             className="w-full flex items-center justify-between"
           >
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <Target className="w-5 h-5 text-red-500" />
+            <h3 className="font-bold text-white flex items-center gap-2">
+              <Target className="w-5 h-5 text-red-400" />
               知识缺口 ({analysis.learning_gaps.length})
             </h3>
-            {expanded.gaps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {expanded.gaps ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
           </button>
           <AnimatePresence>
             {expanded.gaps && (
@@ -412,14 +412,14 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
               >
                 <div className="mt-4 space-y-3">
                   {analysis.learning_gaps.map((g, i) => (
-                    <div key={i} className="border-l-4 border-red-400 bg-red-50 rounded-r-xl p-4">
-                      <p className="font-semibold text-sm text-gray-800 mb-1">{g.gap}</p>
+                    <div key={i} className="border-l-4 border-red-400/50 bg-red-400/[0.06] rounded-r-xl p-4">
+                      <p className="font-semibold text-sm text-white mb-1">{g.gap}</p>
                       <div className="flex flex-wrap gap-1 mb-2">
                         {g.related_topics.map((t, j) => (
-                          <span key={j} className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded">{t}</span>
+                          <span key={j} className="text-[10px] px-1.5 py-0.5 bg-red-400/[0.1] text-red-400 rounded">{t}</span>
                         ))}
                       </div>
-                      <p className="text-xs text-gray-600">💡 {g.suggestion}</p>
+                      <p className="text-xs text-white/60">💡 {g.suggestion}</p>
                     </div>
                   ))}
                 </div>
@@ -431,16 +431,16 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
 
       {/* 学习建议 */}
       {analysis.study_recommendations?.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-card p-5">
+        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
           <button
             onClick={() => toggle('recommendations')}
             className="w-full flex items-center justify-between"
           >
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <Award className="w-5 h-5 text-purple-500" />
+            <h3 className="font-bold text-white flex items-center gap-2">
+              <Award className="w-5 h-5 text-violet-400" />
               学习建议 ({analysis.study_recommendations.length})
             </h3>
-            {expanded.recommendations ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {expanded.recommendations ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
           </button>
           <AnimatePresence>
             {expanded.recommendations && (
@@ -452,13 +452,13 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
               >
                 <div className="mt-4 space-y-3">
                   {analysis.study_recommendations.map((rec, i) => (
-                    <div key={i} className="flex items-start gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl">
+                    <div key={i} className="flex items-start gap-3 p-4 bg-gradient-to-br from-violet-400/[0.06] to-indigo-400/[0.06] rounded-xl border border-white/[0.06]">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${getPriorityColor(rec.priority)}`}>
                         {rec.priority}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm text-gray-800 font-medium">{rec.action}</p>
-                        <p className="text-xs text-gray-500 mt-1">推荐资源类型: {rec.resources}</p>
+                        <p className="text-sm text-white font-medium">{rec.action}</p>
+                        <p className="text-xs text-white/40 mt-1">推荐资源类型: {rec.resources}</p>
                       </div>
                     </div>
                   ))}
@@ -471,12 +471,12 @@ function AnalysisReport({ result }: { result: DocAnalysisResult }) {
 
       {/* AI 综合分析报告 */}
       {analysis.summary && (
-        <div className="bg-white rounded-2xl shadow-card p-5">
-          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-500" />
+        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
+          <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-amber-400" />
             AI 综合分析报告
           </h3>
-          <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed bg-amber-50/50 rounded-xl p-4 border border-amber-100">
+          <div className="prose prose-sm max-w-none prose-invert prose-headings:text-white prose-p:text-white/60 prose-strong:text-white/80 prose-li:text-white/60 bg-amber-400/[0.04] rounded-xl p-4 border border-amber-400/10">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{analysis.summary}</ReactMarkdown>
           </div>
         </div>
@@ -586,25 +586,25 @@ export default function AssessmentPage() {
   /* ---- 样式 ---- */
   const getScoreColor = (score: number, maxScore: number) => {
     const pct = score / maxScore;
-    if (pct >= 0.8) return 'text-green-500';
-    if (pct >= 0.6) return 'text-blue-500';
-    if (pct >= 0.4) return 'text-orange-500';
-    return 'text-red-500';
+    if (pct >= 0.8) return 'text-emerald-400';
+    if (pct >= 0.6) return 'text-cyan-400';
+    if (pct >= 0.4) return 'text-amber-400';
+    return 'text-red-400';
   };
 
   const getLevelColor = (level: string) => {
     switch (level.toLowerCase()) {
       case '优秀':
       case 'excellent':
-        return 'bg-green-100 text-green-700';
+        return 'bg-emerald-400/[0.1] text-emerald-400';
       case '良好':
       case 'good':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-cyan-400/[0.1] text-cyan-400';
       case '一般':
       case 'average':
-        return 'bg-orange-100 text-orange-700';
+        return 'bg-amber-400/[0.1] text-amber-400';
       default:
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-400/[0.1] text-red-400';
     }
   };
 
@@ -615,6 +615,7 @@ export default function AssessmentPage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
         className="mb-6"
       >
         <div className="flex items-center gap-3 mb-2">
@@ -622,8 +623,8 @@ export default function AssessmentPage() {
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">学习效果评估</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-white">学习效果评估</h1>
+            <p className="text-sm text-white/60">
               多维度精准评估 · 上传资料AI分析 · 动态反馈学习策略
             </p>
           </div>
@@ -636,8 +637,8 @@ export default function AssessmentPage() {
           onClick={() => setActiveTab('assess')}
           className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
             activeTab === 'assess'
-              ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200'
-              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white'
+              : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] border border-white/[0.06]'
           }`}
         >
           <span className="flex items-center gap-2">
@@ -649,8 +650,8 @@ export default function AssessmentPage() {
           onClick={() => setActiveTab('analyze')}
           className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
             activeTab === 'analyze'
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
-              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+              : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] border border-white/[0.06]'
           }`}
         >
           <span className="flex items-center gap-2">
@@ -665,9 +666,9 @@ export default function AssessmentPage() {
         <>
           {!assessment ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-              <BarChart3 className="w-24 h-24 mx-auto mb-6 text-gray-300" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-3">开始学习效果评估</h3>
-              <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+              <BarChart3 className="w-24 h-24 mx-auto mb-6 text-white/10" />
+              <h3 className="text-xl font-semibold text-white/60 mb-3">开始学习效果评估</h3>
+              <p className="text-sm text-white/40 mb-6 max-w-md mx-auto">
                 基于您的学习行为和画像特征，进行多维度综合评估，提供个性化改进建议
               </p>
               <button
@@ -736,9 +737,9 @@ export default function AssessmentPage() {
               </div>
 
               {/* 各维度 */}
-              <div className="bg-white rounded-2xl shadow-card p-6">
-                <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-indigo-500" /> 多维度评估
+              <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6">
+                <h3 className="font-bold text-white mb-6 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-indigo-400" /> 多维度评估
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {assessment.dimensions.map((dim, idx) => (
@@ -746,12 +747,12 @@ export default function AssessmentPage() {
                       key={idx}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="border border-gray-200 rounded-xl p-4 hover:border-indigo-300 transition-colors"
+                      transition={{ delay: idx * 0.1, type: 'spring', stiffness: 200, damping: 25 }}
+                      className="border border-white/[0.06] rounded-xl p-4 hover:border-indigo-400/20 transition-colors"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h4 className="font-semibold text-gray-800">{dim.name}</h4>
+                          <h4 className="font-semibold text-white">{dim.name}</h4>
                           <span className={`text-xs px-2 py-1 rounded-full ${getLevelColor(dim.level)}`}>
                             {dim.level}
                           </span>
@@ -760,18 +761,18 @@ export default function AssessmentPage() {
                           <div className={`text-2xl font-bold ${getScoreColor(dim.score, dim.max_score)}`}>
                             {dim.score}
                           </div>
-                          <div className="text-xs text-gray-500">/ {dim.max_score}</div>
+                          <div className="text-xs text-white/40">/ {dim.max_score}</div>
                         </div>
                       </div>
-                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+                      <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden mb-2">
                         <motion.div
                           className={`h-full rounded-full ${
                             dim.score / dim.max_score >= 0.8
-                              ? 'bg-green-500'
+                              ? 'bg-emerald-500'
                               : dim.score / dim.max_score >= 0.6
-                              ? 'bg-blue-500'
+                              ? 'bg-cyan-500'
                               : dim.score / dim.max_score >= 0.4
-                              ? 'bg-orange-500'
+                              ? 'bg-amber-500'
                               : 'bg-red-500'
                           }`}
                           initial={{ width: 0 }}
@@ -779,7 +780,7 @@ export default function AssessmentPage() {
                           transition={{ duration: 0.5, delay: idx * 0.1 }}
                         />
                       </div>
-                      <p className="text-xs text-gray-600">{dim.feedback}</p>
+                      <p className="text-xs text-white/60">{dim.feedback}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -787,26 +788,26 @@ export default function AssessmentPage() {
 
               {/* 优势 & 改进 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl shadow-card p-6">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-500" /> 学习优势
+                <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6">
+                  <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-emerald-400" /> 学习优势
                   </h3>
                   <ul className="space-y-3">
                     {assessment.strengths.map((s, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                        <span className="text-green-500 mt-0.5">✓</span> {s}
+                      <li key={i} className="flex items-start gap-2 text-sm text-white/60">
+                        <span className="text-emerald-400 mt-0.5">✓</span> {s}
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="bg-white rounded-2xl shadow-card p-6">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-orange-500" /> 改进建议
+                <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6">
+                  <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-amber-400" /> 改进建议
                   </h3>
                   <ul className="space-y-3">
                     {assessment.improvements.map((s, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                        <span className="text-orange-500 mt-0.5">!</span> {s}
+                      <li key={i} className="flex items-start gap-2 text-sm text-white/60">
+                        <span className="text-amber-400 mt-0.5">!</span> {s}
                       </li>
                     ))}
                   </ul>
@@ -814,9 +815,9 @@ export default function AssessmentPage() {
               </div>
 
               {/* 个性化建议 */}
-              <div className="bg-white rounded-2xl shadow-card p-6">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <Award className="w-5 h-5 text-purple-500" /> 个性化学习建议
+              <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6">
+                <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-violet-400" /> 个性化学习建议
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {assessment.recommendations.map((rec, idx) => (
@@ -824,13 +825,13 @@ export default function AssessmentPage() {
                       key={idx}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="flex items-start gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl"
+                      transition={{ delay: idx * 0.1, type: 'spring', stiffness: 200, damping: 25 }}
+                      className="flex items-start gap-3 p-4 bg-gradient-to-br from-violet-400/[0.06] to-indigo-400/[0.06] rounded-xl border border-white/[0.06]"
                     >
-                      <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                         {idx + 1}
                       </div>
-                      <p className="text-sm text-gray-700">{rec}</p>
+                      <p className="text-sm text-white/60">{rec}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -869,8 +870,8 @@ export default function AssessmentPage() {
             onDragLeave={onDragLeave}
             className={`relative rounded-2xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer ${
               dragOver
-                ? 'border-emerald-400 bg-emerald-50'
-                : 'border-gray-300 bg-white hover:border-emerald-300 hover:bg-emerald-50/30'
+                ? 'border-cyan-400/40 bg-cyan-400/[0.06]'
+                : 'border-white/[0.1] bg-white/[0.02] hover:border-cyan-400/30 hover:bg-white/[0.04]'
             }`}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -885,25 +886,25 @@ export default function AssessmentPage() {
                 e.target.value = '';
               }}
             />
-            <Upload className={`w-12 h-12 mx-auto mb-3 ${dragOver ? 'text-emerald-500' : 'text-gray-400'}`} />
-            <p className="text-sm font-medium text-gray-700 mb-1">
-              拖拽文件到此处，或 <span className="text-emerald-600 underline">点击选择文件</span>
+            <Upload className={`w-12 h-12 mx-auto mb-3 ${dragOver ? 'text-cyan-400' : 'text-white/30'}`} />
+            <p className="text-sm font-medium text-white/60 mb-1">
+              拖拽文件到此处，或 <span className="text-cyan-400 underline">点击选择文件</span>
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-white/30">
               支持 PDF、Word、PPT、TXT、Markdown、图片 · 单文件最大 10MB · 最多 10 个文件
             </p>
           </div>
 
           {/* 已选文件列表 */}
           {files.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-card p-5">
+            <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-800 text-sm">
+                <h3 className="font-semibold text-white text-sm">
                   已选择 {files.length} 个文件 ({formatFileSize(files.reduce((s, f) => s + f.size, 0))})
                 </h3>
                 <button
                   onClick={() => setFiles([])}
-                  className="text-xs text-red-500 hover:text-red-700"
+                  className="text-xs text-red-400 hover:text-red-300"
                 >
                   清空全部
                 </button>
@@ -912,17 +913,17 @@ export default function AssessmentPage() {
                 {files.map((f, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 text-sm group"
+                    className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-2 text-sm group"
                   >
                     {getFileIcon(f.name)}
-                    <span className="text-gray-700 max-w-[160px] truncate">{f.name}</span>
-                    <span className="text-xs text-gray-400">{formatFileSize(f.size)}</span>
+                    <span className="text-white/60 max-w-[160px] truncate">{f.name}</span>
+                    <span className="text-xs text-white/30">{formatFileSize(f.size)}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         removeFile(i);
                       }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-red-400"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -933,32 +934,32 @@ export default function AssessmentPage() {
           )}
 
           {/* 可选上下文 */}
-          <div className="bg-white rounded-2xl shadow-card p-5">
-            <h3 className="font-semibold text-gray-800 text-sm mb-3">
-              分析上下文 <span className="text-gray-400 font-normal">(可选，帮助AI更精准分析)</span>
+          <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5">
+            <h3 className="font-semibold text-white text-sm mb-3">
+              分析上下文 <span className="text-white/30 font-normal">(可选，帮助AI更精准分析)</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="学科 (如: 高等数学)"
-                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none"
+                className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/15 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/20 outline-none"
               />
               <input
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="主题 (如: 微积分)"
-                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none"
+                className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/15 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/20 outline-none"
               />
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none text-gray-600"
+                className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/15 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/20 outline-none"
               >
-                <option value="">难度 (可选)</option>
-                <option value="入门">入门</option>
-                <option value="中级">中级</option>
-                <option value="高级">高级</option>
+                <option value="" className="bg-[#0a192f]">难度 (可选)</option>
+                <option value="入门" className="bg-[#0a192f]">入门</option>
+                <option value="中级" className="bg-[#0a192f]">中级</option>
+                <option value="高级" className="bg-[#0a192f]">高级</option>
               </select>
             </div>
           </div>
@@ -982,7 +983,7 @@ export default function AssessmentPage() {
 
           {/* 错误提示 */}
           {analysisError && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+            <div className="bg-red-400/[0.06] border border-red-400/20 rounded-xl p-4 text-sm text-red-400">
               ❌ {analysisError}
             </div>
           )}

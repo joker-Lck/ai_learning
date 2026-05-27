@@ -87,9 +87,6 @@ def user_download_file(username, filename):
     """用户下载文件"""
     info(f"📥 用户下载文件：{username} - {filename}")
 
-def user_generate_courseware(username, topic, subject):
-    """用户生成课件"""
-    info(f"🎓 用户生成课件：{username} - {topic} ({subject})")
 # RAG 日志
 def rag_search(keywords, results_count):
     """RAG 检索"""

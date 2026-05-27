@@ -9,7 +9,6 @@ from datetime import datetime
 from core.logger import info, error, warning, debug
 from core.json_utils import safe_parse_json
 from services.qa_service import qa_service
-# from services.courseware_service import courseware_service  # 已删除，暂时注释
 from services.content_safety_service import content_safety_service, anti_hallucination_service
 
 

@@ -97,7 +97,7 @@ class PageLayout:
             
             menu = st.radio(
                 "导航菜单",
-                ["智能答疑", "课件生成", "知识库管理", "学情分析"],
+                ["智能答疑", "学情分析"],
                 index=0,
                 key="main_menu"
             )
