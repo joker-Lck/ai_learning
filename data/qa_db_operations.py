@@ -121,7 +121,7 @@ class QADatabase:
     
     # ========== 问答记录相关操作（JSON 格式） ==========
     def add_qa_record(self, user_id, question_text, scenario, ai_response,
-                      model_used='moonshot-v1-8k', tokens_used=None, response_time_ms=None):
+                      model_used='generalv3', tokens_used=None, response_time_ms=None):
         """添加问答记录（JSON 格式存储）"""
         try:
             self.connect()

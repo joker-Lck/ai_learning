@@ -1,29 +1,18 @@
-"""AI 教学图片生成器 - 基于 Kimi AI 生成 SVG 教学示意图"""
+"""AI 教学图片生成器 — 基于讯飞星火生成 SVG 教学示意图"""
 
 import os
 import io
 import re
 import tempfile
-from openai import OpenAI
-from dotenv import load_dotenv
 from datetime import datetime
-
-load_dotenv()
+from services.spark_client import spark_client, MODEL_SIMPLE
 
 
 class ImageService:
     """教学图片生成服务"""
-    
+
     def __init__(self):
-        """初始化客户端"""
-        api_key = os.getenv('KIMI_API_KEY', '')
-        base_url = os.getenv('KIMI_BASE_URL', 'https://api.moonshot.cn/v1')
-        
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url
-        )
-        # 确保图片目录存在
+        """初始化 — 使用 spark_client 单例"""
         self.images_dir = "generated_images"
         if not os.path.exists(self.images_dir):
             os.makedirs(self.images_dir)
@@ -62,7 +51,7 @@ class ImageService:
             return {"success": False, "error": str(e)}
     
     def _generate_svg(self, suggestion, topic, subject):
-        """使用 Kimi 生成 SVG 教学示意图"""
+        """使用讯飞星火生成 SVG 教学示意图"""
         svg_prompt = f"""你是专业的教学图示设计师。请根据以下信息生成一个清晰、美观的教学示意图（SVG 格式）。
 
 课程主题：{topic}
@@ -91,29 +80,21 @@ class ImageService:
 现在请生成 "{suggestion}" 的 SVG 图示。"""
 
         try:
-            response = self.client.chat.completions.create(
-                model="moonshot-v1-8k",
-                messages=[{"role": "user", "content": svg_prompt}],
-                temperature=0.7,
-                max_tokens=3000,
-                timeout=60
-            )
-            
-            content = response.choices[0].message.content
-            
+            content = spark_client.simple(svg_prompt, max_tokens=3000)
+
             # 提取 SVG 代码
             svg_match = re.search(r'```svg\s*(.*?)\s*```', content, re.DOTALL)
             if svg_match:
                 return svg_match.group(1).strip()
-            
+
             # 尝试直接查找 SVG 标签
             svg_start = content.find('<svg')
             svg_end = content.find('</svg>')
             if svg_start >= 0 and svg_end > svg_start:
                 return content[svg_start:svg_end + 6].strip()
-            
+
             return None
-            
+
         except Exception as e:
             print(f"SVG 生成失败：{str(e)}")
             return None

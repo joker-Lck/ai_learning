@@ -49,7 +49,7 @@ def init_qa_database():
                 question_data JSON NOT NULL COMMENT '问题完整数据（JSON格式）',
                 scenario VARCHAR(100),
                 ai_response_data JSON COMMENT 'AI回复完整数据（JSON格式）',
-                model_used VARCHAR(50) DEFAULT 'moonshot-v1-8k',
+                model_used VARCHAR(50) DEFAULT 'generalv3',
                 tokens_used INT,
                 response_time_ms INT,
                 feedback_rating TINYINT,

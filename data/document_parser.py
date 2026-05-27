@@ -167,14 +167,14 @@ class DocumentParser:
             # 转换为 base64
             base64_image = base64.b64encode(image_data).decode('utf-8')
             
-            # 使用 Kimi 视觉模型识别图片文字
+            # 使用讯飞星火视觉模型识别图片文字
             client = OpenAI(
-                api_key=os.getenv('KIMI_API_KEY', ''),
-                base_url=os.getenv('KIMI_BASE_URL', 'https://api.moonshot.cn/v1')
+                api_key=os.getenv('SPARK_API_KEY', ''),
+                base_url=os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
             )
-            
+
             response = client.chat.completions.create(
-                model='moonshot-v1-8k',  # Kimi 支持视觉理解
+                model='general',  # 星火 Lite 视觉理解
                 messages=[
                     {
                         "role": "user",

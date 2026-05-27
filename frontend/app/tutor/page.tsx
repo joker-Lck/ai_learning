@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
-import { tutorAnswer } from '@/lib/kimi-api';
 import {
   Lightbulb, Send, MessageSquare, BookOpen,
   Code, Image, Loader2, Sparkles, User, ArrowLeft
@@ -41,18 +40,29 @@ export default function TutorPage() {
     setLoading(true);
 
     try {
-      console.log('🚀 开始AI辅导答疑:', { question: userMessage.content, subject });
+      console.log('🚀 开始AI辅导答疑（后端智能体）:', { question: userMessage.content, subject });
 
-      // 前端直接调用AI进行辅导
-      const answerData = await tutorAnswer(userMessage.content, subject, preferredFormat);
+      // 通过后端辅导智能体答疑（AI Key 仅存后端）
+      const response: any = await api.tutor({
+        question: userMessage.content,
+        subject,
+        preferred_format: preferredFormat,
+      });
 
       console.log('✅ 辅导回答生成成功');
 
+      // 从后端 BaseResponse 提取回答
+      const answerObj = response?.data?.answer || response?.data || {};
+      const textAnswer = answerObj.text_answer || {};
+      const textContent = typeof textAnswer === 'string'
+        ? textAnswer
+        : textAnswer.summary || textAnswer.detailed_explanation || response?.message || '暂无回答';
+
       const assistantMessage: TutorMessage = {
         role: 'assistant',
-        content: answerData.text_answer,
-        diagram: answerData.diagram || undefined,
-        example: answerData.code_example || undefined,
+        content: textContent,
+        diagram: answerObj.diagram || undefined,
+        example: answerObj.code_example || undefined,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, assistantMessage]);

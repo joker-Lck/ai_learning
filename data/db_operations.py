@@ -174,7 +174,7 @@ class Database:
             
             ai_response_data = {
                 "response": ai_response,
-                "model": "moonshot-v1-8k",
+                "model": "generalv3",
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             

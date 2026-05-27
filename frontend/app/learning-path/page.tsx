@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
-import { generateLearningPath } from '@/lib/kimi-api';
 import {
   Route, Target, Clock, CheckCircle, Circle,
   ArrowRight, Loader2, Sparkles, TrendingUp, ArrowLeft
@@ -39,14 +38,21 @@ export default function LearningPathPage() {
     setLoading(true);
 
     try {
-      console.log('🚀 开始生成学习路径:', { learningGoal });
+      console.log('🚀 开始生成学习路径（后端智能体）:', { learningGoal });
 
-      // 前端直接调用AI生成学习路径
-      const pathData = await generateLearningPath(learningGoal);
+      // 通过后端路径规划智能体生成（AI Key 仅存后端）
+      const response: any = await api.planPath({
+        learning_goal: learningGoal,
+      });
 
-      console.log('✅ 学习路径生成成功:', pathData);
-
-      setPath(pathData);
+      if (response?.success && response?.data) {
+        const pathData = response.data.path || response.data;
+        console.log('✅ 学习路径生成成功:', pathData);
+        setPath(pathData);
+      } else {
+        console.warn('路径生成返回异常:', response?.message);
+        alert(response?.message || '路径生成失败，请重试');
+      }
     } catch (err: any) {
       console.error('生成路径失败:', err);
       alert('生成路径失败：' + (err.message || '网络错误'));

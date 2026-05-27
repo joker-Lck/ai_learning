@@ -1,57 +1,63 @@
 """
-QA服务 - 提供Kimi API调用功能
-向后兼容模块，供各智能体使用
+QA服务 — 供各智能体调用的 AI 文本生成
+底层委托给 spark_client（讯飞星火 OpenAI 兼容接口）
 """
 
-import os
 from typing import Optional
-from openai import OpenAI
+from services.spark_client import spark_client, MODEL_STANDARD
 from core.logger import info, error
 
+
 class QAService:
-    """QA服务，提供Kimi API调用"""
-    
+    """QA 服务，向后兼容各 Agent 的 call_kimi_api 调用"""
+
     def __init__(self):
-        api_key = os.getenv('KIMI_API_KEY', '')
-        if not api_key:
-            error("KIMI_API_KEY 未设置")
-        
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.moonshot.cn/v1"
-        )
-        info("QA服务初始化完成")
-    
-    def call_kimi_api(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+        info("QA服务初始化完成（讯飞星火）")
+
+    def call_kimi_api(
+        self,
+        prompt: str,
+        max_tokens: int = 2000,
+        system_prompt: Optional[str] = None,
+    ) -> str:
         """
-        调用Kimi API
-        
+        兼容旧接口名，内部转发到 spark_client.standard()
+
         Args:
             prompt: 用户提示词
-            max_tokens: 最大token数
+            max_tokens: 最大 token 数
             system_prompt: 系统提示词
-            
+
         Returns:
-            API响应文本
+            模型输出文本
         """
         try:
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-            
-            response = self.client.chat.completions.create(
-                model="moonshot-v1-8k",
-                messages=messages,
+            return spark_client.standard(
+                prompt,
                 max_tokens=max_tokens,
-                temperature=0.7
+                system_prompt=system_prompt,
             )
-            
-            return response.choices[0].message.content
-            
         except Exception as e:
-            error(f"Kimi API调用失败: {str(e)}")
-            return f"错误: {str(e)}"
+            error(f"QA 服务调用失败: {e}")
+            return f"错误: {e}"
+
+    # ── 新接口：按任务复杂度调用 ──────────────────────────────
+    def call_simple(self, prompt: str, max_tokens: int = 1500, system_prompt: str = None) -> str:
+        """简单任务 — Spark Lite（免费）"""
+        return spark_client.simple(prompt, max_tokens=max_tokens, system_prompt=system_prompt)
+
+    def call_standard(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+        """标准任务 — Spark Pro"""
+        return spark_client.standard(prompt, max_tokens=max_tokens, system_prompt=system_prompt)
+
+    def call_advanced(self, prompt: str, max_tokens: int = 3000, system_prompt: str = None) -> str:
+        """高级任务 — Spark Max"""
+        return spark_client.advanced(prompt, max_tokens=max_tokens, system_prompt=system_prompt)
+
+    def call_ultra(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+        """最强推理 — Spark 4.0 Ultra"""
+        return spark_client.ultra(prompt, max_tokens=max_tokens, system_prompt=system_prompt)
+
 
 # 单例
 qa_service = QAService()

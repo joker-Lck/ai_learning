@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
-import { generateMindmap, generateQuiz, generateDocument, tutorAnswer, generateLearningPath } from '@/lib/kimi-api';
 import {
   Sparkles, TrendingUp, Users, Send, User, Brain, Target, BookOpen,
   Lightbulb, Code, BarChart3, Clock, Loader2, ArrowRight, Zap,
@@ -319,62 +318,33 @@ export default function DashboardContent() {
     setResources([]);
 
     try {
-      // 前端直接调用AI生成资源
-      console.log('🚀 开始前端AI资源生成:', { subject, topic, selectedTypes, difficulty });
+      console.log('🚀 开始后端AI资源生成:', { subject, topic, selectedTypes, difficulty });
 
-      const generatedResources: ResourceItem[] = [];
-
-      // 并行生成所有选中的资源类型
-      const generationPromises = selectedTypes.map(async (type): Promise<ResourceItem | null> => {
-        try {
-          let contentData: any = {};
-
-          switch (type) {
-            case 'mindmap':
-              contentData = await generateMindmap(subject, topic, difficulty);
-              break;
-
-            case 'quiz':
-              contentData = await generateQuiz(subject, topic, difficulty);
-              break;
-
-            case 'document':
-              contentData = await generateDocument(subject, topic, difficulty);
-              break;
-
-            default:
-              console.warn(`未知的资源类型: ${type}`);
-              return null;
-          }
-
-          console.log(`✅ ${type} 生成成功:`, contentData.title || type);
-
-          return {
-            type,
-            title: contentData.title || `${topic}${getTypeName(type)}`,
-            content_data: contentData,
-            status: 'complete' as const
-          };
-        } catch (error: any) {
-          console.error(`❌ ${type} 生成失败:`, error);
-          return {
-            type,
-            title: `${topic}${getTypeName(type)}(生成失败)`,
-            content_data: { error: error.message },
-            status: 'error' as const
-          };
-        }
+      // 通过后端多智能体生成资源（所有 AI 调用在后端完成）
+      const response: any = await api.generateResources({
+        subject,
+        topic,
+        resource_types: selectedTypes,
+        difficulty,
       });
 
-      const results = await Promise.all(generationPromises);
-      const validResults = results.filter((r): r is ResourceItem => r !== null && r !== undefined);
-
-      console.log('✅ 所有资源生成完成:', validResults.length);
-      setResources(validResults);
-
+      if (response?.success && response?.data?.resources) {
+        const backendResources = response.data.resources;
+        const generatedResources: ResourceItem[] = backendResources.map((r: any) => ({
+          type: r.type || r.resource_type,
+          title: r.title || `${topic}资源`,
+          content_data: r.content_data || r,
+          status: 'complete' as const,
+        }));
+        setResources(generatedResources);
+        console.log('✅ 资源生成完成:', generatedResources.length);
+      } else {
+        console.warn('资源生成返回异常:', response?.message);
+        alert(response?.message || '资源生成失败，请重试');
+      }
     } catch (error: any) {
       console.error('资源生成失败:', error);
-      alert(`资源生成失败: ${error.message}`);
+      alert('资源生成失败：' + (error.message || '网络错误'));
     } finally {
       setResourceLoading(false);
     }
@@ -394,18 +364,24 @@ export default function DashboardContent() {
     setPathLoading(true);
 
     try {
-      console.log('🚀 开始生成学习路径:', { learningGoal });
+      console.log('🚀 开始生成学习路径（后端智能体）:', { learningGoal });
 
-      // 前端直接调用AI生成学习路径
-      const pathData = await generateLearningPath(learningGoal, profileData);
+      // 通过后端路径规划智能体生成
+      const response: any = await api.planPath({
+        learning_goal: learningGoal,
+      });
 
-      console.log('✅ 学习路径生成成功:', pathData);
-
-      if (pathData) {
+      if (response?.success && response?.data) {
+        const pathData = response.data.path || response.data;
+        console.log('✅ 学习路径生成成功:', pathData);
         setLearningPath(pathData);
+      } else {
+        console.warn('路径生成返回异常:', response?.message);
+        alert(response?.message || '路径生成失败，请重试');
       }
     } catch (error: any) {
       console.error('规划路径失败:', error);
+      alert('路径生成失败：' + (error.message || '网络错误'));
     } finally {
       setPathLoading(false);
     }
@@ -424,18 +400,29 @@ export default function DashboardContent() {
     setTutorLoading(true);
 
     try {
-      console.log('🚀 开始AI辅导答疑:', { question: question.trim(), subject: tutorSubject });
+      console.log('🚀 开始AI辅导答疑（后端智能体）:', { question: question.trim(), subject: tutorSubject });
 
-      // 前端直接调用AI进行辅导
-      const answerData = await tutorAnswer(question.trim(), tutorSubject, 'all');
+      // 通过后端辅导智能体答疑
+      const response: any = await api.tutor({
+        question: question.trim(),
+        subject: tutorSubject,
+        preferred_format: 'all',
+      });
 
       console.log('✅ 辅导回答生成成功');
 
+      // 从后端 BaseResponse 提取回答
+      const answerObj = response?.data?.answer || response?.data || {};
+      const textAnswer = answerObj.text_answer || {};
+      const textContent = typeof textAnswer === 'string'
+        ? textAnswer
+        : textAnswer.summary || textAnswer.detailed_explanation || response?.message || '暂无回答';
+
       const assistantMessage: TutorMessage = {
         role: 'assistant',
-        content: answerData.text_answer,
-        diagram: answerData.diagram || undefined,
-        example: answerData.code_example || undefined,
+        content: textContent,
+        diagram: answerObj.diagram || undefined,
+        example: answerObj.code_example || undefined,
         timestamp: new Date()
       };
       setTutorMessages(prev => [...prev, assistantMessage]);

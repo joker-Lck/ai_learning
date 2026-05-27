@@ -1,5 +1,5 @@
 """
-向量化服务模块 - 使用 Kimi Embedding API
+向量化服务模块 - 使用讯飞星火 Embedding API
 支持文本向量化和相似度计算
 """
 
@@ -12,18 +12,18 @@ load_dotenv()
 
 class EmbeddingService:
     """向量化服务类"""
-    
+
     def __init__(self):
-        """初始化 OpenAI 客户端"""
-        api_key = os.getenv('KIMI_API_KEY', '')
-        base_url = os.getenv('KIMI_BASE_URL', 'https://api.moonshot.cn/v1')
-        
+        """初始化 — 使用讯飞星火 API"""
+        api_key = os.getenv('SPARK_API_KEY', '')
+        base_url = os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
+
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url
         )
     
-    def get_embedding(self, text, model='moonshot-v1-8k'):
+    def get_embedding(self, text, model='general'):
         """
         获取文本的向量表示
         

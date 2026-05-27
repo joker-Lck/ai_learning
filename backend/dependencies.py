@@ -21,7 +21,7 @@ def get_api_config() -> dict:
     config = CacheManager.load_env_config()
     return {
         "api_key": config.get("api_key", ""),
-        "base_url": config.get("base_url", "https://api.moonshot.cn/v1"),
+        "base_url": config.get("base_url", "https://spark-api-open.xf-yun.com/v1"),
     }
 
 

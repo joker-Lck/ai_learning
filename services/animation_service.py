@@ -1,27 +1,18 @@
-"""动画生成服务模块 - 使用 SVG + CSS 动画生成教学动画"""
+"""动画生成服务模块 — 使用讯飞星火生成 SVG + CSS 教学动画"""
 
 import json
 import os
 import tempfile
-from openai import OpenAI
-from dotenv import load_dotenv
 from datetime import datetime
-
-load_dotenv()
+from services.spark_client import spark_client
 
 
 class AnimationService:
     """教学动画生成服务"""
-    
+
     def __init__(self):
-        """初始化客户端"""
-        api_key = os.getenv('KIMI_API_KEY', '')
-        base_url = os.getenv('KIMI_BASE_URL', 'https://api.moonshot.cn/v1')
-        
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url
-        )
+        """初始化 — 使用 spark_client 单例"""
+        pass
     
     def generate_animations_for_courseware(self, topic, subject, slides, requirements=""):
         """根据课件内容生成配套动画"""
@@ -66,16 +57,7 @@ class AnimationService:
 
 现在请生成动画。"""
 
-            response = self.client.chat.completions.create(
-                model="moonshot-v1-8k",
-                messages=[{"role": "user", "content": animation_prompt}],
-                temperature=0.7,
-                max_tokens=4000,
-                timeout=60
-            )
-            
-            # 解析响应
-            content = response.choices[0].message.content
+            content = spark_client.simple(animation_prompt, max_tokens=4000)
 
             # 尝试提取 JSON（AI 可能添加额外文字）
             from core.json_utils import safe_parse_json

@@ -141,8 +141,8 @@ class CacheManager:
         from dotenv import load_dotenv
         load_dotenv()
         config = {
-            'api_key': os.getenv('KIMI_API_KEY', ''),
-            'base_url': os.getenv('KIMI_BASE_URL', 'https://api.moonshot.cn/v1')
+            'api_key': os.getenv('SPARK_API_KEY', ''),
+            'base_url': os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
         }
         _cache.set("env_config", config, ttl=3600)
         return config
