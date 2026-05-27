@@ -133,18 +133,62 @@ class ContentSafetyService:
         return result
     
     def _load_sensitive_words(self) -> List[str]:
-        """加载敏感词库"""
-        # 实际应从配置文件或数据库加载
+        """加载敏感词库 — 覆盖 8 大类常见违规内容"""
         return [
-            # 政治敏感
-            "敏感词汇1",
-            "敏感词汇2",
-            # 暴力恐怖
-            "暴力词汇1",
-            # 色情低俗
-            "色情词汇1",
-            # 其他违规
-            "违规词汇1",
+            # ── 政治敏感 ──
+            "台独", "藏独", "疆独", "港独", "分裂国家",
+            "颠覆政权", "煽动颠覆", "反政府", "推翻政府",
+            "六四", "天安门事件", "文化大革命",
+            "法轮功", "法轮大法",
+            "邪教组织",
+
+            # ── 暴力恐怖 ──
+            "恐怖袭击", "制造炸弹", "自制炸弹", "炸弹教程",
+            "砍杀", "无差别杀人", "报复社会",
+            "买枪", "贩卖枪支", "枪支交易",
+            "砍刀", "管制刀具",
+            "绑架勒索", "人质",
+
+            # ── 色情低俗 ──
+            "色情网站", "色情视频", "色情图片", "色情小说",
+            "裸聊", "裸体直播", "成人视频",
+            "卖淫", "嫖娼", "援交",
+            "性交易", "性服务",
+            "淫秽", "淫乱",
+
+            # ── 赌博毒品 ──
+            "赌博网站", "网络赌博", "赌球", "赌马",
+            "博彩平台", "彩票预测", "六合彩",
+            "毒品交易", "贩毒", "吸毒",
+            "冰毒", "海洛因", "大麻", "摇头丸",
+            "制毒", "毒品配方",
+
+            # ── 仇恨歧视 ──
+            "种族歧视", "民族歧视", "地域歧视",
+            "性别歧视", "性别对立",
+            "侮辱女性", "侮辱男性",
+            "残疾人歧视", "歧视残障",
+            "仇恨言论", "煽动仇恨",
+
+            # ── 诈骗欺诈 ──
+            "电信诈骗", "网络诈骗", "杀猪盘",
+            "刷单返利", "刷单诈骗",
+            "传销", "非法集资", "庞氏骗局",
+            "洗钱", "地下钱庄",
+            "钓鱼网站", "盗号", "盗取密码",
+
+            # ── 脏话粗口 ──
+            "他妈的", "你妈的", "草泥马", "卧槽",
+            "傻逼", "煞笔", "沙比", "牛逼",
+            "操你", "干你", "日你",
+            "贱人", "贱货", "婊子",
+            "狗日的", "王八蛋", "混蛋",
+
+            # ── 自残自杀 ──
+            "自杀方法", "自杀教程", "如何自杀",
+            "割腕", "上吊", "跳楼",
+            "安眠药", "服毒",
+            "自残", "自我伤害",
         ]
     
     def _load_academic_patterns(self) -> List[Dict]:
@@ -178,10 +222,12 @@ class ContentSafetyService:
     def _detect_policy_violations(self, content: str) -> List[Dict]:
         """检测违规内容"""
         violations = []
-        
+
         # 检测仇恨言论
         hate_patterns = [
-            r"(?:歧视|侮辱|攻击)\w{0,10}(?:群体|民族|宗教)",
+            r"(?:歧视|侮辱|攻击|谩骂)\w{0,10}(?:群体|民族|宗教|种族)",
+            r"(?:消灭|杀死|赶走)\w{0,6}(?:族|人|裔)",
+            r"(?:劣等|低贱|野蛮)\w{0,4}(?:民族|种族|人)",
         ]
         for pattern in hate_patterns:
             if re.search(pattern, content):
@@ -190,10 +236,12 @@ class ContentSafetyService:
                     "pattern": pattern,
                     "severity": "high"
                 })
-        
+
         # 检测虚假信息特征
         fake_news_patterns = [
-            r"(?:震惊|爆料|内部消息|独家揭秘)",
+            r"(?:震惊|爆料|内部消息|独家揭秘|惊天内幕)",
+            r"(?:不转不是|不看后悔|速转|紧急通知)",
+            r"(?:官方已确认|国家已公布|央视报道)\w{0,20}(?:假|谣言|不实)",
         ]
         for pattern in fake_news_patterns:
             if re.search(pattern, content, re.IGNORECASE):
@@ -202,7 +250,34 @@ class ContentSafetyService:
                     "pattern": pattern,
                     "severity": "medium"
                 })
-        
+
+        # 检测违法指导内容
+        illegal_guide_patterns = [
+            r"(?:如何|怎么|教程)\w{0,8}(?:作弊|代考|替考)",
+            r"(?:破解|盗取|获取)\w{0,8}(?:密码|账号|数据)",
+            r"(?:制作|合成|伪造)\w{0,8}(?:证件|证书|学历|公章)",
+        ]
+        for pattern in illegal_guide_patterns:
+            if re.search(pattern, content):
+                violations.append({
+                    "type": "illegal_guide",
+                    "pattern": pattern,
+                    "severity": "high"
+                })
+
+        # 检测商业推广/引流
+        spam_patterns = [
+            r"(?:加微信|加QQ|扫码领取|点击链接)\w{0,20}(?:免费|优惠|红包)",
+            r"(?:日赚|月入|躺赚)\w{0,10}(?:元|万|钱)",
+        ]
+        for pattern in spam_patterns:
+            if re.search(pattern, content):
+                violations.append({
+                    "type": "spam_promotion",
+                    "pattern": pattern,
+                    "severity": "low"
+                })
+
         return violations
     
     def _detect_academic_irregularities(self, content: str) -> List[Dict]:
@@ -222,16 +297,25 @@ class ContentSafetyService:
     def _generate_suggestions(self, violations: List[Dict]) -> List[str]:
         """生成修改建议"""
         suggestions = []
-        
+
         for violation in violations:
-            if violation["type"] == "sensitive_words":
-                suggestions.append("请移除或替换敏感词汇")
-            elif violation["type"] == "policy_violations":
+            vtype = violation.get("type", "")
+            if vtype == "sensitive_words":
+                suggestions.append("请移除或替换敏感词汇，确保内容合规")
+            elif vtype == "policy_violations":
                 suggestions.append("请确保内容符合政策法规要求")
-            elif violation["type"] == "academic_irregularities":
-                for item in violation["items"]:
+            elif vtype == "hate_speech":
+                suggestions.append("请避免仇恨言论，尊重不同群体")
+            elif vtype == "misinformation_indicator":
+                suggestions.append("请核实信息来源，避免传播未经证实的内容")
+            elif vtype == "illegal_guide":
+                suggestions.append("请勿发布违法操作指导内容")
+            elif vtype == "spam_promotion":
+                suggestions.append("请移除商业推广或引流内容")
+            elif vtype == "academic_irregularities":
+                for item in violation.get("items", []):
                     suggestions.append(f"学术规范: {item['suggestion']}")
-        
+
         return suggestions
 
 
