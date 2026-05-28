@@ -20,7 +20,7 @@ class ImageService:
     def generate_image_from_suggestion(self, suggestion, topic, subject, slide_index=0):
         """根据图片建议生成教学示意图"""
         try:
-            # 1. 使用 Kimi 生成 SVG 代码
+            # 1. 使用讯飞星火生成 SVG 代码
             svg_code = self._generate_svg(suggestion, topic, subject)
             
             if not svg_code:

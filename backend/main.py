@@ -14,12 +14,18 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from datetime import datetime
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from backend.api.auth import router as auth_router
 from backend.api.agent import router as agent_router
 from backend.api.stream import router as stream_router
 
 from core.logger import info, error as log_error
+
+# 速率限制器 — 基于客户端 IP
+limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 
 
 @asynccontextmanager
@@ -34,9 +40,9 @@ app = FastAPI(
     title="基于多智能体的个性化学习资源生成系统",
     description="""
     ## 核心功能
-    
+
     本系统采用多智能体协同架构,为学生提供个性化学习资源生成服务。
-    
+
     ### 主要特性
     - 🎯 **对话式学生画像**: 自然语言构建8维度动态画像
     - 🤖 **多智能体协同**: 6个专业智能体分工协作
@@ -44,7 +50,7 @@ app = FastAPI(
     - 🛡️ **防幻觉机制**: RAG验证+事实核查+引用标注
     - ⚡ **流式输出**: SSE实时推送生成进度
     - 🔒 **内容安全**: 敏感词过滤+学术规范检查
-    
+
     ### API分类
     - **学习智能体** (核心): 画像构建、资源生成、路径规划、智能辅导、效果评估
     - **流式输出与安全** (核心): SSE进度推送、内容安全检查、事实验证
@@ -55,6 +61,10 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# 速率限制
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS 配置 - 允许 Next.js 前端跨域访问
 app.add_middleware(

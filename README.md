@@ -117,7 +117,7 @@ cd frontend && npm install && cd ..
 cp .env.example .env
 
 # 编辑 .env，填写以下配置：
-# - KIMI_API_KEY（必需）
+# - SPARK_API_KEY（必需，讯飞星火 API Key）
 # - 所有数据库的密码（AUTH_DB_PASSWORD等8个）
 ```
 
@@ -213,7 +213,7 @@ cd frontend && npm run dev
 - FastAPI (高性能API)
 - Python 3.8+
 - MySQL 8.0 (多数据库)
-- Kimi API (大模型)
+- 讯飞星火 API (大模型)
 - SSE (流式输出)
 
 **AI能力**:

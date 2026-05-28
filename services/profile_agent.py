@@ -174,7 +174,7 @@ class ProfileAgent:
         )
         
         try:
-            # 调用Kimi API提取特征
+            # 调用大模型提取特征
             response = qa_service.call_kimi_api(prompt, max_tokens=3000)
             
             # 解析JSON响应

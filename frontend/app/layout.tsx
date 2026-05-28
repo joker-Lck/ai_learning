@@ -3,7 +3,7 @@ import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: '多模态 AI 教学智能体',
-  description: '基于 Kimi 大模型的智能教学辅助系统',
+  description: '基于讯飞星火大模型的智能教学辅助系统',
   icons: { icon: '/favicon.ico' },
 };
 

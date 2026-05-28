@@ -138,7 +138,7 @@ class DocumentParser:
     @staticmethod
     def _read_image(file):
         """
-        读取图片并使用 Kimi 视觉模型提取文字（OCR）
+        读取图片并使用讯飞星火视觉模型提取文字（OCR）
         
         参数：
         - file: Streamlit UploadedFile 对象

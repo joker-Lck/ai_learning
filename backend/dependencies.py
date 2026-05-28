@@ -3,15 +3,26 @@ FastAPI 依赖注入 - 数据库连接、API 客户端、认证等
 """
 import os
 import jwt
-import hashlib
+import secrets
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, Header
 from typing import Optional
 
 from data.data_manager import CacheManager
 
-# JWT 配密钥 (生产环境应从环境变量读取)
-JWT_SECRET = os.getenv("JWT_SECRET", "ai-teaching-assistant-secret-key-2026")
+# JWT 密钥 — 必须从环境变量读取，未设置时自动生成随机密钥（重启后失效，仅限开发）
+_jwt_env = os.getenv("JWT_SECRET")
+if _jwt_env:
+    JWT_SECRET = _jwt_env
+else:
+    JWT_SECRET = secrets.token_urlsafe(48)
+    import warnings
+    warnings.warn(
+        "JWT_SECRET 未设置，已生成随机密钥（重启后所有 Token 失效）。"
+        "请在 .env 中配置 JWT_SECRET 以用于生产环境。",
+        stacklevel=2,
+    )
+
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
 

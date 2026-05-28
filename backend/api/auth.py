@@ -1,7 +1,9 @@
 """
 认证 API - 登录/注册/用户信息
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from backend.schemas.models import (
     LoginRequest, RegisterRequest, ChangePasswordRequest,
     AuthResponse, UserInfo, BaseResponse,
@@ -13,11 +15,13 @@ from services.auth_service import auth_service
 from core.logger import info, user_login
 
 router = APIRouter()
+_auth_limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(req: LoginRequest):
-    """用户登录"""
+@_auth_limiter.limit("10/minute")
+async def login(request: Request, req: LoginRequest):
+    """用户登录（限流：10次/分钟）"""
     result = auth_service.login_user(req.username, req.password)
 
     if not result["success"]:
@@ -42,8 +46,9 @@ async def login(req: LoginRequest):
 
 
 @router.post("/register", response_model=AuthResponse)
-async def register(req: RegisterRequest):
-    """用户注册"""
+@_auth_limiter.limit("5/minute")
+async def register(request: Request, req: RegisterRequest):
+    """用户注册（限流：5次/分钟）"""
     result = auth_service.register_user(
         req.username, req.password, req.email
     )

@@ -41,7 +41,7 @@ def init_rag_database():
             file_size BIGINT DEFAULT 0 COMMENT '文件大小（字节）',
             document_data JSON COMMENT '文档完整数据（JSON格式）',
             embedding JSON COMMENT '文档向量（Embedding）',
-            embedding_model VARCHAR(100) DEFAULT 'kimi-embedding' COMMENT '向量模型名称',
+            embedding_model VARCHAR(100) DEFAULT 'spark-embedding' COMMENT '向量模型名称',
             uploaded_by VARCHAR(100) DEFAULT 'teacher' COMMENT '上传者',
             upload_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
             usage_count INT DEFAULT 0 COMMENT '使用次数',

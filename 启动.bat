@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul 2>&1
-title AI Teaching Assistant v6.0
+title AI Learning Agent System v7.2
 setlocal
 
 set "ROOT=%~dp0"
@@ -8,7 +8,8 @@ cd /d "%ROOT%"
 
 echo.
 echo ========================================
-echo   AI Teaching Assistant v6.0
+echo   AI Learning Agent System v7.2
+echo   基于多智能体的个性化学习资源生成系统
 echo ========================================
 echo.
 
@@ -81,7 +82,7 @@ echo   Started!
 echo   Frontend:  http://localhost:3000
 echo   Backend:   http://localhost:8000
 echo   API Docs:  http://localhost:8000/docs
-echo   Login:     admin / admin123
+echo   Login:     请使用 init_admin.py 创建的账号
 echo ========================================
 echo.
 

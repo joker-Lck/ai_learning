@@ -3,6 +3,7 @@
 处理用户登录、注册、密码加密等功能
 """
 
+import bcrypt
 import hashlib
 import secrets
 from data.config import get_accounts_db_config
@@ -12,11 +13,11 @@ from datetime import datetime
 
 class AuthService:
     """用户认证服务"""
-    
+
     def __init__(self):
         """初始化认证服务"""
         self.db_config = get_accounts_db_config()
-    
+
     def _get_connection(self):
         """获取数据库连接"""
         return mysql.connector.connect(
@@ -28,39 +29,56 @@ class AuthService:
             charset='utf8mb4',
             use_pure=True
         )
-    
+
     def hash_password(self, password):
         """
-        密码加密（SHA-256 + salt）
-        
+        密码加密（bcrypt）
+
         Args:
             password: 明文密码
-            
+
         Returns:
-            加密后的密码字符串
+            加密后的密码字符串（bcrypt 格式）
         """
-        salt = secrets.token_hex(16)  # 生成随机盐值
-        pwd_hash = hashlib.sha256((password + salt).encode()).hexdigest()
-        return f"{salt}${pwd_hash}"  # 格式：salt$hash
-    
-    def verify_password(self, password, stored_password):
-        """
-        验证密码
-        
-        Args:
-            password: 用户输入的明文密码
-            stored_password: 数据库中存储的密码（salt$hash）
-            
-        Returns:
-            bool: 密码是否正确
-        """
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    def _verify_bcrypt(self, password, stored_password):
+        """验证 bcrypt 格式的密码"""
         try:
-            salt, pwd_hash = stored_password.split('$')
+            return bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
+        except Exception:
+            return False
+
+    def _verify_legacy_sha256(self, password, stored_password):
+        """验证旧版 SHA-256 格式的密码（向后兼容）"""
+        try:
+            if '$' not in stored_password:
+                return False
+            salt, pwd_hash = stored_password.split('$', 1)
             new_hash = hashlib.sha256((password + salt).encode()).hexdigest()
             return new_hash == pwd_hash
         except Exception:
             return False
-    
+
+    def verify_password(self, password, stored_password):
+        """
+        验证密码（优先 bcrypt，降级兼容 SHA-256）
+
+        Args:
+            password: 用户输入的明文密码
+            stored_password: 数据库中存储的密码
+
+        Returns:
+            bool: 密码是否正确
+        """
+        if stored_password.startswith('$2b$') or stored_password.startswith('$2a$'):
+            return self._verify_bcrypt(password, stored_password)
+        return self._verify_legacy_sha256(password, stored_password)
+
+    def _needs_rehash(self, stored_password):
+        """检查是否需要重新哈希（旧版 SHA-256 → bcrypt）"""
+        return not (stored_password.startswith('$2b$') or stored_password.startswith('$2a$'))
+
     def register_user(self, username, password, email=None, role='user'):
         """
         注册新用户
@@ -140,7 +158,19 @@ class AuthService:
             # 验证密码
             if not self.verify_password(password, user['password']):
                 return {'success': False, 'message': '用户名或密码错误'}
-            
+
+            # 旧版 SHA-256 哈希自动迁移为 bcrypt
+            if self._needs_rehash(user['password']):
+                try:
+                    new_hash = self.hash_password(password)
+                    cursor.execute(
+                        "UPDATE users SET password = %s WHERE id = %s",
+                        (new_hash, user['id'])
+                    )
+                    conn.commit()
+                except Exception:
+                    pass  # 迁移失败不影响登录
+
             # 登录成功，移除密码字段
             user.pop('password', None)
             return {

@@ -235,7 +235,7 @@ const features = [
     icon: Brain,
     title: '智能问答',
     desc: '基于 RAG 知识库的精准答疑，支持多轮对话与上下文理解',
-    detail: '融合 Moonshot 大模型与向量检索，实现教学知识的精准匹配。支持语音输入、多模态理解，让每个问题都得到专业回答。',
+    detail: '融合讯飞星火大模型与向量检索，实现教学知识的精准匹配。支持多模态理解，让每个问题都得到专业回答。',
     gradient: 'from-blue-500 to-cyan-400',
     glow: 'shadow-blue-500/20',
   },

@@ -3,35 +3,48 @@
 用于快速初始化系统管理员
 """
 
+import secrets
+import string
 from services.auth_service import auth_service
+
+
+def _generate_password(length=16):
+    """生成随机安全密码"""
+    alphabet = string.ascii_letters + string.digits + "!@#$%&*"
+    while True:
+        pwd = ''.join(secrets.choice(alphabet) for _ in range(length))
+        # 确保包含大小写、数字、特殊字符
+        if (any(c.islower() for c in pwd) and any(c.isupper() for c in pwd)
+                and any(c.isdigit() for c in pwd) and any(c in "!@#$%&*" for c in pwd)):
+            return pwd
 
 
 def create_default_admin():
     """创建默认管理员账号"""
-    
+
     print("=" * 50)
     print("🔑 创建默认管理员账号")
     print("=" * 50)
-    
-    # 默认管理员信息
+
+    # 随机生成管理员密码
     admin_username = "admin"
-    admin_password = "admin123"
+    admin_password = _generate_password()
     admin_email = "admin@teaching.ai"
     admin_role = "admin"
-    
+
     print(f"\n 用户名：{admin_username}")
     print(f" 密码：{admin_password}")
     print(f" 邮箱：{admin_email}")
     print(f" 角色：{admin_role}")
-    print("\n⚠️ 请在首次登录后立即修改密码！")
+    print("\n⚠️  请务必保存以上密码，仅显示一次！")
     print("-" * 50)
-    
+
     confirm = input("\n是否继续创建？(y/n): ")
-    
+
     if confirm.lower() != 'y':
         print(" 已取消")
         return
-    
+
     # 尝试创建
     result = auth_service.register_user(
         username=admin_username,
@@ -39,7 +52,7 @@ def create_default_admin():
         email=admin_email,
         role=admin_role
     )
-    
+
     if result['success']:
         print("\n✅ 管理员账号创建成功！")
         print(f"   用户 ID: {result['user_id']}")
@@ -47,14 +60,14 @@ def create_default_admin():
         print(f"   用户名：{admin_username}")
         print(f"   密码：{admin_password}")
         print("\n⚠️ 重要提示：")
-        print("   1. 请立即修改默认密码")
+        print("   1. 请立即保存以上密码（仅显示一次）")
         print("   2. 妥善保管管理员账号")
         print("   3. 不要将密码泄露给他人")
     else:
         print(f"\n❌ 创建失败：{result['message']}")
         if "已存在" in result['message']:
             print("\n💡 提示：管理员账号已存在，请使用现有账号登录")
-    
+
     print("\n" + "=" * 50)
 
 

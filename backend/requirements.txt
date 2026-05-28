@@ -1,8 +1,10 @@
-# AI 教学智能体 v6.0 - 后端依赖
+# AI 教学智能体 v7.2 - 后端依赖
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 python-multipart>=0.0.9
 pyjwt>=2.8.0
+bcrypt>=4.1.0
+slowapi>=0.1.9
 
 # 复用现有项目依赖
 openai>=1.0.0
