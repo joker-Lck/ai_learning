@@ -12,17 +12,24 @@ import os
 load_dotenv()
 
 class EmbeddingService:
-    """向量化服务类"""
+    """向量化服务类（懒加载：首次调用时才初始化客户端）"""
 
     def __init__(self):
-        """初始化 — 使用讯飞星火 API"""
-        api_key = os.getenv('SPARK_API_KEY', '')
-        base_url = os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
+        """初始化 — 延迟到首次使用时"""
+        self._client = None
 
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url
-        )
+    @property
+    def client(self):
+        if self._client is None:
+            api_key = os.getenv('SPARK_API_KEY', '')
+            base_url = os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
+            if not api_key:
+                raise RuntimeError(
+                    "SPARK_API_KEY 未配置，请在 .env 文件中设置。"
+                    "参考 .env.example"
+                )
+            self._client = OpenAI(api_key=api_key, base_url=base_url)
+        return self._client
     
     def get_embedding(self, text, model='general'):
         """

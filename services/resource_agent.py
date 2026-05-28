@@ -569,3 +569,23 @@ class ResourceAgent:
         except Exception as e:
             error(f"保存资源失败: {str(e)}")
             return []
+
+    def generate_resource(
+        self, resource_type: str, subject: str, topic: str,
+        difficulty: str = "intermediate", user_id: int = 0
+    ) -> Dict:
+        """单类型资源生成便捷方法（供 stream.py 使用）"""
+        try:
+            resource = self._generate_single_resource(
+                user_id, resource_type, subject, topic, {}, difficulty
+            )
+            if resource:
+                return {"success": True, "data": resource}
+            return {"success": False, "message": f"生成 {resource_type} 失败"}
+        except Exception as e:
+            error(f"生成资源异常 [{resource_type}]: {e}")
+            return {"success": False, "message": str(e)}
+
+
+# 模块级单例
+resource_agent = ResourceAgent()

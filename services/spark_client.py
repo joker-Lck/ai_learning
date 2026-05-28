@@ -25,25 +25,28 @@ MODEL_ULTRA = os.getenv("SPARK_MODEL_ULTRA", "4.0Ultra")          # 4.0 Ultra
 
 
 class SparkClient:
-    """讯飞星火 OpenAI 兼容客户端（单例）"""
+    """讯飞星火 OpenAI 兼容客户端（单例，懒加载）"""
 
     _instance: Optional["SparkClient"] = None
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._init_client()
+            cls._instance._client = None
         return cls._instance
 
-    def _init_client(self):
-        api_key = os.getenv("SPARK_API_KEY", "")
-        base_url = os.getenv("SPARK_BASE_URL", "https://spark-api-open.xf-yun.com/v1")
-
-        if not api_key:
-            error("SPARK_API_KEY 未设置，讯飞星火 API 不可用")
-
-        self.client = OpenAI(api_key=api_key, base_url=base_url)
-        info(f"讯飞星火客户端初始化完成 (base_url={base_url})")
+    @property
+    def client(self):
+        if self._client is None:
+            api_key = os.getenv("SPARK_API_KEY", "")
+            base_url = os.getenv("SPARK_BASE_URL", "https://spark-api-open.xf-yun.com/v1")
+            if not api_key:
+                raise RuntimeError(
+                    "SPARK_API_KEY 未配置，请在 .env 文件中设置。参考 .env.example"
+                )
+            self._client = OpenAI(api_key=api_key, base_url=base_url)
+            info(f"讯飞星火客户端初始化完成 (base_url={base_url})")
+        return self._client
 
     # ── 核心调用 ──────────────────────────────────────────────
     def chat(

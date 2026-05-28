@@ -13,13 +13,15 @@ echo   基于多智能体的个性化学习资源生成系统
 echo ========================================
 echo.
 
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Python not found
+:: 使用 venv Python
+set "PYEXE=%ROOT%.venv\Scripts\python.exe"
+if not exist "%PYEXE%" (
+    echo [ERROR] venv not found at .venv
+    echo        Run: python -m venv .venv ^&^& .venv\Scripts\pip install -r backend\requirements.txt
     pause
     exit /b 1
 )
-echo [OK] Python found
+echo [OK] Python venv found
 
 node --version >nul 2>&1
 if errorlevel 1 (
@@ -32,28 +34,37 @@ echo [OK] Node.js found
 if not exist "%ROOT%.env" (
     if exist "%ROOT%.env.example" (
         copy "%ROOT%.env.example" "%ROOT%.env" >nul
-        echo [WARN] Created .env from .env.example
+        echo [WARN] Created .env from .env.example — please fill in your API keys
     )
 )
 
 echo.
 echo [1/5] Checking backend deps...
-pip show fastapi >nul 2>&1
+"%PYEXE%" -m pip show fastapi >nul 2>&1
 if errorlevel 1 goto install_backend
-goto check_frontend
+goto check_mysql
 
 :install_backend
 echo Installing backend deps...
-pip install -r "%ROOT%backend\requirements.txt"
+"%PYEXE%" -m pip install -r "%ROOT%backend\requirements.txt"
 if errorlevel 1 (
     echo [ERROR] Backend deps install failed
     pause
     exit /b 1
 )
 
-:check_frontend
+:check_mysql
 echo [OK] Backend deps ready
-echo [2/5] Checking frontend deps...
+echo [2/5] Checking MySQL connection...
+"%PYEXE%" -c "import mysql.connector; mysql.connector.connect(host='localhost',port=3306,user='root',password='root',connect_timeout=3)" >nul 2>&1
+if errorlevel 1 (
+    echo [WARN] MySQL not reachable. Please ensure MySQL is running.
+    echo        The app may not work correctly without a database.
+    echo.
+)
+
+:check_frontend
+echo [3/5] Checking frontend deps...
 if exist "%ROOT%frontend\node_modules" goto start_services
 echo Installing frontend deps...
 cd /d "%ROOT%frontend"
@@ -65,20 +76,11 @@ if errorlevel 1 (
 )
 cd /d "%ROOT%"
 
-:check_mysql
-echo [3/5] Checking MySQL connection...
-python -c "import mysql.connector; mysql.connector.connect(host='localhost',port=3306,user='root',password='root',connect_timeout=3)" >nul 2>&1
-if errorlevel 1 (
-    echo [WARN] MySQL connection failed. Please ensure MySQL is running.
-    echo        The app may not work correctly without a database.
-    echo.
-)
-
 :start_services
 echo [OK] Frontend deps ready
 echo.
 echo [4/5] Starting backend on port 8000...
-start "Backend-API" /D "%ROOT%" cmd /k "title Backend-API && python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+start "Backend-API" /D "%ROOT%" cmd /k "title Backend-API && "%PYEXE%" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 
 timeout /t 5 /nobreak >nul
 
