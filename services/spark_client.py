@@ -1,12 +1,11 @@
 """
-讯飞星火 API 客户端 — OpenAI 兼容 HTTP 接口
-替代原 Kimi/Moonshot，所有 API Key 仅存后端 .env
+Kimi (Moonshot) API 客户端 — OpenAI 兼容 HTTP 接口
+所有 API Key 仅存后端 .env
 
 模型分层策略:
-  general       (Spark Lite)  — 免费，简单解析 / SVG 生成
-  generalv3     (Spark Pro)   — 练习题、文档、思维导图
-  generalv3.5   (Spark Max)   — 画像分析、路径规划
-  4.0Ultra      (Spark 4.0)   — 辅导答疑、效果评估（最强推理）
+  moonshot-v1-8k    — 简单解析 / SVG 生成
+  moonshot-v1-32k   — 练习题、文档、思维导图
+  moonshot-v1-128k  — 画像分析、路径规划、辅导答疑、效果评估
 """
 
 import os
@@ -18,16 +17,16 @@ from core.logger import info, error
 load_dotenv()
 
 # ── 模型路由表 ──────────────────────────────────────────────
-MODEL_SIMPLE = os.getenv("SPARK_MODEL_SIMPLE", "general")          # Lite
-MODEL_STANDARD = os.getenv("SPARK_MODEL_STANDARD", "generalv3")    # Pro
-MODEL_ADVANCED = os.getenv("SPARK_MODEL_ADVANCED", "generalv3.5")  # Max
-MODEL_ULTRA = os.getenv("SPARK_MODEL_ULTRA", "4.0Ultra")          # 4.0 Ultra
+MODEL_SIMPLE = os.getenv("KIMI_MODEL_SIMPLE", "moonshot-v1-8k")
+MODEL_STANDARD = os.getenv("KIMI_MODEL_STANDARD", "moonshot-v1-32k")
+MODEL_ADVANCED = os.getenv("KIMI_MODEL_ADVANCED", "moonshot-v1-128k")
+MODEL_ULTRA = os.getenv("KIMI_MODEL_ULTRA", "moonshot-v1-128k")
 
 
-class SparkClient:
-    """讯飞星火 OpenAI 兼容客户端（单例，懒加载）"""
+class KimiClient:
+    """Kimi (Moonshot) OpenAI 兼容客户端（单例，懒加载）"""
 
-    _instance: Optional["SparkClient"] = None
+    _instance: Optional["KimiClient"] = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -38,14 +37,14 @@ class SparkClient:
     @property
     def client(self):
         if self._client is None:
-            api_key = os.getenv("SPARK_API_KEY", "")
-            base_url = os.getenv("SPARK_BASE_URL", "https://spark-api-open.xf-yun.com/v1")
+            api_key = os.getenv("KIMI_API_KEY", "")
+            base_url = os.getenv("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
             if not api_key:
                 raise RuntimeError(
-                    "SPARK_API_KEY 未配置，请在 .env 文件中设置。参考 .env.example"
+                    "KIMI_API_KEY 未配置，请在 .env 文件中设置。参考 .env.example"
                 )
             self._client = OpenAI(api_key=api_key, base_url=base_url)
-            info(f"讯飞星火客户端初始化完成 (base_url={base_url})")
+            info(f"Kimi 客户端初始化完成 (base_url={base_url})")
         return self._client
 
     # ── 核心调用 ──────────────────────────────────────────────
@@ -63,7 +62,7 @@ class SparkClient:
 
         Args:
             prompt: 用户提示词
-            model: 星火模型 ID
+            model: Kimi 模型 ID
             max_tokens: 最大输出 token
             temperature: 温度
             system_prompt: 系统提示词
@@ -88,26 +87,26 @@ class SparkClient:
             return content
 
         except Exception as e:
-            error(f"讯飞星火 API 调用失败 (model={model}): {e}")
+            error(f"Kimi API 调用失败 (model={model}): {e}")
             return f"错误: {e}"
 
     # ── 便捷方法：按任务复杂度选模型 ──────────────────────────
     def simple(self, prompt: str, **kw) -> str:
-        """简单任务 — Lite"""
+        """简单任务 — 8K"""
         return self.chat(prompt, model=MODEL_SIMPLE, **kw)
 
     def standard(self, prompt: str, **kw) -> str:
-        """标准任务 — Pro"""
+        """标准任务 — 32K"""
         return self.chat(prompt, model=MODEL_STANDARD, **kw)
 
     def advanced(self, prompt: str, **kw) -> str:
-        """高级任务 — Max"""
+        """高级任务 — 128K"""
         return self.chat(prompt, model=MODEL_ADVANCED, **kw)
 
     def ultra(self, prompt: str, **kw) -> str:
-        """最强推理 — 4.0 Ultra"""
+        """最强推理 — 128K"""
         return self.chat(prompt, model=MODEL_ULTRA, **kw)
 
 
 # ── 全局单例 ──────────────────────────────────────────────────
-spark_client = SparkClient()
+spark_client = KimiClient()  # 保持变量名兼容，避免改所有 import
