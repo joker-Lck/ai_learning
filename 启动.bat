@@ -37,7 +37,7 @@ if not exist "%ROOT%.env" (
 )
 
 echo.
-echo [1/4] Checking backend deps...
+echo [1/5] Checking backend deps...
 pip show fastapi >nul 2>&1
 if errorlevel 1 goto install_backend
 goto check_frontend
@@ -53,7 +53,7 @@ if errorlevel 1 (
 
 :check_frontend
 echo [OK] Backend deps ready
-echo [2/4] Checking frontend deps...
+echo [2/5] Checking frontend deps...
 if exist "%ROOT%frontend\node_modules" goto start_services
 echo Installing frontend deps...
 cd /d "%ROOT%frontend"
@@ -65,15 +65,24 @@ if errorlevel 1 (
 )
 cd /d "%ROOT%"
 
+:check_mysql
+echo [3/5] Checking MySQL connection...
+python -c "import mysql.connector; mysql.connector.connect(host='localhost',port=3306,user='root',password='root',connect_timeout=3)" >nul 2>&1
+if errorlevel 1 (
+    echo [WARN] MySQL connection failed. Please ensure MySQL is running.
+    echo        The app may not work correctly without a database.
+    echo.
+)
+
 :start_services
 echo [OK] Frontend deps ready
 echo.
-echo [3/4] Starting backend on port 8000...
+echo [4/5] Starting backend on port 8000...
 start "Backend-API" /D "%ROOT%" cmd /k "title Backend-API && python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 
 timeout /t 5 /nobreak >nul
 
-echo [4/4] Starting frontend on port 3000...
+echo [5/5] Starting frontend on port 3000...
 start "Frontend" /D "%ROOT%frontend" cmd /k "title Frontend && npm run dev"
 
 echo.

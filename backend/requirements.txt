@@ -1,22 +1,28 @@
 # AI 教学智能体 v7.2 - 后端依赖
-fastapi>=0.110.0
-uvicorn[standard]>=0.27.0
-python-multipart>=0.0.9
-pyjwt>=2.8.0
-bcrypt>=4.1.0
-slowapi>=0.1.9
+fastapi==0.136.3
+uvicorn[standard]==0.47.0
+python-multipart==0.0.29
+PyJWT==2.13.0
+bcrypt==5.0.0
+slowapi==0.1.9
 
-# 复用现有项目依赖
-openai>=1.0.0
-mysql-connector-python>=8.0.0
-python-dotenv>=1.0.0
-python-pptx>=0.6.21
-python-docx>=1.0.0
-PyPDF2>=3.0.0
-pdfplumber>=0.10.0
-openpyxl>=3.1.0
-numpy>=1.24.0
+# AI & 数据库
+openai==2.38.0
+mysql-connector-python==9.7.0
+python-dotenv==1.2.2
+
+# 文档处理
+python-pptx==1.0.2
+python-docx==1.2.0
+PyPDF2==3.0.1
+pdfplumber==0.11.9
+openpyxl==3.1.5
+
+# 数据 & 向量
+numpy==2.4.4
 faiss-cpu>=1.7.4
-pandas>=2.0.0
-matplotlib>=3.7.0
-Pillow>=10.0.0
+pandas==3.0.2
+
+# 可视化 & 图片
+matplotlib==3.10.8
+Pillow==12.2.0

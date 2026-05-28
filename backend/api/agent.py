@@ -398,18 +398,47 @@ async def analyze_documents(
     支持格式: txt, md, pdf, doc, docx, ppt, pptx, jpg, jpeg, png
     最大单文件: 10MB, 最大总大小: 30MB, 最多10个文件
     """
+    ALLOWED_EXTENSIONS = {'.txt', '.md', '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png'}
+    MAX_SINGLE_SIZE = 10 * 1024 * 1024  # 10MB
+    MAX_TOTAL_SIZE = 30 * 1024 * 1024   # 30MB
+    MAX_FILES = 10
+
     try:
         user_id = user["id"]
-        info(f"用户 {user_id} 上传 {len(files)} 个文件进行分析")
 
+        if len(files) > MAX_FILES:
+            return BaseResponse(success=False, message=f"最多上传 {MAX_FILES} 个文件", data=None)
+
+        total_size = 0
         file_data = []
         for f in files:
+            # 校验扩展名
+            ext = ''
+            if f.filename:
+                ext = '.' + f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+            if ext not in ALLOWED_EXTENSIONS:
+                return BaseResponse(
+                    success=False,
+                    message=f"不支持的文件格式: {ext}。允许: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+                    data=None,
+                )
+
             content = await f.read()
+
+            if len(content) > MAX_SINGLE_SIZE:
+                return BaseResponse(success=False, message=f"文件 {f.filename} 超过 10MB 限制", data=None)
+
+            total_size += len(content)
+            if total_size > MAX_TOTAL_SIZE:
+                return BaseResponse(success=False, message="总文件大小超过 30MB 限制", data=None)
+
             file_data.append({
                 "filename": f.filename,
                 "content": content,
                 "size": len(content),
             })
+
+        info(f"用户 {user_id} 上传 {len(file_data)} 个文件进行分析")
 
         result = document_analysis_service.analyze_documents(
             files=file_data,

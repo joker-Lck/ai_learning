@@ -122,4 +122,4 @@ if __name__ == "__main__":
         create_test_users()
     
     print("\n✅ 初始化完成！")
-    print("\n启动应用：streamlit run streamlit_001.py")
+    print("\n启动应用：启动.bat（Windows）或 python -m uvicorn backend.main:app --port 8000")

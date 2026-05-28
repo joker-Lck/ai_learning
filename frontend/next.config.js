@@ -20,9 +20,14 @@ const nextConfig = {
     ];
   },
 
-  // 图片域名白名单
+  // 图片域名白名单（remotePatterns 替代已废弃的 domains）
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
   },
 
   // 增加API路由超时时间(开发环境)

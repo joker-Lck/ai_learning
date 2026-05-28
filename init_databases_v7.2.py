@@ -439,46 +439,116 @@ def init_agents_database():
         conn.close()
 
 def init_rag_database():
-    """初始化RAG知识库数据库"""
+    """初始化RAG知识库数据库 — 与 data/rag_knowledge_base.py 保持一致"""
     config = get_rag_db_config()
     conn = mysql.connector.connect(**config)
     cursor = conn.cursor()
-    
+
     try:
         print("\n📦 初始化RAG知识库数据库 (ai_rag_knowledge)...")
-        
-        # 知识文档表
+
+        # 知识文档表 — 与 rag_knowledge_base.py 的 add_document() 对齐
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS knowledge_documents (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(200) NOT NULL,
-                subject VARCHAR(50),
-                document_type VARCHAR(50),
-                content TEXT,
-                embedding_vector JSON COMMENT '向量嵌入',
-                file_path VARCHAR(500),
-                metadata JSON,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_subject (subject)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识文档表'
+                id INT AUTO_INCREMENT PRIMARY KEY COMMENT '文档 ID',
+                title VARCHAR(500) NOT NULL COMMENT '文档标题',
+                subject VARCHAR(50) NOT NULL COMMENT '所属学科',
+                file_path VARCHAR(1000) COMMENT '文件存储路径',
+                file_type VARCHAR(20) COMMENT '文件类型 (pdf/doc/ppt/txt)',
+                file_size BIGINT DEFAULT 0 COMMENT '文件大小（字节）',
+                document_data JSON COMMENT '文档完整数据（JSON格式）',
+                embedding JSON COMMENT '文档向量（Embedding）',
+                embedding_model VARCHAR(100) DEFAULT 'spark-embedding' COMMENT '向量模型名称',
+                uploaded_by VARCHAR(100) DEFAULT 'teacher' COMMENT '上传者',
+                upload_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
+                usage_count INT DEFAULT 0 COMMENT '使用次数',
+                is_public TINYINT(1) DEFAULT 1 COMMENT '是否公开',
+                FULLTEXT INDEX ft_title (title),
+                INDEX idx_subject (subject),
+                INDEX idx_upload_time (upload_time),
+                INDEX idx_uploaded_by (uploaded_by),
+                INDEX idx_usage_count (usage_count)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            COMMENT='知识文档表（JSON 格式）'
         """)
         print("  ✅ 知识文档表 (knowledge_documents) 创建成功!")
-        
-        # 知识分块表
+
+        # 知识点关联表 — 与 rag_knowledge_base.py 的 _add_knowledge_points() 对齐
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS knowledge_chunks (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                document_id INT NOT NULL,
-                chunk_content TEXT NOT NULL,
-                chunk_index INT NOT NULL,
-                embedding_vector JSON COMMENT '向量嵌入',
-                metadata JSON,
-                FOREIGN KEY (document_id) REFERENCES knowledge_documents(id) ON DELETE CASCADE,
-                INDEX idx_document (document_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识分块表'
+            CREATE TABLE IF NOT EXISTS knowledge_points (
+                id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+                doc_id INT NOT NULL COMMENT '文档 ID',
+                point_name VARCHAR(200) NOT NULL COMMENT '知识点名称',
+                FOREIGN KEY (doc_id) REFERENCES knowledge_documents(id) ON DELETE CASCADE,
+                UNIQUE KEY uk_doc_point (doc_id, point_name),
+                INDEX idx_point_name (point_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            COMMENT='知识点关联表'
         """)
-        print("  ✅ 知识分块表 (knowledge_chunks) 创建成功!")
-        
+        print("  ✅ 知识点关联表 (knowledge_points) 创建成功!")
+
+        # 文档分类表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS document_categories (
+                id INT AUTO_INCREMENT PRIMARY KEY COMMENT '分类 ID',
+                category_name VARCHAR(100) NOT NULL COMMENT '分类名称',
+                parent_id INT DEFAULT NULL COMMENT '父分类 ID',
+                subject VARCHAR(50) COMMENT '所属学科',
+                sort_order INT DEFAULT 0 COMMENT '排序顺序',
+                FOREIGN KEY (parent_id) REFERENCES document_categories(id) ON DELETE SET NULL,
+                UNIQUE KEY uk_category_name (category_name),
+                INDEX idx_parent_id (parent_id),
+                INDEX idx_subject (subject)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            COMMENT='文档分类表'
+        """)
+        print("  ✅ 文档分类表 (document_categories) 创建成功!")
+
+        # 基础学科分类种子数据
+        cursor.execute("""
+            INSERT INTO document_categories (category_name, subject, sort_order)
+            VALUES
+            ('语文', '语文', 1), ('数学', '数学', 2), ('英语', '英语', 3),
+            ('物理', '物理', 4), ('化学', '化学', 5), ('生物', '生物', 6),
+            ('历史', '历史', 7), ('地理', '地理', 8), ('政治', '政治', 9),
+            ('体育', '体育', 10), ('美术', '美术', 11), ('音乐', '音乐', 12),
+            ('信息技术', '信息技术', 13)
+            ON DUPLICATE KEY UPDATE subject = VALUES(subject)
+        """)
+        print("  ✅ 基础学科分类数据插入成功")
+
+        # 文档分类关联表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS document_category_relation (
+                id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+                doc_id INT NOT NULL COMMENT '文档 ID',
+                category_id INT NOT NULL COMMENT '分类 ID',
+                FOREIGN KEY (doc_id) REFERENCES knowledge_documents(id) ON DELETE CASCADE,
+                FOREIGN KEY (category_id) REFERENCES document_categories(id) ON DELETE CASCADE,
+                UNIQUE KEY uk_doc_category (doc_id, category_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            COMMENT='文档分类关联表'
+        """)
+        print("  ✅ 文档分类关联表 (document_category_relation) 创建成功!")
+
+        # 使用日志表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS document_usage_log (
+                id INT AUTO_INCREMENT PRIMARY KEY COMMENT '日志 ID',
+                doc_id INT NOT NULL COMMENT '文档 ID',
+                user_id INT COMMENT '用户 ID',
+                action_type VARCHAR(50) COMMENT '操作类型 (view/download/search)',
+                action_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+                search_keywords VARCHAR(500) COMMENT '搜索关键词',
+                FOREIGN KEY (doc_id) REFERENCES knowledge_documents(id) ON DELETE CASCADE,
+                INDEX idx_doc_id (doc_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_action_time (action_time)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            COMMENT='文档使用日志表'
+        """)
+        print("  ✅ 使用日志表 (document_usage_log) 创建成功!")
+
         conn.commit()
         print("✅ RAG知识库数据库初始化完成!")
         

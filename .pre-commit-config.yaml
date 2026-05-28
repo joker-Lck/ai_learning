@@ -1,0 +1,16 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^(backend|core|data|services)/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: tsc-check
+        name: TypeScript type check
+        entry: npx tsc --noEmit
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
