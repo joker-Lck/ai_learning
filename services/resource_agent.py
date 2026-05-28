@@ -12,6 +12,63 @@ from services.qa_service import qa_service
 from services.content_safety_service import content_safety_service, anti_hallucination_service
 
 
+def _extract_text_from_resource(resource: Dict) -> str:
+    """从资源中提取纯文本内容，用于 RAG 存储"""
+    rtype = resource.get("type", "")
+    data = resource.get("content_data", {})
+
+    if rtype == "document":
+        sections = data.get("sections", [])
+        return "\n\n".join(
+            f"## {s.get('heading', '')}\n{s.get('content', '')}" for s in sections
+        )
+    elif rtype == "quiz":
+        questions = data.get("questions", [])
+        parts = []
+        for q in questions:
+            parts.append(f"题目: {q.get('question', '')}")
+            if q.get("options"):
+                parts.append("选项: " + " | ".join(q["options"]))
+            parts.append(f"答案: {q.get('correct_answer', '')}")
+            parts.append(f"解析: {q.get('explanation', '')}")
+        return "\n".join(parts)
+    elif rtype == "mindmap":
+        nodes = data.get("nodes", [])
+        edges = data.get("edges", [])
+        text_parts = [f"中心: {data.get('title', '')}"]
+        for n in nodes:
+            text_parts.append(f"节点: {n.get('label', '')}")
+        for e in edges:
+            text_parts.append(f"关系: {e.get('source', '')} -> {e.get('target', '')}")
+        return "\n".join(text_parts)
+    elif rtype == "reading":
+        return data.get("content", "") or json.dumps(data, ensure_ascii=False)
+    else:
+        return json.dumps(data, ensure_ascii=False)[:5000]
+
+
+def _extract_knowledge_points(resource: Dict) -> List[str]:
+    """从资源中提取知识点列表"""
+    data = resource.get("content_data", {})
+    points = []
+
+    # 文档类型的知识点
+    if "key_concepts" in data:
+        points.extend(data["key_concepts"])
+    if "knowledge_points" in data:
+        points.extend(data["knowledge_points"])
+
+    # 思维导图的节点
+    if resource.get("type") == "mindmap":
+        for node in data.get("nodes", []):
+            label = node.get("label", "")
+            if label and label != data.get("title", ""):
+                points.append(label)
+
+    # 去重
+    return list(dict.fromkeys(points))[:20]
+
+
 class ResourceAgent:
     """学习资源生成智能体"""
     
@@ -539,7 +596,7 @@ class ResourceAgent:
             return None
     
     def _save_resources(self, resources: List[Dict]) -> List[int]:
-        """保存资源到数据库"""
+        """保存资源到主数据库 + RAG 知识库"""
         try:
             from data.db_operations import resource_db
             with resource_db:
@@ -563,12 +620,48 @@ class ResourceAgent:
 
                 resource_db.conn.commit()
 
-                info(f"成功保存 {len(resource_ids)} 个资源")
-                return resource_ids
+                info(f"成功保存 {len(resource_ids)} 个资源到主数据库")
+
+            # 同步写入 RAG 知识库
+            self._save_to_rag(resources)
+
+            return resource_ids
 
         except Exception as e:
             error(f"保存资源失败: {str(e)}")
             return []
+
+    def _save_to_rag(self, resources: List[Dict]) -> None:
+        """将生成的资源同步写入 RAG 知识库"""
+        try:
+            from data.rag_knowledge_base import rag_kb
+
+            saved = 0
+            for resource in resources:
+                try:
+                    content_text = _extract_text_from_resource(resource)
+                    knowledge_points = _extract_knowledge_points(resource)
+
+                    doc_id = rag_kb.add_document(
+                        title=resource.get("title", "未命名资源"),
+                        subject=resource.get("subject", "综合"),
+                        file_path=f"generated/{resource.get('type', 'unknown')}",
+                        file_type="json",
+                        content_text=content_text,
+                        knowledge_points=knowledge_points,
+                        ai_summary=content_text[:200] if content_text else "",
+                        uploaded_by="ai_agent",
+                    )
+                    if doc_id:
+                        saved += 1
+                        debug(f"RAG 入库成功: {resource.get('title')} (doc_id={doc_id})")
+                except Exception as e:
+                    warning(f"单条资源写入 RAG 失败: {e}")
+
+            if saved:
+                info(f"已同步 {saved}/{len(resources)} 条资源到 RAG 知识库")
+        except Exception as e:
+            warning(f"RAG 知识库写入失败（不影响主流程）: {e}")
 
     def generate_resource(
         self, resource_type: str, subject: str, topic: str,
@@ -580,6 +673,8 @@ class ResourceAgent:
                 user_id, resource_type, subject, topic, {}, difficulty
             )
             if resource:
+                # 同步写入 RAG
+                self._save_to_rag([resource])
                 return {"success": True, "data": resource}
             return {"success": False, "message": f"生成 {resource_type} 失败"}
         except Exception as e:
