@@ -64,7 +64,7 @@ function useMouseParticles() {
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
           life: 1,
-          color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+          color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)]!,
         });
         // 限制粒子数量
         if (particlesRef.current.length > 80) {
@@ -152,7 +152,7 @@ function MouseFollower() {
     };
   }, [mouseX, mouseY, icons.length]);
 
-  const IconComp = icons[icon];
+  const IconComp = icons[icon] ?? Zap;
 
   return (
     <motion.div

@@ -26,10 +26,10 @@ export function useDashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
 
-  const currentDimension = PROFILE_DIMENSIONS[currentStep];
-  const currentChat = dimensionChats[currentDimension?.id] || {
-    dimensionId: currentDimension?.id,
-    messages: [{ role: 'assistant' as const, content: currentDimension?.questions[0] || '' }],
+  const currentDimension = PROFILE_DIMENSIONS[currentStep]!;
+  const currentChat = dimensionChats[currentDimension.id] || {
+    dimensionId: currentDimension.id,
+    messages: [{ role: 'assistant' as const, content: currentDimension.questions[0] || '' }],
     completed: false,
   };
 
@@ -89,7 +89,7 @@ export function useDashboard() {
       const currentQuestionIndex = currentChat.messages.filter((m: any) => m.role === 'assistant').length - 1;
 
       if (currentQuestionIndex < currentDimension.questions.length - 1) {
-        aiResponse = currentDimension.questions[currentQuestionIndex + 1];
+        aiResponse = currentDimension.questions[currentQuestionIndex + 1] ?? '';
         updateCurrentChat([...newMessages, { role: 'assistant', content: aiResponse }]);
       } else {
         aiResponse = `✅ 好的，我已经记录了您的${currentDimension.title}信息。`;

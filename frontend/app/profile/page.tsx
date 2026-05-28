@@ -125,12 +125,12 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
 
   // 初始化当前维度的聊天
-  const currentDimension = PROFILE_DIMENSIONS[currentStep];
+  const currentDimension = PROFILE_DIMENSIONS[currentStep]!;
   const currentChat = dimensionChats[currentDimension.id] || {
     dimensionId: currentDimension.id,
     messages: [{
       role: 'assistant',
-      content: currentDimension.questions[0]
+      content: currentDimension.questions[0] ?? ''
     }],
     completed: false
   };
@@ -166,7 +166,7 @@ export default function ProfilePage() {
 
         if (currentQuestionIndex < currentDimension.questions.length - 1) {
           // 还有下一个问题
-          aiResponse = currentDimension.questions[currentQuestionIndex + 1];
+          aiResponse = currentDimension.questions[currentQuestionIndex + 1] ?? '';
         } else {
           // 该维度完成
           aiResponse = `✅ 好的，我已经记录了您的${currentDimension.title}信息。`;

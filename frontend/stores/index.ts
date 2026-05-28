@@ -82,8 +82,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   updateLastMessage: (content) =>
     set((state) => {
       const messages = [...state.messages];
-      if (messages.length > 0) {
-        messages[messages.length - 1] = { ...messages[messages.length - 1], content };
+      const last = messages[messages.length - 1];
+      if (last) {
+        messages[messages.length - 1] = { ...last, content };
       }
       return { messages };
     }),
@@ -91,8 +92,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   appendToLastMessage: (chunk) =>
     set((state) => {
       const messages = [...state.messages];
-      if (messages.length > 0) {
-        const last = messages[messages.length - 1];
+      const last = messages[messages.length - 1];
+      if (last) {
         messages[messages.length - 1] = { ...last, content: last.content + chunk };
       }
       return { messages };

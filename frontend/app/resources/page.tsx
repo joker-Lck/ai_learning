@@ -39,6 +39,7 @@ const COLOR_MAP: Record<string, { bg: string; border: string; text: string; badg
   cyan: { bg: 'bg-cyan-400/[0.06]', border: 'border-cyan-400/20', text: 'text-cyan-400', badge: 'bg-cyan-400/[0.1] text-cyan-400', dot: 'bg-cyan-400', tag: 'bg-cyan-400/[0.1] text-cyan-400' },
   indigo: { bg: 'bg-indigo-400/[0.06]', border: 'border-indigo-400/20', text: 'text-indigo-400', badge: 'bg-indigo-400/[0.1] text-indigo-400', dot: 'bg-indigo-400', tag: 'bg-indigo-400/[0.1] text-indigo-400' },
 };
+const DEFAULT_COLOR = COLOR_MAP.blue!;
 
 interface ResourceItem {
   type: string;
@@ -243,7 +244,7 @@ export default function ResourcesPage() {
                 {RESOURCE_TYPES.map(type => {
                   const Icon = type.icon;
                   const sel = selectedTypes.includes(type.value);
-                  const colors = COLOR_MAP[type.color];
+                  const colors = COLOR_MAP[type.color] ?? DEFAULT_COLOR;
                   return (
                     <button key={type.value} onClick={() => toggleType(type.value)} disabled={loading || isGuest}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
@@ -337,7 +338,7 @@ export default function ResourcesPage() {
           <AnimatePresence>
             {resources.map((resource, idx) => {
               const typeInfo = RESOURCE_TYPES.find(t => t.value === resource.type);
-              const colors = COLOR_MAP[typeInfo?.color || 'blue'];
+              const colors = COLOR_MAP[typeInfo?.color || 'blue'] ?? DEFAULT_COLOR;
               const Icon = typeInfo?.icon || FileText;
               const expanded = expandedCards.has(idx);
 
@@ -695,7 +696,7 @@ function MindmapTree({ node, level, difficultyMarks }: { node: any; level: numbe
         {/* 一级分支卡片网格 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {node.children?.map((child: any, i: number) => {
-            const c = branchColors[i % branchColors.length];
+            const c = branchColors[i % branchColors.length]!;
             return (
               <div key={i} className={`rounded-xl border ${c.border} ${c.bg} p-3`}>
                 <div className="flex items-center gap-2 mb-2">

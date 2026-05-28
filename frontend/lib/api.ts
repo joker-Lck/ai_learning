@@ -381,7 +381,7 @@ class ApiClient {
             .slice(0, fastMode ? 10 : 15)
             .map((section: string, idx: number) => {
               const lines = section.trim().split('\n');
-              const title = lines[0].replace(/^#+\s*|^\d+[.、]\s*/, '').trim() || `第 ${idx + 1} 页`;
+              const title = lines[0]!.replace(/^#+\s*|^\d+[.、]\s*/, '').trim() || `第 ${idx + 1} 页`;
               const content = lines.slice(1)
                 .map((l: string) => l.replace(/^[-*•]\s*/, '').trim())
                 .filter((l: string) => l.length > 0);
