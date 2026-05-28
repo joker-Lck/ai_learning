@@ -454,3 +454,103 @@ async def analyze_documents(
     except Exception as e:
         error(f"文档分析失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== RAG 知识库上传 ==========
+@router.post("/upload-to-rag", response_model=BaseResponse)
+async def upload_to_rag(
+    files: List[UploadFile] = File(...),
+    subject: str = Form(""),
+    user: dict = Depends(get_current_user),
+):
+    """
+    上传学习资料到 RAG 知识库
+    支持格式: txt, md, pdf, doc, docx, ppt, pptx
+    """
+    ALLOWED = {'.txt', '.md', '.pdf', '.doc', '.docx', '.ppt', '.pptx'}
+    MAX_SIZE = 20 * 1024 * 1024
+
+    try:
+        user_id = user["id"]
+        from data.rag_knowledge_base import rag_kb
+
+        results = []
+        for f in files:
+            ext = '.' + f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+            if ext not in ALLOWED:
+                results.append({"filename": f.filename, "success": False, "message": f"不支持格式 {ext}"})
+                continue
+
+            content = await f.read()
+            if len(content) > MAX_SIZE:
+                results.append({"filename": f.filename, "success": False, "message": "文件超过 20MB"})
+                continue
+
+            text = document_analysis_service._parse_file(f.filename, content)
+            if not text or text.startswith("["):
+                results.append({"filename": f.filename, "success": False, "message": "文件解析失败"})
+                continue
+
+            # AI 提取知识点
+            kp_prompt = f"从以下文本中提取5-15个关键知识点名称，用JSON数组返回（只输出JSON数组）:\n{text[:4000]}"
+            try:
+                from services.qa_service import qa_service
+                from core.json_utils import safe_parse_json
+                kp_resp = qa_service.call_ai(kp_prompt, max_tokens=500)
+                kp_list = safe_parse_json(kp_resp)
+                if not isinstance(kp_list, list):
+                    kp_list = []
+            except Exception:
+                kp_list = []
+
+            # AI 生成摘要
+            summary_prompt = f"用100字以内概括以下教材内容（只输出摘要文字）:\n{text[:3000]}"
+            try:
+                summary = qa_service.call_ai(summary_prompt, max_tokens=200)
+            except Exception:
+                summary = text[:200]
+
+            title = f.filename.rsplit('.', 1)[0]
+            doc_id = rag_kb.add_document(
+                title=title,
+                subject=subject or "综合",
+                file_path=f.filename,
+                file_type=ext.lstrip('.'),
+                content_text=text,
+                knowledge_points=kp_list,
+                ai_summary=summary,
+                uploaded_by=str(user_id),
+                file_size=len(content),
+            )
+
+            if doc_id:
+                results.append({"filename": f.filename, "success": True, "doc_id": doc_id,
+                                "knowledge_points": len(kp_list), "summary": summary})
+            else:
+                results.append({"filename": f.filename, "success": False, "message": "写入数据库失败"})
+
+        success_count = sum(1 for r in results if r["success"])
+        return BaseResponse(
+            success=success_count > 0,
+            message=f"成功导入 {success_count}/{len(results)} 个文件到知识库",
+            data={"results": results},
+        )
+
+    except Exception as e:
+        error(f"RAG上传失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/rag-documents", response_model=BaseResponse)
+async def list_rag_documents(
+    user: dict = Depends(get_current_user),
+    limit: int = 50,
+):
+    """获取 RAG 知识库文档列表"""
+    try:
+        from data.rag_knowledge_base import rag_kb
+        docs = rag_kb.search_documents(limit=limit)
+        return BaseResponse(success=True, message="获取成功", data={"documents": docs})
+    except Exception as e:
+        error(f"获取RAG文档列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

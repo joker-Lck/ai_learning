@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import {
   GraduationCap, Zap, Brain, Route, Lightbulb, TrendingUp,
-  UserCheck, ArrowRight, Award,
+  UserCheck, ArrowRight, Award, Database,
 } from 'lucide-react';
 import { useDashboard } from './modules/useDashboard';
 import { STATS } from './modules/constants';
@@ -13,6 +13,7 @@ import ResourcesModule from './modules/ResourcesModule';
 import PathModule from './modules/PathModule';
 import TutorModule from './modules/TutorModule';
 import AssessmentModule from './modules/AssessmentModule';
+import RagKnowledgeModule from './modules/RagKnowledgeModule';
 
 export default function DashboardContent() {
   const d = useDashboard();
@@ -101,6 +102,8 @@ export default function DashboardContent() {
             handleAnalyze={d.handleAnalyze}
           />
         );
+      case 'rag':
+        return <RagKnowledgeModule />;
       default:
         return null;
     }
@@ -170,13 +173,14 @@ export default function DashboardContent() {
             <Zap className="w-5 h-5 text-cyan-400" />
             功能模块
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
               { id: 'profile', label: '学生画像', icon: UserCheck, color: 'cyan', emoji: '' },
               { id: 'resources', label: '资源生成', icon: Brain, color: 'purple', emoji: '🤖' },
               { id: 'path', label: '学习路径', icon: Route, color: 'amber', emoji: '🗺️' },
               { id: 'tutor', label: '智能辅导', icon: Lightbulb, color: 'green', emoji: '💡' },
               { id: 'assessment', label: '效果评估', icon: TrendingUp, color: 'blue', emoji: '' },
+              { id: 'rag', label: '知识库', icon: Database, color: 'emerald', emoji: '📚' },
             ].map((module) => {
               const Icon = module.icon;
               const isActive = d.activeModule === module.id;
@@ -186,6 +190,7 @@ export default function DashboardContent() {
                 amber: 'from-amber-500 to-orange-500',
                 green: 'from-emerald-500 to-teal-500',
                 blue: 'from-blue-500 to-indigo-500',
+                emerald: 'from-emerald-500 to-green-500',
               };
               return (
                 <button

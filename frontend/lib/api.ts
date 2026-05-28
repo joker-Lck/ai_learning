@@ -237,6 +237,52 @@ class ApiClient {
     return response.json();
   }
 
+  /**
+   * 上传学习资料到 RAG 知识库
+   */
+  async uploadToRag(files: File[], subject?: string) {
+    const token = this.getToken();
+    const formData = new FormData();
+    files.forEach((f) => formData.append('files', f));
+    if (subject) formData.append('subject', subject);
+
+    const response = await fetch(`${API_BASE}/agent/upload-to-rag`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+    if (response.status === 401) {
+      this.setToken(null);
+      if (typeof window !== 'undefined') window.location.href = '/';
+      throw new Error('认证已过期，请重新登录');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || `请求失败 (${response.status})`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * 获取 RAG 知识库文档列表
+   */
+  async getRagDocuments() {
+    const token = this.getToken();
+    const response = await fetch(`${API_BASE}/agent/rag-documents`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || `请求失败 (${response.status})`);
+    }
+
+    return response.json();
+  }
+
   // ==================== 流式 API ====================
 
   /**

@@ -335,17 +335,35 @@ class RAGKnowledgeBase:
             # 如果有向量，添加到 JSON 数据中
             if embedding:
                 document_data["embedding"] = embedding
-            
-            sql = """INSERT INTO knowledge_documents 
-                    (title, subject, file_path, file_type, file_size, document_data, embedding, uploaded_by, upload_time)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            
-            self.cursor.execute(sql, (
-                title, subject, file_path, file_type, file_size,
-                json.dumps(document_data, ensure_ascii=False),
-                json.dumps(embedding, ensure_ascii=False) if embedding else None,
-                uploaded_by, datetime.now()
-            ))
+
+            # 检查 embedding 列是否存在
+            has_embedding_col = False
+            try:
+                self.cursor.execute("SHOW COLUMNS FROM knowledge_documents LIKE 'embedding'")
+                has_embedding_col = self.cursor.fetchone() is not None
+            except Exception:
+                pass
+
+            if has_embedding_col:
+                sql = """INSERT INTO knowledge_documents
+                        (title, subject, file_path, file_type, file_size, document_data, embedding, uploaded_by, upload_time)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                params = (
+                    title, subject, file_path, file_type, file_size,
+                    json.dumps(document_data, ensure_ascii=False),
+                    json.dumps(embedding, ensure_ascii=False) if embedding else None,
+                    uploaded_by, datetime.now()
+                )
+            else:
+                sql = """INSERT INTO knowledge_documents
+                        (title, subject, file_path, file_type, file_size, document_data, uploaded_by, upload_time)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+                params = (
+                    title, subject, file_path, file_type, file_size,
+                    json.dumps(document_data, ensure_ascii=False),
+                    uploaded_by, datetime.now()
+                )
+            self.cursor.execute(sql, params)
             self.conn.commit()
             doc_id = self.cursor.lastrowid
             
