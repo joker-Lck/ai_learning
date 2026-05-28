@@ -9,7 +9,7 @@ Kimi (Moonshot) API 客户端 — OpenAI 兼容 HTTP 接口
 """
 
 import os
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Generator
 from openai import OpenAI
 from dotenv import load_dotenv
 from core.logger import info, error
@@ -89,6 +89,39 @@ class KimiClient:
         except Exception as e:
             error(f"Kimi API 调用失败 (model={model}): {e}")
             return f"错误: {e}"
+
+    def chat_stream(
+        self,
+        prompt: str,
+        *,
+        model: str = MODEL_STANDARD,
+        max_tokens: int = 2000,
+        temperature: float = 0.7,
+        system_prompt: Optional[str] = None,
+    ) -> Generator[str, None, None]:
+        """流式文本生成，逐 chunk 返回"""
+        try:
+            messages: List[Dict] = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            stream = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True,
+            )
+
+            for chunk in stream:
+                delta = chunk.choices[0].delta
+                if delta.content:
+                    yield delta.content
+
+        except Exception as e:
+            error(f"Kimi 流式调用失败 (model={model}): {e}")
+            yield f"错误: {e}"
 
     # ── 便捷方法：按任务复杂度选模型 ──────────────────────────
     def simple(self, prompt: str, **kw) -> str:

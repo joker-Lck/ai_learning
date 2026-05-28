@@ -1,7 +1,10 @@
 'use client';
 
 import { Send, Lightbulb, Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import type { TutorMessage } from './types';
+
+const MermaidDiagram = dynamic(() => import('./MermaidDiagram'), { ssr: false });
 
 interface TutorModuleProps {
   question: string;
@@ -11,11 +14,12 @@ interface TutorModuleProps {
   tutorLoading: boolean;
   tutorMessages: TutorMessage[];
   handleAskTutor: () => void;
+  streamingContent?: string;
 }
 
 export default function TutorModule({
   question, setQuestion, tutorSubject, setTutorSubject,
-  tutorLoading, tutorMessages, handleAskTutor,
+  tutorLoading, tutorMessages, handleAskTutor, streamingContent,
 }: TutorModuleProps) {
   return (
     <div className="space-y-4">
@@ -38,28 +42,15 @@ export default function TutorModule({
                 <div className="flex-1">
                   <div className="text-xs opacity-70 mb-1">{msg.timestamp.toLocaleTimeString()}</div>
                   <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
-                  {msg.diagram && (
-                    <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06] space-y-1">
+                  {/* Mermaid 图表 */}
+                  {msg.diagram && typeof msg.diagram === 'object' && 'mermaid' in msg.diagram && (
+                    <MermaidDiagram chart={(msg.diagram as any).mermaid} />
+                  )}
+                  {/* 旧格式 diagram 兼容 */}
+                  {msg.diagram && typeof msg.diagram === 'string' && (
+                    <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
                       <div className="text-cyan-400 font-medium mb-1">📊 图解说明</div>
-                      {typeof msg.diagram === 'string' ? (
-                        <div className="whitespace-pre-wrap">{msg.diagram}</div>
-                      ) : (
-                        <>
-                          {msg.diagram.description && <div className="whitespace-pre-wrap">{msg.diagram.description}</div>}
-                          {msg.diagram.elements?.length > 0 && (
-                            <ul className="list-disc list-inside space-y-0.5 text-white/60">
-                              {msg.diagram.elements.map((el: any, i: number) => (
-                                <li key={i}><span className="text-white/80">{el.name}：</span>{el.description}</li>
-                              ))}
-                            </ul>
-                          )}
-                          {msg.diagram.relationships?.length > 0 && (
-                            <div className="text-white/60 mt-1">
-                              {msg.diagram.relationships.join(' → ')}
-                            </div>
-                          )}
-                        </>
-                      )}
+                      <div className="whitespace-pre-wrap">{msg.diagram}</div>
                     </div>
                   )}
                   {msg.example && (
@@ -77,7 +68,23 @@ export default function TutorModule({
             </div>
           </div>
         ))}
-        {tutorLoading && (
+        {/* 流式输出中 */}
+        {tutorLoading && streamingContent && (
+          <div className="mb-4 flex justify-start">
+            <div className="max-w-[85%] px-4 py-3 rounded-2xl bg-white/[0.06] text-white/80 border border-white/[0.06] rounded-bl-md">
+              <div className="flex items-start gap-2">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Lightbulb className="w-3 h-3 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap">{streamingContent}<span className="animate-pulse text-cyan-400">▌</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* 等待 AI 响应 */}
+        {tutorLoading && !streamingContent && (
           <div className="flex items-center gap-2 text-white/40">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>AI思考中...</span>

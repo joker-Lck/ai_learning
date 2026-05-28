@@ -58,6 +58,8 @@ export function useDashboard() {
   const [tutorSubject, setTutorSubject] = useState('机器学习');
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<TutorMessage[]>([]);
+  const [streamingContent, setStreamingContent] = useState('');
+  const streamingContentRef = useRef('');
 
   // ── 学习评估状态 ──
   const [assessLoading, setAssessLoading] = useState(false);
@@ -174,32 +176,47 @@ export function useDashboard() {
     }
   };
 
-  // ── 智能辅导处理 ──
-  const handleAskTutor = async () => {
+  // ── 智能辅导处理（SSE 真流式）──
+  const handleAskTutor = () => {
     if (!question.trim()) return;
-    const userMessage: TutorMessage = { role: 'user', content: question.trim(), timestamp: new Date() };
+    const q = question.trim();
+    const userMessage: TutorMessage = { role: 'user', content: q, timestamp: new Date() };
     setTutorMessages(prev => [...prev, userMessage]);
     setQuestion('');
     setTutorLoading(true);
-    try {
-      const response: any = await api.tutor({ question: question.trim(), subject: tutorSubject, preferred_format: 'all' });
-      const answerObj = response?.data?.answer || response?.data || {};
-      const textAnswer = answerObj.text_answer || {};
-      const textContent = typeof textAnswer === 'string'
-        ? textAnswer
-        : textAnswer.summary || textAnswer.detailed_explanation || response?.message || '暂无回答';
-      const assistantMessage: TutorMessage = {
-        role: 'assistant', content: textContent,
-        diagram: answerObj.diagram || undefined,
-        example: answerObj.code_example || undefined,
-        timestamp: new Date(),
-      };
-      setTutorMessages(prev => [...prev, assistantMessage]);
-    } catch (error: any) {
-      setTutorMessages(prev => [...prev, { role: 'assistant', content: `️ 回答失败: ${error.message}`, timestamp: new Date() }]);
-    } finally {
-      setTutorLoading(false);
-    }
+    setStreamingContent('');
+    streamingContentRef.current = '';
+
+    api.askQuestionStream(
+      q,
+      tutorSubject,
+      // onChunk — 逐字追加
+      (chunk) => {
+        streamingContentRef.current += chunk;
+        setStreamingContent(prev => prev + chunk);
+      },
+      // onDone — 流结束，把累积文本存入消息
+      (extra) => {
+        const finalText = streamingContentRef.current || '暂无回答';
+        setStreamingContent('');
+        streamingContentRef.current = '';
+        setTutorMessages(prev => [...prev, {
+          role: 'assistant',
+          content: finalText,
+          diagram: extra.diagram,
+          example: extra.example,
+          timestamp: new Date(),
+        }]);
+        setTutorLoading(false);
+      },
+      // onError
+      (errMsg) => {
+        setStreamingContent('');
+        streamingContentRef.current = '';
+        setTutorMessages(prev => [...prev, { role: 'assistant', content: `❌ ${errMsg}`, timestamp: new Date() }]);
+        setTutorLoading(false);
+      },
+    );
   };
 
   // ── 学习评估处理 ──
@@ -271,7 +288,7 @@ export function useDashboard() {
     // 路径
     learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath,
     // 辅导
-    question, setQuestion, tutorSubject, setTutorSubject, tutorLoading, tutorMessages, handleAskTutor,
+    question, setQuestion, tutorSubject, setTutorSubject, tutorLoading, tutorMessages, handleAskTutor, streamingContent,
     // 评估
     assessLoading, assessment, assessTab, setAssessTab, handleAssess,
     // 分析

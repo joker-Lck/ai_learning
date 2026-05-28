@@ -240,73 +240,81 @@ class ApiClient {
   // ==================== 流式 API ====================
 
   /**
-   * 流式智能答疑 - 调用 tutor 接口并模拟逐字输出
+   * 流式智能答疑 — SSE 真流式，逐字推送
    */
   async askQuestionStream(
     question: string,
     scenario: string,
     onChunk: (chunk: string) => void,
-    onDone: (data: any) => void,
+    onDone: (data: { diagram?: any; example?: any }) => void,
     onError: (error: string) => void,
   ) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120秒超时
+    const token = this.getToken();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000);
 
-      const result = await this.request<any>('/agent/tutor', {
+    try {
+      const response = await fetch(`${API_BASE}/stream/tutor`, {
         method: 'POST',
-        body: {
-          question,
-          subject: scenario,
-          preferred_format: 'text',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({ question, subject: scenario }),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
-      // 后端 BaseResponse 格式: { success, message, data: { answer: { text_answer, formats, ... } } }
-      if (result.success && result.data) {
-        const answerObj = result.data.answer || result.data;
-        const textAnswer = answerObj.text_answer || {};
-        const parts: string[] = [];
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `请求失败 (${response.status})`);
+      }
 
-        if (textAnswer.summary) parts.push(textAnswer.summary);
-        if (textAnswer.detailed_explanation) parts.push(textAnswer.detailed_explanation);
-        if (textAnswer.key_points?.length) {
-          parts.push('\n**重点知识：**\n' + textAnswer.key_points.map((p: string) => `- ${p}`).join('\n'));
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let resultData: { diagram?: any; example?: any } = {};
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            switch (data.type) {
+              case 'text_delta':
+                onChunk(data.content);
+                break;
+              case 'diagram':
+                resultData.diagram = data.data;
+                break;
+              case 'example':
+                resultData.example = data.data;
+                break;
+              case 'complete':
+                onDone(resultData);
+                break;
+              case 'error':
+                onError(data.message || '生成失败');
+                return;
+            }
+          } catch { /* skip malformed lines */ }
         }
-        if (textAnswer.examples?.length) {
-          parts.push('\n**示例：**\n' + textAnswer.examples.map((e: string) => `- ${e}`).join('\n'));
-        }
-        if (textAnswer.common_mistakes?.length) {
-          parts.push('\n**常见错误：**\n' + textAnswer.common_mistakes.map((m: string) => `- ${m}`).join('\n'));
-        }
+      }
 
-        // 如果 text_answer 是字符串而非对象
-        if (typeof textAnswer === 'string' && textAnswer) parts.push(textAnswer);
-        // 兜底：直接用 answer 字符串
-        if (parts.length === 0 && typeof answerObj.answer === 'string') parts.push(answerObj.answer);
-        if (parts.length === 0 && typeof answerObj === 'string') parts.push(answerObj);
-
-        const fullText = parts.filter(Boolean).join('\n\n') || result.message || '暂无回答';
-
-        // 模拟流式逐字输出
-        let idx = 0;
-        const chunkSize = 3;
-        const timer = setInterval(() => {
-          const end = Math.min(idx + chunkSize, fullText.length);
-          onChunk(fullText.slice(idx, end));
-          idx = end;
-          if (idx >= fullText.length) {
-            clearInterval(timer);
-            onDone(result.data);
-          }
-        }, 15);
-      } else {
-        onError(result.message || '请求失败，请检查后端日志');
+      // 如果流正常结束但没收到 complete 事件
+      if (Object.keys(resultData).length > 0 || buffer === '') {
+        onDone(resultData);
       }
     } catch (err: any) {
+      clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
         onError('请求超时，请稍后重试');
       } else {

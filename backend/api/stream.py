@@ -5,13 +5,16 @@
 import uuid
 import json
 import time
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any, List
-from backend.dependencies import require_auth
+from backend.dependencies import require_auth, get_current_user
 from services.streaming_service import sse_generator, progress_tracker
 from services.resource_agent import resource_agent
 from services.content_safety_service import content_safety_service, anti_hallucination_service
+from services.tutor_agent import tutor_agent
+from services.qa_service import qa_service
 from core.logger import info, error
 
 router = APIRouter(prefix="/stream", tags=["流式输出"])
@@ -380,3 +383,82 @@ async def cross_validate_api(
     except Exception as e:
         error(f"交叉验证失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/tutor")
+async def stream_tutor_query(
+    input_data: Dict[str, Any],
+    user: dict = Depends(get_current_user),
+):
+    """
+    流式智能辅导 — SSE 逐字推送解答
+
+    请求体: { "question": "...", "subject": "..." }
+    SSE 事件:
+      data: {"type": "text_delta", "content": "增量文本"}
+      data: {"type": "diagram", "data": {...}}
+      data: {"type": "example", "data": {...}}
+      data: {"type": "complete"}
+      data: {"type": "error", "message": "..."}
+    """
+    question = input_data.get("question", "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="问题不能为空")
+
+    subject = input_data.get("subject", "通用")
+    user_id = user.get("id", 0)
+    cognitive_style = user.get("learning_style", "visual")
+
+    def _sse(data: dict) -> str:
+        return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    async def event_generator():
+        info(f"用户 {user_id} 流式辅导: {question[:50]}")
+
+        # 1. 流式生成文字解答
+        prompt = f"""请回答以下学习问题，给出清晰、分步骤的解答。
+
+问题: {question}
+学科: {subject}
+认知风格: {cognitive_style}
+
+要求:
+1. 准确清晰，分步骤解释
+2. 标注关键概念
+3. 约200-400字
+直接输出解答内容，不要输出JSON格式。"""
+
+        try:
+            for chunk in qa_service.call_ai_stream(prompt, max_tokens=1500):
+                yield _sse({"type": "text_delta", "content": chunk})
+        except Exception as e:
+            yield _sse({"type": "error", "message": f"文字解答生成失败: {e}"})
+            return
+
+        # 2. 生成图解（并行发请求，不阻塞文字流）
+        try:
+            diagram = tutor_agent._generate_diagram_explanation(question, subject, cognitive_style)
+            if diagram:
+                yield _sse({"type": "diagram", "data": diagram})
+        except Exception as e:
+            error(f"图解生成失败: {e}")
+
+        # 3. 生成示例
+        try:
+            example = tutor_agent._generate_example(question, subject, [])
+            if example:
+                yield _sse({"type": "example", "data": example})
+        except Exception as e:
+            error(f"示例生成失败: {e}")
+
+        yield _sse({"type": "complete"})
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

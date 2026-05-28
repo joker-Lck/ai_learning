@@ -70,6 +70,7 @@ export default function DashboardContent() {
             tutorLoading={d.tutorLoading}
             tutorMessages={d.tutorMessages}
             handleAskTutor={d.handleAskTutor}
+            streamingContent={d.streamingContent}
           />
         );
       case 'assessment':

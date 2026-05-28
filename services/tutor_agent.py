@@ -156,38 +156,37 @@ class TutorAgent:
     
     def _generate_diagram_explanation(self, question: str, subject: str,
                                      cognitive_style: str) -> Dict:
-        """生成图解说明"""
-        
-        prompt = f"""请为以下{subject}问题生成图解说明的文字描述。
+        """生成图解说明 — 返回 Mermaid 语法"""
+
+        prompt = f"""请为以下{subject}问题生成一个 Mermaid.js 图表代码。
 
 问题: {question}
 
 要求:
-1. 描述应该绘制的图表类型(流程图/结构图/示意图等)
-2. 详细说明图中各元素及其关系
-3. 用文字描述图表的视觉效果
-4. 适合{cognitive_style}型学习者理解
+1. 选择最合适的图表类型(flowchart/graph/sequenceDiagram/classDiagram等)
+2. 用中文标注节点和关系
+3. 适合{cognitive_style}型学习者理解
+4. 直接输出合法的 Mermaid 语法，不要用代码块包裹
 
-输出JSON格式:
-{{
-    "diagram_type": "flowchart/structure/concept_map/etc",
-    "description": "图表描述",
-    "elements": [
-        {{
-            "element_id": 1,
-            "name": "元素名称",
-            "description": "元素说明",
-            "position": "位置描述"
-        }}
-    ],
-    "relationships": ["关系1: A指向B表示...", "关系2: C包含D"],
-    "visual_suggestion": "可视化建议(颜色/形状/布局)"
-}}
+示例输出格式:
+graph TD
+    A[变量声明] --> B[赋值]
+    B --> C[使用变量]
+    C --> D{{条件判断}}
+    D -->|是| E[执行分支1]
+    D -->|否| F[执行分支2]
+
+请直接输出 Mermaid 语法:
 """
-        
+
         try:
-            response = qa_service.call_ai(prompt, max_tokens=1200)
-            return safe_parse_json(response)
+            response = qa_service.call_ai(prompt, max_tokens=800)
+            # 清理：去掉可能的代码块包裹
+            mermaid_code = response.strip()
+            if mermaid_code.startswith("```"):
+                lines = mermaid_code.split("\n")
+                mermaid_code = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+            return {"mermaid": mermaid_code.strip()}
         except Exception as e:
             error(f"生成图解说明失败: {str(e)}")
             return None

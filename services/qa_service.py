@@ -3,7 +3,7 @@ QA服务 — 供各智能体调用的 AI 文本生成
 底层委托给 spark_client（Kimi/Moonshot OpenAI 兼容接口）
 """
 
-from typing import Optional
+from typing import Optional, Generator
 from services.spark_client import spark_client, MODEL_STANDARD
 from core.logger import info, error
 
@@ -43,6 +43,19 @@ class QAService:
 
     # 向后兼容别名
     call_kimi_api = call_ai
+
+    def call_ai_stream(
+        self,
+        prompt: str,
+        max_tokens: int = 2000,
+        system_prompt: Optional[str] = None,
+    ) -> Generator[str, None, None]:
+        """流式 AI 调用，逐 chunk 返回"""
+        return spark_client.chat_stream(
+            prompt,
+            max_tokens=max_tokens,
+            system_prompt=system_prompt,
+        )
 
     # ── 新接口：按任务复杂度调用 ──────────────────────────────
     def call_simple(self, prompt: str, max_tokens: int = 1500, system_prompt: str = None) -> str:
