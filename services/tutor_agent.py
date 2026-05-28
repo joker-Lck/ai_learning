@@ -280,3 +280,7 @@ graph TD
 
         except Exception as e:
             error(f"保存辅导记录失败: {str(e)}")
+
+
+# 全局单例
+tutor_agent = TutorAgent()
