@@ -201,7 +201,7 @@ class AssessmentAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             assessment_data = safe_parse_json(response)
             
             # 添加元数据

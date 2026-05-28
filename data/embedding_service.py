@@ -1,3 +1,4 @@
+from core.logger import info, error, warning
 """
 向量化服务模块 - 使用讯飞星火 Embedding API
 支持文本向量化和相似度计算
@@ -49,7 +50,7 @@ class EmbeddingService:
             return response.data[0].embedding
             
         except Exception as e:
-            print(f"❌ 获取向量失败：{str(e)}")
+            error(f"获取向量失败：{str(e)}")
             return None
     
     def cosine_similarity(self, vec1, vec2):
@@ -76,7 +77,7 @@ class EmbeddingService:
             return float(similarity)
             
         except Exception as e:
-            print(f"❌ 计算相似度失败：{str(e)}")
+            error(f"计算相似度失败：{str(e)}")
             return 0.0
 
 

@@ -148,7 +148,7 @@ class TutorAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=1500)
+            response = qa_service.call_ai(prompt, max_tokens=1500)
             return safe_parse_json(response)
         except Exception as e:
             error(f"生成文字解答失败: {str(e)}")
@@ -186,7 +186,7 @@ class TutorAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=1200)
+            response = qa_service.call_ai(prompt, max_tokens=1200)
             return safe_parse_json(response)
         except Exception as e:
             error(f"生成图解说明失败: {str(e)}")
@@ -232,7 +232,7 @@ class TutorAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=1800)
+            response = qa_service.call_ai(prompt, max_tokens=1800)
             return safe_parse_json(response)
         except Exception as e:
             error(f"生成实例讲解失败: {str(e)}")

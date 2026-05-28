@@ -257,7 +257,7 @@ class DocumentAnalysisService:
 """
 
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=3000)
+            response = qa_service.call_ai(prompt, max_tokens=3000)
             analysis = safe_parse_json(response)
 
             if not analysis:

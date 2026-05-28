@@ -8,7 +8,7 @@ from mysql.connector import pooling
 import json
 from .config import get_db_config, get_auth_db_config, get_profile_db_config, get_resources_db_config, get_paths_db_config, get_assessments_db_config, get_agents_db_config
 from datetime import datetime
-from core.logger import db_operation_success, db_operation_failed, debug, error
+from core.logger import db_operation_success, db_operation_failed, debug, error, warning
 
 class Database:
     def __init__(self, config_func=None):
@@ -95,7 +95,7 @@ class Database:
             self.cursor.execute(sql, (username,))
             return self.cursor.fetchone()
         except Exception as e:
-            print(f"❌ 获取用户失败：{str(e)}")
+            error(f"获取用户失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -110,7 +110,7 @@ class Database:
             self.conn.commit()
             return self.cursor.lastrowid
         except Exception as e:
-            print(f"❌ 添加班级失败：{str(e)}")
+            error(f"添加班级失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -123,7 +123,7 @@ class Database:
             self.cursor.execute(sql, (class_name,))
             return self.cursor.fetchone()
         except Exception as e:
-            print(f"❌ 获取班级失败：{str(e)}")
+            error(f"获取班级失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -138,7 +138,7 @@ class Database:
             self.conn.commit()
             return self.cursor.lastrowid
         except Exception as e:
-            print(f"❌ 添加学生失败：{str(e)}")
+            error(f"添加学生失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -151,7 +151,7 @@ class Database:
             self.cursor.execute(sql, (class_id,))
             return self.cursor.fetchall()
         except Exception as e:
-            print(f"❌ 获取学生失败：{str(e)}")
+            error(f"获取学生失败：{str(e)}")
             return []
         finally:
             self.close()

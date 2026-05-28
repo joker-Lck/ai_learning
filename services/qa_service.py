@@ -9,19 +9,19 @@ from core.logger import info, error
 
 
 class QAService:
-    """QA 服务，向后兼容各 Agent 的 call_kimi_api 调用"""
+    """QA 服务，供各 Agent 调用"""
 
     def __init__(self):
         info("QA服务初始化完成（讯飞星火）")
 
-    def call_kimi_api(
+    def call_ai(
         self,
         prompt: str,
         max_tokens: int = 2000,
         system_prompt: Optional[str] = None,
     ) -> str:
         """
-        兼容旧接口名，内部转发到 spark_client.standard()
+        标准 AI 调用（Spark Pro）
 
         Args:
             prompt: 用户提示词
@@ -40,6 +40,9 @@ class QAService:
         except Exception as e:
             error(f"QA 服务调用失败: {e}")
             return f"错误: {e}"
+
+    # 向后兼容别名
+    call_kimi_api = call_ai
 
     # ── 新接口：按任务复杂度调用 ──────────────────────────────
     def call_simple(self, prompt: str, max_tokens: int = 1500, system_prompt: str = None) -> str:

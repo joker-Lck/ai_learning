@@ -1,3 +1,4 @@
+from core.logger import info, error, warning
 """AI 教学图片生成器 — 基于讯飞星火生成 SVG 教学示意图"""
 
 import os
@@ -96,7 +97,7 @@ class ImageService:
             return None
 
         except Exception as e:
-            print(f"SVG 生成失败：{str(e)}")
+            info(f"SVG 生成失败：{str(e)}")
             return None
     
     def _svg_to_png(self, svg_code):
@@ -164,11 +165,11 @@ class ImageService:
                 img.save(img_data, format='PNG')
                 return img_data.getvalue()
             except Exception as e:
-                print(f"降级方案失败：{str(e)}")
+                info(f"降级方案失败：{str(e)}")
                 return None
             
         except Exception as e:
-            print(f"SVG 转 PNG 失败：{str(e)}")
+            info(f"SVG 转 PNG 失败：{str(e)}")
             return None
     
     def generate_batch_images(self, slides, topic, subject, progress_callback=None):

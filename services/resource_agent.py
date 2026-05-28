@@ -185,7 +185,7 @@ class ResourceAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             doc_data = safe_parse_json(response)
             
             # 添加引用标注
@@ -257,7 +257,7 @@ class ResourceAgent:
 """
 
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             mindmap_data = safe_parse_json(response)
             
             return {
@@ -312,7 +312,7 @@ class ResourceAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=2500)
+            response = qa_service.call_ai(prompt, max_tokens=2500)
             quiz_data = safe_parse_json(response)
             
             return {
@@ -366,7 +366,7 @@ class ResourceAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             video_data = safe_parse_json(response)
             
             return {
@@ -417,7 +417,7 @@ class ResourceAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             animation_data = safe_parse_json(response)
             
             return {
@@ -466,7 +466,7 @@ class ResourceAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=2500)
+            response = qa_service.call_ai(prompt, max_tokens=2500)
             code_data = safe_parse_json(response)
             
             return {
@@ -514,7 +514,7 @@ class ResourceAgent:
 """
         
         try:
-            response = qa_service.call_kimi_api(prompt, max_tokens=1800)
+            response = qa_service.call_ai(prompt, max_tokens=1800)
             reading_data = safe_parse_json(response)
             
             # 添加引用

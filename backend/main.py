@@ -130,7 +130,7 @@ async def system_info():
     config = CacheManager.load_env_config()
     return {
         "name": "基于多智能体的个性化学习资源生成系统",
-        "version": "7.1.0",
+        "version": "7.2.0",
         "api_base": config.get("base_url", ""),
         "features": [
             "对话式学生画像构建 (8维度)",

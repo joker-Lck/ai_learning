@@ -1,3 +1,4 @@
+from core.logger import info, error, warning
 """
 文档解析与 JSON 格式转换模块
 支持多种文件格式转换为统一的 JSON 格式
@@ -79,7 +80,7 @@ class DocumentParser:
             return document_data
             
         except Exception as e:
-            print(f"❌ 解析文件失败：{str(e)}")
+            error(f"解析文件失败：{str(e)}")
             return None
     
     @staticmethod
@@ -238,7 +239,7 @@ class DocumentParser:
         try:
             return json.dumps(document_data, ensure_ascii=False, indent=indent)
         except Exception as e:
-            print(f"❌ JSON 转换失败：{str(e)}")
+            error(f"JSON 转换失败：{str(e)}")
             return "{}"
     
     @staticmethod
@@ -263,7 +264,7 @@ class DocumentParser:
             return filepath
             
         except Exception as e:
-            print(f"❌ 保存 JSON 文件失败：{str(e)}")
+            error(f"保存 JSON 文件失败：{str(e)}")
             return None
     
     @staticmethod
@@ -274,7 +275,7 @@ class DocumentParser:
                 data = json.load(f)
             return data
         except Exception as e:
-            print(f"❌ 加载 JSON 文件失败：{str(e)}")
+            error(f"加载 JSON 文件失败：{str(e)}")
             return None
 
 

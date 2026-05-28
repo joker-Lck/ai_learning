@@ -1,3 +1,4 @@
+from core.logger import info, error, warning
 """AI 答疑专用数据库操作模块（JSON 格式存储）"""
 
 import mysql.connector
@@ -56,7 +57,7 @@ class QADatabase:
                 **config
             )
         except Exception as e:
-            print(f"❌ 连接池初始化失败：{str(e)}")
+            error(f"连接池初始化失败：{str(e)}")
     
     def _get_connection(self):
         """从连接池获取连接"""
@@ -73,7 +74,7 @@ class QADatabase:
             self.cursor = self.conn.cursor(dictionary=True)
             return True
         except Exception as e:
-            print(f"❌ 答疑数据库连接失败：{str(e)}")
+            error(f"答疑数据库连接失败：{str(e)}")
             return False
     
     def close(self):
@@ -86,7 +87,7 @@ class QADatabase:
                 self.conn.close()
                 self.conn = None
         except Exception as e:
-            print(f"⚠️ 关闭连接失败：{str(e)}")
+            warning(f"关闭连接失败：{str(e)}")
     
     # ========== 用户相关操作 ==========
     def add_user(self, username, email, role='student'):
@@ -101,7 +102,7 @@ class QADatabase:
             # 用户已存在，获取用户信息
             return self.get_user_by_username(username)['id']
         except Exception as e:
-            print(f"❌ 添加用户失败：{str(e)}")
+            error(f"添加用户失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -114,7 +115,7 @@ class QADatabase:
             self.cursor.execute(sql, (username,))
             return self.cursor.fetchone()
         except Exception as e:
-            print(f"❌ 获取用户失败：{str(e)}")
+            error(f"获取用户失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -165,7 +166,7 @@ class QADatabase:
             
             return record_id
         except Exception as e:
-            print(f"❌ 添加问答记录失败：{str(e)}")
+            error(f"添加问答记录失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -201,7 +202,7 @@ class QADatabase:
             
             return results
         except Exception as e:
-            print(f"❌ 获取问答记录失败：{str(e)}")
+            error(f"获取问答记录失败：{str(e)}")
             return []
         finally:
             self.close()
@@ -214,7 +215,7 @@ class QADatabase:
             self.cursor.execute(sql, (record_id,))
             return self.cursor.fetchone()
         except Exception as e:
-            print(f"❌ 获取问答记录失败：{str(e)}")
+            error(f"获取问答记录失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -285,7 +286,7 @@ class QADatabase:
             return final_results
                 
         except Exception as e:
-            print(f"❌ 搜索相似问题失败：{str(e)}")
+            error(f"搜索相似问题失败：{str(e)}")
             return []
         finally:
             self.close()
@@ -299,7 +300,7 @@ class QADatabase:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"❌ 更新反馈失败：{str(e)}")
+            error(f"更新反馈失败：{str(e)}")
             return False
         finally:
             self.close()
@@ -314,7 +315,7 @@ class QADatabase:
             self.conn.commit()
             return self.cursor.lastrowid
         except Exception as e:
-            print(f"❌ 创建会话失败：{str(e)}")
+            error(f"创建会话失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -335,7 +336,7 @@ class QADatabase:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"❌ 添加消息到会话失败：{str(e)}")
+            error(f"添加消息到会话失败：{str(e)}")
             return False
         finally:
             self.close()
@@ -351,7 +352,7 @@ class QADatabase:
             self.cursor.execute(sql, (session_id,))
             return self.cursor.fetchall()
         except Exception as e:
-            print(f"❌ 获取会话消息失败：{str(e)}")
+            error(f"获取会话消息失败：{str(e)}")
             return []
         finally:
             self.close()
@@ -366,7 +367,7 @@ class QADatabase:
             self.cursor.execute(sql, (user_id, limit))
             return self.cursor.fetchall()
         except Exception as e:
-            print(f"❌ 获取会话列表失败：{str(e)}")
+            error(f"获取会话列表失败：{str(e)}")
             return []
         finally:
             self.close()
@@ -432,7 +433,7 @@ class QADatabase:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"❌ 更新统计信息失败：{str(e)}")
+            error(f"更新统计信息失败：{str(e)}")
             return False
         finally:
             self.close()
@@ -445,7 +446,7 @@ class QADatabase:
             self.cursor.execute(sql, (user_id,))
             return self.cursor.fetchone()
         except Exception as e:
-            print(f"❌ 获取统计信息失败：{str(e)}")
+            error(f"获取统计信息失败：{str(e)}")
             return None
         finally:
             self.close()

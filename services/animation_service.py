@@ -1,3 +1,4 @@
+from core.logger import info, error, warning
 """动画生成服务模块 — 使用讯飞星火生成 SVG + CSS 教学动画"""
 
 import json
@@ -63,20 +64,20 @@ class AnimationService:
             from core.json_utils import safe_parse_json
             animation_data = safe_parse_json(content)
             if not animation_data:
-                print(f"⚠️ 动画 JSON 解析失败，返回空列表")
+                warning(f"动画 JSON 解析失败，返回空列表")
                 return []
             
             animations = animation_data.get("animations", [])
             
             if animations:
-                print(f"✅ 成功生成 {len(animations)} 个教学动画")
+                info(f"成功生成 {len(animations)} 个教学动画")
             else:
-                print("ℹ️ 课件内容不需要动画辅助")
+                info("课件内容不需要动画辅助")
             
             return animations
             
         except Exception as e:
-            print(f"❌ 生成动画失败：{str(e)}")
+            error(f"生成动画失败：{str(e)}")
             return []
     
     def generate_html_animation(self, svg_code, title="教学动画", auto_play=False):
@@ -219,8 +220,8 @@ class AnimationService:
             with open(html_output, 'w', encoding='utf-8') as f:
                 f.write(html_content)
             
-            print(f"✅ HTML 动画文件生成成功：{html_output}")
+            info(f"HTML 动画文件生成成功：{html_output}")
             return html_output
         except Exception as e:
-            print(f"❌ 动画文件生成失败：{str(e)}")
+            error(f"动画文件生成失败：{str(e)}")
             return None

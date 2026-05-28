@@ -1,3 +1,4 @@
+from core.logger import info, error, warning
 """RAG 知识库管理模块（JSON 格式存储）"""
 
 import mysql.connector
@@ -241,7 +242,7 @@ class RAGKnowledgeBase:
                 **config
             )
         except Exception as e:
-            print(f"❌ RAG 连接池初始化失败：{str(e)}")
+            error(f"RAG 连接池初始化失败：{str(e)}")
     
     def _get_connection(self):
         """从连接池获取连接"""
@@ -282,7 +283,7 @@ class RAGKnowledgeBase:
                 self.conn.close()
                 self.conn = None
         except Exception as e:
-            print(f"⚠️ 关闭连接失败：{str(e)}")
+            warning(f"关闭连接失败：{str(e)}")
     
     # ========== 知识文档相关操作 ==========
     
@@ -365,7 +366,7 @@ class RAGKnowledgeBase:
 
             return doc_id
         except Exception as e:
-            print(f"❌ 添加文档失败：{str(e)}")
+            error(f"添加文档失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -387,7 +388,7 @@ class RAGKnowledgeBase:
             
             self.conn.commit()
         except Exception as e:
-            print(f"❌ 添加知识点失败：{str(e)}")
+            error(f"添加知识点失败：{str(e)}")
     
     def _split_paragraphs(self, text, max_length=500):
         """将文本分割为段落"""
@@ -441,7 +442,7 @@ class RAGKnowledgeBase:
             
             return results
         except Exception as e:
-            print(f"❌ 获取学科文档失败：{str(e)}")
+            error(f"获取学科文档失败：{str(e)}")
             return []
         finally:
             self.close()
@@ -479,7 +480,7 @@ class RAGKnowledgeBase:
             
             return results
         except Exception as e:
-            print(f"❌ 获取所有文档失败：{str(e)}")
+            error(f"获取所有文档失败：{str(e)}")
             return []
         finally:
             self.close()
@@ -567,7 +568,7 @@ class RAGKnowledgeBase:
             return final_results
             
         except Exception as e:
-            print(f"❌ 搜索文档失败：{str(e)}")
+            error(f"搜索文档失败：{str(e)}")
             return self._simple_search(keywords, subject, limit)
         finally:
             self.close()
@@ -594,7 +595,7 @@ class RAGKnowledgeBase:
                 if vector_index.is_ready:
                     return self._faiss_search(query_embedding, limit)
             except Exception as e:
-                print(f"⚠️ FAISS 索引构建失败，回退暴力搜索: {e}")
+                warning(f"FAISS 索引构建失败，回退暴力搜索: {e}")
 
         # ── 路径 2：原有暴力搜索（兜底）──
         return self._brute_force_vector_search(query_embedding, limit)
@@ -635,7 +636,7 @@ class RAGKnowledgeBase:
                 })
             return results
         except Exception as e:
-            print(f"❌ FAISS 检索异常: {e}")
+            error(f"FAISS 检索异常: {e}")
             return self._brute_force_vector_search(query_embedding, limit)
         finally:
             self.close()
@@ -662,7 +663,7 @@ class RAGKnowledgeBase:
         if embeddings:
             vector_index.rebuild(doc_ids, embeddings)
             vector_index.save()
-            print(f"✅ FAISS 索引构建完成: {len(embeddings)} 条向量")
+            info(f"FAISS 索引构建完成: {len(embeddings)} 条向量")
         self.close()
 
     def _brute_force_vector_search(self, query_embedding, limit=5):
@@ -701,7 +702,7 @@ class RAGKnowledgeBase:
             return results[:limit]
 
         except Exception as e:
-            print(f"❌ 暴力向量检索失败: {str(e)}")
+            error(f"暴力向量检索失败: {str(e)}")
             return []
         finally:
             self.close()
@@ -748,7 +749,7 @@ class RAGKnowledgeBase:
             return results
             
         except Exception as e:
-            print(f"❌ 简单搜索失败：{str(e)}")
+            error(f"简单搜索失败：{str(e)}")
             return []
     
     def get_document_by_id(self, doc_id):
@@ -770,7 +771,7 @@ class RAGKnowledgeBase:
             
             return record
         except Exception as e:
-            print(f"❌ 获取文档详情失败：{str(e)}")
+            error(f"获取文档详情失败：{str(e)}")
             return None
         finally:
             self.close()
@@ -784,7 +785,7 @@ class RAGKnowledgeBase:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"❌ 更新使用次数失败：{str(e)}")
+            error(f"更新使用次数失败：{str(e)}")
             return False
         finally:
             self.close()
@@ -813,7 +814,7 @@ class RAGKnowledgeBase:
             _clear_search_cache()
             return True
         except Exception as e:
-            print(f"❌ 删除文档失败：{str(e)}")
+            error(f"删除文档失败：{str(e)}")
             return False
         finally:
             self.close()
@@ -828,7 +829,7 @@ class RAGKnowledgeBase:
             self.cursor.execute(sql, (doc_id,))
             return self.cursor.fetchall()
         except Exception as e:
-            print(f"❌ 获取知识点失败：{str(e)}")
+            error(f"获取知识点失败：{str(e)}")
             return []
         finally:
             self.close()
@@ -846,7 +847,7 @@ class RAGKnowledgeBase:
             self.cursor.execute(sql, (f"%{point_name}%", limit))
             return self.cursor.fetchall()
         except Exception as e:
-            print(f"❌ 按知识点搜索失败：{str(e)}")
+            error(f"按知识点搜索失败：{str(e)}")
             return []
         finally:
             self.close()
@@ -887,7 +888,7 @@ class RAGKnowledgeBase:
                 'average_usage': round(avg_usage, 2)
             }
         except Exception as e:
-            print(f"❌ 获取统计信息失败：{str(e)}")
+            error(f"获取统计信息失败：{str(e)}")
             return {}
         finally:
             self.close()
