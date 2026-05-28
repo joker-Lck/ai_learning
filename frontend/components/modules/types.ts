@@ -47,8 +47,8 @@ export interface LearningPath {
 export interface TutorMessage {
   role: 'user' | 'assistant';
   content: string;
-  diagram?: string;
-  example?: string;
+  diagram?: string | Record<string, any>;
+  example?: string | Record<string, any>;
   timestamp: Date;
 }
 

@@ -131,7 +131,7 @@ class ApiClient {
 
     (async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/stream/generate-resources-real?${qs}`, {
+        const response = await fetch(`${API_BASE}/stream/generate-resources-real?${qs}`, {
           method: 'GET',
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           signal: controller.signal,

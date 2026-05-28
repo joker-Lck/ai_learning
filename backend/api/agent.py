@@ -3,6 +3,7 @@
 包括学生画像、资源生成、路径规划、智能辅导、效果评估
 """
 from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 from typing import Dict, List, Optional, Any
 from backend.schemas.models import BaseResponse
 from backend.dependencies import require_auth, get_current_user
@@ -154,14 +155,14 @@ async def plan_learning_path(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/tutor", response_model=BaseResponse)
+@router.post("/tutor")
 async def tutor_query(
     input_data: Dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user)  # 允许guest用户
 ):
     """
     智能辅导答疑 - 多模态解答
-    
+
     输入格式:
     {
         "question": "问题内容",
@@ -170,45 +171,44 @@ async def tutor_query(
     }
     """
     try:
-        # 立即记录请求到达
-        info("=" * 60)
-        info("🎯 收到智能辅导请求")
-        info(f"用户信息: {user}")
-        info(f"请求数据: {input_data}")
-        info("=" * 60)
-        
         user_id = user["id"]
-        info(f"用户 {user_id} 请求智能辅导")
-        info(f"请求数据: {input_data}")
-        
+        info(f"用户 {user_id} 请求智能辅导, 问题: {input_data.get('question', '')[:50]}")
+
         # 验证必填字段
         if not input_data.get("question"):
-            return BaseResponse(
-                success=False,
-                message="问题内容不能为空",
-                data=None
-            )
-        
+            return JSONResponse(content={"success": False, "message": "问题内容不能为空", "data": None})
+
         result = agent_coordinator.execute_task(
             task_type="tutor_query",
             user_id=user_id,
             input_data=input_data
         )
-        
-        info(f"辅导结果 - success: {result.get('success')}, message: {result.get('message')}")
-        info(f"返回数据大小: {len(str(result.get('data', '')))} 字符")
-        
-        return BaseResponse(
-            success=result["success"],
-            message=result["message"],
-            data=result.get("data")
-        )
-        
+
+        info(f"辅导结果 - success: {result.get('success')}, 数据大小: {len(str(result.get('data', '')))} 字符")
+
+        import json
+        resp_content = {
+            "success": result.get("success", False),
+            "message": result.get("message", ""),
+            "data": result.get("data"),
+        }
+        # 确保可序列化
+        try:
+            json.dumps(resp_content, ensure_ascii=False)
+        except (TypeError, ValueError) as ser_err:
+            error(f"JSON 序列化失败，降级处理: {ser_err}")
+            resp_content["data"] = str(result.get("data", ""))
+
+        return JSONResponse(content=resp_content)
+
     except Exception as e:
         error(f"智能辅导失败: {str(e)}")
         import traceback
         error(f"异常堆栈: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"辅导失败: {str(e)}", "data": None}
+        )
 
 
 @router.post("/assess", response_model=BaseResponse)

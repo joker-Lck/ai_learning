@@ -39,10 +39,38 @@ export default function TutorModule({
                   <div className="text-xs opacity-70 mb-1">{msg.timestamp.toLocaleTimeString()}</div>
                   <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
                   {msg.diagram && (
-                    <div className="mt-2 p-2 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]"> {msg.diagram}</div>
+                    <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06] space-y-1">
+                      <div className="text-cyan-400 font-medium mb-1">📊 图解说明</div>
+                      {typeof msg.diagram === 'string' ? (
+                        <div className="whitespace-pre-wrap">{msg.diagram}</div>
+                      ) : (
+                        <>
+                          {msg.diagram.description && <div className="whitespace-pre-wrap">{msg.diagram.description}</div>}
+                          {msg.diagram.elements?.length > 0 && (
+                            <ul className="list-disc list-inside space-y-0.5 text-white/60">
+                              {msg.diagram.elements.map((el: any, i: number) => (
+                                <li key={i}><span className="text-white/80">{el.name}：</span>{el.description}</li>
+                              ))}
+                            </ul>
+                          )}
+                          {msg.diagram.relationships?.length > 0 && (
+                            <div className="text-white/60 mt-1">
+                              {msg.diagram.relationships.join(' → ')}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
                   {msg.example && (
-                    <div className="mt-2 p-2 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]"> 示例: {msg.example}</div>
+                    <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
+                      <div className="text-amber-400 font-medium mb-1">💡 示例</div>
+                      {typeof msg.example === 'string' ? (
+                        <pre className="whitespace-pre-wrap text-white/70">{msg.example}</pre>
+                      ) : (
+                        <pre className="whitespace-pre-wrap text-white/70">{JSON.stringify(msg.example, null, 2)}</pre>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
