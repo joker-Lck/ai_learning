@@ -8,6 +8,7 @@ import {
 import { useDashboard } from './modules/useDashboard';
 import { STATS } from './modules/constants';
 import type { ModuleType } from './modules/types';
+import { DashboardBackground } from './shared/BackgroundEffects';
 import ProfileModule from './modules/ProfileModule';
 import ResourcesModule from './modules/ResourcesModule';
 import PathModule from './modules/PathModule';
@@ -110,7 +111,8 @@ export default function DashboardContent() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto relative">
+      <DashboardBackground />
       {/* 欢迎区域 - 仅在未选择模块时显示 */}
       {!d.activeModule && (
         <motion.div

@@ -3,6 +3,7 @@
 import { Send, Lightbulb, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { TutorMessage } from './types';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 
 const MermaidDiagram = dynamic(() => import('./MermaidDiagram'), { ssr: false });
 
@@ -39,9 +40,10 @@ export default function TutorModule({
                     <Lightbulb className="w-3 h-3 text-white" />
                   </div>
                 )}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="text-xs opacity-70 mb-1">{msg.timestamp.toLocaleTimeString()}</div>
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                  {/* Markdown 渲染 */}
+                  <MarkdownRenderer content={msg.content} className={msg.role === 'user' ? '[&_*]:!text-white/90' : ''} />
                   {/* Mermaid 图表 */}
                   {msg.diagram && typeof msg.diagram === 'object' && 'mermaid' in msg.diagram && (
                     <MermaidDiagram chart={(msg.diagram as any).mermaid} />
@@ -50,16 +52,16 @@ export default function TutorModule({
                   {msg.diagram && typeof msg.diagram === 'string' && (
                     <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
                       <div className="text-cyan-400 font-medium mb-1">📊 图解说明</div>
-                      <div className="whitespace-pre-wrap">{msg.diagram}</div>
+                      <MarkdownRenderer content={msg.diagram} />
                     </div>
                   )}
                   {msg.example && (
                     <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
                       <div className="text-amber-400 font-medium mb-1">💡 示例</div>
                       {typeof msg.example === 'string' ? (
-                        <pre className="whitespace-pre-wrap text-white/70">{msg.example}</pre>
+                        <MarkdownRenderer content={msg.example} />
                       ) : (
-                        <pre className="whitespace-pre-wrap text-white/70">{JSON.stringify(msg.example, null, 2)}</pre>
+                        <MarkdownRenderer content={'```json\n' + JSON.stringify(msg.example, null, 2) + '\n```'} />
                       )}
                     </div>
                   )}
@@ -76,8 +78,9 @@ export default function TutorModule({
                 <div className="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <Lightbulb className="w-3 h-3 text-white" />
                 </div>
-                <div className="flex-1">
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap">{streamingContent}<span className="animate-pulse text-cyan-400">▌</span></div>
+                <div className="flex-1 min-w-0">
+                  <MarkdownRenderer content={streamingContent} />
+                  <span className="animate-pulse text-cyan-400">▌</span>
                 </div>
               </div>
             </div>

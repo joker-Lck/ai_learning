@@ -8,8 +8,9 @@ import api from '@/lib/api';
 import {
   GraduationCap, Eye, EyeOff, User, Lock, Mail,
   ArrowRight, Sparkles, BookOpen, Brain, BarChart3,
-  Zap, Cpu, Atom, Orbit
+  Zap, Cpu, Atom, Orbit,
 } from 'lucide-react';
+import { FullBackground } from '@/components/shared/BackgroundEffects';
 
 /* ═══════════════════════════════════════════
    粒子系统 — 鼠标跟随 + 背景漂浮粒子
@@ -354,7 +355,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const canvasRef = useMouseParticles();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -401,14 +401,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#060d1f]">
-      {/* 粒子画布 */}
-      <canvas ref={canvasRef} className="absolute inset-0 z-0" />
-
-      {/* 浮动光球 */}
-      <FloatingOrbs />
-
-      {/* 鼠标跟随图标 */}
-      <MouseFollower />
+      {/* 3D + 粒子 + 光球背景 */}
+      <FullBackground />
 
       {/* 主内容 */}
       <div className="relative z-10 w-full max-w-6xl mx-4 flex flex-col lg:flex-row items-center gap-10 lg:gap-16 py-8">

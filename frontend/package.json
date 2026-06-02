@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@splinetool/react-spline": "^4.1.0",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.0",
     "katex": "^0.16.0",
