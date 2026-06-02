@@ -387,108 +387,85 @@ class ResourceAgent:
     
     def _generate_video_script(self, subject: str, topic: str,
                               profile: Dict, difficulty: str) -> Dict:
-        """生成教学视频脚本"""
-        
+        """生成教学视频 — 优先调用视频 API 生成真实视频，降级为 SVG 动画"""
+        from services.video_generation_service import video_generation_service
+
         cognitive_style = profile.get("cognitive_style", "visual")
-        
-        prompt = f"""请为{subject}课程的"{topic}"主题生成一个教学视频脚本。
+
+        # 先生成脚本文本
+        prompt = f"""请为{subject}课程的"{topic}"主题生成一个简短的教学视频脚本描述（2-3句话），用于视频AI生成的提示词。
 
 学习者认知风格: {cognitive_style}
 难度级别: {difficulty}
-视频时长: 8-12分钟
 
 要求:
-1. 分场景描述,包含画面说明和旁白
-2. 适合{cognitive_style}型学习者
-3. 包含引入、讲解、示例、总结四个部分
-4. 标注关键画面和动画效果
-5. 确保知识点准确
+1. 描述视频的核心内容和视觉风格
+2. 突出关键知识点的可视化展示方式
+3. 100字以内
 
-输出JSON格式:
-{{
-    "title": "视频标题",
-    "duration_minutes": 10,
-    "scenes": [
-        {{
-            "scene_id": 1,
-            "duration_seconds": 30,
-            "visual_description": "画面描述",
-            "narration": "旁白内容",
-            "animation_effects": ["效果1", "效果2"]
-        }}
-    ],
-    "key_visuals": ["关键画面1", "关键画面2"],
-    "target_audience": "{cognitive_style}型学习者"
-}}
+只输出描述文本，不要JSON。
 """
-        
         try:
-            response = qa_service.call_ai(prompt, max_tokens=2000)
-            video_data = safe_parse_json(response)
-            
-            return {
-                "type": "video",
-                "title": video_data.get("title", f"{topic}教学视频"),
-                "subject": subject,
-                "difficulty_level": difficulty,
-                "content_data": video_data,
-                "duration_minutes": video_data.get("duration_minutes", 10),
-                "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-        except Exception as e:
-            error(f"生成视频脚本失败: {str(e)}")
-            return None
+            description = qa_service.call_ai(prompt, max_tokens=300)
+        except Exception:
+            description = f"{subject}课程{topic}的教学视频"
+
+        # 调用视频生成服务
+        result = video_generation_service.generate_video(
+            subject=subject, topic=topic,
+            description=description, duration=10
+        )
+
+        content_data = {
+            "title": f"{topic}教学视频",
+            "duration_minutes": 10,
+            "scenes": [],
+            "key_visuals": [],
+            "target_audience": f"{cognitive_style}型学习者",
+            "generation_type": result.get("type", "failed"),
+            "media_url": result.get("url"),
+        }
+
+        return {
+            "type": "video",
+            "title": result.get("title", f"{topic}教学视频"),
+            "subject": subject,
+            "difficulty_level": difficulty,
+            "content_data": content_data,
+            "duration_minutes": 10,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
     
     def _generate_animation_script(self, subject: str, topic: str,
                                   profile: Dict, difficulty: str) -> Dict:
-        """生成动画演示脚本"""
-        
-        prompt = f"""请为{subject}课程的"{topic}"主题生成一个动画演示脚本。
+        """生成教学动画 — AI 生成 SVG 交互动画"""
+        from services.video_generation_service import video_generation_service
 
-难度级别: {difficulty}
-动画时长: 3-5分钟
+        description = f"{subject}课程{topic}的交互动画演示，难度{difficulty}"
+        result = video_generation_service.generate_animation(
+            subject=subject, topic=topic,
+            description=description, duration=4
+        )
 
-要求:
-1. 通过动画展示抽象概念或过程
-2. 分帧描述动画内容
-3. 标注关键动作和转场效果
-4. 配合简洁的解说词
-5. 确保科学性准确
+        content_data = {
+            "title": f"{topic}动画演示",
+            "duration_minutes": 4,
+            "frames": [],
+            "narration_script": "",
+            "visual_style": "SVG交互动画",
+            "generation_type": result.get("type", "failed"),
+            "media_url": result.get("url"),
+        }
 
-输出JSON格式:
-{{
-    "title": "动画标题",
-    "duration_minutes": 4,
-    "frames": [
-        {{
-            "frame_id": 1,
-            "timestamp": "00:00",
-            "description": "动画帧描述",
-            "action": "动作说明",
-            "transition": "转场效果"
-        }}
-    ],
-    "narration_script": "完整解说词",
-    "visual_style": "扁平化/3D/手绘"
-}}
-"""
-        
-        try:
-            response = qa_service.call_ai(prompt, max_tokens=2000)
-            animation_data = safe_parse_json(response)
-            
-            return {
-                "type": "animation",
-                "title": animation_data.get("title", f"{topic}动画演示"),
-                "subject": subject,
-                "difficulty_level": difficulty,
-                "content_data": animation_data,
-                "duration_minutes": animation_data.get("duration_minutes", 4),
-                "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-        except Exception as e:
-            error(f"生成动画脚本失败: {str(e)}")
-            return None
+        return {
+            "type": "animation",
+            "title": result.get("title", f"{topic}动画演示"),
+            "subject": subject,
+            "difficulty_level": difficulty,
+            "content_data": content_data,
+            "duration_minutes": 4,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
     
     def _generate_code_case(self, subject: str, topic: str,
                            profile: Dict, difficulty: str) -> Dict:

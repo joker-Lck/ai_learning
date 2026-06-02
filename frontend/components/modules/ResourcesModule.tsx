@@ -157,6 +157,13 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
   const Icon = typeInfo.icon;
   const markdown = contentToMarkdown(resource.content_data, resource.type);
 
+  // 检测是否有实际生成的媒体内容
+  const mediaUrl = resource.content_data?.media_url as string | undefined;
+  const generationType = resource.content_data?.generation_type as string | undefined;
+  const hasMedia = !!mediaUrl;
+  const isVideo = generationType === 'video' || (mediaUrl && mediaUrl.endsWith('.mp4'));
+  const isSvgAnim = generationType === 'svg_animation' || (mediaUrl && mediaUrl.endsWith('.html'));
+
   return (
     <div className="glass-card rounded-xl overflow-hidden">
       {/* 头部 */}
@@ -165,7 +172,11 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
           <Icon className={`w-5 h-5 ${typeInfo.color} flex-shrink-0`} />
           <div className="min-w-0">
             <span className="font-semibold text-white block truncate">{resource.title}</span>
-            <span className="text-xs text-white/40">{getTypeName(resource.type)}</span>
+            <span className="text-xs text-white/40">
+              {getTypeName(resource.type)}
+              {hasMedia && isVideo && <span className="ml-2 text-purple-400">● AI生成视频</span>}
+              {hasMedia && isSvgAnim && <span className="ml-2 text-pink-400">● AI生成动画</span>}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -175,19 +186,15 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
-          <button
-            onClick={() => {
-              const w = window.open('', '_blank');
-              if (w) {
-                w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${resource.title}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css"><style>body{font-family:system-ui,sans-serif;padding:40px;line-height:1.8;max-width:900px;margin:0 auto;background:#0f172a;color:#e2e8f0}h1{color:#64ffda;border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:12px}h2,h3{color:#94a3b8;margin-top:1.5em}pre{background:#1e293b;padding:16px;border-radius:8px;overflow-x:auto}code{background:rgba(100,255,218,.1);padding:2px 6px;border-radius:4px;color:#64ffda;font-size:.9em}pre code{background:none;color:#e2e8f0;padding:0}blockquote{border-left:3px solid #64ffda;padding-left:1em;color:#64748b}table{width:100%;border-collapse:collapse}th,td{border:1px solid rgba(255,255,255,.1);padding:8px 12px}th{background:rgba(255,255,255,.05)}</style></head><body><h1>${resource.title}</h1><pre style="white-space:pre-wrap">${markdown.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`);
-                w.document.close();
-              }
-            }}
-            className="p-2 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white transition-colors"
-            title="全屏预览"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
+          {hasMedia && (
+            <button
+              onClick={() => window.open(mediaUrl, '_blank')}
+              className="p-2 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white transition-colors"
+              title="全屏打开"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={async () => {
               try {
@@ -217,8 +224,32 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
       </div>
       {/* 内容 */}
       {expanded && (
-        <div className="px-4 pb-4 border-t border-white/[0.06] pt-4 max-h-[500px] overflow-y-auto">
-          <MarkdownRenderer content={markdown} />
+        <div className="px-4 pb-4 border-t border-white/[0.06] pt-4">
+          {/* AI 生成的视频 */}
+          {hasMedia && isVideo && (
+            <video
+              controls
+              autoPlay
+              src={mediaUrl}
+              className="w-full rounded-xl border border-white/[0.06] shadow-lg mb-3"
+              style={{ maxHeight: 450 }}
+            />
+          )}
+          {/* AI 生成的 SVG 动画 (iframe) */}
+          {hasMedia && isSvgAnim && (
+            <iframe
+              src={mediaUrl}
+              className="w-full rounded-xl border border-white/[0.06] shadow-lg mb-3 bg-[#0a0f1e]"
+              style={{ height: 400 }}
+              title={resource.title}
+            />
+          )}
+          {/* 文本内容（始终显示，或作为无媒体时的 fallback） */}
+          {(!hasMedia || markdown.length > 50) && (
+            <div className={hasMedia ? 'max-h-[200px] overflow-y-auto' : 'max-h-[500px] overflow-y-auto'}>
+              <MarkdownRenderer content={markdown} />
+            </div>
+          )}
         </div>
       )}
     </div>

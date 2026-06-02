@@ -10,6 +10,7 @@ slowapi==0.1.9
 openai==2.38.0
 mysql-connector-python==9.7.0
 python-dotenv==1.2.2
+requests>=2.31.0
 
 # 文档处理
 python-pptx==1.0.2
