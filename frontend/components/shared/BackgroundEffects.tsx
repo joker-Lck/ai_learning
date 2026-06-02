@@ -1,9 +1,11 @@
 /**
- * 背景特效系统 — Spline 3D + 高性能粒子/光标/光球
- * 所有动态元素合并到单个 canvas，减少 DOM 操作和事件监听
+ * 背景特效系统 — Spline 3D + 粒子 + 光标跟随 + 浮动光球
+ *
+ * 性能关键: 光标跟随用独立 DOM + CSS transform (GPU 合成层)
+ * 不受 canvas/Spline 帧率影响，保证 60fps 丝滑
  */
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Cpu, Atom, Orbit, Sparkles } from 'lucide-react';
 
@@ -39,7 +41,66 @@ export function SplineBackground() {
 }
 
 /* ═══════════════════════════════════════════
-   高性能粒子 + 光标跟随（单 canvas 合并渲染）
+   鼠标光标跟随 — 独立 DOM 元素，CSS transform GPU 加速
+   不依赖 canvas 帧率，保证丝滑
+   ═══════════════════════════════════════════ */
+
+const ICONS = [Zap, Cpu, Atom, Orbit, Sparkles];
+
+export function MouseFollower() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [iconIdx, setIconIdx] = useState(0);
+
+  useEffect(() => {
+    let mx = -100, my = -100;
+    let cx = -100, cy = -100;
+    let raf: number;
+
+    const onMouse = (e: MouseEvent) => {
+      mx = e.clientX - 12;
+      my = e.clientY - 12;
+    };
+
+    // 独立 raf 循环，只更新一个 div 的 transform
+    const tick = () => {
+      cx += (mx - cx) * 0.18;
+      cy += (my - cy) * 0.18;
+      if (ref.current) {
+        ref.current.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener('mousemove', onMouse, { passive: true });
+    raf = requestAnimationFrame(tick);
+
+    // 图标轮换
+    const interval = setInterval(() => {
+      setIconIdx(prev => (prev + 1) % 5);
+    }, 3000);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouse);
+      cancelAnimationFrame(raf);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const Icon = ICONS[iconIdx] ?? Zap;
+
+  return (
+    <div
+      ref={ref}
+      className="fixed top-0 left-0 pointer-events-none z-[60] mix-blend-screen"
+      style={{ willChange: 'transform', transform: 'translate3d(-100px, -100px, 0)' }}
+    >
+      <Icon className="w-6 h-6 text-amber-400/60" />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   粒子系统 — 独立 canvas，降频到 ~20fps
    ═══════════════════════════════════════════ */
 
 interface Particle {
@@ -50,7 +111,6 @@ interface Particle {
 }
 
 const COLORS = ['#64ffda', '#00d4ff', '#f59e0b', '#3b82f6', '#8b5cf6'];
-const CURSOR_ICONS = [Zap, Cpu, Atom, Orbit, Sparkles];
 
 export function ParticleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,30 +121,10 @@ export function ParticleCanvas() {
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    // 状态
     let w = 0, h = 0;
-    let mx = -100, my = -100;          // 鼠标位置
-    let cx = -100, cy = -100;          // 光标平滑位置 (lerp)
+    let mx = -100, my = -100;
     let frame = 0;
-    let lastParticleFrame = 0;
     const particles: Particle[] = [];
-    const MAX_PARTICLES = 40;
-
-    // 光标图标 SVG 路径缓存
-    const iconPaths = [
-      // Zap
-      'M13 2L3 14h9l-1 10 10-12h-9l1-10z',
-      // Cpu (简化为方形+短线)
-      'M4 4h16v16H4zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3',
-      // Atom (简化为圆)
-      'M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0-6 0',
-      // Orbit
-      'M12 12m-8 0a8 8 0 1 0 16 0 8 8 0 1 0-16 0M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0-6 0',
-      // Sparkles
-      'M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z',
-    ];
-    let iconIdx = 0;
-    let iconTimer = 0;
 
     const resize = () => {
       w = canvas.width = window.innerWidth;
@@ -92,112 +132,66 @@ export function ParticleCanvas() {
     };
     resize();
 
-    // 节流 mousemove — 每帧最多处理一次
-    let pendingMouse: { x: number; y: number } | null = null;
     const onMouse = (e: MouseEvent) => {
-      pendingMouse = { x: e.clientX, y: e.clientY };
+      mx = e.clientX;
+      my = e.clientY;
     };
-    const onResize = () => resize();
 
     window.addEventListener('mousemove', onMouse, { passive: true });
-    window.addEventListener('resize', onResize, { passive: true });
+    window.addEventListener('resize', resize, { passive: true });
 
-    let raf: number;
-    const animate = () => {
+    let lastTime = 0;
+    const FPS_INTERVAL = 1000 / 20; // 20fps 足够粒子效果
+
+    const animate = (now: number) => {
+      requestAnimationFrame(animate);
+      if (now - lastTime < FPS_INTERVAL) return;
+      lastTime = now;
+
       frame++;
       ctx.clearRect(0, 0, w, h);
 
-      // — 更新鼠标位置 —
-      if (pendingMouse) {
-        mx = pendingMouse.x;
-        my = pendingMouse.y;
-        pendingMouse = null;
-      }
-
-      // — 光标 lerp (比 framer-motion spring 轻量得多) —
-      cx += (mx - cx) * 0.15;
-      cy += (my - cy) * 0.15;
-
-      // — 生成粒子 (降频: 每4帧1个) —
-      if (frame - lastParticleFrame >= 4 && mx > 0 && particles.length < MAX_PARTICLES) {
-        lastParticleFrame = frame;
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 0.3 + Math.random() * 1;
+      // 生成粒子 (每3帧1个，上限25)
+      if (frame % 3 === 0 && mx > 0 && particles.length < 25) {
+        const angle = Math.random() * 6.2832;
+        const speed = 0.3 + Math.random() * 0.8;
         particles.push({
-          x: mx + (Math.random() - 0.5) * 16,
-          y: my + (Math.random() - 0.5) * 16,
+          x: mx + (Math.random() - 0.5) * 14,
+          y: my + (Math.random() - 0.5) * 14,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 1.5 + Math.random() * 3,
+          size: 1.5 + Math.random() * 2.5,
           life: 1,
           color: COLORS[Math.floor(Math.random() * 5)]!,
         });
       }
 
-      // — 渲染粒子 (纯圆，不用 gradient) —
+      // 渲染 + 更新 (swap-pop 移除，避免 splice)
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i]!;
         p.x += p.vx;
         p.y += p.vy;
-        p.life -= 0.025;
-        if (p.life <= 0) { particles.splice(i, 1); continue; }
-
-        ctx.globalAlpha = p.life * 0.7;
+        p.life -= 0.03;
+        if (p.life <= 0) {
+          // swap-pop
+          particles[i] = particles[particles.length - 1]!;
+          particles.pop();
+          continue;
+        }
+        ctx.globalAlpha = p.life * 0.6;
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * p.life, 0, 6.2832);
         ctx.fill();
       }
-
-      // — 渲染光标图标 —
-      iconTimer++;
-      if (iconTimer >= 180) { iconTimer = 0; iconIdx = (iconIdx + 1) % 5; }
-
-      if (cx > 0) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.globalAlpha = 0.5;
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // 绘制简化的闪电图标 (最轻量)
-        const s = 10;
-        ctx.beginPath();
-        if (iconIdx === 0) {
-          // Zap
-          ctx.moveTo(s * 0.3, -s);
-          ctx.lineTo(-s * 0.2, s * 0.1);
-          ctx.lineTo(s * 0.1, s * 0.1);
-          ctx.lineTo(-s * 0.3, s);
-          ctx.lineTo(s * 0.2, -s * 0.1);
-          ctx.lineTo(-s * 0.1, -s * 0.1);
-          ctx.closePath();
-          ctx.fillStyle = 'rgba(245,158,11,0.3)';
-          ctx.fill();
-          ctx.stroke();
-        } else {
-          // 其他图标用圆点+十字代替
-          ctx.arc(0, 0, 5, 0, 6.2832);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(-8, 0); ctx.lineTo(8, 0);
-          ctx.moveTo(0, -8); ctx.lineTo(0, 8);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-
       ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(animate);
     };
-    raf = requestAnimationFrame(animate);
+
+    requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener('mousemove', onMouse);
-      window.removeEventListener('resize', onResize);
-      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
     };
   }, []);
 
@@ -205,7 +199,7 @@ export function ParticleCanvas() {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-[55]"
-      style={{ mixBlendMode: 'screen', willChange: 'transform' }}
+      style={{ mixBlendMode: 'screen' }}
     />
   );
 }
@@ -263,6 +257,7 @@ export function FullBackground() {
       <SplineBackground />
       <FloatingOrbs />
       <ParticleCanvas />
+      <MouseFollower />
     </>
   );
 }
@@ -272,6 +267,7 @@ export function DashboardBackground() {
     <>
       <FloatingOrbs />
       <ParticleCanvas />
+      <MouseFollower />
     </>
   );
 }
