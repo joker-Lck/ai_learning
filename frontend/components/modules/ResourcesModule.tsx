@@ -82,14 +82,48 @@ function contentToMarkdown(data: any, type: string): string {
     parts.push(`\`\`\`${lang}\n${data.code}\n\`\`\``);
   }
 
-  // 视频脚本
-  if (data.script || data.scenes) {
-    if (data.script) parts.push(data.script);
-    if (data.scenes && Array.isArray(data.scenes)) {
-      for (const scene of data.scenes) {
-        parts.push(`**${scene.title || scene.time || ''}**: ${scene.content || scene.description || scene.narration || ''}`);
-      }
+  // 视频脚本 (scenes)
+  if (data.scenes && Array.isArray(data.scenes)) {
+    if (data.duration_minutes) parts.push(`> 🎬 时长: ${data.duration_minutes} 分钟`);
+    for (const scene of data.scenes) {
+      const label = scene.scene_id ? `场景 ${scene.scene_id}` : (scene.title || scene.time || '');
+      const time = scene.duration_seconds ? ` (${scene.duration_seconds}s)` : '';
+      const desc = scene.visual_description || scene.description || scene.content || '';
+      const narration = scene.narration || '';
+      const effects = Array.isArray(scene.animation_effects) ? scene.animation_effects : [];
+      parts.push(`**${label}${time}**`);
+      if (desc) parts.push(desc);
+      if (narration) parts.push(`> 🎙️ ${narration}`);
+      if (effects.length) parts.push(`> ✨ 效果: ${effects.join(', ')}`);
     }
+    if (Array.isArray(data.key_visuals) && data.key_visuals.length) {
+      parts.push(`### 关键画面\n${data.key_visuals.map((v: string) => `- ${v}`).join('\n')}`);
+    }
+  }
+
+  // 动画脚本 (frames)
+  if (data.frames && Array.isArray(data.frames)) {
+    if (data.duration_minutes) parts.push(`> ✨ 时长: ${data.duration_minutes} 分钟`);
+    if (data.visual_style) parts.push(`> 🎨 风格: ${data.visual_style}`);
+    for (const frame of data.frames) {
+      const label = frame.frame_id ? `帧 ${frame.frame_id}` : '';
+      const time = frame.timestamp || '';
+      const desc = frame.description || '';
+      const action = frame.action || '';
+      const transition = frame.transition || '';
+      parts.push(`**${label}${time ? ` [${time}]` : ''}**`);
+      if (desc) parts.push(desc);
+      if (action) parts.push(`> 🎬 动作: ${action}`);
+      if (transition) parts.push(`> 🔄 转场: ${transition}`);
+    }
+    if (data.narration_script) {
+      parts.push(`### 解说词\n${data.narration_script}`);
+    }
+  }
+
+  // 通用 script 字段
+  if (data.script && !data.scenes && !data.frames) {
+    parts.push(data.script);
   }
 
   // 阅读材料
