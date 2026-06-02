@@ -6,18 +6,36 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 import { Zap, Cpu, Atom, Orbit, Sparkles } from 'lucide-react';
-import dynamic from 'next/dynamic';
-
-const Spline = dynamic(() => import('@splinetool/react-spline/next'), { ssr: false });
 
 /* ═══════════════════════════════════════════
-   Spline 3D 场景
+   Spline 3D 场景（直接用 runtime 加载，避免 ESM 兼容问题）
    ═══════════════════════════════════════════ */
 export function SplineBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    let app: any = null;
+    let cancelled = false;
+
+    (async () => {
+      const { Application } = await import('@splinetool/runtime');
+      if (cancelled || !canvasRef.current) return;
+      app = new Application(canvasRef.current);
+      await app.load('https://prod.spline.design/eqtbmmRpUBNRvFku/scene.splinecode');
+    })();
+
+    return () => {
+      cancelled = true;
+      if (app) {
+        try { app.dispose(); } catch {}
+      }
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-0 pointer-events-none">
-      <Spline
-        scene="https://prod.spline.design/eqtbmmRpUBNRvFku/scene.splinecode"
+      <canvas
+        ref={canvasRef}
         style={{ width: '100%', height: '100%', opacity: 0.6 }}
       />
       {/* 暗色遮罩，确保内容可读 */}
