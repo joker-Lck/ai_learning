@@ -99,6 +99,12 @@ class ApiClient {
     });
   }
 
+  async getProfile() {
+    return this.request('/agent/get-profile', {
+      method: 'GET',
+    });
+  }
+
   async generateResources(data: any) {
     return this.request('/agent/generate-resources', {
       method: 'POST',

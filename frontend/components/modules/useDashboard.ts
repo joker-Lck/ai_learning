@@ -26,6 +26,26 @@ export function useDashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
 
+  // 打开画像模块时自动加载已有画像
+  useEffect(() => {
+    if (activeModule === 'profile' && !profileData && !profileLoading) {
+      setProfileLoading(true);
+      api.getProfile().then((res: any) => {
+        if (res.success && res.data) {
+          const p = res.data;
+          // 仅当画像已构建过（有 major 或 knowledge_base 非空）才展示
+          if (p.major || p.cognitive_style || (p.knowledge_base && p.knowledge_base !== '{}')) {
+            setProfileData(p);
+          }
+        }
+      }).catch(() => {
+        // 无已有画像，忽略
+      }).finally(() => {
+        setProfileLoading(false);
+      });
+    }
+  }, [activeModule]);
+
   const currentDimension = PROFILE_DIMENSIONS[currentStep]!;
   const currentChat = dimensionChats[currentDimension.id] || {
     dimensionId: currentDimension.id,
