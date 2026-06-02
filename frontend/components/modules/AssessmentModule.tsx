@@ -267,7 +267,7 @@ export default function AssessmentModule({
               <input value={analysisTopic} onChange={(e) => setAnalysisTopic(e.target.value)} placeholder="主题（如：神经网络）"
                 className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg text-sm focus:border-cyan-400/30 focus:outline-none" />
               <select value={analysisDifficulty} onChange={(e) => setAnalysisDifficulty(e.target.value)}
-                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white rounded-lg text-sm focus:border-cyan-400/30 focus:outline-none">
+                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white rounded-lg text-sm focus:border-cyan-400/30 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
                 <option value="beginner">初级</option>
                 <option value="intermediate">中级</option>
                 <option value="advanced">高级</option>

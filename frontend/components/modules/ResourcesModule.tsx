@@ -308,7 +308,7 @@ export default function ResourcesModule({
         <div>
           <label className="block text-sm font-medium text-white/60 mb-1">难度级别</label>
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
-            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white rounded-lg focus:border-cyan-400/30 focus:outline-none">
+            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white rounded-lg focus:border-cyan-400/30 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
             <option value="beginner">初级</option>
             <option value="intermediate">中级</option>
             <option value="advanced">高级</option>
