@@ -85,40 +85,118 @@ export default function AssessmentModule({
             <div className="space-y-4">
               <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white text-center">
                 <h4 className="text-lg font-semibold mb-3">综合评分</h4>
-                <div className="text-5xl font-bold mb-1">{assessment.overall_score}</div>
+                <div className="text-5xl font-bold mb-1">{assessment.overall_score ?? '--'}</div>
                 <p className="text-white/80 text-sm">满分 100 分</p>
+                {(assessment as any).grade && <p className="text-white/60 text-xs mt-1">{(assessment as any).grade}</p>}
               </div>
 
+              {/* 多维度评分 — 兼容 dimensions 数组或 knowledge_mastery 对象 */}
+              {assessment.dimensions?.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {assessment.dimensions.map((dim, idx) => (
+                    <div key={idx} className="glass-card rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-sm text-white">{dim.name}</span>
+                        <span className="text-xs text-white/40">{dim.score}/{dim.max_score} · {dim.level}</span>
+                      </div>
+                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
+                        <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style={{ width: `${(dim.score / dim.max_score) * 100}%` }} />
+                      </div>
+                      <p className="text-xs text-white/40">{dim.feedback}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* 从后端实际字段构造维度卡片 */}
+                  {(assessment as any).knowledge_mastery && (
+                    <div className="glass-card rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-sm text-white">知识掌握度</span>
+                        <span className="text-xs text-white/40">{Math.round(((assessment as any).knowledge_mastery.overall_score || 0) * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
+                        <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style={{ width: `${((assessment as any).knowledge_mastery.overall_score || 0) * 100}%` }} />
+                      </div>
+                      {Object.entries((assessment as any).knowledge_mastery.topics || {}).map(([topic, score], i) => (
+                        <p key={i} className="text-xs text-white/40">{topic}: {Math.round((score as number) * 100)}%</p>
+                      ))}
+                    </div>
+                  )}
+                  {(assessment as any).engagement_level !== undefined && (
+                    <div className="glass-card rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-sm text-white">学习参与度</span>
+                        <span className="text-xs text-white/40">{Math.round(((assessment as any).engagement_level || 0) * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
+                        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full" style={{ width: `${((assessment as any).engagement_level || 0) * 100}%` }} />
+                      </div>
+                    </div>
+                  )}
+                  {(assessment as any).time_investment !== undefined && (
+                    <div className="glass-card rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-sm text-white">学习时长</span>
+                        <span className="text-xs text-white/40">{(assessment as any).time_investment}h</span>
+                      </div>
+                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
+                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full" style={{ width: `${Math.min(((assessment as any).time_investment || 0) / 10 * 100, 100)}%` }} />
+                      </div>
+                    </div>
+                  )}
+                  {(assessment as any).skill_progress && (
+                    <div className="glass-card rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-sm text-white">技能进步</span>
+                        <span className="text-xs text-white/40">+{Math.round(((assessment as any).skill_progress.progress_rate || 0) * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
+                        <div className="bg-gradient-to-r from-violet-500 to-purple-500 h-2 rounded-full" style={{ width: `${Math.min(((assessment as any).skill_progress.progress_rate || 0) * 100, 100)}%` }} />
+                      </div>
+                      {(assessment as any).skill_progress.improvement_areas?.length > 0 && (
+                        <p className="text-xs text-white/40">提升: {(assessment as any).skill_progress.improvement_areas.join('、')}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {assessment.dimensions.map((dim, idx) => (
-                  <div key={idx} className="glass-card rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-sm text-white">{dim.name}</span>
-                      <span className="text-xs text-white/40">{dim.score}/{dim.max_score} · {dim.level}</span>
-                    </div>
-                    <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
-                      <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style={{ width: `${(dim.score / dim.max_score) * 100}%` }} />
-                    </div>
-                    <p className="text-xs text-white/40">{dim.feedback}</p>
+                {assessment.strengths?.length > 0 && (
+                  <div className="glass-card rounded-xl p-4 border-emerald-400/20">
+                    <h5 className="font-semibold text-emerald-400 mb-2 flex items-center gap-2 text-sm"><CheckCircle className="w-4 h-4" /> 优势</h5>
+                    <ul className="text-sm text-white/60 space-y-1">{assessment.strengths.map((s, idx) => <li key={idx}>• {s}</li>)}</ul>
                   </div>
-                ))}
+                )}
+                {(assessment.improvements || (assessment as any).weaknesses)?.length > 0 && (
+                  <div className="glass-card rounded-xl p-4 border-amber-400/20">
+                    <h5 className="font-semibold text-amber-400 mb-2 flex items-center gap-2 text-sm"><AlertCircle className="w-4 h-4" /> 改进建议</h5>
+                    <ul className="text-sm text-white/60 space-y-1">
+                      {(assessment.improvements || (assessment as any).weaknesses || []).map((imp: string, idx: number) => <li key={idx}>• {imp}</li>)}
+                    </ul>
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="glass-card rounded-xl p-4 border-emerald-400/20">
-                  <h5 className="font-semibold text-emerald-400 mb-2 flex items-center gap-2 text-sm"><CheckCircle className="w-4 h-4" /> 优势</h5>
-                  <ul className="text-sm text-white/60 space-y-1">{assessment.strengths.map((s, idx) => <li key={idx}>• {s}</li>)}</ul>
+              {/* 学习建议 — 兼容 recommendations 数组或 recommendation 字符串 */}
+              {(assessment.recommendations?.length > 0 || (assessment as any).recommendation || (assessment as any).next_focus?.length > 0) && (
+                <div className="glass-card rounded-xl p-4 border-cyan-400/20">
+                  <h5 className="font-semibold text-cyan-400 mb-2 flex items-center gap-2 text-sm"><Lightbulb className="w-4 h-4" /> 学习建议</h5>
+                  <ul className="text-sm text-white/60 space-y-1">
+                    {(assessment.recommendations || []).map((rec, idx) => <li key={idx}>• {rec}</li>)}
+                    {!(assessment.recommendations?.length) && (assessment as any).recommendation && <li>• {(assessment as any).recommendation}</li>}
+                    {((assessment as any).next_focus || []).map((f: string, idx: number) => <li key={`nf-${idx}`}> 下一步: {f}</li>)}
+                  </ul>
                 </div>
-                <div className="glass-card rounded-xl p-4 border-amber-400/20">
-                  <h5 className="font-semibold text-amber-400 mb-2 flex items-center gap-2 text-sm"><AlertCircle className="w-4 h-4" /> 改进建议</h5>
-                  <ul className="text-sm text-white/60 space-y-1">{assessment.improvements.map((imp, idx) => <li key={idx}>• {imp}</li>)}</ul>
-                </div>
-              </div>
+              )}
 
-              <div className="glass-card rounded-xl p-4 border-cyan-400/20">
-                <h5 className="font-semibold text-cyan-400 mb-2 flex items-center gap-2 text-sm"><Lightbulb className="w-4 h-4" /> 学习建议</h5>
-                <ul className="text-sm text-white/60 space-y-1">{assessment.recommendations.map((rec, idx) => <li key={idx}>• {rec}</li>)}</ul>
-              </div>
+              {/* 鼓励话语 */}
+              {(assessment as any).motivational_message && (
+                <div className="glass-card rounded-xl p-4 border-pink-400/20 text-center">
+                  <p className="text-sm text-pink-300/80"> {(assessment as any).motivational_message}</p>
+                </div>
+              )}
 
               <button
                 onClick={handleAssess}
