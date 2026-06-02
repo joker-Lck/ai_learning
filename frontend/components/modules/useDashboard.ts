@@ -224,9 +224,15 @@ export function useDashboard() {
     setAssessLoading(true);
     try {
       const res: any = await api.assess({ user_id: 1, assessment_type: 'comprehensive' });
-      if (res.success) setAssessment(res.data.assessment);
+      if (res.success && res.data?.assessment) {
+        setAssessment(res.data.assessment);
+      } else {
+        console.error('评估返回异常:', res);
+        alert(res.message || '评估失败，请稍后重试');
+      }
     } catch (error: any) {
-      // 评估失败静默处理
+      console.error('评估请求失败:', error);
+      alert(error.message || '评估请求失败，请检查网络连接');
     } finally {
       setAssessLoading(false);
     }

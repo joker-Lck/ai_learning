@@ -58,8 +58,10 @@ class AssessmentAgent:
                                                   assessment_type, period_start, period_end)
             
             result = {
+                "success": True,
                 "assessment_id": assessment_id,
                 "assessment": assessment_result,
+                "data": {"assessment": assessment_result},
                 "message": f"{assessment_type}评估完成"
             }
             
