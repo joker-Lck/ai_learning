@@ -243,3 +243,10 @@ body {
   font-weight: 700;
   color: #e2e8f0;
 }
+
+/* 隐藏 Spline 3D 场景自带的 "move your mouse" 等提示文字 */
+.spline-bg-wrapper + *,
+.spline-bg-wrapper ~ [class*="spline"],
+div[style*="position: absolute"][style*="pointer-events"] {
+  display: none !important;
+}

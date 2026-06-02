@@ -22,6 +22,17 @@ export function SplineBackground() {
       if (cancelled || !canvasRef.current) return;
       app = new Application(canvasRef.current);
       await app.load('https://prod.spline.design/eqtbmmRpUBNRvFku/scene.splinecode');
+      // 隐藏场景中的提示文字
+      if (app.scene) {
+        const hideText = (obj: any) => {
+          if (!obj) return;
+          if (obj.name && /move.*mouse|hover.*here|click.*here|tooltip|hint/i.test(obj.name)) {
+            obj.visible = false;
+          }
+          if (obj.children) obj.children.forEach(hideText);
+        };
+        hideText(app.scene);
+      }
     })();
 
     return () => {
@@ -33,7 +44,7 @@ export function SplineBackground() {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
+    <div className="fixed inset-0 z-0 pointer-events-none spline-bg-wrapper">
       <canvas
         ref={canvasRef}
         style={{ width: '100%', height: '100%', opacity: 0.6 }}
