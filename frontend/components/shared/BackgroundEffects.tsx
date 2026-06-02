@@ -6,48 +6,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 import { Zap, Cpu, Atom, Orbit, Sparkles } from 'lucide-react';
+import Spline from '@splinetool/react-spline/next';
 
 /* ═══════════════════════════════════════════
-   Spline 3D 场景（直接用 runtime 加载，避免 ESM 兼容问题）
+   Spline 3D 场景
    ═══════════════════════════════════════════ */
 export function SplineBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    let app: any = null;
-    let cancelled = false;
-
-    (async () => {
-      const { Application } = await import('@splinetool/runtime');
-      if (cancelled || !canvasRef.current) return;
-      app = new Application(canvasRef.current);
-      await app.load('https://prod.spline.design/eqtbmmRpUBNRvFku/scene.splinecode');
-      // 隐藏场景中的提示文字
-      if (app.scene) {
-        const hideText = (obj: any) => {
-          if (!obj) return;
-          if (obj.name && /move.*mouse|hover.*here|click.*here|tooltip|hint/i.test(obj.name)) {
-            obj.visible = false;
-          }
-          if (obj.children) obj.children.forEach(hideText);
-        };
-        hideText(app.scene);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (app) {
-        try { app.dispose(); } catch {}
-      }
-    };
-  }, []);
-
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none spline-bg-wrapper">
-      <canvas
-        ref={canvasRef}
-        style={{ width: '100%', height: '100%', opacity: 0.6 }}
+    <div className="fixed inset-0 z-0 pointer-events-none spline-bg-wrapper" style={{ transform: 'scale(1.3)', transformOrigin: 'center center' }}>
+      <Spline
+        scene="https://prod.spline.design/eqtbmmRpUBNRvFku/scene.splinecode"
+        style={{ width: '100%', height: '100%' }}
       />
       {/* 暗色遮罩，确保内容可读 */}
       <div className="absolute inset-0 bg-[#060d1f]/40" />

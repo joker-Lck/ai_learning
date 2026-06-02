@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['@splinetool/react-spline'],
 
   // API 代理配置 (开发环境)
   async rewrites() {
