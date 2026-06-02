@@ -129,7 +129,7 @@ export default function DashboardContent() {
               <div>
                 <h1 className="text-2xl font-bold mb-1">基于多智能体的个性化学习资源生成系统</h1>
                 <p className="text-white/80 text-sm">
-                  v7.2 多数据库架构版 · 对话式画像构建 · 多智能体协同 · 防幻觉机制 · 流式输出
+                  对话式画像构建 · 多智能体协同 · 防幻觉机制 · 流式输出
                 </p>
               </div>
             </div>

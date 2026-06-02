@@ -488,8 +488,8 @@ export default function LoginPage() {
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
               <div>
-                <span className="text-lg font-bold text-white block leading-tight">AI 教学助手</span>
-                <span className="text-[10px] text-white/30 tracking-widest">INTELLIGENT TUTOR</span>
+                <span className="text-lg font-bold text-white block leading-tight">AI 学习助手</span>
+                <span className="text-[10px] text-white/30 tracking-widest">INTELLIGENT LEARNING</span>
               </div>
             </motion.div>
 

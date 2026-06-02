@@ -78,8 +78,8 @@ export default function Sidebar() {
               exit={{ opacity: 0, width: 0 }}
               className="overflow-hidden whitespace-nowrap"
             >
-              <h1 className="text-lg font-bold text-white">AI 教学助手</h1>
-              <p className="text-[10px] text-white/30 tracking-widest">v7.2 MULTI-AGENT</p>
+              <h1 className="text-lg font-bold text-white">AI 学习助手</h1>
+              <p className="text-[10px] text-white/30 tracking-widest">MULTI-AGENT</p>
             </motion.div>
           )}
         </AnimatePresence>

@@ -92,7 +92,7 @@ class PageLayout:
     def render_sidebar():
         """渲染侧边栏导航"""
         with st.sidebar:
-            st.markdown("### 🎓 AI 教学助手")
+            st.markdown("### 🎓 AI 学习助手")
             st.divider()
             
             menu = st.radio(

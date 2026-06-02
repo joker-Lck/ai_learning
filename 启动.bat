@@ -1,10 +1,10 @@
 @echo off
-title AI Learning Agent v7.2
+title AI Learning Agent
 setlocal
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
 echo ========================================
-echo   AI Learning Agent System v7.2
+echo   AI Learning Agent System
 echo ========================================
 if not exist "%ROOT%.venv\Scripts\python.exe" (
     echo [ERROR] .venv not found
