@@ -177,14 +177,19 @@ class AssessmentAgent:
 4. 推荐下一步学习重点
 5. 给出综合评分(0-100)
 
-输出JSON格式:
+严格输出JSON格式(不要输出其他内容):
 {{
+    "overall_score": 82,
+    "grade": "良好",
+    "dimensions": [
+        {{"name": "知识掌握", "score": 85, "max_score": 100, "level": "良好", "feedback": "具体评价"}},
+        {{"name": "学习参与度", "score": 70, "max_score": 100, "level": "中等", "feedback": "具体评价"}},
+        {{"name": "时间投入", "score": 60, "max_score": 100, "level": "中等", "feedback": "具体评价"}},
+        {{"name": "技能进步", "score": 75, "max_score": 100, "level": "良好", "feedback": "具体评价"}}
+    ],
     "knowledge_mastery": {{
         "overall_score": 0.75,
-        "topics": {{
-            "主题1": 0.85,
-            "主题2": 0.65
-        }}
+        "topics": {{"主题1": 0.85, "主题2": 0.65}}
     }},
     "skill_progress": {{
         "improvement_areas": ["技能1", "技能2"],
@@ -194,10 +199,10 @@ class AssessmentAgent:
     "time_investment": {learning_data['total_duration_hours']},
     "strengths": ["优势1", "优势2"],
     "weaknesses": ["不足1", "不足2"],
-    "recommendation": "详细的改进建议",
+    "improvements": ["改进建议1", "改进建议2"],
+    "recommendations": ["学习建议1", "学习建议2"],
+    "recommendation": "综合建议文本",
     "next_focus": ["下一步重点1", "下一步重点2"],
-    "overall_score": 82,
-    "grade": "良好",
     "motivational_message": "鼓励性话语"
 }}
 """
@@ -220,17 +225,31 @@ class AssessmentAgent:
             return self._fallback_assessment(learning_data)
     
     def _fallback_assessment(self, learning_data: Dict) -> Dict:
-        """降级方案:基于数据的简单评估"""
-        
+        """降级方案:基于实际学习数据生成多维度评估"""
+
         total_hours = learning_data["total_duration_hours"]
         avg_score = learning_data["average_score"]
         total_activities = learning_data["total_activities"]
-        
-        # 简单计算综合评分
-        engagement = min(total_activities / 10, 1.0)  # 假设10次活动为满分
-        time_score = min(total_hours / 10, 1.0)  # 假设10小时为满分
-        overall_score = round((avg_score * 0.4 + engagement * 30 + time_score * 30), 2)
-        
+        activity_stats = learning_data.get("activity_stats", {})
+        activities = learning_data.get("activities", [])
+
+        # ── 多维度评分计算 ──
+        # 知识掌握度：基于平均分
+        knowledge_score = round(avg_score, 1) if avg_score > 0 else 50.0
+        # 参与度：基于活动次数（10次=满分）
+        engagement = round(min(total_activities / 10, 1.0) * 100, 1)
+        # 时间投入：基于学习时长（10h=满分）
+        time_score = round(min(total_hours / 10, 1.0) * 100, 1)
+        # 技能进步：基于有分数的活动占比
+        scored_activities = [a for a in activities if a.get("score")]
+        progress_rate = round(min(len(scored_activities) / max(total_activities, 1), 1.0) * 100, 1)
+
+        # 综合评分
+        overall_score = round(
+            knowledge_score * 0.4 + engagement * 0.3 + time_score * 0.2 + progress_rate * 0.1, 1
+        )
+        overall_score = max(0, min(100, overall_score))
+
         if overall_score >= 90:
             grade = "优秀"
         elif overall_score >= 75:
@@ -239,28 +258,136 @@ class AssessmentAgent:
             grade = "中等"
         else:
             grade = "待提升"
-        
+
+        # ── 从活动数据提取知识点 ──
+        topics = {}
+        for act_type, stats in activity_stats.items():
+            type_name = {
+                "quiz": "测验练习", "reading": "阅读学习", "practice": "实践操作",
+                "video": "视频学习", "discussion": "讨论交流", "review": "复习巩固",
+            }.get(act_type, act_type)
+            # 该类型的活动频率作为掌握度参考
+            mastery = round(min(stats["count"] / 5, 1.0) * 0.9 + 0.1, 2)
+            topics[type_name] = mastery
+
+        # 如果没有任何活动数据，给默认维度
+        if not topics:
+            topics = {"综合学习": 0.5}
+
+        # ── 识别优势与不足 ──
+        strengths = []
+        weaknesses = []
+
+        if total_activities >= 5:
+            strengths.append(f"学习频率较高，共完成 {total_activities} 次学习活动")
+        if total_hours >= 3:
+            strengths.append(f"学习时长充足，累计投入 {total_hours} 小时")
+        if avg_score >= 80:
+            strengths.append(f"平均得分 {avg_score} 分，知识掌握扎实")
+        if engagement >= 60:
+            strengths.append("学习参与度良好，保持了持续学习的习惯")
+
+        if total_activities < 3:
+            weaknesses.append("学习活动偏少，建议增加学习频率")
+        if total_hours < 1:
+            weaknesses.append("学习时长不足，建议每天投入更多时间")
+        if avg_score < 60 and avg_score > 0:
+            weaknesses.append(f"平均得分 {avg_score} 分，需要加强薄弱环节")
+        if engagement < 40:
+            weaknesses.append("学习参与度偏低，建议制定规律的学习计划")
+
+        # 确保至少各有一条
+        if not strengths:
+            strengths.append("已开始学习旅程，这是进步的第一步")
+        if not weaknesses:
+            weaknesses.append("可以尝试更多不同类型的学习活动")
+
+        # ── 改进建议 ──
+        recommendations = []
+        if total_activities < 5:
+            recommendations.append("建议每周至少完成 5 次学习活动，保持学习节奏")
+        if total_hours < 3:
+            recommendations.append("建议每天投入 30 分钟以上进行系统学习")
+        if avg_score < 70 and avg_score > 0:
+            recommendations.append("建议针对薄弱知识点进行专项练习和复习")
+        if len(activity_stats) < 2:
+            recommendations.append("建议尝试多种学习方式（阅读、测验、实践），全面提升能力")
+        recommendations.append("定期进行自我评估，跟踪学习进度")
+
+        # ── 下一步重点 ──
+        next_focus = ["巩固已学基础知识"]
+        if avg_score < 70 and avg_score > 0:
+            next_focus.append("重点复习得分较低的知识点")
+        if total_activities < 5:
+            next_focus.append("增加学习频率，养成每日学习习惯")
+        next_focus.append("尝试更具挑战性的学习内容")
+
         return {
-            "knowledge_mastery": {
-                "overall_score": round(avg_score / 100, 2),
-                "topics": {}
-            },
-            "skill_progress": {
-                "improvement_areas": [],
-                "progress_rate": 0.1
-            },
-            "engagement_level": round(engagement, 2),
-            "time_investment": total_hours,
-            "strengths": ["学习态度积极"],
-            "weaknesses": ["需要更多练习"],
-            "recommendation": "建议增加学习时间,多做练习题",
-            "next_focus": ["基础知识巩固"],
             "overall_score": overall_score,
             "grade": grade,
-            "motivational_message": "继续努力,你会越来越棒!",
+            "knowledge_mastery": {
+                "overall_score": round(knowledge_score / 100, 2),
+                "topics": topics,
+            },
+            "skill_progress": {
+                "improvement_areas": [t for t in topics if topics[t] < 0.6] or ["综合能力"],
+                "progress_rate": round(progress_rate / 100, 2),
+            },
+            "engagement_level": round(engagement / 100, 2),
+            "time_investment": total_hours,
+            "dimensions": [
+                {
+                    "name": "知识掌握",
+                    "score": knowledge_score,
+                    "max_score": 100,
+                    "level": "优秀" if knowledge_score >= 85 else "良好" if knowledge_score >= 70 else "中等" if knowledge_score >= 50 else "待提升",
+                    "feedback": f"平均得分 {avg_score} 分" if avg_score > 0 else "暂无测验数据",
+                },
+                {
+                    "name": "学习参与度",
+                    "score": engagement,
+                    "max_score": 100,
+                    "level": "优秀" if engagement >= 85 else "良好" if engagement >= 60 else "中等" if engagement >= 30 else "待提升",
+                    "feedback": f"完成 {total_activities} 次学习活动",
+                },
+                {
+                    "name": "时间投入",
+                    "score": time_score,
+                    "max_score": 100,
+                    "level": "优秀" if time_score >= 85 else "良好" if time_score >= 60 else "中等" if time_score >= 30 else "待提升",
+                    "feedback": f"累计学习 {total_hours} 小时",
+                },
+                {
+                    "name": "技能进步",
+                    "score": progress_rate,
+                    "max_score": 100,
+                    "level": "优秀" if progress_rate >= 85 else "良好" if progress_rate >= 60 else "中等" if progress_rate >= 30 else "待提升",
+                    "feedback": f"完成 {len(scored_activities)} 次有评分的学习",
+                },
+            ],
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "improvements": weaknesses,
+            "recommendations": recommendations,
+            "recommendation": "；".join(recommendations),
+            "next_focus": next_focus,
+            "motivational_message": self._get_motivational_message(overall_score, total_activities),
             "assessment_type": "auto_generated",
-            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
+
+    def _get_motivational_message(self, score: float, activities: int) -> str:
+        """根据评分生成鼓励话语"""
+        if score >= 90:
+            return "太棒了！你的学习表现非常出色，继续保持！"
+        elif score >= 75:
+            return "做得很好！你正在稳步进步，再加把劲就能更上一层楼！"
+        elif score >= 60:
+            return "不错的开始！坚持学习，你会看到明显的进步。"
+        elif activities > 0:
+            return "每一步都是进步！制定一个学习计划，你会发现自己的潜力。"
+        else:
+            return "学习旅程从第一步开始！今天就开始你的学习吧。"
     
     def _save_assessment(self, user_id: int, assessment_data: Dict,
                         assessment_type: str, period_start: str,
