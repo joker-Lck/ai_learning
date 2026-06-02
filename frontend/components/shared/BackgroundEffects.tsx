@@ -8,7 +8,7 @@ import { motion, useMotionValue, useSpring } from 'framer-motion';
 import { Zap, Cpu, Atom, Orbit, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-const Spline = dynamic(() => import('@splinetool/react-spline'), { ssr: false });
+const Spline = dynamic(() => import('@splinetool/react-spline/next'), { ssr: false });
 
 /* ═══════════════════════════════════════════
    Spline 3D 场景
