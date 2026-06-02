@@ -63,8 +63,8 @@ export function MouseFollower() {
 
     // 独立 raf 循环，只更新一个 div 的 transform
     const tick = () => {
-      cx += (mx - cx) * 0.18;
-      cy += (my - cy) * 0.18;
+      cx += (mx - cx) * 0.35;
+      cy += (my - cy) * 0.35;
       if (ref.current) {
         ref.current.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
       }
