@@ -207,6 +207,7 @@ class StudentDataService:
             semester = data.get('semester', '')
             plan_type = data.get('plan_type', 'weekly')  # weekly / exam / custom
             custom_goal = data.get('custom_goal', '')  # 用户自定义想学的内容
+            user_requirements = data.get('user_requirements', '')  # 用户自由描述的需求
             exam_date = data.get('exam_date', '')  # 备考日期
             exam_subjects = data.get('exam_subjects', [])  # 备考科目
 
@@ -233,6 +234,7 @@ class StudentDataService:
                 weak_subjects=weak_subjects,
                 free_slots=free_slots,
                 custom_goal=custom_goal,
+                user_requirements=user_requirements,
                 exam_date=exam_date,
                 exam_subjects=exam_subjects,
                 semester=semester,
@@ -354,6 +356,7 @@ class StudentDataService:
         weak_subjects = kwargs.get('weak_subjects', [])
         free_slots = kwargs.get('free_slots', {})
         custom_goal = kwargs.get('custom_goal', '')
+        user_requirements = kwargs.get('user_requirements', '')
         exam_date = kwargs.get('exam_date', '')
         exam_subjects = kwargs.get('exam_subjects', [])
         semester = kwargs.get('semester', '')
@@ -382,6 +385,8 @@ class StudentDataService:
 
         prompt = f"""你是一位专业的学习规划师。请根据以下信息为学生制定一份{type_desc.get(plan_type, '学习计划')}。
 
+{f'## ⭐ 学生需求（最重要，请优先满足）:\n{user_requirements}' if user_requirements else ''}
+
 ## 学期: {semester}
 
 ## 当前课程安排:
@@ -398,11 +403,12 @@ class StudentDataService:
 {f'## 备考科目: {", ".join(exam_subjects)}' if exam_subjects else ''}
 
 ## 要求:
-1. 根据空闲时段合理安排每日学习任务
-2. 薄弱学科安排更多复习时间
-3. 每天任务不超过 3 小时（课余时间）
-4. 如有自定义目标，将其融入课余规划中
-5. 如有考试，制定阶段性备考方案（基础巩固→强化练习→模拟冲刺）
+1. 优先围绕「学生需求」制定计划，需求中提到的时间、科目、目标必须覆盖
+2. 根据空闲时段合理安排每日学习任务
+3. 薄弱学科安排更多复习时间
+4. 每天任务不超过 3 小时（课余时间）
+5. 如有自定义目标，将其融入课余规划中
+6. 如有考试，制定阶段性备考方案（基础巩固→强化练习→模拟冲刺）
 
 请用以下 JSON 格式输出:
 {{

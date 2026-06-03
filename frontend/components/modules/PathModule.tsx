@@ -122,14 +122,13 @@ function PathTabContent({ learningGoal, setLearningGoal, pathLoading, learningPa
 
 function PlanTabContent({ plans, loading, onGenerate }: { plans: StudyPlan[]; loading: boolean; onGenerate: (d: any) => Promise<any> }) {
   const [planType, setPlanType] = useState('weekly');
-  const [customGoal, setCustomGoal] = useState('');
+  const [requirements, setRequirements] = useState('');
   const [examDate, setExamDate] = useState('');
   const [examSubjects, setExamSubjects] = useState('');
   const [currentPlan, setCurrentPlan] = useState<StudyPlan | null>(null);
 
   const handleGen = async () => {
-    const data: any = { plan_type: planType };
-    if (planType === 'custom') data.custom_goal = customGoal;
+    const data: any = { plan_type: planType, user_requirements: requirements.trim() };
     if (planType === 'exam') { data.exam_date = examDate; data.exam_subjects = examSubjects.split(/[,，、]/).map(s => s.trim()).filter(Boolean); }
     const result = await onGenerate(data);
     if (result) setCurrentPlan({ ...result, plan_type: planType, semester: '' });
@@ -138,35 +137,51 @@ function PlanTabContent({ plans, loading, onGenerate }: { plans: StudyPlan[]; lo
   const display = currentPlan?.plan_data || plans[0]?.plan_data;
   const typeLabels: Record<string, string> = { weekly: '周计划', exam: '备考计划', custom: '自定义计划' };
 
+  const presets = [
+    { label: '帮我制定一周的学习安排', type: 'weekly' },
+    { label: '期末考试快到了，帮我备考', type: 'exam' },
+    { label: '我想利用课余学一门新技能', type: 'custom' },
+  ];
+
   return (
     <div className="space-y-4">
-      {/* 生成配置 */}
+      {/* 需求输入 */}
       <div className="glass-card rounded-xl p-4 space-y-3">
-        <p className="text-sm font-medium text-white/60 flex items-center gap-2"><Zap className="w-4 h-4 text-cyan-400" /> AI 学习规划</p>
-        <div className="flex gap-2">
-          {[{ v: 'weekly', l: '周计划' }, { v: 'exam', l: '备考' }, { v: 'custom', l: '自定义' }].map(t => (
-            <button key={t.v} onClick={() => setPlanType(t.v)}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-all ${planType === t.v ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-400/20' : 'bg-white/[0.04] text-white/40 hover:text-white/60'}`}>
-              {t.l}
+        <p className="text-sm font-medium text-white/60 flex items-center gap-2"><Zap className="w-4 h-4 text-cyan-400" /> 描述你的学习需求</p>
+
+        {/* 快捷预设 */}
+        <div className="flex flex-wrap gap-2">
+          {presets.map(p => (
+            <button key={p.type} onClick={() => { setPlanType(p.type); setRequirements(p.label); }}
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all ${requirements === p.label ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-400/20' : 'bg-white/[0.04] text-white/40 hover:text-white/60'}`}>
+              {p.label}
             </button>
           ))}
         </div>
-        {planType === 'custom' && (
-          <input value={customGoal} onChange={e => setCustomGoal(e.target.value)} placeholder="想学什么？如：学习 Rust 编程"
-            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30" />
-        )}
+
+        {/* 主输入框 */}
+        <textarea
+          value={requirements}
+          onChange={e => setRequirements(e.target.value)}
+          rows={3}
+          placeholder="描述你的学习需求，越详细越好&#10;例如：下周三有数据结构期中考试，这周每天晚上有 2 小时空闲，请帮我制定复习计划"
+          className="w-full px-3 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30 resize-none leading-relaxed"
+        />
+
+        {/* 备考补充 */}
         {planType === 'exam' && (
           <div className="grid grid-cols-2 gap-2">
             <input type="date" value={examDate} onChange={e => setExamDate(e.target.value)}
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none" />
+              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none [&>option]:bg-[#0f1a30]" />
             <input value={examSubjects} onChange={e => setExamSubjects(e.target.value)} placeholder="备考科目（逗号分隔）"
               className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
           </div>
         )}
-        <button onClick={handleGen} disabled={loading}
-          className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+
+        <button onClick={handleGen} disabled={loading || !requirements.trim()}
+          className="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-          {loading ? '生成中...' : '生成学习计划'}
+          {loading ? 'AI 规划中...' : '生成学习计划'}
         </button>
       </div>
 
