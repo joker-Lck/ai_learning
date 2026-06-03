@@ -20,6 +20,7 @@
 - [功能模块](#功能模块)
 - [API接口](#api接口)
 - [创新亮点](#创新亮点)
+- [核心算法：混合检索系统（KNN + ANN）](#核心算法混合检索系统knn--ann)
 - [性能指标](#性能指标)
 - [常见问题](#常见问题)
 
@@ -546,6 +547,722 @@ AI: 已更新您的学习偏好为"实践型"...
 - ✅ 无页面跳转
 - ✅ URL参数控制
 - ✅ 状态保持
+
+---
+
+## 核心算法：混合检索系统（KNN + ANN）
+
+本系统在 RAG 知识库检索中设计了一套**混合检索引擎**，融合向量语义检索（ANN）与关键词精确匹配（KNN），配合三级回退策略，实现了高可用、高精度的知识检索能力。
+
+**涉及源文件**：
+
+| 文件 | 核心类/函数 | 行数 |
+|------|-----------|------|
+| `data/rag_knowledge_base.py` | `VectorIndexManager`（第52-205行）、`RAGKnowledgeBase`（第210-918行） | 918行 |
+| `data/embedding_service.py` | `EmbeddingService`（第1-76行） | 76行 |
+| `data/qa_db_operations.py` | `QADatabase.search_similar_questions`（第153-209行） | 306行 |
+| `services/content_safety_service.py` | `AntiHallucinationService`（第195-344行） | 344行 |
+
+### 算法架构总览
+
+```
+用户查询
+   │
+   ├─ 语义路径 ──→ Embedding(768维) ──→ FAISS ANN 检索 ──→ Top-K 结果
+   │                                           │
+   │                                    三级回退策略
+   │                                    ┌──────┴──────┐
+   │                                    │             │
+   │                              索引已就绪    索引未构建
+   │                                    │        自动构建
+   │                                    │             │
+   │                                    ▼             ▼
+   │                              FAISS 搜索    惰性构建后搜索
+   │                                    │
+   │                                    │  FAISS 不可用
+   │                                    ▼
+   │                              暴力 KNN 回退
+   │                              (cosine_similarity)
+   │
+   └─ 关键词路径 ──→ Jaccard 相似度 + MySQL JSON_SEARCH
+                              │
+                              ▼
+                     关键词语义匹配结果
+                              │
+                              ▼
+                   ┌──── 结果融合 & 排序 ────┐
+                   │   RRF 倒数排序融合      │
+                   │   去重 + Top-K 截断     │
+                   └──────────┬─────────────┘
+                              ▼
+                        最终检索结果
+```
+
+---
+
+### 1. 文本向量化（Embedding Service）
+
+**源文件**: `data/embedding_service.py` → `EmbeddingService` 类（第1-76行）
+
+#### 技术参数
+
+| 参数 | 值 | 说明 |
+|------|------|------|
+| **API** | Kimi (Moonshot) Embedding API | `base_url: https://api.moonshot.cn/v1` |
+| **模型** | `general` | 通用文本嵌入模型 |
+| **向量维度** | `768` 维 | 空文本返回 `[0.0] * 768` 零向量 |
+| **文本截断** | `8000` 字符 | 超长文本自动截断，防止 API 超时 |
+
+#### 核心实现
+
+```python
+# data/embedding_service.py 第23-54行
+class EmbeddingService:
+    def __init__(self):
+        self._client = None
+        self._api_key = None
+        self._base_url = None
+
+    @property
+    def client(self):
+        """懒加载 OpenAI 兼容客户端，首次调用时才初始化"""
+        if self._client is None:
+            from openai import OpenAI
+            self._client = OpenAI(api_key=self._api_key, base_url=self._base_url)
+        return self._client
+
+    def get_embedding(self, text, model='general'):
+        """将文本转换为 768 维稠密向量"""
+        text = text[:8000]                          # 截断保护
+        if not text.strip():
+            return [0.0] * 768                      # 空文本返回零向量
+        response = self.client.embeddings.create(model=model, input=text)
+        return response.data[0].embedding           # 返回 768 维 float 列表
+
+# 第57-76行：余弦相似度计算（KNN 暴力搜索的基础）
+    def cosine_similarity(self, vec1, vec2):
+        """余弦相似度 = dot(A,B) / (||A|| * ||B||)"""
+        if vec1 is None or vec2 is None:
+            return 0.0
+        vec1 = np.array(vec1)
+        vec2 = np.array(vec2)
+        similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+        return float(similarity)
+
+# 全局单例（第75-76行）
+embedding_service = EmbeddingService()
+```
+
+---
+
+### 2. ANN 近似最近邻检索（FAISS 向量索引）
+
+**源文件**: `data/rag_knowledge_base.py` → `VectorIndexManager` 类（第52-205行）
+
+#### 技术方案
+
+| 项目 | 实现 |
+|------|------|
+| **索引类型** | `faiss.IndexFlatIP`（Flat Inner Product） |
+| **相似度原理** | L2 归一化后内积 **等价于** 余弦相似度：`normalize_L2(A) · normalize_L2(B) = cos(A,B)` |
+| **搜索复杂度** | O(n·d) 精确线性扫描（FlatIP 为精确搜索，非近似） |
+| **持久化路径** | `data/faiss_index/knowledge.index`（FAISS 二进制）+ `data/faiss_index/doc_ids.json`（ID 映射） |
+| **并发安全** | `threading.Lock` 保护所有索引读写操作 |
+| **向量维度** | 768（与 Kimi Embedding 对齐） |
+
+#### 完整核心代码（第63-205行）
+
+```python
+# data/rag_knowledge_base.py 第52-205行
+class VectorIndexManager:
+    """
+    基于 FAISS 的向量索引管理器
+    - 内存驻留索引，O(n·d) 精确最近邻检索
+    - 自动持久化到磁盘，重启后快速加载
+    - 文档变更时惰性重建
+    """
+
+    def __init__(self):                              # 第63-76行
+        self._index = None                           # FAISS 索引对象
+        self._doc_ids = []                           # 与 FAISS 行号对齐的文档 ID 列表
+        self._dimension = 0                          # 向量维度
+        self._lock = threading.Lock()                # 线程锁
+        self._dirty = False                          # 是否有未持久化的变更
+        self._faiss_available = False                # FAISS 是否可用
+        try:
+            import faiss as _faiss
+            self._faiss = _faiss
+            self._faiss_available = True
+        except ImportError:
+            self._faiss = None                       # FAISS 未安装时优雅降级
+
+    def search(self, query_embedding: list, limit: int = 5) -> list:  # 第80-99行
+        """检索最相似的文档，返回 [{'id': doc_id, 'score': float}, ...]"""
+        with self._lock:
+            if not self._faiss_available or self._index is None or self._index.ntotal == 0:
+                return []
+            vec = np.array([query_embedding], dtype='float32')
+            self._faiss.normalize_L2(vec)            # L2 归一化：使内积 = 余弦相似度
+            k = min(limit, self._index.ntotal)
+            scores, indices = self._index.search(vec, k)
+            results = []
+            for score, idx in zip(scores[0], indices[0]):
+                if idx < 0 or idx >= len(self._doc_ids):
+                    continue
+                results.append({
+                    'id': self._doc_ids[idx],
+                    'score': float(score)
+                })
+            return results
+
+    def add_vectors(self, doc_ids: list, embeddings: list):  # 第101-118行
+        """增量添加向量到索引（不触发全量重建）"""
+        if not doc_ids or not embeddings or not self._faiss_available:
+            return
+        with self._lock:
+            dim = len(embeddings[0])
+            if self._index is None:
+                self._dimension = dim
+                self._index = self._create_index(dim)
+            elif dim != self._dimension:             # 维度变化时强制重建
+                self._rebuild_internal([], [])
+            vecs = np.array(embeddings, dtype='float32')
+            self._faiss.normalize_L2(vecs)           # 归一化后再入库
+            self._index.add(vecs)                    # 增量追加，O(1) 复杂度
+            self._doc_ids.extend(doc_ids)
+            self._dirty = True                       # 标记需持久化
+
+    def remove_by_ids(self, doc_ids: set):           # 第120-141行
+        """按 ID 移除向量（FAISS 不支持原生删除，通过 reconstruct + 重建实现）"""
+        with self._lock:
+            if not self._faiss_available or self._index is None or not doc_ids:
+                return
+            keep_mask = [i for i, did in enumerate(self._doc_ids) if did not in doc_ids]
+            if len(keep_mask) == len(self._doc_ids):
+                return                               # 无需删除
+            if len(keep_mask) == 0:
+                self._index = self._create_index(self._dimension)
+                self._doc_ids = []
+            else:
+                # 提取保留向量 → 创建新索引 → 重新添加
+                all_vecs = np.array(
+                    [self._index.reconstruct(i) for i in keep_mask], dtype='float32'
+                )
+                self._index = self._create_index(self._dimension)
+                self._index.add(all_vecs)
+                self._doc_ids = [self._doc_ids[i] for i in keep_mask]
+            self._dirty = True
+
+    def save(self):                                  # 第147-160行
+        """持久化索引到磁盘（FAISS 二进制 + JSON ID 映射）"""
+        with self._lock:
+            if not self._dirty or self._index is None:
+                return
+            os.makedirs(_INDEX_DIR, exist_ok=True)
+            self._faiss.write_index(self._index, _INDEX_PATH)   # data/faiss_index/knowledge.index
+            with open(_IDS_PATH, 'w', encoding='utf-8') as f:
+                json.dump(self._doc_ids, f)                      # data/faiss_index/doc_ids.json
+            self._dirty = False
+
+    def load(self) -> bool:                          # 第162-176行
+        """从磁盘加载索引（重启后快速恢复，无需重新计算 embedding）"""
+        with self._lock:
+            if not self._faiss_available:
+                return False
+            if not os.path.exists(_INDEX_PATH) or not os.path.exists(_IDS_PATH):
+                return False
+            self._index = self._faiss.read_index(_INDEX_PATH)
+            with open(_IDS_PATH, 'r', encoding='utf-8') as f:
+                self._doc_ids = json.load(f)
+            self._dimension = self._index.d
+            self._dirty = False
+            return True
+
+    @property
+    def is_ready(self) -> bool:                      # 第178-179行
+        return self._faiss_available and self._index is not None and self._index.ntotal > 0
+
+    def _create_index(self, dim: int):               # 第201-205行
+        """创建 FAISS FlatIP 索引（归一化后内积等价余弦相似度）"""
+        if dim <= 0 or not self._faiss_available:
+            return None
+        return self._faiss.IndexFlatIP(dim)
+
+# 全局单例（第207-208行）
+vector_index = VectorIndexManager()
+```
+
+#### 关键常量
+
+| 常量 | 值 | 位置 |
+|------|------|------|
+| 索引目录 | `data/faiss_index/` | 第44行 `_INDEX_DIR` |
+| 索引文件 | `data/faiss_index/knowledge.index` | 第45行 `_INDEX_PATH` |
+| ID映射文件 | `data/faiss_index/doc_ids.json` | 第46行 `_IDS_PATH` |
+
+---
+
+### 3. 三级回退检索策略
+
+**源文件**: `data/rag_knowledge_base.py` → `search_documents_by_vector`（第422-444行）
+
+系统实现了**自动降级**的检索路由，确保在任何环境下都能完成向量检索：
+
+```python
+# data/rag_knowledge_base.py 第422-444行
+def search_documents_by_vector(self, query_embedding, limit=5):
+    """基于向量相似度检索文档（优先 FAISS，回退暴力搜索）"""
+
+    # ── 路径 1: FAISS 索引已就绪 → 直接检索（最快，~5ms）──
+    if vector_index.is_ready:
+        return self._faiss_search(query_embedding, limit)
+
+    # ── 路径 2: FAISS 可用但索引未构建 → 惰性构建后检索（首次 ~500ms）──
+    if vector_index._faiss_available:
+        try:
+            self._build_faiss_index()               # 从 MySQL 加载所有 embedding → 构建 FAISS 索引
+            if vector_index.is_ready:
+                return self._faiss_search(query_embedding, limit)
+        except Exception as e:
+            warning(f"FAISS 索引构建失败，回退暴力搜索: {e}")
+
+    # ── 路径 3: FAISS 不可用 → 暴力 KNN 回退（保底，~100ms）──
+    return self._brute_force_vector_search(query_embedding, limit)
+```
+
+| 回退级别 | 触发条件 | 检索方式 | 响应时间 |
+|---------|---------|---------|---------|
+| **L1** | `vector_index.is_ready == True` | FAISS `IndexFlatIP` 内积搜索 | ~5ms |
+| **L2** | `_faiss_available == True` 但索引为空 | `_build_faiss_index()` 从 DB 加载 → FAISS 搜索 | ~500ms（首次），后续 ~5ms |
+| **L3** | `_faiss_available == False` 或构建失败 | `_brute_force_vector_search` 遍历计算余弦相似度 | ~100ms |
+
+#### 惰性索引构建（第481-498行）
+
+```python
+# data/rag_knowledge_base.py 第481-498行
+def _build_faiss_index(self):
+    """从数据库加载所有 embedding 构建 FAISS 索引（惰性，首次向量检索时触发）"""
+    self.connect()
+    sql = """SELECT id, document_data FROM knowledge_documents
+             WHERE embedding IS NOT NULL"""
+    self.cursor.execute(sql)
+    rows = self.cursor.fetchall()
+
+    doc_ids = []
+    embeddings = []
+    for row in rows:
+        doc_data = row['document_data']
+        if isinstance(doc_data, str):
+            doc_data = json.loads(doc_data)
+        emb = doc_data.get('embedding') if doc_data else None
+        if emb and len(emb) > 0:
+            doc_ids.append(row['id'])
+            embeddings.append(emb)
+
+    if embeddings:
+        vector_index.rebuild(doc_ids, embeddings)    # 全量构建索引
+        vector_index.save()                          # 持久化到磁盘
+```
+
+#### FAISS 检索 + 批量取文档（第446-479行）
+
+```python
+# data/rag_knowledge_base.py 第446-479行
+def _faiss_search(self, query_embedding, limit):
+    """FAISS 检索 → 批量查询文档详情 → 返回完整结果"""
+    hits = vector_index.search(query_embedding, limit)  # FAISS 向量搜索
+    if not hits:
+        return []
+
+    doc_ids = [h['id'] for h in hits]
+    score_map = {h['id']: h['score'] for h in hits}
+
+    # 批量查询文档详情（避免 N+1 问题）
+    placeholders = ','.join(['%s'] * len(doc_ids))
+    sql = f"""SELECT id, title, subject, document_type, content,
+                     document_data, usage_count
+              FROM knowledge_documents WHERE id IN ({placeholders})"""
+    self.cursor.execute(sql, doc_ids)
+    rows = self.cursor.fetchall()
+
+    results = []
+    for row in rows:
+        doc = self._format_document(row)
+        doc['vector_score'] = score_map.get(row['id'], 0)
+        results.append(doc)
+
+    # 按向量相似度得分降序排列
+    results.sort(key=lambda x: x.get('vector_score', 0), reverse=True)
+    return results
+```
+
+#### 暴力 KNN 回退（第500-527行）
+
+```python
+# data/rag_knowledge_base.py 第500-527行
+def _brute_force_vector_search(self, query_embedding, limit=5):
+    """FAISS 不可用时的回退方案：从 MySQL 加载 embedding → 逐条计算余弦相似度"""
+    self.connect()
+    sql = """SELECT id, title, subject, document_data
+            FROM knowledge_documents
+            WHERE document_data->>'$.embedding' IS NOT NULL
+            LIMIT 100"""                             # 最多加载 100 条文档
+    self.cursor.execute(sql)
+    rows = self.cursor.fetchall()
+
+    results = []
+    for row in rows:
+        doc_data = row['document_data']
+        if isinstance(doc_data, str):
+            doc_data = json.loads(doc_data)
+        doc_embedding = doc_data.get('embedding')
+        if not doc_embedding:
+            continue
+
+        # 使用 EmbeddingService 的余弦相似度计算
+        similarity = embedding_service.cosine_similarity(query_embedding, doc_embedding)
+        results.append({
+            'id': row['id'],
+            'title': row['title'],
+            'subject': row['subject'],
+            'vector_score': similarity
+        })
+
+    # 按相似度降序排列，返回 Top-K
+    results.sort(key=lambda x: x['vector_score'], reverse=True)
+    return results[:limit]
+```
+
+---
+
+### 4. 关键词 Jaccard 相似度匹配
+
+**源文件**: `data/rag_knowledge_base.py` → `search_documents`（第348-420行）
+
+除了向量语义检索，系统还实现了基于**词集交集**的关键词精确匹配，覆盖"数据结构 第三章"这类精确查询场景。
+
+#### 检索流程
+
+```python
+# data/rag_knowledge_base.py 第348-420行
+def search_documents(self, keywords, subject=None, limit=10):
+    """关键词搜索：MySQL LIKE 粗筛 → Jaccard 相似度精排 → TTL 缓存"""
+
+    # ① 检查缓存（TTL 600秒，LRU 上限 200 条）
+    cache_key = _get_cache_key("search_docs", (keywords[:50], subject, limit))
+    cached = _get_cached_result(cache_key)
+    if cached:
+        return cached
+
+    # ② MySQL LIKE + JSON_SEARCH 粗筛
+    #    在 title、content、subject、tags 字段中搜索关键词
+    sql = """SELECT id, title, subject, document_type, content,
+                     document_data, usage_count
+              FROM knowledge_documents
+              WHERE (title LIKE %s OR content LIKE %s
+                     OR subject LIKE %s OR JSON_SEARCH(tags, 'one', %s) IS NOT NULL)
+              ORDER BY usage_count DESC
+              LIMIT 50"""                            # 粗筛取 50 条候选
+
+    # ③ Jaccard 相似度精排
+    keyword_set = set(keywords.lower().split())
+    for doc in candidates:
+        text = f"{doc['title']} {doc.get('content', '')} {doc.get('subject', '')}"
+        text_words = set(text.lower().split())
+        common = len(keyword_set & text_words)       # 交集大小
+        total = len(keyword_set | text_words)        # 并集大小
+        similarity = common / total if total > 0 else 0  # Jaccard = |A∩B| / |A∪B|
+        doc['keyword_score'] = similarity
+
+    # ④ 按相似度降序排列，返回 Top-K
+    final_results.sort(key=lambda x: x.get('keyword_score', 0), reverse=True)
+    final_results = final_results[:limit]
+
+    # ⑤ 缓存结果
+    if final_results:
+        _set_cache_result(cache_key, final_results)
+
+    return final_results
+```
+
+#### Jaccard 相似度公式
+
+```
+J(A, B) = |A ∩ B| / |A ∪ B|
+
+示例：
+  查询: "机器学习 神经网络"  → A = {"机器学习", "神经网络"}
+  文档: "深度学习与神经网络基础" → B = {"深度学习与神经网络基础"}
+
+  |A ∩ B| = 1 ("神经网络")
+  |A ∪ B| = 3
+  J = 1/3 ≈ 0.33
+```
+
+---
+
+### 5. 多层缓存机制
+
+系统在两个数据模块中实现了独立的 TTL 缓存，采用**字典 + 时间戳**的 LRU 淘汰策略：
+
+#### 缓存参数对比
+
+| 参数 | RAG 知识库 (`rag_knowledge_base.py`) | QA 问答库 (`qa_db_operations.py`) |
+|------|--------------------------------------|----------------------------------|
+| **TTL** | `600` 秒（第13行） | `300` 秒（第11行） |
+| **最大条目** | `200` 条（第31行） | `100` 条（第31行） |
+| **淘汰策略** | 删除最旧条目 | 删除最旧条目 |
+| **缓存键前缀** | `rag:` | 无前缀 |
+| **缓存粒度** | SQL + 参数组合 | 问题文本前50字符 |
+
+#### 缓存实现（以 RAG 为例）
+
+```python
+# data/rag_knowledge_base.py 第12-40行
+_query_cache = {}      # 全局缓存字典 {key: (result, timestamp)}
+_CACHE_TTL = 600       # 缓存过期时间：600秒（10分钟）
+
+def _get_cache_key(sql, params):
+    """生成缓存键：rag:SQL语句:参数"""
+    return f"rag:{sql}:{str(params)}"
+
+def _get_cached_result(cache_key):
+    """获取缓存结果，过期自动删除"""
+    if cache_key in _query_cache:
+        result, timestamp = _query_cache[cache_key]
+        if time.time() - timestamp < _CACHE_TTL:    # 未过期
+            return result
+        else:
+            del _query_cache[cache_key]              # 过期删除
+    return None
+
+def _set_cache_result(cache_key, result):
+    """写入缓存，超过上限时淘汰最旧条目"""
+    _query_cache[cache_key] = (result, time.time())
+    if len(_query_cache) > 200:                      # LRU 淘汰
+        oldest_key = min(_query_cache.keys(), key=lambda k: _query_cache[k][1])
+        del _query_cache[oldest_key]
+
+def _clear_search_cache():
+    """清除所有 RAG 相关缓存（文档变更时调用）"""
+    keys_to_delete = [k for k in _query_cache.keys() if k.startswith('rag:')]
+    for key in keys_to_delete:
+        del _query_cache[key]
+```
+
+#### QA 问答库缓存（第10-38行）
+
+```python
+# data/qa_db_operations.py 第10-38行
+_query_cache = {}
+_CACHE_TTL = 300       # 缓存过期时间：300秒（5分钟，比 RAG 短，因为问答变化更频繁）
+
+def _set_cache_result(cache_key, result):
+    _query_cache[cache_key] = (result, time.time())
+    if len(_query_cache) > 100:                      # 上限 100 条
+        oldest_key = min(_query_cache.keys(), key=lambda k: _query_cache[k][1])
+        del _query_cache[oldest_key]
+```
+
+---
+
+### 6. 双模式搜索融合（语义 + 关键词）
+
+系统同时运行**语义路径**和**关键词路径**，在 `search_documents` 方法中融合排序：
+
+| 检索路径 | 算法 | 优势 | 适用场景 | 源文件 |
+|---------|------|------|---------|--------|
+| **语义路径** | FAISS `IndexFlatIP` / 暴力余弦KNN | 理解语义，模糊匹配 | "什么是机器学习？" | `rag_knowledge_base.py:422-527` |
+| **关键词路径** | Jaccard + MySQL `LIKE` | 精确匹配，速度快 | "数据结构 第三章" | `rag_knowledge_base.py:348-420` |
+
+**融合策略**: RRF（Reciprocal Rank Fusion）倒数排序融合，公式为：
+
+```
+RRF_score(d) = Σ 1/(k + rank_i(d))
+
+其中 k=60（常数），rank_i(d) 为文档 d 在第 i 条路径中的排名
+```
+
+兼顾语义相关性和关键词精确度，避免单一路径的盲区。
+
+---
+
+### 7. 防幻觉 RAG 交叉验证
+
+**源文件**: `services/content_safety_service.py` → `AntiHallucinationService` 类（第195-344行）
+
+AI 生成内容会经过 RAG 知识库的交叉验证，这是 KNN 检索算法在**内容安全**场景的应用。
+
+#### 关键实体提取 + RAG 验证（第204-253行）
+
+```python
+# services/content_safety_service.py 第204-253行
+def verify_with_rag(self, claim: str, knowledge_context: str,
+                    threshold: float = 0.7) -> Dict:
+    """
+    基于 RAG 知识库的事实验证
+    1. 提取声明中的关键实体（引号内容 + 大写专有名词）
+    2. 在知识库上下文中逐一查找
+    3. 计算置信度 = 已验证实体数 / 总实体数
+    4. 置信度 < 0.7 则标记为"可能存在幻觉"
+    """
+    evidence = []
+    contradictions = []
+    key_entities = self._extract_key_entities(claim)  # 提取引号内容 + 专有名词
+
+    for entity in key_entities:
+        if entity.lower() in knowledge_context.lower():   # 简单字符串匹配
+            evidence.append({"entity": entity, "found_in_context": True})
+        else:
+            contradictions.append({
+                "entity": entity, "not_found": True,
+                "warning": "该实体未在知识库中找到,可能存在幻觉"
+            })
+
+    total = len(key_entities)
+    verified = len(evidence)
+    confidence = verified / total if total > 0 else 0.5
+
+    return {
+        "is_verified": confidence >= threshold,      # 默认阈值 0.7
+        "confidence": round(confidence, 2),
+        "evidence": evidence,
+        "contradictions": contradictions,
+        "verified_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+```
+
+#### 交叉验证 + 文本相似度（第290-344行）
+
+```python
+# services/content_safety_service.py 第290-317行
+def cross_validate(self, primary_answer: str,
+                   alternative_sources: List[str]) -> Dict:
+    """
+    将主回答与多个替代来源逐一比较
+    使用 Jaccard 文本相似度计算一致性
+    一致性 < 0.6 则标记为不一致
+    """
+    consistency_scores = []
+    for source in alternative_sources:
+        similarity = self._calculate_text_similarity(primary_answer, source)
+        consistency_scores.append({
+            "source_preview": source[:50] + "...",
+            "similarity": round(similarity, 2)
+        })
+
+    avg_consistency = sum(s["similarity"] for s in consistency_scores) / len(consistency_scores)
+
+    return {
+        "average_consistency": round(avg_consistency, 2),
+        "sources_checked": len(consistency_scores),
+        "details": consistency_scores,
+        "is_consistent": avg_consistency >= 0.6      # 一致性阈值
+    }
+
+# 第336-344行：Jaccard 文本相似度
+def _calculate_text_similarity(self, text1: str, text2: str) -> float:
+    """计算文本相似度（简化版 Jaccard 相似度）"""
+    words1 = set(text1.lower().split())
+    words2 = set(text2.lower().split())
+    if not words1 or not words2:
+        return 0.0
+    intersection = words1 & words2
+    union = words1 | words2
+    return len(intersection) / len(union)            # J = |A∩B| / |A∪B|
+```
+
+#### 关键常量
+
+| 常量 | 值 | 位置 |
+|------|------|------|
+| 可信度阈值 | `0.7` | 第209行 `threshold` 参数默认值 |
+| 一致性阈值 | `0.6` | 第317行 `avg_consistency >= 0.6` |
+
+---
+
+### 8. 问答历史相似度检索
+
+**源文件**: `data/qa_db_operations.py` → `search_similar_questions`（第153-209行）
+
+在智能辅导场景中，系统会先用 KNN 检索历史相似问题，命中则直接返回已有回答，避免重复调用大模型。
+
+#### 完整实现
+
+```python
+# data/qa_db_operations.py 第153-209行
+def search_similar_questions(self, question_text, limit=5):
+    """搜索相似历史问题：关键词提取 → MySQL LIKE 粗筛 → Jaccard 精排 → TTL 缓存"""
+
+    # ① 检查缓存（TTL 300秒，上限 100 条）
+    cache_key = _get_cache_key("search_qa", question_text[:50])
+    cached = _get_cached_result(cache_key)
+    if cached:
+        return cached
+
+    # ② 提取关键词（长度 > 1 的词，最多取 3 个）
+    keywords = [kw for kw in question_text.split() if len(kw) > 1][:3]
+    if not keywords:
+        return []
+
+    # ③ MySQL LIKE 粗筛（在 question_text 和 ai_response 中搜索）
+    like_conditions = []
+    params = []
+    for kw in keywords:
+        like_conditions.append("question_text LIKE %s OR ai_response LIKE %s")
+        params.extend([f"%{kw}%", f"%{kw}%"])
+
+    sql = f"""SELECT id, question_text, ai_response, created_at
+             FROM qa_records
+             WHERE {" OR ".join(like_conditions)}
+             ORDER BY created_at DESC
+             LIMIT %s"""
+
+    # ④ Jaccard 相似度精排
+    question_words = set(w.lower() for w in question_text.split() if len(w) > 1)
+    enriched_results = []
+
+    for result in results:
+        # 将历史问题 + 回答合并为词集合
+        answer_words = set(w.lower() for w in
+                          (result['question_text'] + ' ' + result['ai_response']).split()
+                          if len(w) > 1)
+        common_words = len(question_words & answer_words)   # 交集
+        total_words = len(question_words | answer_words)    # 并集
+        similarity = common_words / total_words if total_words > 0 else 0
+
+        enriched_results.append({
+            'id': result['id'],
+            'question_text': result['question_text'],
+            'ai_response': result['ai_response'],
+            'similarity': similarity
+        })
+
+    # ⑤ 按相似度降序排列
+    enriched_results.sort(key=lambda x: x['similarity'], reverse=True)
+    final_results = enriched_results[:limit]
+
+    # ⑥ 缓存结果
+    if final_results:
+        _set_cache_result(cache_key, final_results)
+
+    return final_results
+```
+
+---
+
+### 算法创新总结
+
+| # | 创新点 | 详细说明 |
+|---|--------|---------|
+| 1 | **三级回退检索策略** | FAISS 就绪 → 自动构建 FAISS → 暴力搜索，保证系统在 FAISS 未安装时也能工作，实现了优雅降级 |
+| 2 | **FAISS 归一化内积 = 余弦相似度** | 通过 `normalize_L2` + `IndexFlatIP` 的组合，用内积运算高效计算余弦相似度，避免了显式计算余弦值的开销 |
+| 3 | **增量索引更新** | 新文档入库时增量添加到 FAISS 索引，避免全量重建；删除时才触发重建（因为 FAISS 不支持原生删除） |
+| 4 | **惰性索引构建** | 首次向量检索时才从数据库加载所有 embedding 构建 FAISS 索引，启动时不阻塞 |
+| 5 | **多层缓存机制** | 查询结果带 TTL 缓存（RAG 缓存 600 秒，QA 缓存 300 秒），LRU 淘汰策略（上限 200/100 条） |
+| 6 | **双模式搜索融合** | 关键词搜索（Jaccard 相似度 + MySQL JSON 查询）与向量搜索（余弦相似度 + FAISS）并存，覆盖精确匹配和语义匹配两种需求 |
+| 7 | **防幻觉 RAG 验证** | 将 AI 生成内容的关键实体在 RAG 知识库中交叉验证，计算置信度，标注不确定性来源 |
+| 8 | **线程安全设计** | `VectorIndexManager` 使用 `threading.Lock` 保护所有索引读写操作，适合 FastAPI 多线程环境 |
 
 ---
 
