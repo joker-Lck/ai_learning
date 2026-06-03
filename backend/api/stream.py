@@ -17,7 +17,7 @@ from services.tutor_agent import tutor_agent
 from services.qa_service import qa_service
 from core.logger import info, error
 
-router = APIRouter(prefix="/stream", tags=["流式输出"])
+router = APIRouter(tags=["流式输出"])
 
 
 @router.get("/generate-resource/{resource_type}")
