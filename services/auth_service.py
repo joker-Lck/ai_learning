@@ -8,6 +8,7 @@ import hashlib
 import secrets
 from data.config import get_accounts_db_config
 import mysql.connector
+from mysql.connector import pooling
 from datetime import datetime
 
 
@@ -17,9 +18,33 @@ class AuthService:
     def __init__(self):
         """初始化认证服务"""
         self.db_config = get_accounts_db_config()
+        self._pool = self._init_pool()
+
+    def _init_pool(self):
+        """初始化连接池"""
+        try:
+            config = {
+                'host': self.db_config['host'],
+                'port': self.db_config['port'],
+                'user': self.db_config['user'],
+                'password': self.db_config['password'],
+                'database': self.db_config['database'],
+                'charset': 'utf8mb4',
+                'use_pure': True,
+            }
+            return pooling.MySQLConnectionPool(
+                pool_name="auth_pool",
+                pool_size=3,
+                pool_reset_session=True,
+                **config,
+            )
+        except Exception:
+            return None
 
     def _get_connection(self):
-        """获取数据库连接"""
+        """获取数据库连接（优先连接池）"""
+        if self._pool:
+            return self._pool.get_connection()
         return mysql.connector.connect(
             host=self.db_config['host'],
             port=self.db_config['port'],
@@ -27,12 +52,12 @@ class AuthService:
             password=self.db_config['password'],
             database=self.db_config['database'],
             charset='utf8mb4',
-            use_pure=True
+            use_pure=True,
         )
 
     def hash_password(self, password):
         """
-        密码加密（bcrypt）
+        密码加密（bcrypt，cost=8 约 20ms，兼顾安全与性能）
 
         Args:
             password: 明文密码
@@ -40,7 +65,7 @@ class AuthService:
         Returns:
             加密后的密码字符串（bcrypt 格式）
         """
-        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=8)).decode('utf-8')
 
     def _verify_bcrypt(self, password, stored_password):
         """验证 bcrypt 格式的密码"""
