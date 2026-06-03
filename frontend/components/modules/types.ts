@@ -52,18 +52,43 @@ export interface TutorMessage {
   timestamp: Date;
 }
 
+export interface AssessmentDimension {
+  name: string;
+  score: number;
+  max_score: number;
+  level: string;
+  feedback: string;
+}
+
+export interface KnowledgeMastery {
+  overall_score: number;
+  topics: Record<string, number>;
+}
+
+export interface SkillProgress {
+  improvement_areas: string[];
+  progress_rate: number;
+}
+
 export interface AssessmentResult {
   overall_score: number;
-  dimensions: Array<{
-    name: string;
-    score: number;
-    max_score: number;
-    level: string;
-    feedback: string;
-  }>;
+  grade: string;
+  dimensions: AssessmentDimension[];
+  knowledge_mastery: KnowledgeMastery;
+  skill_progress: SkillProgress;
+  engagement_level: number;
+  time_investment: number;
   strengths: string[];
+  weaknesses: string[];
   improvements: string[];
   recommendations: string[];
+  recommendation: string;
+  next_focus: string[];
+  motivational_message: string;
+  assessment_type?: string;
+  period_start?: string;
+  period_end?: string;
+  generated_at?: string;
 }
 
 export interface ProfileDimension {

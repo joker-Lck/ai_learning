@@ -83,15 +83,32 @@ export default function AssessmentModule({
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white text-center">
-                <h4 className="text-lg font-semibold mb-3">综合评分</h4>
-                <div className="text-5xl font-bold mb-1">{assessment.overall_score ?? '--'}</div>
-                <p className="text-white/80 text-sm">满分 100 分</p>
-                {(assessment as any).grade && <p className="text-white/60 text-xs mt-1">{(assessment as any).grade}</p>}
+              {/* 综合评分卡片 */}
+              <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-lg font-semibold mb-1">综合评分</h4>
+                    <p className="text-white/70 text-sm">
+                      评估周期: {assessment.period_start || '--'} 至 {assessment.period_end || '--'}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-5xl font-bold">{assessment.overall_score ?? '--'}</div>
+                    <p className="text-white/80 text-xs mt-1">满分 100</p>
+                  </div>
+                </div>
+                {assessment.grade && (
+                  <div className="mt-3 inline-block px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
+                    {assessment.grade}
+                  </div>
+                )}
+                {assessment.generated_at && (
+                  <p className="text-white/50 text-xs mt-2">生成时间: {assessment.generated_at}</p>
+                )}
               </div>
 
-              {/* 多维度评分 — 兼容 dimensions 数组或 knowledge_mastery 对象 */}
-              {assessment.dimensions?.length > 0 ? (
+              {/* 多维度评分 */}
+              {assessment.dimensions?.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {assessment.dimensions.map((dim, idx) => (
                     <div key={idx} className="glass-card rounded-xl p-4">
@@ -100,101 +117,164 @@ export default function AssessmentModule({
                         <span className="text-xs text-white/40">{dim.score}/{dim.max_score} · {dim.level}</span>
                       </div>
                       <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
-                        <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style={{ width: `${(dim.score / dim.max_score) * 100}%` }} />
+                        <div
+                          className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full transition-all duration-700"
+                          style={{ width: `${(dim.score / dim.max_score) * 100}%` }}
+                        />
                       </div>
                       <p className="text-xs text-white/40">{dim.feedback}</p>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* 从后端实际字段构造维度卡片 */}
-                  {(assessment as any).knowledge_mastery && (
-                    <div className="glass-card rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm text-white">知识掌握度</span>
-                        <span className="text-xs text-white/40">{Math.round(((assessment as any).knowledge_mastery.overall_score || 0) * 100)}%</span>
+              )}
+
+              {/* 详细指标卡片 */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {assessment.knowledge_mastery?.overall_score !== undefined && (
+                  <div className="glass-card rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-cyan-400">{Math.round(assessment.knowledge_mastery.overall_score * 100)}%</div>
+                    <p className="text-xs text-white/40 mt-1">知识掌握度</p>
+                  </div>
+                )}
+                {assessment.engagement_level !== undefined && (
+                  <div className="glass-card rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-emerald-400">{Math.round(assessment.engagement_level * 100)}%</div>
+                    <p className="text-xs text-white/40 mt-1">学习参与度</p>
+                  </div>
+                )}
+                {assessment.time_investment !== undefined && (
+                  <div className="glass-card rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-amber-400">{assessment.time_investment}h</div>
+                    <p className="text-xs text-white/40 mt-1">学习时长</p>
+                  </div>
+                )}
+                {assessment.skill_progress?.progress_rate !== undefined && (
+                  <div className="glass-card rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-violet-400">+{Math.round(assessment.skill_progress.progress_rate * 100)}%</div>
+                    <p className="text-xs text-white/40 mt-1">技能进步</p>
+                  </div>
+                )}
+              </div>
+
+              {/* 各主题掌握度 */}
+              {assessment.knowledge_mastery?.topics && Object.keys(assessment.knowledge_mastery.topics).length > 0 && (
+                <div className="glass-card rounded-xl p-4">
+                  <h5 className="font-semibold text-white mb-3 text-sm flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-cyan-400" /> 各主题掌握度
+                  </h5>
+                  <div className="space-y-2">
+                    {Object.entries(assessment.knowledge_mastery.topics).map(([topic, score], i) => (
+                      <div key={i}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-white/70">{topic}</span>
+                          <span className="text-xs text-white/40">{Math.round(score * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-white/[0.06] rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full transition-all duration-700"
+                            style={{
+                              width: `${score * 100}%`,
+                              background: score >= 0.8 ? 'linear-gradient(to right, #10b981, #34d399)' :
+                                         score >= 0.6 ? 'linear-gradient(to right, #f59e0b, #fbbf24)' :
+                                         'linear-gradient(to right, #ef4444, #f87171)',
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
-                        <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style={{ width: `${((assessment as any).knowledge_mastery.overall_score || 0) * 100}%` }} />
-                      </div>
-                      {Object.entries((assessment as any).knowledge_mastery.topics || {}).map(([topic, score], i) => (
-                        <p key={i} className="text-xs text-white/40">{topic}: {Math.round((score as number) * 100)}%</p>
-                      ))}
-                    </div>
-                  )}
-                  {(assessment as any).engagement_level !== undefined && (
-                    <div className="glass-card rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm text-white">学习参与度</span>
-                        <span className="text-xs text-white/40">{Math.round(((assessment as any).engagement_level || 0) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
-                        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full" style={{ width: `${((assessment as any).engagement_level || 0) * 100}%` }} />
-                      </div>
-                    </div>
-                  )}
-                  {(assessment as any).time_investment !== undefined && (
-                    <div className="glass-card rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm text-white">学习时长</span>
-                        <span className="text-xs text-white/40">{(assessment as any).time_investment}h</span>
-                      </div>
-                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
-                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full" style={{ width: `${Math.min(((assessment as any).time_investment || 0) / 10 * 100, 100)}%` }} />
-                      </div>
-                    </div>
-                  )}
-                  {(assessment as any).skill_progress && (
-                    <div className="glass-card rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm text-white">技能进步</span>
-                        <span className="text-xs text-white/40">+{Math.round(((assessment as any).skill_progress.progress_rate || 0) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-white/[0.06] rounded-full h-2 mb-2">
-                        <div className="bg-gradient-to-r from-violet-500 to-purple-500 h-2 rounded-full" style={{ width: `${Math.min(((assessment as any).skill_progress.progress_rate || 0) * 100, 100)}%` }} />
-                      </div>
-                      {(assessment as any).skill_progress.improvement_areas?.length > 0 && (
-                        <p className="text-xs text-white/40">提升: {(assessment as any).skill_progress.improvement_areas.join('、')}</p>
-                      )}
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               )}
 
+              {/* 技能提升领域 */}
+              {assessment.skill_progress?.improvement_areas?.length > 0 && (
+                <div className="glass-card rounded-xl p-4 border-violet-400/20">
+                  <h5 className="font-semibold text-violet-400 mb-2 text-sm">📚 需提升的技能</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {assessment.skill_progress.improvement_areas.map((area, i) => (
+                      <span key={i} className="px-3 py-1 bg-violet-400/10 text-violet-300 text-xs rounded-full">{area}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 优势与不足 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {assessment.strengths?.length > 0 && (
                   <div className="glass-card rounded-xl p-4 border-emerald-400/20">
-                    <h5 className="font-semibold text-emerald-400 mb-2 flex items-center gap-2 text-sm"><CheckCircle className="w-4 h-4" /> 优势</h5>
-                    <ul className="text-sm text-white/60 space-y-1">{assessment.strengths.map((s, idx) => <li key={idx}>• {s}</li>)}</ul>
+                    <h5 className="font-semibold text-emerald-400 mb-2 flex items-center gap-2 text-sm"><CheckCircle className="w-4 h-4" /> 学习优势</h5>
+                    <ul className="text-sm text-white/60 space-y-1">
+                      {assessment.strengths.map((s, idx) => <li key={idx} className="flex items-start gap-1.5"><span className="text-emerald-400 mt-0.5">•</span>{s}</li>)}
+                    </ul>
                   </div>
                 )}
-                {(assessment.improvements || (assessment as any).weaknesses)?.length > 0 && (
+                {assessment.weaknesses?.length > 0 && (
                   <div className="glass-card rounded-xl p-4 border-amber-400/20">
-                    <h5 className="font-semibold text-amber-400 mb-2 flex items-center gap-2 text-sm"><AlertCircle className="w-4 h-4" /> 改进建议</h5>
+                    <h5 className="font-semibold text-amber-400 mb-2 flex items-center gap-2 text-sm"><AlertCircle className="w-4 h-4" /> 薄弱环节</h5>
                     <ul className="text-sm text-white/60 space-y-1">
-                      {(assessment.improvements || (assessment as any).weaknesses || []).map((imp: string, idx: number) => <li key={idx}>• {imp}</li>)}
+                      {assessment.weaknesses.map((w, idx) => <li key={idx} className="flex items-start gap-1.5"><span className="text-amber-400 mt-0.5">•</span>{w}</li>)}
                     </ul>
                   </div>
                 )}
               </div>
 
-              {/* 学习建议 — 兼容 recommendations 数组或 recommendation 字符串 */}
-              {(assessment.recommendations?.length > 0 || (assessment as any).recommendation || (assessment as any).next_focus?.length > 0) && (
+              {/* 改进建议 */}
+              {assessment.improvements?.length > 0 && (
+                <div className="glass-card rounded-xl p-4 border-orange-400/20">
+                  <h5 className="font-semibold text-orange-400 mb-2 flex items-center gap-2 text-sm"><TrendingUp className="w-4 h-4" /> 改进建议</h5>
+                  <div className="space-y-2">
+                    {assessment.improvements.map((imp, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</div>
+                        <p className="text-sm text-white/60">{imp}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 学习建议 */}
+              {assessment.recommendations?.length > 0 && (
                 <div className="glass-card rounded-xl p-4 border-cyan-400/20">
                   <h5 className="font-semibold text-cyan-400 mb-2 flex items-center gap-2 text-sm"><Lightbulb className="w-4 h-4" /> 学习建议</h5>
-                  <ul className="text-sm text-white/60 space-y-1">
-                    {(assessment.recommendations || []).map((rec, idx) => <li key={idx}>• {rec}</li>)}
-                    {!(assessment.recommendations?.length) && (assessment as any).recommendation && <li>• {(assessment as any).recommendation}</li>}
-                    {((assessment as any).next_focus || []).map((f: string, idx: number) => <li key={`nf-${idx}`}> 下一步: {f}</li>)}
-                  </ul>
+                  <div className="space-y-2">
+                    {assessment.recommendations.map((rec, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</div>
+                        <p className="text-sm text-white/60">{rec}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 综合建议 */}
+              {assessment.recommendation && (
+                <div className="glass-card rounded-xl p-4 border-blue-400/20">
+                  <h5 className="font-semibold text-blue-400 mb-2 text-sm flex items-center gap-2"><Sparkles className="w-4 h-4" /> 综合建议</h5>
+                  <p className="text-sm text-white/60 leading-relaxed">{assessment.recommendation}</p>
+                </div>
+              )}
+
+              {/* 下一步重点 */}
+              {assessment.next_focus?.length > 0 && (
+                <div className="glass-card rounded-xl p-4 border-indigo-400/20">
+                  <h5 className="font-semibold text-indigo-400 mb-2 text-sm">🎯 下一步重点</h5>
+                  <div className="space-y-1.5">
+                    {assessment.next_focus.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm text-white/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
+                        {f}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {/* 鼓励话语 */}
-              {(assessment as any).motivational_message && (
+              {assessment.motivational_message && (
                 <div className="glass-card rounded-xl p-4 border-pink-400/20 text-center">
-                  <p className="text-sm text-pink-300/80"> {(assessment as any).motivational_message}</p>
+                  <p className="text-sm text-pink-300/80">✨ {assessment.motivational_message}</p>
                 </div>
               )}
 

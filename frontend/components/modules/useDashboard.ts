@@ -372,7 +372,7 @@ export function useDashboard() {
   const handleAssess = async () => {
     setAssessLoading(true);
     try {
-      const res: any = await api.assess({ user_id: 1, assessment_type: 'comprehensive' });
+      const res: any = await api.assess({ user_id: user?.id, assessment_type: 'comprehensive' });
       if (res.success && res.data?.assessment) {
         setAssessment(res.data.assessment);
       } else {

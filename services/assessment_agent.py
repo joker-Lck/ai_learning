@@ -99,7 +99,7 @@ class AssessmentAgent:
             with assessment_db:
                 # 查询学习行为记录
                 sql = """
-                    SELECT activity_type, duration_seconds, score, progress_percentage, metadata
+                    SELECT activity_type, duration_seconds, metadata
                     FROM learning_activities
                     WHERE user_id = %s AND created_at >= %s AND created_at <= %s
                     ORDER BY created_at DESC
