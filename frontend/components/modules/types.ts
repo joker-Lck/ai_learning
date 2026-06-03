@@ -124,6 +124,7 @@ export interface GradeItem {
   score: number | null;
   credits?: number | null;
   grade_type?: string;  // exam/quiz/homework/overall
+  exam_date?: string;
 }
 
 export interface ErrorNote {

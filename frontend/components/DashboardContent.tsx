@@ -50,6 +50,9 @@ export default function DashboardContent() {
             handleToggleMastery={d.handleToggleMastery}
             handleDeleteErrorNote={d.handleDeleteErrorNote}
             handleUpdateProfileField={d.handleUpdateProfileField}
+            handleImportCourses={d.handleImportCourses}
+            handleImportGrades={d.handleImportGrades}
+            handleImportErrors={d.handleImportErrors}
           />
         );
       case 'resources':

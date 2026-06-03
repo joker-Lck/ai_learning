@@ -685,3 +685,56 @@ async def get_study_plans(
     """获取学习计划列表"""
     result = student_data_service.get_study_plans(user["id"], semester)
     return BaseResponse(**result)
+
+
+# ==================== 文件导入（AI 识别）====================
+
+@router.post("/import-courses-from-file", response_model=BaseResponse)
+async def import_courses_from_file(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_auth),
+):
+    """从文件中 AI 识别课程表并预览"""
+    try:
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:
+            return BaseResponse(success=False, message="文件超过 10MB 限制", data=None)
+        result = student_data_service.import_courses_from_file(user["id"], file.filename, content)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"导入课程表失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/import-grades-from-file", response_model=BaseResponse)
+async def import_grades_from_file(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_auth),
+):
+    """从文件中 AI 识别成绩并预览"""
+    try:
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:
+            return BaseResponse(success=False, message="文件超过 10MB 限制", data=None)
+        result = student_data_service.import_grades_from_file(user["id"], file.filename, content)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"导入成绩失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/import-errors-from-file", response_model=BaseResponse)
+async def import_errors_from_file(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_auth),
+):
+    """从文件中 AI 识别错题并预览"""
+    try:
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:
+            return BaseResponse(success=False, message="文件超过 10MB 限制", data=None)
+        result = student_data_service.import_errors_from_file(user["id"], file.filename, content)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"导入错题失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

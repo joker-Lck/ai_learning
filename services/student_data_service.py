@@ -490,3 +490,190 @@ class StudentDataService:
 
 
 student_data_service = StudentDataService()
+
+
+# ==================== 文件导入扩展 ====================
+
+class StudentDataImportMixin:
+    """文件导入扩展 — AI 识别课程表/成绩/错题"""
+
+    def _parse_upload_file(self, filename: str, content: bytes) -> str:
+        """解析上传文件为文本"""
+        from services.document_analysis_service import document_analysis_service
+        return document_analysis_service._parse_file(filename, content)
+
+    def import_courses_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
+        """从文件中 AI 识别课程表"""
+        try:
+            text = self._parse_upload_file(filename, content)
+            if not text or text.startswith("["):
+                return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+
+            prompt = f"""请从以下文件内容中识别出课程表信息，提取每门课程的：
+- 课程名称 (name)
+- 星期几上课 (day: 周一~周日)
+- 开始时间 (start_time: HH:MM 格式)
+- 结束时间 (end_time: HH:MM 格式)
+- 上课地点 (location，可为空)
+- 授课教师 (teacher，可为空)
+
+文件内容:
+{text[:6000]}
+
+严格输出 JSON 数组格式（不要输出其他内容），例如:
+[
+  {{"name": "高等数学", "day": "周一", "start_time": "08:00", "end_time": "09:40", "location": "教学楼A301", "teacher": "张教授"}},
+  {{"name": "英语", "day": "周三", "start_time": "14:00", "end_time": "15:40", "location": "", "teacher": ""}}
+]
+
+如果内容中没有课程表信息，返回空数组 []"""
+
+            response = qa_service.call_ai(prompt, max_tokens=3000)
+            from core.json_utils import safe_parse_json
+            courses = safe_parse_json(response)
+
+            if not isinstance(courses, list):
+                return {"success": False, "message": "AI 未能识别出课程表信息，请检查文件内容"}
+
+            # 验证和清理数据
+            valid_courses = []
+            for c in courses:
+                if isinstance(c, dict) and c.get('name') and c.get('day'):
+                    valid_courses.append({
+                        'name': str(c['name']),
+                        'day': str(c.get('day', '')),
+                        'start_time': str(c.get('start_time', '')),
+                        'end_time': str(c.get('end_time', '')),
+                        'location': str(c.get('location', '')),
+                        'teacher': str(c.get('teacher', '')),
+                    })
+
+            info(f"AI 识别课程表: user={user_id}, 识别 {len(valid_courses)} 门课程")
+            return {
+                "success": True,
+                "data": valid_courses,
+                "message": f"成功识别 {len(valid_courses)} 门课程",
+            }
+
+        except Exception as e:
+            error(f"文件导入课程表失败: {e}")
+            return {"success": False, "message": f"导入失败: {str(e)}"}
+
+    def import_grades_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
+        """从文件中 AI 识别成绩"""
+        try:
+            text = self._parse_upload_file(filename, content)
+            if not text or text.startswith("["):
+                return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+
+            prompt = f"""请从以下文件内容中识别出成绩信息，提取每条成绩的：
+- 课程名称 (course_name)
+- 分数 (score: 数字，0-100)
+- 学分 (credits: 数字，可选)
+- 成绩类型 (grade_type: exam=期末/quiz=测验/homework=作业/overall=总评)
+- 考试时间 (exam_date: YYYY-MM-DD 格式，可选，用于排序)
+
+文件内容:
+{text[:6000]}
+
+严格输出 JSON 数组格式（不要输出其他内容），例如:
+[
+  {{"course_name": "高等数学", "score": 85, "credits": 4.0, "grade_type": "overall", "exam_date": "2026-01-15"}},
+  {{"course_name": "英语", "score": 92, "credits": 3.0, "grade_type": "exam", "exam_date": "2026-01-10"}}
+]
+
+如果内容中没有成绩信息，返回空数组 []"""
+
+            response = qa_service.call_ai(prompt, max_tokens=3000)
+            from core.json_utils import safe_parse_json
+            grades = safe_parse_json(response)
+
+            if not isinstance(grades, list):
+                return {"success": False, "message": "AI 未能识别出成绩信息，请检查文件内容"}
+
+            valid_grades = []
+            for g in grades:
+                if isinstance(g, dict) and g.get('course_name') and g.get('score') is not None:
+                    valid_grades.append({
+                        'course_name': str(g['course_name']),
+                        'score': float(g['score']),
+                        'credits': float(g.get('credits', 0)) if g.get('credits') else None,
+                        'grade_type': str(g.get('grade_type', 'overall')),
+                        'exam_date': str(g.get('exam_date', '')) if g.get('exam_date') else None,
+                    })
+
+            info(f"AI 识别成绩: user={user_id}, 识别 {len(valid_grades)} 条成绩")
+            return {
+                "success": True,
+                "data": valid_grades,
+                "message": f"成功识别 {len(valid_grades)} 条成绩",
+            }
+
+        except Exception as e:
+            error(f"文件导入成绩失败: {e}")
+            return {"success": False, "message": f"导入失败: {str(e)}"}
+
+    def import_errors_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
+        """从文件中 AI 识别错题"""
+        try:
+            text = self._parse_upload_file(filename, content)
+            if not text or text.startswith("["):
+                return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+
+            prompt = f"""请从以下文件内容中识别出错题信息，提取每道错题的：
+- 学科 (subject)
+- 章节 (chapter，可选)
+- 题目内容 (question)
+- 我的答案 (my_answer，可选)
+- 正确答案 (correct_answer，可选)
+- 错误原因 (error_reason，可选)
+- 标签 (tags: 字符串数组，可选)
+
+文件内容:
+{text[:6000]}
+
+严格输出 JSON 数组格式（不要输出其他内容），例如:
+[
+  {{"subject": "高等数学", "chapter": "第三章 导数", "question": "求 f(x)=x³+2x 的导数", "my_answer": "3x²+2x", "correct_answer": "3x²+2", "error_reason": "对常数项求导错误", "tags": ["导数", "计算错误"]}},
+  {{"subject": "英语", "chapter": "", "question": "Choose the correct answer: He ___ to school yesterday.", "my_answer": "go", "correct_answer": "went", "error_reason": "时态错误", "tags": ["时态"]}}
+]
+
+如果内容中没有错题信息，返回空数组 []"""
+
+            response = qa_service.call_ai(prompt, max_tokens=4000)
+            from core.json_utils import safe_parse_json
+            errors = safe_parse_json(response)
+
+            if not isinstance(errors, list):
+                return {"success": False, "message": "AI 未能识别出错题信息，请检查文件内容"}
+
+            valid_errors = []
+            for e in errors:
+                if isinstance(e, dict) and e.get('subject') and e.get('question'):
+                    valid_errors.append({
+                        'subject': str(e['subject']),
+                        'chapter': str(e.get('chapter', '')),
+                        'question': str(e['question']),
+                        'my_answer': str(e.get('my_answer', '')),
+                        'correct_answer': str(e.get('correct_answer', '')),
+                        'error_reason': str(e.get('error_reason', '')),
+                        'tags': e.get('tags', []) if isinstance(e.get('tags'), list) else [],
+                    })
+
+            info(f"AI 识别错题: user={user_id}, 识别 {len(valid_errors)} 道错题")
+            return {
+                "success": True,
+                "data": valid_errors,
+                "message": f"成功识别 {len(valid_errors)} 道错题",
+            }
+
+        except Exception as e:
+            error(f"文件导入错题失败: {e}")
+            return {"success": False, "message": f"导入失败: {str(e)}"}
+
+
+# 给 StudentDataService 添加导入能力
+StudentDataService.import_courses_from_file = StudentDataImportMixin.import_courses_from_file
+StudentDataService.import_grades_from_file = StudentDataImportMixin.import_grades_from_file
+StudentDataService.import_errors_from_file = StudentDataImportMixin.import_errors_from_file
+StudentDataService._parse_upload_file = StudentDataImportMixin._parse_upload_file

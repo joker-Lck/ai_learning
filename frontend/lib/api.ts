@@ -554,6 +554,42 @@ class ApiClient {
   getCoursewareDownloadUrl(coursewareId: number, format: string): string {
     return `${API_BASE}/courseware/${coursewareId}/download?format=${format}`;
   }
+
+  /**
+   * 文件导入 - AI识别课程表
+   */
+  async importCoursesFromFile(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request('/agent/import-courses-from-file', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  /**
+   * 文件导入 - AI识别成绩
+   */
+  async importGradesFromFile(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request('/agent/import-grades-from-file', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  /**
+   * 文件导入 - AI识别错题
+   */
+  async importErrorsFromFile(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request('/agent/import-errors-from-file', {
+      method: 'POST',
+      body: formData,
+    });
+  }
 }
 
 // 单例导出
