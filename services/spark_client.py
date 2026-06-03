@@ -13,6 +13,7 @@ from typing import Optional, List, Dict, Generator
 from openai import OpenAI
 from dotenv import load_dotenv
 from core.logger import info, error
+import httpx
 
 load_dotenv()
 
@@ -43,7 +44,12 @@ class KimiClient:
                 raise RuntimeError(
                     "KIMI_API_KEY 未配置，请在 .env 文件中设置。参考 .env.example"
                 )
-            self._client = OpenAI(api_key=api_key, base_url=base_url)
+            self._client = OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+                timeout=httpx.Timeout(15.0, connect=5.0),
+                max_retries=1,
+            )
             info(f"Kimi 客户端初始化完成 (base_url={base_url})")
         return self._client
 

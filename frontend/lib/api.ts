@@ -34,8 +34,9 @@ class ApiClient {
     const { method = 'GET', body, headers = {}, signal } = options;
 
     const token = this.getToken();
+    const isFormData = body instanceof FormData;
     const defaultHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     };
@@ -43,7 +44,7 @@ class ApiClient {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method,
       headers: defaultHeaders,
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
       signal,
     });
 

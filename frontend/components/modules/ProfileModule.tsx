@@ -5,7 +5,7 @@ import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
   CalendarDays, BarChart3, AlertCircle, Plus, Trash2, Check, X,
-  ChevronDown, Edit3, Save, Upload, Minus,
+  ChevronDown, Edit3, Save, Upload, Minus, Search,
 } from 'lucide-react';
 import { PROFILE_DIMENSIONS } from './constants';
 import type {
@@ -497,6 +497,7 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport }: { gra
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<GradeItem>({ semester, course_name: '', score: null, credits: null, grade_type: 'overall' });
   const [sortBy, setSortBy] = useState<'name' | 'score' | 'date'>('name');
+  const [search, setSearch] = useState('');
 
   const addGrade = async () => {
     if (!form.course_name.trim()) return;
@@ -526,9 +527,17 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport }: { gra
     return 'bg-red-500/10';
   };
 
+  // 搜索过滤
+  const q = search.trim().toLowerCase();
+  const searched = q ? grades.filter(g =>
+    g.course_name.toLowerCase().includes(q) ||
+    (g.grade_type && GRADE_TYPES.find(t => t.value === g.grade_type)?.label.toLowerCase().includes(q)) ||
+    (g.exam_date && g.exam_date.includes(q))
+  ) : grades;
+
   // 按学科分组 + 排序
   const grouped: Record<string, GradeItem[]> = {};
-  grades.forEach(g => { (grouped[g.course_name] ||= []).push(g); });
+  searched.forEach(g => { (grouped[g.course_name] ||= []).push(g); });
   const sortedGroups = Object.entries(grouped).sort((a, b) => {
     if (sortBy === 'name') return a[0].localeCompare(b[0]);
     if (sortBy === 'score') {
@@ -541,10 +550,19 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport }: { gra
 
   return (
     <div className="space-y-3">
+      {/* 搜索栏 */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索课程名称、考试类型..."
+          className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30 transition-colors" />
+        {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50"><X className="w-3.5 h-3.5" /></button>}
+      </div>
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <p className="text-sm text-white/40">{semester} 成绩</p>
           {gradedOnly.length > 0 && <span className="text-sm font-bold text-cyan-400">均分 {avgScore}</span>}
+          {q && <span className="text-xs text-white/30">找到 {searched.length} 条</span>}
         </div>
         <div className="flex items-center gap-2">
           <FileImporter onImport={onImport} label="上传成绩" />
@@ -636,6 +654,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
   const [filterSubject, setFilterSubject] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'subject'>('date');
   const [showMastered, setShowMastered] = useState(true);
+  const [search, setSearch] = useState('');
 
   const handleSubmit = async () => {
     if (!form.subject.trim() || !form.question.trim()) return;
@@ -645,7 +664,17 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
   };
 
   const subjects = [...new Set(notes.map(n => n.subject))].filter(Boolean);
-  const filtered = filterSubject ? notes.filter(n => n.subject === filterSubject) : notes;
+  const subjectFiltered = filterSubject ? notes.filter(n => n.subject === filterSubject) : notes;
+
+  // 搜索过滤
+  const q = search.trim().toLowerCase();
+  const filtered = q ? subjectFiltered.filter(n =>
+    n.question.toLowerCase().includes(q) ||
+    n.subject.toLowerCase().includes(q) ||
+    (n.chapter && n.chapter.toLowerCase().includes(q)) ||
+    (n.error_reason && n.error_reason.toLowerCase().includes(q)) ||
+    (n.tags && n.tags.some(t => t.toLowerCase().includes(q)))
+  ) : subjectFiltered;
 
   // 按学科分组
   const grouped: Record<string, ErrorNote[]> = {};
@@ -658,11 +687,20 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
 
   return (
     <div className="space-y-3">
+      {/* 搜索栏 */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索题目、学科、章节、错因、标签..."
+          className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30 transition-colors" />
+        {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50"><X className="w-3.5 h-3.5" /></button>}
+      </div>
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <p className="text-sm text-white/40">错题 {notes.length} 道</p>
           <span className="text-xs text-green-400/60">已掌握 {totalMastered}</span>
           <span className="text-xs text-amber-400/60">待巩固 {totalUnmastered}</span>
+          {q && <span className="text-xs text-white/30">找到 {filtered.length} 条</span>}
         </div>
         <div className="flex items-center gap-2">
           <FileImporter onImport={onImport} label="上传错题" />

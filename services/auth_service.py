@@ -31,11 +31,12 @@ class AuthService:
                 'database': self.db_config['database'],
                 'charset': 'utf8mb4',
                 'use_pure': True,
+                'connection_timeout': 5,
             }
             return pooling.MySQLConnectionPool(
                 pool_name="auth_pool",
-                pool_size=3,
-                pool_reset_session=True,
+                pool_size=5,
+                pool_reset_session=False,
                 **config,
             )
         except Exception:
@@ -53,6 +54,7 @@ class AuthService:
             database=self.db_config['database'],
             charset='utf8mb4',
             use_pure=True,
+            connection_timeout=5,
         )
 
     def hash_password(self, password):
