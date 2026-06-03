@@ -172,8 +172,8 @@ export function useDashboard() {
   };
 
   useEffect(() => {
-    if (activeModule === 'profile' && profileTab === 'plan') loadStudyPlans();
-  }, [activeModule, profileTab]);
+    if (activeModule === 'path') loadStudyPlans();
+  }, [activeModule]);
 
   const currentDimension = PROFILE_DIMENSIONS[currentStep]!;
   const currentChat = dimensionChats[currentDimension.id] || {

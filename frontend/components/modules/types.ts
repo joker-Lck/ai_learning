@@ -145,4 +145,4 @@ export interface PlanTask {
   type: string;  // 复习/预习/练习/备考
 }
 
-export type ProfileTab = 'profile' | 'schedule' | 'grades' | 'errors' | 'plan';
+export type ProfileTab = 'profile' | 'schedule' | 'grades' | 'errors';

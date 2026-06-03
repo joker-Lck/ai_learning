@@ -49,9 +49,6 @@ export default function DashboardContent() {
             handleAddErrorNote={d.handleAddErrorNote}
             handleToggleMastery={d.handleToggleMastery}
             handleDeleteErrorNote={d.handleDeleteErrorNote}
-            studyPlans={d.studyPlans}
-            planLoading={d.planLoading}
-            handleGeneratePlan={d.handleGeneratePlan}
           />
         );
       case 'resources':
@@ -79,6 +76,9 @@ export default function DashboardContent() {
             pathLoading={d.pathLoading}
             learningPath={d.learningPath}
             handlePlanPath={d.handlePlanPath}
+            studyPlans={d.studyPlans}
+            planLoading={d.planLoading}
+            handleGeneratePlan={d.handleGeneratePlan}
           />
         );
       case 'tutor':

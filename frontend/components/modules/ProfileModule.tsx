@@ -4,12 +4,12 @@ import { useState } from 'react';
 import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
-  CalendarDays, BarChart3, AlertCircle, Route, Plus, Trash2, Check, X,
-  ChevronDown, FileText, Zap,
+  CalendarDays, BarChart3, AlertCircle, Plus, Trash2, Check, X,
+  ChevronDown,
 } from 'lucide-react';
 import { PROFILE_DIMENSIONS } from './constants';
 import type {
-  DimensionChat, ProfileData, ProfileTab, CourseItem, GradeItem, ErrorNote, StudyPlan,
+  DimensionChat, ProfileData, ProfileTab, CourseItem, GradeItem, ErrorNote,
 } from './types';
 
 interface ProfileModuleProps {
@@ -39,9 +39,6 @@ interface ProfileModuleProps {
   handleAddErrorNote: (note: Omit<ErrorNote, 'id'>) => Promise<any>;
   handleToggleMastery: (noteId: number, currentMastery: number) => Promise<void>;
   handleDeleteErrorNote: (noteId: number) => Promise<void>;
-  studyPlans: StudyPlan[];
-  planLoading: boolean;
-  handleGeneratePlan: (data: { plan_type: string; custom_goal?: string; exam_date?: string; exam_subjects?: string[] }) => Promise<any>;
 }
 
 const TABS: { key: ProfileTab; label: string; icon: any }[] = [
@@ -49,7 +46,6 @@ const TABS: { key: ProfileTab; label: string; icon: any }[] = [
   { key: 'schedule', label: '课程表', icon: CalendarDays },
   { key: 'grades', label: '成绩', icon: BarChart3 },
   { key: 'errors', label: '错题本', icon: AlertCircle },
-  { key: 'plan', label: '学习规划', icon: Route },
 ];
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -121,7 +117,6 @@ export default function ProfileModule(props: ProfileModuleProps) {
       {profileTab === 'schedule' && <ScheduleTabContent courses={props.courses} loading={props.courseLoading} semester={currentSemester} onSave={props.handleSaveCourses} />}
       {profileTab === 'grades' && <GradesTabContent grades={props.grades} loading={props.gradeLoading} semester={currentSemester} onSave={props.handleSaveGrades} />}
       {profileTab === 'errors' && <ErrorsTabContent notes={props.errorNotes} loading={props.errorLoading} onAdd={props.handleAddErrorNote} onToggleMastery={props.handleToggleMastery} onDelete={props.handleDeleteErrorNote} />}
-      {profileTab === 'plan' && <PlanTabContent plans={props.studyPlans} loading={props.planLoading} onGenerate={props.handleGeneratePlan} />}
     </div>
   );
 }
@@ -602,135 +597,3 @@ function ErrorNoteCard({ note, onToggleMastery, onDelete }: { note: ErrorNote; o
   );
 }
 
-// ==================== 学习规划 Tab ====================
-
-function PlanTabContent({ plans, loading, onGenerate }: { plans: StudyPlan[]; loading: boolean; onGenerate: (d: any) => Promise<any> }) {
-  const [planType, setPlanType] = useState('weekly');
-  const [customGoal, setCustomGoal] = useState('');
-  const [examDate, setExamDate] = useState('');
-  const [examSubjects, setExamSubjects] = useState('');
-  const [currentPlan, setCurrentPlan] = useState<StudyPlan | null>(null);
-
-  const handleGen = async () => {
-    const data: any = { plan_type: planType };
-    if (planType === 'custom') data.custom_goal = customGoal;
-    if (planType === 'exam') { data.exam_date = examDate; data.exam_subjects = examSubjects.split(/[,，、]/).map(s => s.trim()).filter(Boolean); }
-    const result = await onGenerate(data);
-    if (result) setCurrentPlan({ ...result, plan_type: planType, semester: '' });
-  };
-
-  const display = currentPlan?.plan_data || plans[0]?.plan_data;
-  const typeLabels: Record<string, string> = { weekly: '周计划', exam: '备考计划', custom: '自定义计划' };
-
-  return (
-    <div className="space-y-4">
-      {/* 生成配置 */}
-      <div className="glass-card rounded-xl p-4 space-y-3">
-        <p className="text-sm font-medium text-white/60 flex items-center gap-2"><Zap className="w-4 h-4 text-cyan-400" /> AI 学习规划</p>
-        <div className="flex gap-2">
-          {[{ v: 'weekly', l: '周计划' }, { v: 'exam', l: '备考' }, { v: 'custom', l: '自定义' }].map(t => (
-            <button key={t.v} onClick={() => setPlanType(t.v)}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-all ${planType === t.v ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-400/20' : 'bg-white/[0.04] text-white/40 hover:text-white/60'}`}>
-              {t.l}
-            </button>
-          ))}
-        </div>
-        {planType === 'custom' && (
-          <input value={customGoal} onChange={e => setCustomGoal(e.target.value)} placeholder="想学什么？如：学习 Rust 编程"
-            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30" />
-        )}
-        {planType === 'exam' && (
-          <div className="grid grid-cols-2 gap-2">
-            <input type="date" value={examDate} onChange={e => setExamDate(e.target.value)}
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none" />
-            <input value={examSubjects} onChange={e => setExamSubjects(e.target.value)} placeholder="备考科目（逗号分隔）"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
-          </div>
-        )}
-        <button onClick={handleGen} disabled={loading}
-          className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-          {loading ? '生成中...' : '生成学习计划'}
-        </button>
-      </div>
-
-      {/* 计划展示 */}
-      {!display && !loading && (
-        <div className="glass-card rounded-xl p-8 text-center text-white/30">
-          <Route className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p>点击上方按钮生成 AI 学习计划</p>
-          <p className="text-xs mt-1">系统将根据你的课程表、成绩和薄弱点智能规划</p>
-        </div>
-      )}
-
-      {display && (
-        <div className="space-y-3">
-          <div className="bg-gradient-to-r from-cyan-500/15 to-blue-500/15 rounded-xl p-4 border border-cyan-400/15">
-            <h4 className="font-bold text-white mb-1">{display.title}</h4>
-            <p className="text-sm text-white/50">{display.summary}</p>
-            {display.focus_areas?.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {display.focus_areas.map((f: string, i: number) => <span key={i} className="px-2 py-0.5 bg-cyan-400/10 text-cyan-400 rounded-full text-xs">{f}</span>)}
-              </div>
-            )}
-          </div>
-
-          {/* 原始文本降级 */}
-          {display.raw_text && !display.daily_plans?.length && (
-            <div className="glass-card rounded-xl p-4">
-              <div className="text-sm text-white/70 whitespace-pre-wrap">{display.raw_text}</div>
-            </div>
-          )}
-
-          {/* 每日计划 */}
-          {display.daily_plans?.map((dp: any, i: number) => (
-            <div key={i} className="glass-card rounded-xl overflow-hidden">
-              <div className="px-4 py-2 bg-white/[0.03] border-b border-white/[0.06] flex items-center justify-between">
-                <span className="text-sm font-semibold text-white">{dp.day}</span>
-                <span className="text-xs text-white/30">{dp.tasks?.length || 0} 项任务</span>
-              </div>
-              <div className="p-3 space-y-2">
-                {dp.tasks?.map((t: any, j: number) => (
-                  <div key={j} className="flex items-center gap-3 px-3 py-2 bg-white/[0.02] rounded-lg">
-                    <span className="text-xs text-cyan-400 font-mono shrink-0 w-20">{t.time}</span>
-                    <span className="px-1.5 py-0.5 bg-white/[0.06] rounded text-xs text-white/40 shrink-0">{t.type}</span>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm text-white">{t.subject}</span>
-                      <span className="text-xs text-white/40 ml-2">{t.task}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {/* 建议 */}
-          {display.tips?.length > 0 && (
-            <div className="glass-card rounded-xl p-4">
-              <p className="text-sm font-medium text-white/60 mb-2">💡 学习建议</p>
-              <ul className="space-y-1">
-                {display.tips.map((tip: string, i: number) => <li key={i} className="text-sm text-white/50 flex items-start gap-2"><span className="text-cyan-400 mt-0.5">•</span>{tip}</li>)}
-              </ul>
-            </div>
-          )}
-
-          {/* 历史计划 */}
-          {plans.length > 1 && (
-            <div className="glass-card rounded-xl p-4">
-              <p className="text-sm font-medium text-white/60 mb-2">历史计划</p>
-              <div className="space-y-1">
-                {plans.slice(1).map((p, i) => (
-                  <button key={i} onClick={() => setCurrentPlan(p)}
-                    className="w-full text-left px-3 py-2 hover:bg-white/[0.03] rounded-lg flex items-center justify-between">
-                    <span className="text-sm text-white/60">{p.plan_data?.title || typeLabels[p.plan_type] || p.plan_type}</span>
-                    <span className="text-xs text-white/20">{p.created_at?.slice(0, 10)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
