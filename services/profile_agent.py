@@ -324,3 +324,39 @@ class ProfileAgent:
         except Exception as e:
             error(f"保存画像失败: {str(e)}")
             raise
+
+    def update_profile_field(self, user_id: int, field: str, value: Any) -> Dict:
+        """更新画像单个字段"""
+        allowed = {'major', 'grade_level', 'cognitive_style', 'knowledge_base',
+                    'learning_goals', 'weak_points', 'interest_areas', 'preferred_resources'}
+        if field not in allowed:
+            return {"success": False, "message": f"不允许修改字段: {field}"}
+
+        try:
+            from data.db_operations import profile_db
+            with profile_db:
+                sql = "SELECT id, profile_data, conversation_log, version FROM student_profiles WHERE user_id = %s ORDER BY version DESC LIMIT 1"
+                profile_db.cursor.execute(sql, (user_id,))
+                row = profile_db.cursor.fetchone()
+
+                if not row:
+                    return {"success": False, "message": "暂无画像数据，请先构建画像"}
+
+                profile = json.loads(row["profile_data"]) if isinstance(row["profile_data"], str) else row["profile_data"]
+                old_value = profile.get(field)
+                profile[field] = value
+                profile["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                new_version = row["version"] + 1
+                sql_update = """UPDATE student_profiles SET profile_data=%s, version=%s, updated_at=NOW() WHERE id=%s"""
+                profile_db.cursor.execute(sql_update, (
+                    json.dumps(profile, ensure_ascii=False), new_version, row["id"]
+                ))
+                profile_db.conn.commit()
+
+                info(f"画像字段更新: user={user_id}, field={field}")
+                return {"success": True, "data": profile, "message": f"已更新{field}"}
+
+        except Exception as e:
+            error(f"更新画像字段失败: {e}")
+            return {"success": False, "message": str(e)}

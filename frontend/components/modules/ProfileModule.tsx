@@ -5,7 +5,7 @@ import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
   CalendarDays, BarChart3, AlertCircle, Plus, Trash2, Check, X,
-  ChevronDown,
+  ChevronDown, Edit3, Save,
 } from 'lucide-react';
 import { PROFILE_DIMENSIONS } from './constants';
 import type {
@@ -39,6 +39,7 @@ interface ProfileModuleProps {
   handleAddErrorNote: (note: Omit<ErrorNote, 'id'>) => Promise<any>;
   handleToggleMastery: (noteId: number, currentMastery: number) => Promise<void>;
   handleDeleteErrorNote: (noteId: number) => Promise<void>;
+  handleUpdateProfileField: (field: string, value: any) => Promise<any>;
 }
 
 const TABS: { key: ProfileTab; label: string; icon: any }[] = [
@@ -165,39 +166,7 @@ function ProfileTabContent(props: ProfileModuleProps) {
   const { profileData, profileLoading, currentStep, currentDimension, currentChat, dimensionChats, handleSendMessage, goToPreviousStep, goToNextStep } = props;
 
   if (profileData) {
-    return (
-      <div className="space-y-4">
-        <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl p-5 border border-cyan-400/20">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <User className="w-8 h-8 text-white" />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-lg font-bold text-white">{profileData.major || '学生'}</h4>
-              <p className="text-sm text-white/50">{profileData.grade_level || ''}</p>
-              {profileData.update_time && <p className="text-xs text-white/30 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> 更新于 {profileData.update_time}</p>}
-            </div>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {PROFILE_DISPLAY.map(dim => {
-            const value = (profileData as any)[dim.key];
-            const Icon = dim.icon;
-            const text = dim.fmt(value);
-            const empty = !value || (Array.isArray(value) && value.length === 0) || ['未填写', '未评估', '未设定', '暂无'].includes(text);
-            return (
-              <div key={dim.key} className={`glass-card rounded-xl p-4 hover:border-white/10 transition-all ${empty ? 'opacity-50' : ''}`}>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${dim.color} flex items-center justify-center`}><Icon className="w-4 h-4 text-white" /></div>
-                  <span className="font-semibold text-sm text-white">{dim.label}</span>
-                </div>
-                <p className={`text-sm leading-relaxed ${empty ? 'text-white/25 italic' : 'text-white/70'}`}>{text}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
+    return <ProfileEditView profileData={profileData} onUpdate={props.handleUpdateProfileField} />;
   }
 
   // 对话构建流程
@@ -253,6 +222,108 @@ function ProfileTabContent(props: ProfileModuleProps) {
             <button onClick={goToNextStep} disabled={currentStep === PROFILE_DIMENSIONS.length - 1} className="px-3 py-1 text-sm text-white/40 hover:bg-white/[0.04] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">下一步 <ChevronRight className="w-4 h-4" /></button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== 画像编辑 ====================
+
+function ProfileEditView({ profileData, onUpdate }: { profileData: ProfileData; onUpdate: (field: string, value: any) => Promise<any> }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (key: string, raw: any) => {
+    if (Array.isArray(raw)) setEditValue(raw.join('、'));
+    else if (raw && typeof raw === 'object') {
+      if (raw.level) setEditValue(raw.topics?.length ? `${raw.level}：${raw.topics.join('、')}` : raw.level);
+      else setEditValue(JSON.stringify(raw));
+    } else setEditValue(raw ?? '');
+    setEditing(key);
+  };
+
+  const save = async (key: string) => {
+    setSaving(true);
+    try {
+      const dim = PROFILE_DISPLAY.find(d => d.key === key);
+      let value: any = editValue.trim();
+      if (['weak_points', 'interest_areas', 'preferred_resources'].includes(key)) {
+        value = value ? value.split(/[,，、;；]/).map((s: string) => s.trim()).filter(Boolean) : [];
+      } else if (key === 'learning_goals') {
+        value = value ? value.split(/[,，、;；]/).map((s: string) => s.trim()).filter(Boolean) : [];
+      } else if (key === 'knowledge_base' && value) {
+        const parts = value.split(/[：:]/);
+        value = { level: parts[0]?.trim() || value, topics: parts[1] ? parts[1].split(/[,，、]/).map((s: string) => s.trim()).filter(Boolean) : [] };
+      }
+      await onUpdate(key, value);
+      setEditing(null);
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* 头部 */}
+      <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl p-5 border border-cyan-400/20">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <User className="w-8 h-8 text-white" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-lg font-bold text-white">{profileData.major || '学生'}</h4>
+            <p className="text-sm text-white/50">{profileData.grade_level || ''}</p>
+            {profileData.update_time && <p className="text-xs text-white/30 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> 更新于 {profileData.update_time}</p>}
+          </div>
+          <p className="text-xs text-white/30">点击卡片右上角编辑</p>
+        </div>
+      </div>
+
+      {/* 字段卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {PROFILE_DISPLAY.map(dim => {
+          const raw = (profileData as any)[dim.key];
+          const Icon = dim.icon;
+          const text = dim.fmt(raw);
+          const empty = !raw || (Array.isArray(raw) && raw.length === 0) || ['未填写', '未评估', '未设定', '暂无'].includes(text);
+          const isEditing = editing === dim.key;
+
+          return (
+            <div key={dim.key} className={`glass-card rounded-xl p-4 transition-all ${empty ? 'opacity-50' : ''} ${isEditing ? 'border-cyan-400/30' : 'hover:border-white/10'}`}>
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${dim.color} flex items-center justify-center`}><Icon className="w-4 h-4 text-white" /></div>
+                <span className="font-semibold text-sm text-white flex-1">{dim.label}</span>
+                {!isEditing && (
+                  <button onClick={() => startEdit(dim.key, raw)} className="p-1 rounded-lg hover:bg-white/[0.06] text-white/30 hover:text-cyan-400 transition-colors">
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {isEditing ? (
+                <div className="space-y-2 mt-1">
+                  {['major', 'grade_level', 'cognitive_style'].includes(dim.key) ? (
+                    <input value={editValue} onChange={e => setEditValue(e.target.value)}
+                      className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-cyan-400/30"
+                      autoFocus />
+                  ) : (
+                    <textarea value={editValue} onChange={e => setEditValue(e.target.value)} rows={3}
+                      className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-cyan-400/30 resize-none"
+                      placeholder={dim.key === 'knowledge_base' ? '如：中等：数据结构、算法' : '多个内容用逗号分隔'}
+                      autoFocus />
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => setEditing(null)} className="px-3 py-1 text-xs text-white/40 hover:text-white/60 rounded-lg hover:bg-white/[0.04]">取消</button>
+                    <button onClick={() => save(dim.key)} disabled={saving}
+                      className="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 disabled:opacity-50 flex items-center gap-1">
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} 保存
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className={`text-sm leading-relaxed ${empty ? 'text-white/25 italic' : 'text-white/70'}`}>{text}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

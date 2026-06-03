@@ -49,6 +49,7 @@ export default function DashboardContent() {
             handleAddErrorNote={d.handleAddErrorNote}
             handleToggleMastery={d.handleToggleMastery}
             handleDeleteErrorNote={d.handleDeleteErrorNote}
+            handleUpdateProfileField={d.handleUpdateProfileField}
           />
         );
       case 'resources':

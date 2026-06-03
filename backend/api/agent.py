@@ -63,16 +63,28 @@ async def get_student_profile(user: dict = Depends(require_auth)):
     try:
         user_id = user["id"]
         result = profile_agent.get_or_build_profile(user_id)
-        
+
         return BaseResponse(
             success=result["success"],
             message=result["message"],
             data=result.get("profile")
         )
-        
+
     except Exception as e:
         error(f"获取学生画像失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/update-profile-field", response_model=BaseResponse)
+async def update_profile_field(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """更新画像单个字段"""
+    field = input_data.get("field", "")
+    value = input_data.get("value")
+    result = profile_agent.update_profile_field(user["id"], field, value)
+    return BaseResponse(**result)
 
 
 @router.post("/generate-resources", response_model=BaseResponse)

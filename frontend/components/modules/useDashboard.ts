@@ -431,12 +431,19 @@ export function useDashboard() {
     }
   };
 
+  const handleUpdateProfileField = async (field: string, value: any) => {
+    const res: any = await api.updateProfileField(field, value);
+    if (res.success && res.data) setProfileData(res.data);
+    return res;
+  };
+
   return {
     user, isGuest, activeModule, setActiveModule,
     // 画像
     currentStep, dimensionChats, profileLoading, profileData,
     currentDimension, currentChat, updateCurrentChat,
     handleSendMessage, buildFinalProfile, goToPreviousStep, goToNextStep,
+    handleUpdateProfileField,
     // 学生数据管理
     profileTab, setProfileTab, currentSemester, setCurrentSemester, semesters,
     courses, courseLoading, handleSaveCourses,

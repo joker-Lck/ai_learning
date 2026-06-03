@@ -105,6 +105,12 @@ class ApiClient {
     });
   }
 
+  async updateProfileField(field: string, value: any) {
+    return this.request('/agent/update-profile-field', {
+      method: 'POST', body: { field, value },
+    });
+  }
+
   // ── 课程表 ──
   async saveCourseSchedule(semester: string, courses: any[]) {
     return this.request('/agent/save-course-schedule', {
