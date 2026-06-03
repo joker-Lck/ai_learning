@@ -87,25 +87,15 @@ def init_profile_database():
     config = get_profile_db_config()
     conn = mysql.connector.connect(**config)
     cursor = conn.cursor()
-    
+
     try:
         print("\n📦 初始化学生画像数据库 (ai_profiles)...")
-        
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS student_profiles (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
-                profile_data JSON NOT NULL COMMENT '学生画像数据:
-                    {
-                        "knowledge_base": "...",
-                        "cognitive_style": "...",
-                        "learning_goals": "...",
-                        "skill_level": "...",
-                        "learning_preferences": [...],
-                        "strengths": [...],
-                        "weaknesses": [...],
-                        "motivation": "..."
-                    }',
+                profile_data JSON NOT NULL COMMENT '学生画像数据',
                 conversation_log JSON COMMENT '构建画像的对话记录',
                 version INT DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -114,7 +104,77 @@ def init_profile_database():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生画像表'
         """)
         print("  ✅ 学生画像表 (student_profiles) 创建成功!")
-        
+
+        # 学期课程表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS course_schedules (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                semester VARCHAR(20) NOT NULL COMMENT '学期标识，如 2026-春',
+                courses JSON NOT NULL COMMENT '课程列表 [{name,day,start_time,end_time,location,teacher}]',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_user_semester (user_id, semester),
+                INDEX idx_user (user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学期课程表'
+        """)
+        print("  ✅ 学期课程表 (course_schedules) 创建成功!")
+
+        # 学习成绩表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS student_grades (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                semester VARCHAR(20) NOT NULL COMMENT '学期标识',
+                course_name VARCHAR(100) NOT NULL COMMENT '课程名称',
+                score DECIMAL(5,1) COMMENT '成绩',
+                credits DECIMAL(3,1) COMMENT '学分',
+                grade_type VARCHAR(20) DEFAULT 'exam' COMMENT '类型: exam/quiz/homework/overall',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_semester (user_id, semester),
+                INDEX idx_user_course (user_id, course_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学习成绩表'
+        """)
+        print("  ✅ 学习成绩表 (student_grades) 创建成功!")
+
+        # 错题记录表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS error_notes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                subject VARCHAR(50) NOT NULL COMMENT '学科',
+                chapter VARCHAR(100) COMMENT '章节',
+                question TEXT NOT NULL COMMENT '题目内容',
+                my_answer TEXT COMMENT '我的答案',
+                correct_answer TEXT COMMENT '正确答案',
+                error_reason TEXT COMMENT '错误原因分析',
+                tags JSON COMMENT '标签 ["概念混淆","计算错误"]',
+                mastery TINYINT DEFAULT 0 COMMENT '是否已掌握 0/1',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user (user_id),
+                INDEX idx_subject (user_id, subject),
+                INDEX idx_mastery (user_id, mastery)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='错题记录表'
+        """)
+        print("  ✅ 错题记录表 (error_notes) 创建成功!")
+
+        # 学习计划表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS study_plans (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                semester VARCHAR(20) NOT NULL COMMENT '学期标识',
+                plan_type VARCHAR(20) DEFAULT 'weekly' COMMENT 'weekly/exam/custom',
+                plan_data JSON NOT NULL COMMENT '计划详情',
+                status ENUM('active','completed','expired') DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_semester (user_id, semester),
+                INDEX idx_status (user_id, status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学习计划表'
+        """)
+        print("  ✅ 学习计划表 (study_plans) 创建成功!")
+
         conn.commit()
         print("✅ 学生画像数据库初始化完成!")
         

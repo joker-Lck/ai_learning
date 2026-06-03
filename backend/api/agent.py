@@ -554,3 +554,122 @@ async def list_rag_documents(
     except Exception as e:
         error(f"获取RAG文档列表失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 学生数据管理 API ====================
+
+from services.student_data_service import student_data_service
+
+
+@router.post("/save-course-schedule", response_model=BaseResponse)
+async def save_course_schedule(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """保存学期课程表"""
+    result = student_data_service.save_course_schedule(
+        user["id"], input_data["semester"], input_data["courses"]
+    )
+    return BaseResponse(**result)
+
+
+@router.get("/get-course-schedule", response_model=BaseResponse)
+async def get_course_schedule(
+    semester: str = "",
+    user: dict = Depends(require_auth),
+):
+    """获取学期课程表"""
+    result = student_data_service.get_course_schedule(user["id"], semester)
+    return BaseResponse(**result)
+
+
+@router.get("/list-semesters", response_model=BaseResponse)
+async def list_semesters(user: dict = Depends(require_auth)):
+    """列出用户所有学期"""
+    result = student_data_service.list_semesters(user["id"])
+    return BaseResponse(**result)
+
+
+@router.post("/save-grades", response_model=BaseResponse)
+async def save_grades(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """保存学习成绩"""
+    result = student_data_service.save_grades(
+        user["id"], input_data["semester"], input_data["grades"]
+    )
+    return BaseResponse(**result)
+
+
+@router.get("/get-grades", response_model=BaseResponse)
+async def get_grades(
+    semester: Optional[str] = None,
+    user: dict = Depends(require_auth),
+):
+    """获取学习成绩"""
+    result = student_data_service.get_grades(user["id"], semester)
+    return BaseResponse(**result)
+
+
+@router.post("/save-error-note", response_model=BaseResponse)
+async def save_error_note(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """添加错题"""
+    result = student_data_service.save_error_note(user["id"], input_data)
+    return BaseResponse(**result)
+
+
+@router.get("/get-error-notes", response_model=BaseResponse)
+async def get_error_notes(
+    subject: Optional[str] = None,
+    mastery: Optional[int] = None,
+    user: dict = Depends(require_auth),
+):
+    """获取错题列表"""
+    result = student_data_service.get_error_notes(user["id"], subject, mastery)
+    return BaseResponse(**result)
+
+
+@router.post("/update-error-mastery", response_model=BaseResponse)
+async def update_error_mastery(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """更新错题掌握状态"""
+    result = student_data_service.update_error_note_mastery(
+        user["id"], input_data["note_id"], input_data["mastery"]
+    )
+    return BaseResponse(**result)
+
+
+@router.post("/delete-error-note", response_model=BaseResponse)
+async def delete_error_note(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """删除错题"""
+    result = student_data_service.delete_error_note(user["id"], input_data["note_id"])
+    return BaseResponse(**result)
+
+
+@router.post("/generate-study-plan", response_model=BaseResponse)
+async def generate_study_plan(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """AI 生成学习计划"""
+    result = student_data_service.generate_study_plan(user["id"], input_data)
+    return BaseResponse(**result)
+
+
+@router.get("/get-study-plans", response_model=BaseResponse)
+async def get_study_plans(
+    semester: Optional[str] = None,
+    user: dict = Depends(require_auth),
+):
+    """获取学习计划列表"""
+    result = student_data_service.get_study_plans(user["id"], semester)
+    return BaseResponse(**result)

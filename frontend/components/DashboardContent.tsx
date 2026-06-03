@@ -33,6 +33,25 @@ export default function DashboardContent() {
             handleSendMessage={d.handleSendMessage}
             goToPreviousStep={d.goToPreviousStep}
             goToNextStep={d.goToNextStep}
+            profileTab={d.profileTab}
+            setProfileTab={d.setProfileTab}
+            currentSemester={d.currentSemester}
+            setCurrentSemester={d.setCurrentSemester}
+            semesters={d.semesters}
+            courses={d.courses}
+            courseLoading={d.courseLoading}
+            handleSaveCourses={d.handleSaveCourses}
+            grades={d.grades}
+            gradeLoading={d.gradeLoading}
+            handleSaveGrades={d.handleSaveGrades}
+            errorNotes={d.errorNotes}
+            errorLoading={d.errorLoading}
+            handleAddErrorNote={d.handleAddErrorNote}
+            handleToggleMastery={d.handleToggleMastery}
+            handleDeleteErrorNote={d.handleDeleteErrorNote}
+            studyPlans={d.studyPlans}
+            planLoading={d.planLoading}
+            handleGeneratePlan={d.handleGeneratePlan}
           />
         );
       case 'resources':

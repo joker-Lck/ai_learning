@@ -6,6 +6,7 @@ import { PROFILE_DIMENSIONS } from './constants';
 import type {
   ModuleType, DimensionChat, ProfileData, ResourceItem,
   LearningPath, TutorMessage, AssessmentResult,
+  CourseItem, GradeItem, ErrorNote, StudyPlan, ProfileTab,
 } from './types';
 
 export function useDashboard() {
@@ -45,6 +46,134 @@ export function useDashboard() {
       });
     }
   }, [activeModule]);
+
+  // ── 学生数据管理状态 ──
+  const [profileTab, setProfileTab] = useState<ProfileTab>('profile');
+  const [currentSemester, setCurrentSemester] = useState('2026-春');
+  const [semesters, setSemesters] = useState<string[]>([]);
+
+  // 课程表
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [courseLoading, setCourseLoading] = useState(false);
+
+  // 成绩
+  const [grades, setGrades] = useState<GradeItem[]>([]);
+  const [gradeLoading, setGradeLoading] = useState(false);
+
+  // 错题
+  const [errorNotes, setErrorNotes] = useState<ErrorNote[]>([]);
+  const [errorLoading, setErrorLoading] = useState(false);
+
+  // 学习计划
+  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
+  const [planLoading, setPlanLoading] = useState(false);
+
+  // 加载学期列表
+  useEffect(() => {
+    if (activeModule === 'profile') {
+      api.listSemesters().then((res: any) => {
+        if (res.success && Array.isArray(res.data)) {
+          setSemesters(res.data);
+        }
+      }).catch(() => {});
+    }
+  }, [activeModule]);
+
+  // 切换学期时加载数据
+  const loadSemesterData = (semester: string) => {
+    setCurrentSemester(semester);
+    // 课程表
+    setCourseLoading(true);
+    api.getCourseSchedule(semester).then((res: any) => {
+      if (res.success && res.data?.courses) setCourses(res.data.courses);
+      else setCourses([]);
+    }).catch(() => setCourses([])).finally(() => setCourseLoading(false));
+    // 成绩
+    setGradeLoading(true);
+    api.getGrades(semester).then((res: any) => {
+      if (res.success && Array.isArray(res.data)) setGrades(res.data);
+      else setGrades([]);
+    }).catch(() => setGrades([])).finally(() => setGradeLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeModule === 'profile' && currentSemester) {
+      loadSemesterData(currentSemester);
+    }
+  }, [activeModule, currentSemester]);
+
+  // 保存课程表
+  const handleSaveCourses = async (semester: string, courseList: CourseItem[]) => {
+    setCourseLoading(true);
+    try {
+      const res: any = await api.saveCourseSchedule(semester, courseList);
+      if (res.success) {
+        setCourses(courseList);
+        if (!semesters.includes(semester)) setSemesters(prev => [semester, ...prev]);
+      }
+    } finally { setCourseLoading(false); }
+  };
+
+  // 保存成绩
+  const handleSaveGrades = async (semester: string, gradeList: GradeItem[]) => {
+    setGradeLoading(true);
+    try {
+      const res: any = await api.saveGrades(semester, gradeList);
+      if (res.success) setGrades(gradeList);
+    } finally { setGradeLoading(false); }
+  };
+
+  // 错题操作
+  const loadErrorNotes = async (subject?: string) => {
+    setErrorLoading(true);
+    try {
+      const res: any = await api.getErrorNotes(subject);
+      if (res.success && Array.isArray(res.data)) setErrorNotes(res.data);
+    } catch {} finally { setErrorLoading(false); }
+  };
+
+  useEffect(() => {
+    if (activeModule === 'profile' && profileTab === 'errors') loadErrorNotes();
+  }, [activeModule, profileTab]);
+
+  const handleAddErrorNote = async (note: Omit<ErrorNote, 'id'>) => {
+    const res: any = await api.saveErrorNote(note);
+    if (res.success) loadErrorNotes();
+    return res;
+  };
+
+  const handleToggleMastery = async (noteId: number, currentMastery: number) => {
+    await api.updateErrorMastery(noteId, currentMastery ? 0 : 1);
+    setErrorNotes(prev => prev.map(n => n.id === noteId ? { ...n, mastery: currentMastery ? 0 : 1 } : n));
+  };
+
+  const handleDeleteErrorNote = async (noteId: number) => {
+    await api.deleteErrorNote(noteId);
+    setErrorNotes(prev => prev.filter(n => n.id !== noteId));
+  };
+
+  // 学习计划
+  const handleGeneratePlan = async (data: { plan_type: string; custom_goal?: string; exam_date?: string; exam_subjects?: string[] }) => {
+    setPlanLoading(true);
+    try {
+      const res: any = await api.generateStudyPlan({ semester: currentSemester, ...data });
+      if (res.success && res.data) {
+        setStudyPlans(prev => [{ ...res.data, semester: currentSemester, plan_type: data.plan_type }, ...prev]);
+        return res.data;
+      }
+    } finally { setPlanLoading(false); }
+  };
+
+  const loadStudyPlans = async () => {
+    try {
+      const res: any = await api.getStudyPlans(currentSemester);
+      if (res.success && Array.isArray(res.data)) setStudyPlans(res.data);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (activeModule === 'profile' && profileTab === 'plan') loadStudyPlans();
+  }, [activeModule, profileTab]);
 
   const currentDimension = PROFILE_DIMENSIONS[currentStep]!;
   const currentChat = dimensionChats[currentDimension.id] || {
@@ -308,6 +437,12 @@ export function useDashboard() {
     currentStep, dimensionChats, profileLoading, profileData,
     currentDimension, currentChat, updateCurrentChat,
     handleSendMessage, buildFinalProfile, goToPreviousStep, goToNextStep,
+    // 学生数据管理
+    profileTab, setProfileTab, currentSemester, setCurrentSemester, semesters,
+    courses, courseLoading, handleSaveCourses,
+    grades, gradeLoading, handleSaveGrades,
+    errorNotes, errorLoading, handleAddErrorNote, handleToggleMastery, handleDeleteErrorNote,
+    studyPlans, planLoading, handleGeneratePlan,
     // 资源
     subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
     difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,

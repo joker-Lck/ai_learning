@@ -105,6 +105,61 @@ class ApiClient {
     });
   }
 
+  // ── 课程表 ──
+  async saveCourseSchedule(semester: string, courses: any[]) {
+    return this.request('/agent/save-course-schedule', {
+      method: 'POST', body: { semester, courses },
+    });
+  }
+  async getCourseSchedule(semester: string) {
+    return this.request(`/agent/get-course-schedule?semester=${encodeURIComponent(semester)}`, { method: 'GET' });
+  }
+  async listSemesters() {
+    return this.request('/agent/list-semesters', { method: 'GET' });
+  }
+
+  // ── 成绩 ──
+  async saveGrades(semester: string, grades: any[]) {
+    return this.request('/agent/save-grades', {
+      method: 'POST', body: { semester, grades },
+    });
+  }
+  async getGrades(semester?: string) {
+    const q = semester ? `?semester=${encodeURIComponent(semester)}` : '';
+    return this.request(`/agent/get-grades${q}`, { method: 'GET' });
+  }
+
+  // ── 错题 ──
+  async saveErrorNote(note: any) {
+    return this.request('/agent/save-error-note', { method: 'POST', body: note });
+  }
+  async getErrorNotes(subject?: string, mastery?: number) {
+    const params = new URLSearchParams();
+    if (subject) params.set('subject', subject);
+    if (mastery !== undefined) params.set('mastery', String(mastery));
+    const q = params.toString() ? `?${params}` : '';
+    return this.request(`/agent/get-error-notes${q}`, { method: 'GET' });
+  }
+  async updateErrorMastery(noteId: number, mastery: number) {
+    return this.request('/agent/update-error-mastery', {
+      method: 'POST', body: { note_id: noteId, mastery },
+    });
+  }
+  async deleteErrorNote(noteId: number) {
+    return this.request('/agent/delete-error-note', {
+      method: 'POST', body: { note_id: noteId },
+    });
+  }
+
+  // ── 学习计划 ──
+  async generateStudyPlan(data: { semester: string; plan_type: string; custom_goal?: string; exam_date?: string; exam_subjects?: string[] }) {
+    return this.request('/agent/generate-study-plan', { method: 'POST', body: data });
+  }
+  async getStudyPlans(semester?: string) {
+    const q = semester ? `?semester=${encodeURIComponent(semester)}` : '';
+    return this.request(`/agent/get-study-plans${q}`, { method: 'GET' });
+  }
+
   async generateResources(data: any) {
     return this.request('/agent/generate-resources', {
       method: 'POST',

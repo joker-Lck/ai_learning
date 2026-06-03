@@ -74,3 +74,75 @@ export interface ProfileDimension {
   questions: string[];
   placeholder: string;
 }
+
+// ==================== 学生数据管理类型 ====================
+
+export interface CourseItem {
+  name: string;
+  day: string;         // 周一~周日
+  start_time: string;  // HH:MM
+  end_time: string;
+  location?: string;
+  teacher?: string;
+}
+
+export interface CourseSchedule {
+  id?: number;
+  semester: string;
+  courses: CourseItem[];
+}
+
+export interface GradeItem {
+  id?: number;
+  semester: string;
+  course_name: string;
+  score: number | null;
+  credits?: number | null;
+  grade_type?: string;  // exam/quiz/homework/overall
+}
+
+export interface ErrorNote {
+  id?: number;
+  subject: string;
+  chapter?: string;
+  question: string;
+  my_answer?: string;
+  correct_answer?: string;
+  error_reason?: string;
+  tags?: string[];
+  mastery?: number;  // 0 or 1
+  created_at?: string;
+}
+
+export interface StudyPlan {
+  id?: number;
+  semester: string;
+  plan_type: string;  // weekly/exam/custom
+  plan_data: StudyPlanData;
+  status?: string;
+  created_at?: string;
+}
+
+export interface StudyPlanData {
+  title: string;
+  summary: string;
+  total_days: number;
+  daily_plans: DailyPlan[];
+  focus_areas: string[];
+  tips: string[];
+  raw_text?: string;
+}
+
+export interface DailyPlan {
+  day: string;
+  tasks: PlanTask[];
+}
+
+export interface PlanTask {
+  time: string;
+  subject: string;
+  task: string;
+  type: string;  // 复习/预习/练习/备考
+}
+
+export type ProfileTab = 'profile' | 'schedule' | 'grades' | 'errors' | 'plan';
