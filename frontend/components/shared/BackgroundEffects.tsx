@@ -5,8 +5,65 @@
  * 性能友好: 光球 ~30fps，粒子 ~20fps，全部 GPU 合成层
  */
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Zap, Cpu, Atom, Orbit, Sparkles } from 'lucide-react';
+
+/* ═══════════════════════════════════════════
+   鼠标光标跟随 — CSS transform GPU 加速
+   ═══════════════════════════════════════════ */
+
+const ICONS = [Zap, Cpu, Atom, Orbit, Sparkles];
+
+export function MouseFollower() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [iconIdx, setIconIdx] = useState(0);
+
+  useEffect(() => {
+    let mx = -100, my = -100;
+    let cx = -100, cy = -100;
+    let raf: number;
+
+    const onMouse = (e: MouseEvent) => {
+      mx = e.clientX - 12;
+      my = e.clientY - 12;
+    };
+
+    const tick = () => {
+      cx += (mx - cx) * 0.35;
+      cy += (my - cy) * 0.35;
+      if (ref.current) {
+        ref.current.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener('mousemove', onMouse, { passive: true });
+    raf = requestAnimationFrame(tick);
+
+    const interval = setInterval(() => {
+      setIconIdx(prev => (prev + 1) % 5);
+    }, 3000);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouse);
+      cancelAnimationFrame(raf);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const Icon = ICONS[iconIdx] ?? Zap;
+
+  return (
+    <div
+      ref={ref}
+      className="fixed top-0 left-0 pointer-events-none z-[60] mix-blend-screen"
+      style={{ willChange: 'transform', transform: 'translate3d(-100px, -100px, 0)' }}
+    >
+      <Icon className="w-6 h-6 text-amber-400/60" />
+    </div>
+  );
+}
 
 /* ═══════════════════════════════════════════
    Canvas 3D 光球场景 — 模拟 Spline 风格
@@ -211,6 +268,7 @@ export function FullBackground() {
     <>
       <FloatingOrbs />
       <OrbScene />
+      <MouseFollower />
     </>
   );
 }
@@ -220,6 +278,7 @@ export function DashboardBackground() {
     <>
       <FloatingOrbs />
       <OrbScene />
+      <MouseFollower />
     </>
   );
 }
