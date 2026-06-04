@@ -48,7 +48,7 @@ class KimiClient:
             self._client = OpenAI(
                 api_key=api_key,
                 base_url=base_url,
-                timeout=httpx.Timeout(15.0, connect=5.0),
+                timeout=httpx.Timeout(30.0, connect=5.0),
                 max_retries=1,
             )
             info(f"Kimi 客户端初始化完成 (base_url={base_url})")

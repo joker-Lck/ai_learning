@@ -551,10 +551,9 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
                   ))}
                   {/* 课程块 */}
                   {(byDay[day] || []).map(({ c, i }) => (
-                    <div key={i} className="absolute left-0.5 right-0.5 rounded-lg bg-gradient-to-br border p-1.5 overflow-hidden group cursor-pointer hover:brightness-125 transition-all"
+                    <div key={i} className="absolute left-0.5 right-0.5 rounded-lg bg-gradient-to-br border p-1.5 overflow-hidden group hover:brightness-125 transition-all"
                       style={{ top: getCourseTop(c.start_time), height: getCourseHeight(c.start_time, c.end_time) }}
                       title={`${c.name}\n${c.start_time}-${c.end_time}${c.location ? '\n' + c.location : ''}${c.teacher ? '\n' + c.teacher : ''}`}
-                      onClick={() => { if (editing) removeCourse(i); }}
                     >
                       <div className={`absolute inset-0 bg-gradient-to-br ${getCourseColor(c.name)} rounded-lg`} />
                       <div className="relative z-10">
@@ -562,7 +561,11 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
                         <p className="text-[9px] text-white/50 truncate">{c.start_time}-{c.end_time}</p>
                         {c.location && <p className="text-[9px] text-white/30 truncate">{c.location}</p>}
                       </div>
-                      {editing && <Trash2 className="absolute top-1 right-1 w-3 h-3 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity z-20" />}
+                      <button onClick={(e) => { e.stopPropagation(); removeCourse(i); }}
+                        className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/80 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-red-500"
+                        title="删除此课程">
+                        <X className="w-3 h-3 text-white" />
+                      </button>
                     </div>
                   ))}
                 </div>
