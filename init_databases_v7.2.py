@@ -21,7 +21,7 @@ def create_database(config, db_name):
     temp_config = config.copy()
     temp_config.pop('database', None)
     
-    conn = mysql.connector.connect(**temp_config)
+    conn = mysql.connector.connect(**temp_config, use_pure=True)
     cursor = conn.cursor()
     
     try:
@@ -34,7 +34,7 @@ def create_database(config, db_name):
 def init_auth_database():
     """初始化认证数据库"""
     config = get_auth_db_config()
-    conn = mysql.connector.connect(**config)
+    conn = mysql.connector.connect(**config, use_pure=True)
     cursor = conn.cursor()
     
     try:
@@ -85,7 +85,7 @@ def init_auth_database():
 def init_profile_database():
     """初始化学生画像数据库"""
     config = get_profile_db_config()
-    conn = mysql.connector.connect(**config)
+    conn = mysql.connector.connect(**config, use_pure=True)
     cursor = conn.cursor()
 
     try:
@@ -188,7 +188,7 @@ def init_profile_database():
 def init_resources_database():
     """初始化学习资源数据库"""
     config = get_resources_db_config()
-    conn = mysql.connector.connect(**config)
+    conn = mysql.connector.connect(**config, use_pure=True)
     cursor = conn.cursor()
     
     try:
@@ -246,7 +246,7 @@ def init_resources_database():
 def init_paths_database():
     """初始化学习路径数据库"""
     config = get_paths_db_config()
-    conn = mysql.connector.connect(**config)
+    conn = mysql.connector.connect(**config, use_pure=True)
     cursor = conn.cursor()
     
     try:
@@ -307,7 +307,7 @@ def init_paths_database():
 def init_tutor_database():
     """初始化智能辅导数据库"""
     config = get_tutor_db_config()
-    conn = mysql.connector.connect(**config)
+    conn = mysql.connector.connect(**config, use_pure=True)
     cursor = conn.cursor()
     
     try:
@@ -369,7 +369,7 @@ def init_tutor_database():
 def init_assessments_database():
     """初始化学习评估数据库"""
     config = get_assessments_db_config()
-    conn = mysql.connector.connect(**config)
+    conn = mysql.connector.connect(**config, use_pure=True)
     cursor = conn.cursor()
     
     try:
@@ -444,7 +444,7 @@ def init_assessments_database():
 def init_agents_database():
     """初始化智能体协作数据库"""
     config = get_agents_db_config()
-    conn = mysql.connector.connect(**config)
+    conn = mysql.connector.connect(**config, use_pure=True)
     cursor = conn.cursor()
     
     try:
@@ -501,7 +501,7 @@ def init_agents_database():
 def init_rag_database():
     """初始化RAG知识库数据库 — 与 data/rag_knowledge_base.py 保持一致"""
     config = get_rag_db_config()
-    conn = mysql.connector.connect(**config)
+    conn = mysql.connector.connect(**config, use_pure=True)
     cursor = conn.cursor()
 
     try:
