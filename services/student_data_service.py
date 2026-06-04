@@ -4,11 +4,33 @@
 
 import json
 import base64
+import io
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from core.logger import info, error
 from data.db_operations import profile_db
 from services.qa_service import qa_service
+
+
+def _compress_image(content: bytes, max_size: int = 1024, quality: int = 70) -> str:
+    """压缩图片并返回 base64 — 降低 API 传输量和延迟"""
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(content))
+        # 缩放：最长边不超过 max_size
+        w, h = img.size
+        if max(w, h) > max_size:
+            ratio = max_size / max(w, h)
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+        # 转 RGB（PNG 透明通道需转换）
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=quality, optimize=True)
+        return base64.b64encode(buf.getvalue()).decode('utf-8')
+    except Exception:
+        # 压缩失败则原样返回
+        return base64.b64encode(content).decode('utf-8')
 
 
 class StudentDataService:
@@ -539,7 +561,7 @@ class StudentDataImportMixin:
 ]"""
 
             if is_image:
-                image_b64 = base64.b64encode(content).decode('utf-8')
+                image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
                 response = spark_client.chat_with_image(prompt, image_b64, max_tokens=4000)
             else:
@@ -599,7 +621,7 @@ class StudentDataImportMixin:
 如果内容中没有成绩信息，返回空数组 []"""
 
             if is_image:
-                image_b64 = base64.b64encode(content).decode('utf-8')
+                image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
                 response = spark_client.chat_with_image(prompt, image_b64)
             else:
@@ -671,7 +693,7 @@ class StudentDataImportMixin:
 ]"""
 
             if is_image:
-                image_b64 = base64.b64encode(content).decode('utf-8')
+                image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
                 response = spark_client.chat_with_image(prompt, image_b64, max_tokens=4000)
             else:

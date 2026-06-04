@@ -83,6 +83,10 @@ class KimiClient:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
+            # k2.x 推理模型只允许 temperature=1
+            if model.startswith("kimi-k"):
+                temperature = 1
+
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
