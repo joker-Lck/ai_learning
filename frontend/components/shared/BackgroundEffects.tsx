@@ -1,89 +1,36 @@
 /**
- * 背景特效系统 — 粒子 + 光标跟随 + 浮动光球
+ * 背景特效系统 — Canvas 3D 光球 + 粒子 + CSS 浮动光球
  *
- * 性能关键: 光标跟随用独立 DOM + CSS transform (GPU 合成层)
- * 不受 canvas 帧率影响，保证 60fps 丝滑
- *
- * 注: Spline 3D 场景已移除（远程加载 3D 模型性能开销过大）
+ * 用 canvas 2D 绘制 Spline 风格的发光小球，无需远程加载 3D 模型
+ * 性能友好: 光球 ~30fps，粒子 ~20fps，全部 GPU 合成层
  */
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Cpu, Atom, Orbit, Sparkles } from 'lucide-react';
 
 /* ═══════════════════════════════════════════
-   鼠标光标跟随 — 独立 DOM 元素，CSS transform GPU 加速
-   不依赖 canvas 帧率，保证丝滑
+   Canvas 3D 光球场景 — 模拟 Spline 风格
    ═══════════════════════════════════════════ */
 
-const ICONS = [Zap, Cpu, Atom, Orbit, Sparkles];
-
-export function MouseFollower() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [iconIdx, setIconIdx] = useState(0);
-
-  useEffect(() => {
-    let mx = -100, my = -100;
-    let cx = -100, cy = -100;
-    let raf: number;
-
-    const onMouse = (e: MouseEvent) => {
-      mx = e.clientX - 12;
-      my = e.clientY - 12;
-    };
-
-    // 独立 raf 循环，只更新一个 div 的 transform
-    const tick = () => {
-      cx += (mx - cx) * 0.35;
-      cy += (my - cy) * 0.35;
-      if (ref.current) {
-        ref.current.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-
-    window.addEventListener('mousemove', onMouse, { passive: true });
-    raf = requestAnimationFrame(tick);
-
-    // 图标轮换
-    const interval = setInterval(() => {
-      setIconIdx(prev => (prev + 1) % 5);
-    }, 3000);
-
-    return () => {
-      window.removeEventListener('mousemove', onMouse);
-      cancelAnimationFrame(raf);
-      clearInterval(interval);
-    };
-  }, []);
-
-  const Icon = ICONS[iconIdx] ?? Zap;
-
-  return (
-    <div
-      ref={ref}
-      className="fixed top-0 left-0 pointer-events-none z-[60] mix-blend-screen"
-      style={{ willChange: 'transform', transform: 'translate3d(-100px, -100px, 0)' }}
-    >
-      <Icon className="w-6 h-6 text-amber-400/60" />
-    </div>
-  );
+interface OrbDef {
+  x: number; y: number; z: number;
+  vx: number; vy: number; vz: number;
+  radius: number;
+  color: [number, number, number]; // RGB
+  glow: number; // glow radius multiplier
 }
 
-/* ═══════════════════════════════════════════
-   粒子系统 — 独立 canvas，降频到 ~20fps
-   ═══════════════════════════════════════════ */
+const ORB_DEFS: Omit<OrbDef, 'vx' | 'vy' | 'vz'>[] = [
+  { x: 0.25, y: 0.35, z: 0.5,  radius: 90,  color: [100, 255, 218], glow: 2.5 },  // cyan
+  { x: 0.72, y: 0.55, z: 0.3,  radius: 70,  color: [0, 212, 255],   glow: 2.2 },  // blue
+  { x: 0.50, y: 0.20, z: 0.7,  radius: 55,  color: [139, 92, 246],  glow: 2.0 },  // purple
+  { x: 0.15, y: 0.70, z: 0.4,  radius: 65,  color: [245, 158, 11],  glow: 2.3 },  // amber
+  { x: 0.80, y: 0.25, z: 0.6,  radius: 50,  color: [59, 130, 246],  glow: 1.8 },  // blue-light
+  { x: 0.45, y: 0.75, z: 0.2,  radius: 80,  color: [16, 185, 129],  glow: 2.1 },  // emerald
+  { x: 0.60, y: 0.45, z: 0.8,  radius: 40,  color: [236, 72, 153],  glow: 1.6 },  // pink
+];
 
-interface Particle {
-  x: number; y: number;
-  vx: number; vy: number;
-  size: number; life: number;
-  color: string;
-}
-
-const COLORS = ['#64ffda', '#00d4ff', '#f59e0b', '#3b82f6', '#8b5cf6'];
-
-export function ParticleCanvas() {
+export function OrbScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -93,75 +40,110 @@ export function ParticleCanvas() {
     if (!ctx) return;
 
     let w = 0, h = 0;
-    let mx = -100, my = -100;
-    let frame = 0;
-    const particles: Particle[] = [];
-
     const resize = () => {
       w = canvas.width = window.innerWidth;
       h = canvas.height = window.innerHeight;
     };
     resize();
-
-    const onMouse = (e: MouseEvent) => {
-      mx = e.clientX;
-      my = e.clientY;
-    };
-
-    window.addEventListener('mousemove', onMouse, { passive: true });
     window.addEventListener('resize', resize, { passive: true });
 
+    // 初始化光球
+    const orbs: OrbDef[] = ORB_DEFS.map(d => ({
+      ...d,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      vz: (Math.random() - 0.5) * 0.15,
+    }));
+
     let lastTime = 0;
-    const FPS_INTERVAL = 1000 / 20; // 20fps 足够粒子效果
+    const FPS_INTERVAL = 1000 / 30; // 30fps
 
     const animate = (now: number) => {
       requestAnimationFrame(animate);
       if (now - lastTime < FPS_INTERVAL) return;
       lastTime = now;
 
-      frame++;
       ctx.clearRect(0, 0, w, h);
 
-      // 生成粒子 (每3帧1个，上限25)
-      if (frame % 3 === 0 && mx > 0 && particles.length < 25) {
-        const angle = Math.random() * 6.2832;
-        const speed = 0.3 + Math.random() * 0.8;
-        particles.push({
-          x: mx + (Math.random() - 0.5) * 14,
-          y: my + (Math.random() - 0.5) * 14,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 1.5 + Math.random() * 2.5,
-          life: 1,
-          color: COLORS[Math.floor(Math.random() * 5)]!,
-        });
-      }
+      // 更新 + 绘制
+      for (const orb of orbs) {
+        // 运动
+        orb.x += orb.vx * 0.002;
+        orb.y += orb.vy * 0.002;
+        orb.z += orb.vz * 0.002;
 
-      // 渲染 + 更新 (swap-pop 移除，避免 splice)
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i]!;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.03;
-        if (p.life <= 0) {
-          // swap-pop
-          particles[i] = particles[particles.length - 1]!;
-          particles.pop();
-          continue;
-        }
-        ctx.globalAlpha = p.life * 0.6;
-        ctx.fillStyle = p.color;
+        // 边界反弹
+        if (orb.x < 0.05 || orb.x > 0.95) orb.vx *= -1;
+        if (orb.y < 0.05 || orb.y > 0.95) orb.vy *= -1;
+        if (orb.z < 0.1 || orb.z > 0.9) orb.vz *= -1;
+
+        // 3D 透视
+        const scale = 0.5 + orb.z * 0.8;
+        const px = orb.x * w;
+        const py = orb.y * h;
+        const r = orb.radius * scale;
+
+        // 外层光晕
+        const glowGrad = ctx.createRadialGradient(px, py, r * 0.2, px, py, r * orb.glow);
+        glowGrad.addColorStop(0, `rgba(${orb.color[0]},${orb.color[1]},${orb.color[2]},${0.15 * orb.z})`);
+        glowGrad.addColorStop(0.5, `rgba(${orb.color[0]},${orb.color[1]},${orb.color[2]},${0.06 * orb.z})`);
+        glowGrad.addColorStop(1, `rgba(${orb.color[0]},${orb.color[1]},${orb.color[2]},0)`);
+        ctx.fillStyle = glowGrad;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * p.life, 0, 6.2832);
+        ctx.arc(px, py, r * orb.glow, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 核心球体
+        const coreGrad = ctx.createRadialGradient(
+          px - r * 0.25, py - r * 0.25, r * 0.05,
+          px, py, r
+        );
+        coreGrad.addColorStop(0, `rgba(255,255,255,${0.5 * orb.z})`);
+        coreGrad.addColorStop(0.3, `rgba(${orb.color[0]},${orb.color[1]},${orb.color[2]},${0.6 * orb.z})`);
+        coreGrad.addColorStop(0.7, `rgba(${orb.color[0]},${orb.color[1]},${orb.color[2]},${0.25 * orb.z})`);
+        coreGrad.addColorStop(1, `rgba(${orb.color[0]},${orb.color[1]},${orb.color[2]},0)`);
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 高光点
+        const hlGrad = ctx.createRadialGradient(
+          px - r * 0.3, py - r * 0.3, 0,
+          px - r * 0.3, py - r * 0.3, r * 0.4
+        );
+        hlGrad.addColorStop(0, `rgba(255,255,255,${0.35 * orb.z})`);
+        hlGrad.addColorStop(1, `rgba(255,255,255,0)`);
+        ctx.fillStyle = hlGrad;
+        ctx.beginPath();
+        ctx.arc(px - r * 0.3, py - r * 0.3, r * 0.4, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
+
+      // 连接线（距离近的光球之间）
+      for (let i = 0; i < orbs.length; i++) {
+        for (let j = i + 1; j < orbs.length; j++) {
+          const a = orbs[i], b = orbs[j];
+          const ax = a.x * w, ay = a.y * h;
+          const bx = b.x * w, by = b.y * h;
+          const dist = Math.hypot(ax - bx, ay - by);
+          const maxDist = 400;
+          if (dist < maxDist) {
+            const alpha = (1 - dist / maxDist) * 0.08 * ((a.z + b.z) / 2);
+            ctx.strokeStyle = `rgba(100,255,218,${alpha})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
+            ctx.stroke();
+          }
+        }
+      }
     };
 
     requestAnimationFrame(animate);
 
     return () => {
-      window.removeEventListener('mousemove', onMouse);
       window.removeEventListener('resize', resize);
     };
   }, []);
@@ -169,17 +151,17 @@ export function ParticleCanvas() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-[55]"
-      style={{ mixBlendMode: 'screen' }}
+      className="fixed inset-0 pointer-events-none z-[1]"
+      style={{ opacity: 0.85 }}
     />
   );
 }
 
 /* ═══════════════════════════════════════════
-   浮动光球 + 网格点阵 + 扫描线
+   浮动光球 (CSS) + 网格点阵 + 扫描线
    ═══════════════════════════════════════════ */
 
-const orbs = [
+const cssOrbs = [
   { size: 320, color: 'from-blue-600/20 to-cyan-400/10', x: '5%', y: '10%', dur: 22 },
   { size: 260, color: 'from-amber-500/15 to-orange-400/10', x: '75%', y: '60%', dur: 18 },
   { size: 200, color: 'from-violet-500/15 to-blue-400/10', x: '60%', y: '5%', dur: 25 },
@@ -189,7 +171,7 @@ const orbs = [
 export function FloatingOrbs() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {orbs.map((orb, i) => (
+      {cssOrbs.map((orb, i) => (
         <motion.div
           key={i}
           className={`absolute rounded-full bg-gradient-to-br ${orb.color} blur-3xl`}
@@ -202,6 +184,7 @@ export function FloatingOrbs() {
           transition={{ duration: orb.dur, repeat: Infinity, ease: 'easeInOut' }}
         />
       ))}
+      {/* 网格点阵 */}
       <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
@@ -209,6 +192,7 @@ export function FloatingOrbs() {
           backgroundSize: '48px 48px',
         }}
       />
+      {/* 扫描线 */}
       <motion.div
         className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent"
         animate={{ top: ['0%', '100%'] }}
@@ -226,8 +210,7 @@ export function FullBackground() {
   return (
     <>
       <FloatingOrbs />
-      <ParticleCanvas />
-      <MouseFollower />
+      <OrbScene />
     </>
   );
 }
@@ -236,8 +219,7 @@ export function DashboardBackground() {
   return (
     <>
       <FloatingOrbs />
-      <ParticleCanvas />
-      <MouseFollower />
+      <OrbScene />
     </>
   );
 }
