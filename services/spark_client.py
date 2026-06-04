@@ -48,8 +48,8 @@ class KimiClient:
             self._client = OpenAI(
                 api_key=api_key,
                 base_url=base_url,
-                timeout=httpx.Timeout(60.0, connect=10.0),
-                max_retries=2,
+                timeout=httpx.Timeout(90.0, connect=15.0),
+                max_retries=3,
             )
             info(f"Kimi 客户端初始化完成 (base_url={base_url})")
         return self._client
@@ -156,7 +156,7 @@ class KimiClient:
                     content = reasoning.strip().split('\n')[-1]
             return content
         except Exception as e:
-            error(f"Kimi 多模态调用失败 (model={model}): {e}")
+            error(f"Kimi 多模态调用失败 (model={model}): {type(e).__name__}: {e}")
             return f"错误: {e}"
 
     def chat_stream(
