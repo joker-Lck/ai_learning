@@ -3,9 +3,9 @@ Kimi (Moonshot) API 客户端 — OpenAI 兼容 HTTP 接口
 所有 API Key 仅存后端 .env
 
 模型分层策略:
-  kimi-k2.5                      — 简单/标准任务（推理模型）
-  kimi-k2.6                      — 复杂/高级推理任务
-  moonshot-v1-8k-vision-preview  — 图片多模态识别
+  kimi-k2.5                         — 简单/标准任务（推理模型）
+  kimi-k2.6                         — 复杂/高级推理任务
+  moonshot-v1-32k-vision-preview    — 图片多模态识别
 """
 
 import os
@@ -194,19 +194,19 @@ class KimiClient:
 
     # ── 便捷方法：按任务复杂度选模型 ──────────────────────────
     def simple(self, prompt: str, **kw) -> str:
-        """简单任务 — 8K"""
+        """简单任务 — kimi-k2.5"""
         return self.chat(prompt, model=MODEL_SIMPLE, **kw)
 
     def standard(self, prompt: str, **kw) -> str:
-        """标准任务 — 32K"""
+        """标准任务 — kimi-k2.5"""
         return self.chat(prompt, model=MODEL_STANDARD, **kw)
 
     def advanced(self, prompt: str, **kw) -> str:
-        """高级任务 — 128K"""
+        """高级任务 — kimi-k2.6"""
         return self.chat(prompt, model=MODEL_ADVANCED, **kw)
 
     def ultra(self, prompt: str, **kw) -> str:
-        """最强推理 — 128K"""
+        """最强推理 — kimi-k2.6"""
         return self.chat(prompt, model=MODEL_ULTRA, **kw)
 
 
