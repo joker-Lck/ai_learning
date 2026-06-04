@@ -22,7 +22,7 @@ MODEL_SIMPLE = os.getenv("KIMI_MODEL_SIMPLE", "kimi-k2.5")
 MODEL_STANDARD = os.getenv("KIMI_MODEL_STANDARD", "kimi-k2.5")
 MODEL_ADVANCED = os.getenv("KIMI_MODEL_ADVANCED", "kimi-k2.6")
 MODEL_ULTRA = os.getenv("KIMI_MODEL_ULTRA", "kimi-k2.6")
-MODEL_VISION = os.getenv("KIMI_MODEL_VISION", "moonshot-v1-8k-vision-preview")
+MODEL_VISION = os.getenv("KIMI_MODEL_VISION", "moonshot-v1-32k-vision-preview")
 
 
 class KimiClient:
@@ -127,6 +127,7 @@ class KimiClient:
     ) -> str:
         """多模态调用 — 发送图片 + 文本"""
         try:
+            info(f"多模态调用: model={model}, image_b64_len={len(image_b64)}")
             messages: List[Dict] = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
