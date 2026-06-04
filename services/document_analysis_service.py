@@ -9,7 +9,6 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from core.logger import info, error
 from core.json_utils import safe_parse_json
-from services.qa_service import qa_service
 
 
 class DocumentAnalysisService:
@@ -187,6 +186,8 @@ class DocumentAnalysisService:
             import pandas as pd
             if ext == 'csv':
                 df = pd.read_csv(io.BytesIO(content))
+            elif ext == 'xls':
+                df = pd.read_excel(io.BytesIO(content), engine='xlrd')
             else:
                 df = pd.read_excel(io.BytesIO(content))
             # 转为文本表格格式
@@ -197,7 +198,7 @@ class DocumentAnalysisService:
                     lines.append(row_text)
             return "\n".join(lines)
         except ImportError:
-            return "[需要安装 pandas 和 openpyxl: pip install pandas openpyxl]"
+            return "[需要安装 pandas: pip install pandas openpyxl xlrd]"
         except Exception as e:
             return f"[Excel解析失败: {str(e)}]"
 
@@ -281,7 +282,8 @@ class DocumentAnalysisService:
 """
 
         try:
-            response = qa_service.call_ai(prompt, max_tokens=3000)
+            from services.spark_client import spark_client
+            response = spark_client.simple(prompt, max_tokens=3000)
             analysis = safe_parse_json(response)
 
             if not analysis:
