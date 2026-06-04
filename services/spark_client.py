@@ -96,6 +96,39 @@ class KimiClient:
             error(f"Kimi API 调用失败 (model={model}): {e}")
             return f"错误: {e}"
 
+    def chat_with_image(
+        self,
+        prompt: str,
+        image_b64: str,
+        *,
+        model: str = MODEL_STANDARD,
+        max_tokens: int = 3000,
+        temperature: float = 0.3,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        """多模态调用 — 发送图片 + 文本"""
+        try:
+            messages: List[Dict] = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                ],
+            })
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content or ""
+        except Exception as e:
+            error(f"Kimi 多模态调用失败 (model={model}): {e}")
+            return f"错误: {e}"
+
     def chat_stream(
         self,
         prompt: str,

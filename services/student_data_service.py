@@ -3,6 +3,7 @@
 """
 
 import json
+import base64
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from core.logger import info, error
@@ -505,11 +506,10 @@ class StudentDataImportMixin:
     def import_courses_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
         """从文件中 AI 识别课程表"""
         try:
-            text = self._parse_upload_file(filename, content)
-            if not text or text.startswith("["):
-                return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+            ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+            is_image = ext in ('jpg', 'jpeg', 'png', 'bmp', 'webp')
 
-            prompt = f"""请从以下文件内容中识别出课程表信息，提取每门课程的：
+            prompt = """请从以下内容中识别出课程表信息，提取每门课程的：
 - 课程名称 (name)
 - 星期几上课 (day: 周一~周日)
 - 开始时间 (start_time: HH:MM 格式)
@@ -517,18 +517,22 @@ class StudentDataImportMixin:
 - 上课地点 (location，可为空)
 - 授课教师 (teacher，可为空)
 
-文件内容:
-{text[:6000]}
-
 严格输出 JSON 数组格式（不要输出其他内容），例如:
 [
-  {{"name": "高等数学", "day": "周一", "start_time": "08:00", "end_time": "09:40", "location": "教学楼A301", "teacher": "张教授"}},
-  {{"name": "英语", "day": "周三", "start_time": "14:00", "end_time": "15:40", "location": "", "teacher": ""}}
+  {"name": "高等数学", "day": "周一", "start_time": "08:00", "end_time": "09:40", "location": "教学楼A301", "teacher": "张教授"}
 ]
 
 如果内容中没有课程表信息，返回空数组 []"""
 
-            response = qa_service.call_ai(prompt, max_tokens=3000)
+            if is_image:
+                image_b64 = base64.b64encode(content).decode('utf-8')
+                from services.spark_client import spark_client
+                response = spark_client.chat_with_image(prompt, image_b64)
+            else:
+                text = self._parse_upload_file(filename, content)
+                if not text or text.startswith("["):
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+                response = qa_service.call_ai(f"{prompt}\n\n文件内容:\n{text[:6000]}", max_tokens=3000)
             from core.json_utils import safe_parse_json
             courses = safe_parse_json(response)
 
@@ -562,29 +566,32 @@ class StudentDataImportMixin:
     def import_grades_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
         """从文件中 AI 识别成绩"""
         try:
-            text = self._parse_upload_file(filename, content)
-            if not text or text.startswith("["):
-                return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+            ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+            is_image = ext in ('jpg', 'jpeg', 'png', 'bmp', 'webp')
 
-            prompt = f"""请从以下文件内容中识别出成绩信息，提取每条成绩的：
+            prompt = """请从以下内容中识别出成绩信息，提取每条成绩的：
 - 课程名称 (course_name)
 - 分数 (score: 数字，0-100)
 - 学分 (credits: 数字，可选)
 - 成绩类型 (grade_type: exam=期末/quiz=测验/homework=作业/overall=总评)
 - 考试时间 (exam_date: YYYY-MM-DD 格式，可选，用于排序)
 
-文件内容:
-{text[:6000]}
-
 严格输出 JSON 数组格式（不要输出其他内容），例如:
 [
-  {{"course_name": "高等数学", "score": 85, "credits": 4.0, "grade_type": "overall", "exam_date": "2026-01-15"}},
-  {{"course_name": "英语", "score": 92, "credits": 3.0, "grade_type": "exam", "exam_date": "2026-01-10"}}
+  {"course_name": "高等数学", "score": 85, "credits": 4.0, "grade_type": "overall", "exam_date": "2026-01-15"}
 ]
 
 如果内容中没有成绩信息，返回空数组 []"""
 
-            response = qa_service.call_ai(prompt, max_tokens=3000)
+            if is_image:
+                image_b64 = base64.b64encode(content).decode('utf-8')
+                from services.spark_client import spark_client
+                response = spark_client.chat_with_image(prompt, image_b64)
+            else:
+                text = self._parse_upload_file(filename, content)
+                if not text or text.startswith("["):
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+                response = qa_service.call_ai(f"{prompt}\n\n文件内容:\n{text[:6000]}", max_tokens=3000)
             from core.json_utils import safe_parse_json
             grades = safe_parse_json(response)
 
@@ -616,11 +623,10 @@ class StudentDataImportMixin:
     def import_errors_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
         """从文件中 AI 识别错题"""
         try:
-            text = self._parse_upload_file(filename, content)
-            if not text or text.startswith("["):
-                return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+            ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+            is_image = ext in ('jpg', 'jpeg', 'png', 'bmp', 'webp')
 
-            prompt = f"""请从以下文件内容中识别出错题信息，提取每道错题的：
+            prompt = """请从以下内容中识别出错题信息，提取每道错题的：
 - 学科 (subject)
 - 章节 (chapter，可选)
 - 题目内容 (question)
@@ -629,18 +635,22 @@ class StudentDataImportMixin:
 - 错误原因 (error_reason，可选)
 - 标签 (tags: 字符串数组，可选)
 
-文件内容:
-{text[:6000]}
-
 严格输出 JSON 数组格式（不要输出其他内容），例如:
 [
-  {{"subject": "高等数学", "chapter": "第三章 导数", "question": "求 f(x)=x³+2x 的导数", "my_answer": "3x²+2x", "correct_answer": "3x²+2", "error_reason": "对常数项求导错误", "tags": ["导数", "计算错误"]}},
-  {{"subject": "英语", "chapter": "", "question": "Choose the correct answer: He ___ to school yesterday.", "my_answer": "go", "correct_answer": "went", "error_reason": "时态错误", "tags": ["时态"]}}
+  {"subject": "高等数学", "chapter": "第三章 导数", "question": "求 f(x)=x³+2x 的导数", "my_answer": "3x²+2x", "correct_answer": "3x²+2", "error_reason": "对常数项求导错误", "tags": ["导数", "计算错误"]}
 ]
 
 如果内容中没有错题信息，返回空数组 []"""
 
-            response = qa_service.call_ai(prompt, max_tokens=4000)
+            if is_image:
+                image_b64 = base64.b64encode(content).decode('utf-8')
+                from services.spark_client import spark_client
+                response = spark_client.chat_with_image(prompt, image_b64)
+            else:
+                text = self._parse_upload_file(filename, content)
+                if not text or text.startswith("["):
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+                response = qa_service.call_ai(f"{prompt}\n\n文件内容:\n{text[:6000]}", max_tokens=4000)
             from core.json_utils import safe_parse_json
             errors = safe_parse_json(response)
 
