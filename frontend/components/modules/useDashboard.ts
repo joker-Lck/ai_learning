@@ -387,16 +387,11 @@ export function useDashboard() {
     }
   };
 
-  // ── 文件导入处理器 ──
+  // ── 文件导入处理器（只返回数据，不自动保存）──
   const handleImportCourses = async (file: File) => {
     const res = await api.importCoursesFromFile(file);
     if (res.success && Array.isArray(res.data)) {
-      const imported: CourseItem[] = res.data;
-      if (imported.length > 0) {
-        const merged = [...courses, ...imported];
-        await handleSaveCourses(currentSemester, merged);
-      }
-      return imported;
+      return res.data as CourseItem[];
     }
     throw new Error(res.error || res.message || 'AI识别失败');
   };
@@ -404,16 +399,11 @@ export function useDashboard() {
   const handleImportGrades = async (file: File) => {
     const res = await api.importGradesFromFile(file);
     if (res.success && Array.isArray(res.data)) {
-      const imported: GradeItem[] = (res.data as any[]).map((g: any) => ({
+      return (res.data as any[]).map((g: any) => ({
         ...g,
         score: g.score != null ? Number(g.score) : null,
         credits: g.credits != null ? Number(g.credits) : null,
-      }));
-      if (imported.length > 0) {
-        const merged = [...grades, ...imported];
-        await handleSaveGrades(currentSemester, merged);
-      }
-      return imported;
+      })) as GradeItem[];
     }
     throw new Error(res.error || res.message || 'AI识别失败');
   };
@@ -421,13 +411,26 @@ export function useDashboard() {
   const handleImportErrors = async (file: File) => {
     const res = await api.importErrorsFromFile(file);
     if (res.success && Array.isArray(res.data)) {
-      const imported = res.data as Omit<ErrorNote, 'id'>[];
-      for (const note of imported) {
-        await handleAddErrorNote(note);
-      }
-      return imported;
+      return res.data as Omit<ErrorNote, 'id'>[];
     }
     throw new Error(res.error || res.message || 'AI识别失败');
+  };
+
+  // ── 确认导入（用户预览后确认保存）──
+  const handleConfirmImportCourses = async (imported: CourseItem[]) => {
+    const merged = [...courses, ...imported];
+    await handleSaveCourses(currentSemester, merged);
+  };
+
+  const handleConfirmImportGrades = async (imported: GradeItem[]) => {
+    const merged = [...grades, ...imported];
+    await handleSaveGrades(currentSemester, merged);
+  };
+
+  const handleConfirmImportErrors = async (imported: Omit<ErrorNote, 'id'>[]) => {
+    for (const note of imported) {
+      await handleAddErrorNote(note);
+    }
   };
 
   // ── 资料分析处理 ──
@@ -493,6 +496,7 @@ export function useDashboard() {
     grades, gradeLoading, handleSaveGrades,
     errorNotes, errorLoading, handleAddErrorNote, handleToggleMastery, handleDeleteErrorNote,
     handleImportCourses, handleImportGrades, handleImportErrors,
+    handleConfirmImportCourses, handleConfirmImportGrades, handleConfirmImportErrors,
     studyPlans, planLoading, handleGeneratePlan,
     // 资源
     subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,

@@ -42,6 +42,9 @@ interface ProfileModuleProps {
   handleImportCourses: (file: File) => Promise<CourseItem[]>;
   handleImportGrades: (file: File) => Promise<GradeItem[]>;
   handleImportErrors: (file: File) => Promise<Omit<ErrorNote, 'id'>[]>;
+  handleConfirmImportCourses: (data: CourseItem[]) => Promise<void>;
+  handleConfirmImportGrades: (data: GradeItem[]) => Promise<void>;
+  handleConfirmImportErrors: (data: Omit<ErrorNote, 'id'>[]) => Promise<void>;
 }
 
 const TABS: { key: ProfileTab; label: string; icon: any }[] = [
@@ -155,19 +158,26 @@ export default function ProfileModule(props: ProfileModuleProps) {
       </div>
 
       {profileTab === 'profile' && <ProfileTabContent {...props} />}
-      {profileTab === 'schedule' && <ScheduleTabContent courses={props.courses} loading={props.courseLoading} semester={currentSemester} onSave={props.handleSaveCourses} onImport={props.handleImportCourses} />}
-      {profileTab === 'grades' && <GradesTabContent grades={props.grades} loading={props.gradeLoading} semester={currentSemester} onSave={props.handleSaveGrades} onImport={props.handleImportGrades} />}
-      {profileTab === 'errors' && <ErrorsTabContent notes={props.errorNotes} loading={props.errorLoading} onAdd={props.handleAddErrorNote} onToggleMastery={props.handleToggleMastery} onDelete={props.handleDeleteErrorNote} onImport={props.handleImportErrors} />}
+      {profileTab === 'schedule' && <ScheduleTabContent courses={props.courses} loading={props.courseLoading} semester={currentSemester} onSave={props.handleSaveCourses} onImport={props.handleImportCourses} onConfirmImport={props.handleConfirmImportCourses} />}
+      {profileTab === 'grades' && <GradesTabContent grades={props.grades} loading={props.gradeLoading} semester={currentSemester} onSave={props.handleSaveGrades} onImport={props.handleImportGrades} onConfirmImport={props.handleConfirmImportGrades} />}
+      {profileTab === 'errors' && <ErrorsTabContent notes={props.errorNotes} loading={props.errorLoading} onAdd={props.handleAddErrorNote} onToggleMastery={props.handleToggleMastery} onDelete={props.handleDeleteErrorNote} onImport={props.handleImportErrors} onConfirmImport={props.handleConfirmImportErrors} />}
     </div>
   );
 }
 
 // ==================== 文件导入按钮 ====================
 
-function FileImporter({ onImport, label }: { onImport: (file: File) => Promise<any>; label: string }) {
+function FileImporter({ onImport, onConfirm, label, previewType }: {
+  onImport: (file: File) => Promise<any[]>;
+  onConfirm: (data: any[]) => Promise<void>;
+  label: string;
+  previewType: 'courses' | 'grades' | 'errors';
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [preview, setPreview] = useState<any[] | null>(null);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,13 +186,33 @@ function FileImporter({ onImport, label }: { onImport: (file: File) => Promise<a
     setResult(null);
     try {
       const data = await onImport(file);
-      setResult(`✅ 识别 ${Array.isArray(data) ? data.length : 0} 条`);
+      if (Array.isArray(data) && data.length > 0) {
+        setPreview(data);
+      } else {
+        setResult('⚠️ 未识别到数据');
+        setTimeout(() => setResult(null), 4000);
+      }
     } catch (err: any) {
       setResult(`❌ ${err.message}`);
+      setTimeout(() => setResult(null), 4000);
     } finally {
       setImporting(false);
       if (fileRef.current) fileRef.current.value = '';
-      setTimeout(() => setResult(null), 4000);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!preview) return;
+    setSaving(true);
+    try {
+      await onConfirm(preview);
+      setResult(`✅ 已导入 ${preview.length} 条`);
+      setPreview(null);
+      setTimeout(() => setResult(null), 3000);
+    } catch (err: any) {
+      setResult(`❌ 保存失败: ${err.message}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -194,6 +224,60 @@ function FileImporter({ onImport, label }: { onImport: (file: File) => Promise<a
         {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
         {result || (importing ? 'AI 识别中...' : label)}
       </button>
+
+      {/* 预览弹窗 */}
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setPreview(null)}>
+          <div className="bg-[#0a1628] border border-white/[0.1] rounded-2xl w-[90vw] max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div>
+                <h3 className="text-white font-bold text-base">AI 识别结果预览</h3>
+                <p className="text-white/40 text-xs mt-0.5">共识别 {preview.length} 条，请确认后导入</p>
+              </div>
+              <button onClick={() => setPreview(null)} className="p-1.5 hover:bg-white/[0.06] rounded-lg"><X className="w-4 h-4 text-white/40" /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {previewType === 'courses' && preview.map((c: any, i: number) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg">
+                  <div className="w-1 h-8 rounded-full bg-cyan-400/50" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{c.name}</p>
+                    <p className="text-white/40 text-xs">{c.day} {c.start_time}-{c.end_time}{c.location ? ` · ${c.location}` : ''}{c.teacher ? ` · ${c.teacher}` : ''}</p>
+                  </div>
+                </div>
+              ))}
+              {previewType === 'grades' && preview.map((g: any, i: number) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg">
+                  <div className="w-1 h-8 rounded-full bg-emerald-400/50" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{g.course_name}</p>
+                    <p className="text-white/40 text-xs">{g.score}分{g.credits ? ` · ${g.credits}学分` : ''} · {g.grade_type}{g.exam_date ? ` · ${g.exam_date}` : ''}</p>
+                  </div>
+                </div>
+              ))}
+              {previewType === 'errors' && preview.map((e: any, i: number) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg">
+                  <div className="w-1 h-8 rounded-full bg-rose-400/50" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{e.question}</p>
+                    <p className="text-white/40 text-xs">{e.subject}{e.chapter ? ` · ${e.chapter}` : ''}{e.error_reason ? ` · ${e.error_reason}` : ''}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-white/[0.06]">
+              <button onClick={() => setPreview(null)} className="px-4 py-2 text-white/50 text-sm hover:text-white/80 transition-colors">取消</button>
+              <button onClick={handleConfirm} disabled={saving}
+                className="px-5 py-2 bg-cyan-400/20 border border-cyan-400/30 text-cyan-400 rounded-lg text-sm hover:bg-cyan-400/30 flex items-center gap-2 disabled:opacity-50 transition-all">
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                {saving ? '导入中...' : `确认导入 ${preview.length} 条`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -377,7 +461,7 @@ function ProfileEditView({ profileData, onUpdate }: { profileData: ProfileData; 
 
 // ==================== 超级课程表 Tab ====================
 
-function ScheduleTabContent({ courses, loading, semester, onSave, onImport }: { courses: CourseItem[]; loading: boolean; semester: string; onSave: (s: string, c: CourseItem[]) => Promise<void>; onImport: (f: File) => Promise<CourseItem[]> }) {
+function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onConfirmImport }: { courses: CourseItem[]; loading: boolean; semester: string; onSave: (s: string, c: CourseItem[]) => Promise<void>; onImport: (f: File) => Promise<CourseItem[]>; onConfirmImport: (data: CourseItem[]) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<CourseItem>({ name: '', day: '周一', start_time: '08:00', end_time: '09:40', location: '', teacher: '' });
 
@@ -398,7 +482,7 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport }: { 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-white/40">{semester} · {courses.length} 门课程</p>
         <div className="flex items-center gap-2">
-          <FileImporter onImport={onImport} label="上传课表" />
+          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="上传课表" previewType="courses" />
           <button onClick={() => setEditing(!editing)}
             className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all ${editing ? 'bg-red-500/20 text-red-400 border border-red-400/20' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-400/20'}`}>
             {editing ? <><Minus className="w-3.5 h-3.5" /> 收起</> : <><Plus className="w-3.5 h-3.5" /> 手动添加</>}
@@ -493,7 +577,7 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport }: { 
 
 // ==================== 成绩 Tab (按学科分组) ====================
 
-function GradesTabContent({ grades, loading, semester, onSave, onImport }: { grades: GradeItem[]; loading: boolean; semester: string; onSave: (s: string, g: GradeItem[]) => Promise<void>; onImport: (f: File) => Promise<GradeItem[]> }) {
+function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfirmImport }: { grades: GradeItem[]; loading: boolean; semester: string; onSave: (s: string, g: GradeItem[]) => Promise<void>; onImport: (f: File) => Promise<GradeItem[]>; onConfirmImport: (data: GradeItem[]) => Promise<void> }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<GradeItem>({ semester, course_name: '', score: null, credits: null, grade_type: 'overall' });
   const [sortBy, setSortBy] = useState<'name' | 'score' | 'date'>('name');
@@ -565,7 +649,7 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport }: { gra
           {q && <span className="text-xs text-white/30">找到 {searched.length} 条</span>}
         </div>
         <div className="flex items-center gap-2">
-          <FileImporter onImport={onImport} label="上传成绩" />
+          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="上传成绩" previewType="grades" />
           <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
             className="px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-xs text-white/60 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
             <option value="name">按学科</option>
@@ -648,7 +732,7 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport }: { gra
 
 // ==================== 错题本 Tab (按学科分组) ====================
 
-function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, onImport }: { notes: ErrorNote[]; loading: boolean; onAdd: (n: Omit<ErrorNote, 'id'>) => Promise<any>; onToggleMastery: (id: number, m: number) => Promise<void>; onDelete: (id: number) => Promise<void>; onImport: (f: File) => Promise<Omit<ErrorNote, 'id'>[]> }) {
+function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, onImport, onConfirmImport }: { notes: ErrorNote[]; loading: boolean; onAdd: (n: Omit<ErrorNote, 'id'>) => Promise<any>; onToggleMastery: (id: number, m: number) => Promise<void>; onDelete: (id: number) => Promise<void>; onImport: (f: File) => Promise<Omit<ErrorNote, 'id'>[]>; onConfirmImport: (data: Omit<ErrorNote, 'id'>[]) => Promise<void> }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ subject: '', chapter: '', question: '', my_answer: '', correct_answer: '', error_reason: '', tags: '' });
   const [filterSubject, setFilterSubject] = useState('');
@@ -703,7 +787,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
           {q && <span className="text-xs text-white/30">找到 {filtered.length} 条</span>}
         </div>
         <div className="flex items-center gap-2">
-          <FileImporter onImport={onImport} label="上传错题" />
+          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="上传错题" previewType="errors" />
           {subjects.length > 0 && (
             <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)}
               className="px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-xs text-white/60 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">

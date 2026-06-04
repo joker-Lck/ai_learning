@@ -53,6 +53,9 @@ export default function DashboardContent() {
             handleImportCourses={d.handleImportCourses}
             handleImportGrades={d.handleImportGrades}
             handleImportErrors={d.handleImportErrors}
+            handleConfirmImportCourses={d.handleConfirmImportCourses}
+            handleConfirmImportGrades={d.handleConfirmImportGrades}
+            handleConfirmImportErrors={d.handleConfirmImportErrors}
           />
         );
       case 'resources':
