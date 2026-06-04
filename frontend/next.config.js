@@ -29,19 +29,6 @@ const nextConfig = {
       },
     ],
   },
-
-  // 增加API路由超时时间(开发环境)
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // 客户端配置
-    }
-    return config;
-  },
-
-  // 开发服务器配置
-  serverRuntimeConfig: {
-    // 服务器端运行时配置
-  },
 };
 
 module.exports = nextConfig;
