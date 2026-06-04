@@ -570,8 +570,11 @@ class StudentDataImportMixin:
                     return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
+
+            info(f"AI 识别课程表原始响应 (前200字): {response[:200]}")
             from core.json_utils import safe_parse_json
             courses = safe_parse_json(response)
+            info(f"AI 识别课程表解析结果: {courses}")
 
             if not isinstance(courses, list):
                 return {"success": False, "message": "AI 未能识别出课程表信息，请检查文件内容"}

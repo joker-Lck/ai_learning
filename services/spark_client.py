@@ -99,6 +99,7 @@ class KimiClient:
             # k2.x 推理模型：content 为空时从 reasoning_content 提取
             if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
                 reasoning = msg.reasoning_content
+                info(f"k2.x 推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
                 # 尝试从推理过程中提取 JSON 或最后一段
                 import re
                 json_match = re.search(r'\[.*\]|\{.*\}', reasoning, re.DOTALL)
@@ -106,6 +107,8 @@ class KimiClient:
                     content = json_match.group(0)
                 else:
                     content = reasoning.strip().split('\n')[-1]
+            if not content:
+                error(f"k2.x 模型返回空内容 (model={model}, finish_reason={response.choices[0].finish_reason})")
             return content
 
         except Exception as e:
