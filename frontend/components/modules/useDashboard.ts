@@ -391,7 +391,15 @@ export function useDashboard() {
   const handleImportCourses = async (file: File) => {
     const res = await api.importCoursesFromFile(file);
     if (res.success && Array.isArray(res.data)) {
-      return res.data as CourseItem[];
+      // 标准化字段，确保和手动添加格式一致
+      return (res.data as any[]).map((c: any) => ({
+        name: String(c.name || '').trim(),
+        day: String(c.day || '').trim(),
+        start_time: String(c.start_time || '').trim(),
+        end_time: String(c.end_time || '').trim(),
+        location: String(c.location || '').trim(),
+        teacher: String(c.teacher || '').trim(),
+      })).filter(c => c.name && c.day && c.start_time && c.end_time) as CourseItem[];
     }
     throw new Error(res.error || res.message || 'AI识别失败');
   };
@@ -400,10 +408,13 @@ export function useDashboard() {
     const res = await api.importGradesFromFile(file);
     if (res.success && Array.isArray(res.data)) {
       return (res.data as any[]).map((g: any) => ({
-        ...g,
+        semester: currentSemester,
+        course_name: String(g.course_name || '').trim(),
         score: g.score != null ? Number(g.score) : null,
         credits: g.credits != null ? Number(g.credits) : null,
-      })) as GradeItem[];
+        grade_type: String(g.grade_type || 'overall').trim(),
+        exam_date: g.exam_date ? String(g.exam_date).trim() : undefined,
+      })).filter(g => g.course_name && g.score != null) as GradeItem[];
     }
     throw new Error(res.error || res.message || 'AI识别失败');
   };
@@ -411,7 +422,16 @@ export function useDashboard() {
   const handleImportErrors = async (file: File) => {
     const res = await api.importErrorsFromFile(file);
     if (res.success && Array.isArray(res.data)) {
-      return res.data as Omit<ErrorNote, 'id'>[];
+      return (res.data as any[]).map((e: any) => ({
+        subject: String(e.subject || '').trim(),
+        chapter: String(e.chapter || '').trim(),
+        question: String(e.question || '').trim(),
+        my_answer: String(e.my_answer || '').trim(),
+        correct_answer: String(e.correct_answer || '').trim(),
+        error_reason: String(e.error_reason || '').trim(),
+        tags: Array.isArray(e.tags) ? e.tags.map((t: any) => String(t).trim()).filter(Boolean) : [],
+        mastery: 0,
+      })).filter(e => e.subject && e.question) as Omit<ErrorNote, 'id'>[];
     }
     throw new Error(res.error || res.message || 'AI识别失败');
   };
