@@ -1,44 +1,15 @@
 /**
- * 背景特效系统 — Spline 3D + 粒子 + 光标跟随 + 浮动光球
+ * 背景特效系统 — 粒子 + 光标跟随 + 浮动光球
  *
  * 性能关键: 光标跟随用独立 DOM + CSS transform (GPU 合成层)
- * 不受 canvas/Spline 帧率影响，保证 60fps 丝滑
+ * 不受 canvas 帧率影响，保证 60fps 丝滑
+ *
+ * 注: Spline 3D 场景已移除（远程加载 3D 模型性能开销过大）
  */
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Cpu, Atom, Orbit, Sparkles } from 'lucide-react';
-
-/* ═══════════════════════════════════════════
-   Spline 3D 场景
-   ═══════════════════════════════════════════ */
-export function SplineBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    let app: any = null;
-    let cancelled = false;
-
-    (async () => {
-      const { Application } = await import('@splinetool/runtime');
-      if (cancelled || !canvasRef.current) return;
-      app = new Application(canvasRef.current);
-      await app.load('https://prod.spline.design/eqtbmmRpUBNRvFku/scene.splinecode');
-    })();
-
-    return () => {
-      cancelled = true;
-      if (app) { try { app.dispose(); } catch {} }
-    };
-  }, []);
-
-  return (
-    <div className="fixed inset-0 z-0 pointer-events-none" style={{ transform: 'scale(1.3)', transformOrigin: 'center center' }}>
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
-      <div className="absolute inset-0 bg-[#060d1f]/40" />
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════
    鼠标光标跟随 — 独立 DOM 元素，CSS transform GPU 加速
@@ -254,7 +225,6 @@ export function FloatingOrbs() {
 export function FullBackground() {
   return (
     <>
-      <SplineBackground />
       <FloatingOrbs />
       <ParticleCanvas />
       <MouseFollower />

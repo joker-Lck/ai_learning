@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
 import {
@@ -133,7 +132,6 @@ function FeatureCard({ feature, index }: { feature: typeof features[0]; index: n
    ═══════════════════════════════════════════ */
 
 export default function LoginPage() {
-  const router = useRouter();
   const { login, setGuest } = useAuthStore();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -155,7 +153,8 @@ export default function LoginPage() {
       if (res.success && res.user) {
         api.setToken(res.token);
         login(res.user, res.token);
-        router.push('/dashboard');
+        // 使用 location.href 确保状态完全更新后再跳转
+        window.location.href = '/dashboard';
       } else { setError(res.message || '登录失败'); }
     } catch (err: any) { setError(err.message || '网络错误'); }
     finally { setLoading(false); }
@@ -179,13 +178,13 @@ export default function LoginPage() {
     try {
       const res: any = await api.guestLogin();
       if (res.token) api.setToken(res.token);
-      setGuest(); router.push('/dashboard');
-    } catch { setGuest(); router.push('/dashboard'); }
+      setGuest(); window.location.href = '/dashboard';
+    } catch { setGuest(); window.location.href = '/dashboard'; }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#060d1f]">
-      {/* 3D + 粒子 + 光球背景 */}
+      {/* 粒子 + 光球背景 */}
       <FullBackground />
 
       {/* 主内容 */}
