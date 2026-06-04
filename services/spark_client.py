@@ -118,26 +118,26 @@ class KimiClient:
     def chat_with_image(
         self,
         prompt: str,
-        image_b64: str,
+        image_b64: str | List[str],
         *,
         model: str = MODEL_VISION,
         max_tokens: int = 4000,
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
     ) -> str:
-        """多模态调用 — 发送图片 + 文本"""
+        """多模态调用 — 发送图片 + 文本，支持单张或多张图片"""
         try:
-            info(f"多模态调用: model={model}, image_b64_len={len(image_b64)}")
+            # 统一为列表
+            images = [image_b64] if isinstance(image_b64, str) else image_b64
+            info(f"多模态调用: model={model}, 图片数量={len(images)}")
             messages: List[Dict] = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
-                ],
-            })
+            # 构建 content: 文本 + 多张图片
+            content_parts: List[Dict] = [{"type": "text", "text": prompt}]
+            for img in images:
+                content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}})
+            messages.append({"role": "user", "content": content_parts})
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
