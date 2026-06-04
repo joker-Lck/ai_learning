@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/stores';
@@ -11,18 +11,20 @@ export default function DashboardPage() {
   const router = useRouter();
   const { isLoggedIn, restoreAuth } = useAuthStore();
   const { sidebarOpen } = useUIStore();
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     restoreAuth();
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (hydrated && !isLoggedIn) {
       router.push('/');
     }
-  }, [isLoggedIn, router]);
+  }, [hydrated, isLoggedIn, router]);
 
-  if (!isLoggedIn) return null;
+  if (!hydrated || !isLoggedIn) return null;
 
   return (
     <div className="flex min-h-screen" style={{ background: '#060d1f' }}>
