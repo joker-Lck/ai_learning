@@ -20,6 +20,7 @@ interface AuthState {
   login: (user: User, token: string) => void;
   logout: () => void;
   setGuest: () => void;
+  restoreAuth: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -45,6 +46,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       isLoggedIn: true,
       isGuest: true,
     });
+  },
+
+  restoreAuth: () => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      set({
+        token,
+        isLoggedIn: true,
+        isGuest: false,
+        user: { id: 0, username: '用户', role: 'user' },
+      });
+    }
   },
 }));
 

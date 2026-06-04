@@ -9,8 +9,12 @@ import DashboardContent from '@/components/DashboardContent';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, restoreAuth } = useAuthStore();
   const { sidebarOpen } = useUIStore();
+
+  useEffect(() => {
+    restoreAuth();
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) {
