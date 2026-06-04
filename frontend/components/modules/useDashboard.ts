@@ -102,24 +102,28 @@ export function useDashboard() {
     }
   }, [activeModule, currentSemester]);
 
-  // 保存课程表
+  // 保存课程表（乐观更新：先更新 UI 再保存后端）
   const handleSaveCourses = async (semester: string, courseList: CourseItem[]) => {
+    setCourses(courseList);
+    if (!semesters.includes(semester)) setSemesters(prev => [semester, ...prev]);
     setCourseLoading(true);
     try {
       const res: any = await api.saveCourseSchedule(semester, courseList);
-      if (res.success) {
-        setCourses(courseList);
-        if (!semesters.includes(semester)) setSemesters(prev => [semester, ...prev]);
-      }
+      if (!res.success) console.warn('课程表保存失败:', res.message);
+    } catch (e) {
+      console.error('课程表保存异常:', e);
     } finally { setCourseLoading(false); }
   };
 
-  // 保存成绩
+  // 保存成绩（乐观更新）
   const handleSaveGrades = async (semester: string, gradeList: GradeItem[]) => {
+    setGrades(gradeList);
     setGradeLoading(true);
     try {
       const res: any = await api.saveGrades(semester, gradeList);
-      if (res.success) setGrades(gradeList);
+      if (!res.success) console.warn('成绩保存失败:', res.message);
+    } catch (e) {
+      console.error('成绩保存异常:', e);
     } finally { setGradeLoading(false); }
   };
 
