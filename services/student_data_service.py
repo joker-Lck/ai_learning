@@ -12,11 +12,12 @@ from data.db_operations import profile_db
 from services.qa_service import qa_service
 
 
-def _compress_image(content: bytes, max_size: int = 1024, quality: int = 70) -> str:
-    """压缩图片并返回 base64 — 降低 API 传输量和延迟"""
+def _compress_image(content: bytes, max_size: int = 2048, quality: int = 85) -> str:
+    """压缩图片并返回 base64 — 降低 API 传输量但保持可读性"""
     try:
         from PIL import Image
         img = Image.open(io.BytesIO(content))
+        orig_size = len(content)
         # 缩放：最长边不超过 max_size
         w, h = img.size
         if max(w, h) > max_size:
@@ -27,9 +28,11 @@ def _compress_image(content: bytes, max_size: int = 1024, quality: int = 70) -> 
             img = img.convert('RGB')
         buf = io.BytesIO()
         img.save(buf, format='JPEG', quality=quality, optimize=True)
-        return base64.b64encode(buf.getvalue()).decode('utf-8')
-    except Exception:
-        # 压缩失败则原样返回
+        result = buf.getvalue()
+        info(f"图片压缩: {orig_size//1024}KB -> {len(result)//1024}KB, 尺寸: {w}x{h} -> {img.size[0]}x{img.size[1]}")
+        return base64.b64encode(result).decode('utf-8')
+    except Exception as e:
+        error(f"图片压缩失败，使用原图: {e}")
         return base64.b64encode(content).decode('utf-8')
 
 
@@ -531,34 +534,36 @@ class StudentDataImportMixin:
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
             is_image = ext in ('jpg', 'jpeg', 'png', 'bmp', 'webp')
 
-            prompt = """你是一个课程表识别专家。请仔细分析以下内容，提取所有课程信息。
+            if is_image:
+                prompt = """请仔细查看这张课程表图片，识别并提取所有课程信息。
 
-输出格式：严格 JSON 数组，每门课程包含以下字段：
+这是一个大学课程表，通常是表格形式：
+- 横轴是星期（周一到周日）
+- 纵轴是时间/节次（如第1-2节、第3-4节等）
+- 每个格子里可能有课程名称、教室、老师
+
+请提取每门课程：
+- name: 课程名称
+- day: 星期几（周一/周二/周三/周四/周五/周六/周日）
+- start_time: 开始时间（HH:MM格式，如第1-2节=08:00，第3-4节=10:00，第5-6节=14:00，第7-8节=16:00，第9-10节=19:00）
+- end_time: 结束时间（如第1-2节=09:40，第3-4节=11:40，第5-6节=15:40，第7-8节=17:40，第9-10节=20:40）
+- location: 教室/地点
+- teacher: 教师姓名
+
+只输出JSON数组，不要其他内容。如果看不清某个字段就留空字符串。
+示例：[{"name":"高等数学","day":"周一","start_time":"08:00","end_time":"09:40","location":"教A301","teacher":"张三"}]"""
+            else:
+                prompt = """请从以下文本中识别出课程表信息，提取每门课程的：
 - name: 课程名称（必填）
-- day: 星期几，必须是 周一/周二/周三/周四/周五/周六/周日 之一（必填）
-- start_time: 开始时间，HH:MM 格式（必填）
-- end_time: 结束时间，HH:MM 格式（必填）
-- location: 上课地点/教室（没有则为空字符串）
-- teacher: 授课教师（没有则为空字符串）
+- day: 星期几（周一~周日，必填）
+- start_time: 开始时间（HH:MM，必填）
+- end_time: 结束时间（HH:MM，必填）
+- location: 上课地点（可为空）
+- teacher: 授课教师（可为空）
 
-常见课表格式参考：
-- "周一 8:00-9:40 高等数学 教A301 张老师"
-- "第1-2节" 对应 8:00-9:40，"第3-4节" 对应 10:00-11:40，"第5-6节" 对应 14:00-15:40
-- "第7-8节" 对应 16:00-17:40，"第9-10节" 对应 19:00-20:40
-- 表格形式：行是时间/节次，列是星期一~星期日
-- 如果只有节次没有具体时间，请按上述对应关系转换
+节次对应时间：第1-2节=08:00-09:40，第3-4节=10:00-11:40，第5-6节=14:00-15:40，第7-8节=16:00-17:40，第9-10节=19:00-20:40
 
-注意：
-1. 同一门课可能在多个时间段出现，请分别列出
-2. 星期几请统一用"周一"~"周日"格式
-3. 只输出 JSON 数组，不要输出其他任何内容
-4. 如果确实没有课程信息，返回空数组 []
-
-示例输出：
-[
-  {"name": "高等数学", "day": "周一", "start_time": "08:00", "end_time": "09:40", "location": "教学楼A301", "teacher": "张教授"},
-  {"name": "高等数学", "day": "周三", "start_time": "08:00", "end_time": "09:40", "location": "教学楼A301", "teacher": "张教授"}
-]"""
+严格输出JSON数组，不要其他内容。无课程信息返回空数组[]。"""
 
             if is_image:
                 image_b64 = _compress_image(content)
@@ -567,7 +572,7 @@ class StudentDataImportMixin:
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/xlsx/jpg/png 等格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
 
@@ -630,7 +635,7 @@ class StudentDataImportMixin:
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/xlsx/jpg/png 等格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             from core.json_utils import safe_parse_json
@@ -702,7 +707,7 @@ class StudentDataImportMixin:
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/xlsx/jpg/png 等格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             from core.json_utils import safe_parse_json

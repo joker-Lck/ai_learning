@@ -17,7 +17,8 @@ class DocumentAnalysisService:
 
     SUPPORTED_EXTENSIONS = {
         'txt', 'md', 'pdf', 'doc', 'docx', 'ppt', 'pptx',
-        'jpg', 'jpeg', 'png'
+        'xls', 'xlsx', 'csv',
+        'jpg', 'jpeg', 'png', 'bmp', 'webp'
     }
 
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -125,7 +126,10 @@ class DocumentAnalysisService:
             elif ext in ('ppt', 'pptx'):
                 return self._parse_pptx(content)
 
-            elif ext in ('jpg', 'jpeg', 'png'):
+            elif ext in ('xls', 'xlsx', 'csv'):
+                return self._parse_excel(content, ext)
+
+            elif ext in ('jpg', 'jpeg', 'png', 'bmp', 'webp'):
                 return f"[图片文件: {filename} - 需要视觉模型识别]"
 
             else:
@@ -176,6 +180,26 @@ class DocumentAnalysisService:
             return "[需要安装 python-pptx: pip install python-pptx]"
         except Exception as e:
             return f"[PPT解析失败: {str(e)}]"
+
+    def _parse_excel(self, content: bytes, ext: str) -> str:
+        """解析 Excel/CSV 文件"""
+        try:
+            import pandas as pd
+            if ext == 'csv':
+                df = pd.read_csv(io.BytesIO(content))
+            else:
+                df = pd.read_excel(io.BytesIO(content))
+            # 转为文本表格格式
+            lines = []
+            for _, row in df.iterrows():
+                row_text = ' | '.join(str(v) for v in row.values if pd.notna(v))
+                if row_text.strip():
+                    lines.append(row_text)
+            return "\n".join(lines)
+        except ImportError:
+            return "[需要安装 pandas 和 openpyxl: pip install pandas openpyxl]"
+        except Exception as e:
+            return f"[Excel解析失败: {str(e)}]"
 
     def _combine_texts(self, files: List[Dict], max_chars: int = 12000) -> str:
         """合并多个文件的文本内容"""
