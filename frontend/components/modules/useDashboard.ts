@@ -390,21 +390,21 @@ export function useDashboard() {
   // ── 文件导入处理器 ──
   const handleImportCourses = async (file: File) => {
     const res = await api.importCoursesFromFile(file);
-    if (res.success && res.data?.courses) {
-      const imported: CourseItem[] = res.data.courses;
+    if (res.success && Array.isArray(res.data)) {
+      const imported: CourseItem[] = res.data;
       if (imported.length > 0) {
         const merged = [...courses, ...imported];
         await handleSaveCourses(currentSemester, merged);
       }
       return imported;
     }
-    throw new Error(res.error || 'AI识别失败');
+    throw new Error(res.error || res.message || 'AI识别失败');
   };
 
   const handleImportGrades = async (file: File) => {
     const res = await api.importGradesFromFile(file);
-    if (res.success && res.data?.grades) {
-      const imported: GradeItem[] = (res.data.grades as any[]).map((g: any) => ({
+    if (res.success && Array.isArray(res.data)) {
+      const imported: GradeItem[] = (res.data as any[]).map((g: any) => ({
         ...g,
         score: g.score != null ? Number(g.score) : null,
         credits: g.credits != null ? Number(g.credits) : null,
@@ -415,19 +415,19 @@ export function useDashboard() {
       }
       return imported;
     }
-    throw new Error(res.error || 'AI识别失败');
+    throw new Error(res.error || res.message || 'AI识别失败');
   };
 
   const handleImportErrors = async (file: File) => {
     const res = await api.importErrorsFromFile(file);
-    if (res.success && res.data?.error_notes) {
-      const imported = res.data.error_notes as Omit<ErrorNote, 'id'>[];
+    if (res.success && Array.isArray(res.data)) {
+      const imported = res.data as Omit<ErrorNote, 'id'>[];
       for (const note of imported) {
         await handleAddErrorNote(note);
       }
       return imported;
     }
-    throw new Error(res.error || 'AI识别失败');
+    throw new Error(res.error || res.message || 'AI识别失败');
   };
 
   // ── 资料分析处理 ──
