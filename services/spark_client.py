@@ -3,9 +3,9 @@ Kimi (Moonshot) API 客户端 — OpenAI 兼容 HTTP 接口
 所有 API Key 仅存后端 .env
 
 模型分层策略:
-  moonshot-v1-8k    — 简单解析 / SVG 生成
-  moonshot-v1-32k   — 练习题、文档、思维导图
-  moonshot-v1-128k  — 画像分析、路径规划、辅导答疑、效果评估
+  kimi-k2.5                      — 简单/标准任务（推理模型）
+  kimi-k2.6                      — 复杂/高级推理任务
+  moonshot-v1-8k-vision-preview  — 图片多模态识别
 """
 
 import os
