@@ -546,7 +546,8 @@ class StudentDataImportMixin:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
                     return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
-                response = qa_service.call_ai(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
+                from services.spark_client import spark_client
+                response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             from core.json_utils import safe_parse_json
             courses = safe_parse_json(response)
 
@@ -605,7 +606,8 @@ class StudentDataImportMixin:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
                     return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
-                response = qa_service.call_ai(f"{prompt}\n\n文件内容:\n{text[:6000]}", max_tokens=3000)
+                from services.spark_client import spark_client
+                response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             from core.json_utils import safe_parse_json
             grades = safe_parse_json(response)
 
@@ -676,7 +678,8 @@ class StudentDataImportMixin:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
                     return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/jpg/png 格式"}
-                response = qa_service.call_ai(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
+                from services.spark_client import spark_client
+                response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             from core.json_utils import safe_parse_json
             errors = safe_parse_json(response)
 

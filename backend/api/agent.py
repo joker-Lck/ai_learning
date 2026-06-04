@@ -81,10 +81,14 @@ async def update_profile_field(
     user: dict = Depends(require_auth),
 ):
     """更新画像单个字段"""
-    field = input_data.get("field", "")
-    value = input_data.get("value")
-    result = profile_agent.update_profile_field(user["id"], field, value)
-    return BaseResponse(**result)
+    try:
+        field = input_data.get("field", "")
+        value = input_data.get("value")
+        result = profile_agent.update_profile_field(user["id"], field, value)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"update-profile-field 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.post("/generate-resources", response_model=BaseResponse)
@@ -506,9 +510,9 @@ async def upload_to_rag(
             # AI 提取知识点
             kp_prompt = f"从以下文本中提取5-15个关键知识点名称，用JSON数组返回（只输出JSON数组）:\n{text[:4000]}"
             try:
-                from services.qa_service import qa_service
+                from services.spark_client import spark_client
                 from core.json_utils import safe_parse_json
-                kp_resp = qa_service.call_ai(kp_prompt, max_tokens=500)
+                kp_resp = spark_client.simple(kp_prompt, max_tokens=500)
                 kp_list = safe_parse_json(kp_resp)
                 if not isinstance(kp_list, list):
                     kp_list = []
@@ -518,7 +522,7 @@ async def upload_to_rag(
             # AI 生成摘要
             summary_prompt = f"用100字以内概括以下教材内容（只输出摘要文字）:\n{text[:3000]}"
             try:
-                summary = qa_service.call_ai(summary_prompt, max_tokens=200)
+                summary = spark_client.simple(summary_prompt, max_tokens=200)
             except Exception:
                 summary = text[:200]
 
@@ -579,10 +583,16 @@ async def save_course_schedule(
     user: dict = Depends(require_auth),
 ):
     """保存学期课程表"""
-    result = student_data_service.save_course_schedule(
-        user["id"], input_data["semester"], input_data["courses"]
-    )
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.save_course_schedule(
+            user["id"], input_data["semester"], input_data["courses"]
+        )
+        return BaseResponse(**result)
+    except KeyError as e:
+        return BaseResponse(success=False, message=f"缺少参数: {e}")
+    except Exception as e:
+        error(f"save-course-schedule 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.get("/get-course-schedule", response_model=BaseResponse)
@@ -591,15 +601,23 @@ async def get_course_schedule(
     user: dict = Depends(require_auth),
 ):
     """获取学期课程表"""
-    result = student_data_service.get_course_schedule(user["id"], semester)
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.get_course_schedule(user["id"], semester)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"get-course-schedule 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.get("/list-semesters", response_model=BaseResponse)
 async def list_semesters(user: dict = Depends(require_auth)):
     """列出用户所有学期"""
-    result = student_data_service.list_semesters(user["id"])
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.list_semesters(user["id"])
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"list-semesters 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.post("/save-grades", response_model=BaseResponse)
@@ -608,10 +626,16 @@ async def save_grades(
     user: dict = Depends(require_auth),
 ):
     """保存学习成绩"""
-    result = student_data_service.save_grades(
-        user["id"], input_data["semester"], input_data["grades"]
-    )
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.save_grades(
+            user["id"], input_data["semester"], input_data["grades"]
+        )
+        return BaseResponse(**result)
+    except KeyError as e:
+        return BaseResponse(success=False, message=f"缺少参数: {e}")
+    except Exception as e:
+        error(f"save-grades 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.get("/get-grades", response_model=BaseResponse)
@@ -620,8 +644,12 @@ async def get_grades(
     user: dict = Depends(require_auth),
 ):
     """获取学习成绩"""
-    result = student_data_service.get_grades(user["id"], semester)
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.get_grades(user["id"], semester)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"get-grades 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.post("/save-error-note", response_model=BaseResponse)
@@ -630,8 +658,12 @@ async def save_error_note(
     user: dict = Depends(require_auth),
 ):
     """添加错题"""
-    result = student_data_service.save_error_note(user["id"], input_data)
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.save_error_note(user["id"], input_data)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"save-error-note 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.get("/get-error-notes", response_model=BaseResponse)
@@ -641,8 +673,12 @@ async def get_error_notes(
     user: dict = Depends(require_auth),
 ):
     """获取错题列表"""
-    result = student_data_service.get_error_notes(user["id"], subject, mastery)
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.get_error_notes(user["id"], subject, mastery)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"get-error-notes 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.post("/update-error-mastery", response_model=BaseResponse)
@@ -651,10 +687,16 @@ async def update_error_mastery(
     user: dict = Depends(require_auth),
 ):
     """更新错题掌握状态"""
-    result = student_data_service.update_error_note_mastery(
-        user["id"], input_data["note_id"], input_data["mastery"]
-    )
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.update_error_note_mastery(
+            user["id"], input_data["note_id"], input_data["mastery"]
+        )
+        return BaseResponse(**result)
+    except KeyError as e:
+        return BaseResponse(success=False, message=f"缺少参数: {e}")
+    except Exception as e:
+        error(f"update-error-mastery 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.post("/delete-error-note", response_model=BaseResponse)
@@ -663,8 +705,14 @@ async def delete_error_note(
     user: dict = Depends(require_auth),
 ):
     """删除错题"""
-    result = student_data_service.delete_error_note(user["id"], input_data["note_id"])
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.delete_error_note(user["id"], input_data["note_id"])
+        return BaseResponse(**result)
+    except KeyError as e:
+        return BaseResponse(success=False, message=f"缺少参数: {e}")
+    except Exception as e:
+        error(f"delete-error-note 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.post("/generate-study-plan", response_model=BaseResponse)
@@ -673,8 +721,12 @@ async def generate_study_plan(
     user: dict = Depends(require_auth),
 ):
     """AI 生成学习计划"""
-    result = student_data_service.generate_study_plan(user["id"], input_data)
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.generate_study_plan(user["id"], input_data)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"generate-study-plan 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 @router.get("/get-study-plans", response_model=BaseResponse)
@@ -683,8 +735,12 @@ async def get_study_plans(
     user: dict = Depends(require_auth),
 ):
     """获取学习计划列表"""
-    result = student_data_service.get_study_plans(user["id"], semester)
-    return BaseResponse(**result)
+    try:
+        result = student_data_service.get_study_plans(user["id"], semester)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"get-study-plans 失败: {e}")
+        return BaseResponse(success=False, message=str(e))
 
 
 # ==================== 文件导入（AI 识别）====================

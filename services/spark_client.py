@@ -18,10 +18,10 @@ import httpx
 load_dotenv()
 
 # ── 模型路由表 ──────────────────────────────────────────────
-MODEL_SIMPLE = os.getenv("KIMI_MODEL_SIMPLE", "moonshot-v1-8k")
-MODEL_STANDARD = os.getenv("KIMI_MODEL_STANDARD", "moonshot-v1-32k")
-MODEL_ADVANCED = os.getenv("KIMI_MODEL_ADVANCED", "moonshot-v1-128k")
-MODEL_ULTRA = os.getenv("KIMI_MODEL_ULTRA", "moonshot-v1-128k")
+MODEL_SIMPLE = os.getenv("KIMI_MODEL_SIMPLE", "kimi-k2.5")
+MODEL_STANDARD = os.getenv("KIMI_MODEL_STANDARD", "kimi-k2.5")
+MODEL_ADVANCED = os.getenv("KIMI_MODEL_ADVANCED", "kimi-k2.6")
+MODEL_ULTRA = os.getenv("KIMI_MODEL_ULTRA", "kimi-k2.6")
 MODEL_VISION = os.getenv("KIMI_MODEL_VISION", "moonshot-v1-8k-vision-preview")
 
 
@@ -48,7 +48,7 @@ class KimiClient:
             self._client = OpenAI(
                 api_key=api_key,
                 base_url=base_url,
-                timeout=httpx.Timeout(30.0, connect=5.0),
+                timeout=httpx.Timeout(60.0, connect=5.0),
                 max_retries=1,
             )
             info(f"Kimi 客户端初始化完成 (base_url={base_url})")
@@ -60,12 +60,12 @@ class KimiClient:
         prompt: str,
         *,
         model: str = MODEL_STANDARD,
-        max_tokens: int = 2000,
+        max_tokens: int = 4000,
         temperature: float = 0.7,
         system_prompt: Optional[str] = None,
     ) -> str:
         """
-        通用文本生成
+        通用文本生成（兼容 k2.x 推理模型）
 
         Args:
             prompt: 用户提示词
@@ -90,7 +90,18 @@ class KimiClient:
                 temperature=temperature,
             )
 
-            content = response.choices[0].message.content or ""
+            msg = response.choices[0].message
+            content = msg.content or ""
+            # k2.x 推理模型：content 为空时从 reasoning_content 提取
+            if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
+                reasoning = msg.reasoning_content
+                # 尝试从推理过程中提取 JSON 或最后一段
+                import re
+                json_match = re.search(r'\[.*\]|\{.*\}', reasoning, re.DOTALL)
+                if json_match:
+                    content = json_match.group(0)
+                else:
+                    content = reasoning.strip().split('\n')[-1]
             return content
 
         except Exception as e:
@@ -103,7 +114,7 @@ class KimiClient:
         image_b64: str,
         *,
         model: str = MODEL_VISION,
-        max_tokens: int = 3000,
+        max_tokens: int = 4000,
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
     ) -> str:
@@ -125,7 +136,17 @@ class KimiClient:
                 max_tokens=max_tokens,
                 temperature=temperature,
             )
-            return response.choices[0].message.content or ""
+            msg = response.choices[0].message
+            content = msg.content or ""
+            if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
+                reasoning = msg.reasoning_content
+                import re
+                json_match = re.search(r'\[.*\]|\{.*\}', reasoning, re.DOTALL)
+                if json_match:
+                    content = json_match.group(0)
+                else:
+                    content = reasoning.strip().split('\n')[-1]
+            return content
         except Exception as e:
             error(f"Kimi 多模态调用失败 (model={model}): {e}")
             return f"错误: {e}"
