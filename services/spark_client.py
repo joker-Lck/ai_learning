@@ -22,6 +22,7 @@ MODEL_SIMPLE = os.getenv("KIMI_MODEL_SIMPLE", "moonshot-v1-8k")
 MODEL_STANDARD = os.getenv("KIMI_MODEL_STANDARD", "moonshot-v1-32k")
 MODEL_ADVANCED = os.getenv("KIMI_MODEL_ADVANCED", "moonshot-v1-128k")
 MODEL_ULTRA = os.getenv("KIMI_MODEL_ULTRA", "moonshot-v1-128k")
+MODEL_VISION = os.getenv("KIMI_MODEL_VISION", "moonshot-v1-8k-vision-preview")
 
 
 class KimiClient:
@@ -101,7 +102,7 @@ class KimiClient:
         prompt: str,
         image_b64: str,
         *,
-        model: str = MODEL_STANDARD,
+        model: str = MODEL_VISION,
         max_tokens: int = 3000,
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
