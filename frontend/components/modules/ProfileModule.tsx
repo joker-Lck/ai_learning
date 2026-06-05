@@ -287,24 +287,74 @@ function FileImporter({ onImport, onConfirm, label, previewType }: {
 function SemesterSelector({ current, semesters, onChange }: { current: string; semesters: string[]; onChange: (s: string) => void }) {
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startDate, setStartDate] = useState('');
+
+  // 根据开学日期生成学期名称
+  const getSemesterFromDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1; // 1-12
+    // 2-7月=春，8-1月(次年)=秋
+    const season = (month >= 2 && month <= 7) ? '春' : '秋';
+    return `${year}-${season}`;
+  };
+
+  const handleDateSelect = () => {
+    if (!startDate) return;
+    const semester = getSemesterFromDate(startDate);
+    onChange(semester);
+    setShowDatePicker(false);
+    setStartDate('');
+    setOpen(false);
+  };
+
   return (
     <div className="relative">
       <button onClick={() => setOpen(!open)} className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white/70 hover:border-cyan-400/30 transition-colors">
         <CalendarDays className="w-4 h-4 text-cyan-400" />{current || '选择学期'}<ChevronDown className="w-3 h-3" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-48 bg-[#0f1a30] border border-white/[0.1] rounded-xl shadow-2xl z-50 overflow-hidden">
-          {semesters.map(s => (
-            <button key={s} onClick={() => { onChange(s); setOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/[0.06] ${s === current ? 'text-cyan-400 bg-cyan-400/10' : 'text-white/60'}`}>{s}</button>
-          ))}
-          <div className="border-t border-white/[0.06] p-2">
+        <div className="absolute right-0 top-full mt-1 w-56 bg-[#0f1a30] border border-white/[0.1] rounded-xl shadow-2xl z-50 overflow-hidden">
+          {/* 已有学期 */}
+          {semesters.length > 0 && (
+            <div className="max-h-40 overflow-y-auto">
+              {semesters.map(s => (
+                <button key={s} onClick={() => { onChange(s); setOpen(false); }}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-white/[0.06] ${s === current ? 'text-cyan-400 bg-cyan-400/10' : 'text-white/60'}`}>{s}</button>
+              ))}
+            </div>
+          )}
+          {/* 新建学期 */}
+          <div className="border-t border-white/[0.06] p-2 space-y-2">
+            {/* 手动输入 */}
             <div className="flex gap-1">
               <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="如 2026-秋"
                 className="flex-1 px-2 py-1 bg-white/[0.04] border border-white/[0.08] rounded text-xs text-white placeholder:text-white/20 focus:outline-none" />
               <button onClick={() => { if (custom.trim()) { onChange(custom.trim()); setCustom(''); setOpen(false); } }}
                 className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-xs hover:bg-cyan-500/30"><Plus className="w-3 h-3" /></button>
             </div>
+            {/* 选择开学日期 */}
+            {!showDatePicker ? (
+              <button onClick={() => setShowDatePicker(true)}
+                className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs text-cyan-400 hover:bg-cyan-400/10 rounded transition-colors">
+                <CalendarDays className="w-3 h-3" />选择开学日期自动识别学期
+              </button>
+            ) : (
+              <div className="space-y-1.5">
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                  className="w-full px-2 py-1 bg-white/[0.04] border border-white/[0.08] rounded text-xs text-white focus:outline-none focus:border-cyan-400/30" />
+                <div className="flex gap-1">
+                  <button onClick={handleDateSelect} disabled={!startDate}
+                    className="flex-1 px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-xs hover:bg-cyan-500/30 disabled:opacity-30">确认</button>
+                  <button onClick={() => { setShowDatePicker(false); setStartDate(''); }}
+                    className="px-2 py-1 bg-white/[0.04] text-white/40 rounded text-xs hover:bg-white/[0.08]">取消</button>
+                </div>
+                {startDate && (
+                  <p className="text-[10px] text-white/30">将识别为: <span className="text-cyan-400">{getSemesterFromDate(startDate)}</span></p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
