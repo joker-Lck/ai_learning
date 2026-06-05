@@ -36,6 +36,9 @@ class AssessmentAgent:
 
         try:
             assessment_type = input_data.get("assessment_type", "weekly")
+            # 兼容前端传入的 comprehensive 类型
+            if assessment_type == "comprehensive":
+                assessment_type = "monthly"
             period_start = input_data.get("period_start")
             period_end = input_data.get("period_end")
 
@@ -294,10 +297,15 @@ class AssessmentAgent:
 
         try:
             response = spark_client.advanced(prompt, max_tokens=3000)
+            if not response or response.startswith("错误:"):
+                error(f"AI 调用失败: {response}")
+                return self._fallback_assessment(student_data, period_start, period_end)
+
             assessment_data = safe_parse_json(response)
 
             if not isinstance(assessment_data, dict):
-                raise ValueError("AI返回格式错误")
+                error(f"AI 返回非 dict: type={type(assessment_data).__name__}, response[:200]={str(response)[:200]}")
+                return self._fallback_assessment(student_data, period_start, period_end)
 
             # 添加元数据
             assessment_data["assessment_type"] = assessment_type

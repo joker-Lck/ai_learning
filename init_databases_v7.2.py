@@ -380,7 +380,7 @@ def init_assessments_database():
             CREATE TABLE IF NOT EXISTS learning_assessments (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
-                assessment_type ENUM('weekly', 'monthly', 'custom', 'auto_generated') NOT NULL,
+                assessment_type ENUM('weekly', 'monthly', 'custom', 'comprehensive', 'auto_generated') NOT NULL,
                 assessment_data JSON NOT NULL COMMENT '评估数据:
                     {
                         "overall_score": 85,
