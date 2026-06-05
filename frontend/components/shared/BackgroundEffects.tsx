@@ -28,6 +28,12 @@ const ORB_DEFS: Omit<OrbDef, 'vx' | 'vy' | 'vz'>[] = [
   { x: 0.80, y: 0.25, z: 0.6,  radius: 50,  color: [59, 130, 246],  glow: 1.8 },  // blue-light
   { x: 0.45, y: 0.75, z: 0.2,  radius: 80,  color: [16, 185, 129],  glow: 2.1 },  // emerald
   { x: 0.60, y: 0.45, z: 0.8,  radius: 40,  color: [236, 72, 153],  glow: 1.6 },  // pink
+  { x: 0.10, y: 0.15, z: 0.6,  radius: 45,  color: [34, 211, 238],  glow: 1.9 },  // teal
+  { x: 0.88, y: 0.80, z: 0.4,  radius: 55,  color: [251, 191, 36],  glow: 2.0 },  // yellow
+  { x: 0.35, y: 0.60, z: 0.9,  radius: 35,  color: [167, 139, 250], glow: 1.7 },  // violet
+  { x: 0.70, y: 0.10, z: 0.3,  radius: 60,  color: [52, 211, 153],  glow: 2.1 },  // mint
+  { x: 0.90, y: 0.40, z: 0.5,  radius: 48,  color: [244, 114, 182], glow: 1.8 },  // rose
+  { x: 0.55, y: 0.90, z: 0.7,  radius: 42,  color: [99, 102, 241],  glow: 1.9 },  // indigo
 ];
 
 export function OrbScene() {
