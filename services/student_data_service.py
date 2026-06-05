@@ -12,7 +12,7 @@ from data.db_operations import profile_db
 from services.qa_service import qa_service
 
 
-def _compress_image(content: bytes, max_size: int = 2048, quality: int = 85) -> str:
+def _compress_image(content: bytes, max_size: int = 4096, quality: int = 90) -> str:
     """压缩图片并返回 base64 — 降低 API 传输量但保持可读性"""
     try:
         from PIL import Image
@@ -535,40 +535,51 @@ class StudentDataImportMixin:
             is_image = ext in ('jpg', 'jpeg', 'png', 'bmp', 'webp')
 
             if is_image:
-                prompt = """请仔细查看这张课程表图片，识别并提取所有课程信息。
+                prompt = """你是一个课程表识别专家。请仔细分析这张课程表图片，逐行逐列读取每个单元格。
 
-这是一个大学课程表，通常是表格形式：
-- 横轴是星期（周一到周日）
-- 纵轴是时间/节次（如第1-2节、第3-4节等）
-- 每个格子里可能有课程名称、教室、老师
+识别规则：
+1. 先确定表头：第1行是星期（周一~周日），第1列是节次/时间
+2. 遍历每个单元格，提取课程信息
+3. 节次→时间映射（按图片实际时间，如无则用默认）：
+   - 第1-2节 → 08:00-09:40
+   - 第3-4节 → 10:00-11:40
+   - 第5-6节 → 14:00-15:40
+   - 第7-8节 → 16:00-17:40
+   - 第9-10节 → 19:00-20:40
+4. 如果图片中有具体时间，以图片时间为准
+5. 空白单元格跳过，不要输出
 
-请提取每门课程：
-- name: 课程名称
-- day: 星期几（周一/周二/周三/周四/周五/周六/周日）
-- start_time: 开始时间（HH:MM格式，如第1-2节=08:00，第3-4节=10:00，第5-6节=14:00，第7-8节=16:00，第9-10节=19:00）
-- end_time: 结束时间（如第1-2节=09:40，第3-4节=11:40，第5-6节=15:40，第7-8节=17:40，第9-10节=20:40）
-- location: 教室/地点
-- teacher: 教师姓名
+输出格式（严格JSON数组）：
+[
+  {"name":"高等数学","day":"周一","start_time":"08:00","end_time":"09:40","location":"教A301","teacher":"张三"},
+  {"name":"英语","day":"周三","start_time":"14:00","end_time":"15:40","location":"","teacher":""}
+]
 
-只输出JSON数组，不要其他内容。如果看不清某个字段就留空字符串。
-示例：[{"name":"高等数学","day":"周一","start_time":"08:00","end_time":"09:40","location":"教A301","teacher":"张三"}]"""
+只输出JSON数组，不要任何其他文字。"""
+                system_prompt = "你是一个精确的课程表识别系统。只输出JSON数组，不要解释。"
             else:
-                prompt = """请从以下文本中识别出课程表信息，提取每门课程的：
+                prompt = """请从以下文本中识别课程表信息。
+
+要求：
 - name: 课程名称（必填）
 - day: 星期几（周一~周日，必填）
-- start_time: 开始时间（HH:MM，必填）
-- end_time: 结束时间（HH:MM，必填）
-- location: 上课地点（可为空）
-- teacher: 授课教师（可为空）
+- start_time: 开始时间 HH:MM（必填）
+- end_time: 结束时间 HH:MM（必填）
+- location: 上课地点（可选）
+- teacher: 教师（可选）
 
-节次对应时间：第1-2节=08:00-09:40，第3-4节=10:00-11:40，第5-6节=14:00-15:40，第7-8节=16:00-17:40，第9-10节=19:00-20:40
+节次→时间：第1-2节=08:00-09:40，第3-4节=10:00-11:40，第5-6节=14:00-15:40，第7-8节=16:00-17:40，第9-10节=19:00-20:40
 
-严格输出JSON数组，不要其他内容。无课程信息返回空数组[]。"""
+严格输出JSON数组，无课程返回[]。"""
+                system_prompt = None
 
             if is_image:
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
-                response = spark_client.chat_with_image(prompt, image_b64, max_tokens=4000)
+                response = spark_client.chat_with_image(
+                    prompt, image_b64, max_tokens=4000,
+                    system_prompt=system_prompt,
+                )
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
@@ -576,26 +587,53 @@ class StudentDataImportMixin:
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
 
-            info(f"AI 识别课程表原始响应 (前200字): {response[:200]}")
+            info(f"AI 识别课程表原始响应 (前300字): {response[:300]}")
             from core.json_utils import safe_parse_json
             courses = safe_parse_json(response)
             info(f"AI 识别课程表解析结果: {courses}")
 
             if not isinstance(courses, list):
+                # 尝试从文本中提取数组
+                import re
+                match = re.search(r'\[.*\]', response, re.DOTALL)
+                if match:
+                    import json
+                    try:
+                        courses = json.loads(match.group(0))
+                    except Exception:
+                        pass
+            if not isinstance(courses, list):
                 return {"success": False, "message": "AI 未能识别出课程表信息，请检查文件内容"}
 
             # 验证和清理数据
             valid_courses = []
+            seen = set()
             for c in courses:
-                if isinstance(c, dict) and c.get('name') and c.get('day'):
-                    valid_courses.append({
-                        'name': str(c['name']),
-                        'day': str(c.get('day', '')),
-                        'start_time': str(c.get('start_time', '')),
-                        'end_time': str(c.get('end_time', '')),
-                        'location': str(c.get('location', '')),
-                        'teacher': str(c.get('teacher', '')),
-                    })
+                if not isinstance(c, dict):
+                    continue
+                name = str(c.get('name', '')).strip()
+                day = str(c.get('day', '')).strip()
+                if not name or not day:
+                    continue
+                # 标准化星期
+                day = day.replace('星期', '周').replace('礼拜', '周')
+                if day not in ('周一','周二','周三','周四','周五','周六','周日'):
+                    continue
+                start_time = str(c.get('start_time', '')).strip()
+                end_time = str(c.get('end_time', '')).strip()
+                # 去重
+                key = f"{name}_{day}_{start_time}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                valid_courses.append({
+                    'name': name,
+                    'day': day,
+                    'start_time': start_time,
+                    'end_time': end_time,
+                    'location': str(c.get('location', '')).strip(),
+                    'teacher': str(c.get('teacher', '')).strip(),
+                })
 
             info(f"AI 识别课程表: user={user_id}, 识别 {len(valid_courses)} 门课程")
             return {
