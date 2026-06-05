@@ -89,6 +89,15 @@ export interface AssessmentResult {
   period_start?: string;
   period_end?: string;
   generated_at?: string;
+  grade_trend?: string;
+  analysis_summary?: string;
+  raw_data?: {
+    grades?: Array<{ course_name: string; score: number; semester: string }>;
+    grade_trend?: Array<{ course: string; score: number; semester: string }>;
+    error_notes_count?: number;
+    courses_count?: number;
+    plans_count?: number;
+  };
 }
 
 export interface ProfileDimension {

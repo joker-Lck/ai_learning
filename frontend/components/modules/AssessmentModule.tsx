@@ -160,8 +160,26 @@ export default function AssessmentModule({
               {assessment.knowledge_mastery?.topics && Object.keys(assessment.knowledge_mastery.topics).length > 0 && (
                 <div className="glass-card rounded-xl p-4">
                   <h5 className="font-semibold text-white mb-3 text-sm flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-cyan-400" /> 各主题掌握度
+                    <BarChart3 className="w-4 h-4 text-cyan-400" /> 各科目成绩分布
                   </h5>
+                  {/* 成绩柱状图 */}
+                  <div className="flex items-end gap-2 h-40 mb-4">
+                    {Object.entries(assessment.knowledge_mastery.topics).slice(0, 10).map(([topic, score], i) => {
+                      const height = Math.max(score * 100, 8);
+                      const color = score >= 0.8 ? 'from-emerald-500 to-emerald-400' :
+                                   score >= 0.6 ? 'from-amber-500 to-amber-400' :
+                                   'from-red-500 to-red-400';
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-[10px] text-white/50">{Math.round(score * 100)}</span>
+                          <div className={`w-full bg-gradient-to-t ${color} rounded-t-md transition-all duration-700`}
+                               style={{ height: `${height}%` }} />
+                          <span className="text-[10px] text-white/40 truncate w-full text-center">{topic.slice(0, 4)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* 掌握度列表 */}
                   <div className="space-y-2">
                     {Object.entries(assessment.knowledge_mastery.topics).map(([topic, score], i) => (
                       <div key={i}>
@@ -183,6 +201,73 @@ export default function AssessmentModule({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* 数据总览 */}
+              {assessment.raw_data && (
+                <div className="glass-card rounded-xl p-4">
+                  <h5 className="font-semibold text-white mb-3 text-sm"> 学习数据总览</h5>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white/[0.04] rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-cyan-400">{assessment.raw_data.grades?.length || 0}</div>
+                      <p className="text-[10px] text-white/40 mt-1">录入课程成绩</p>
+                    </div>
+                    <div className="bg-white/[0.04] rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-emerald-400">{assessment.raw_data.courses_count || 0}</div>
+                      <p className="text-[10px] text-white/40 mt-1">课表课程数</p>
+                    </div>
+                    <div className="bg-white/[0.04] rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-amber-400">{assessment.raw_data.error_notes_count || 0}</div>
+                      <p className="text-[10px] text-white/40 mt-1">错题记录</p>
+                    </div>
+                    <div className="bg-white/[0.04] rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-violet-400">{assessment.raw_data.plans_count || 0}</div>
+                      <p className="text-[10px] text-white/40 mt-1">学习计划</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 成绩趋势 */}
+              {assessment.raw_data?.grade_trend && assessment.raw_data.grade_trend.length > 0 && (
+                <div className="glass-card rounded-xl p-4">
+                  <h5 className="font-semibold text-white mb-3 text-sm flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-cyan-400" /> 成绩趋势
+                    {assessment.grade_trend && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        assessment.grade_trend === '上升' ? 'bg-emerald-400/15 text-emerald-400' :
+                        assessment.grade_trend === '稳定' ? 'bg-amber-400/15 text-amber-400' :
+                        'bg-red-400/15 text-red-400'
+                      }`}>{assessment.grade_trend}</span>
+                    )}
+                  </h5>
+                  <div className="space-y-2">
+                    {assessment.raw_data.grade_trend.map((item, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <span className="text-xs text-white/40 w-20 truncate">{item.semester}</span>
+                        <span className="text-sm text-white/70 w-24 truncate">{item.course}</span>
+                        <div className="flex-1 bg-white/[0.06] rounded-full h-2">
+                          <div className="h-2 rounded-full transition-all duration-700"
+                               style={{
+                                 width: `${item.score}%`,
+                                 background: item.score >= 80 ? 'linear-gradient(to right, #10b981, #34d399)' :
+                                            item.score >= 60 ? 'linear-gradient(to right, #f59e0b, #fbbf24)' :
+                                            'linear-gradient(to right, #ef4444, #f87171)',
+                               }} />
+                        </div>
+                        <span className="text-sm font-medium text-white/60 w-10 text-right">{item.score}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 详细分析总结 */}
+              {assessment.analysis_summary && (
+                <div className="glass-card rounded-xl p-4 border-blue-400/20">
+                  <h5 className="font-semibold text-blue-400 mb-2 text-sm flex items-center gap-2"><Sparkles className="w-4 h-4" /> 详细分析</h5>
+                  <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line">{assessment.analysis_summary}</p>
                 </div>
               )}
 
