@@ -442,12 +442,18 @@ export function useDashboard() {
 
   // ── 确认导入（用户预览后确认保存）──
   const handleConfirmImportCourses = async (imported: CourseItem[]) => {
-    const merged = [...courses, ...imported];
+    // 去重：按 name+day+start_time 去重，新导入的覆盖旧的
+    const existingKeys = new Set(imported.map(c => `${c.name}_${c.day}_${c.start_time}`));
+    const filteredOld = courses.filter(c => !existingKeys.has(`${c.name}_${c.day}_${c.start_time}`));
+    const merged = [...filteredOld, ...imported];
     await handleSaveCourses(currentSemester, merged);
   };
 
   const handleConfirmImportGrades = async (imported: GradeItem[]) => {
-    const merged = [...grades, ...imported];
+    // 去重：按 course_name 去重，新导入的覆盖旧的
+    const existingKeys = new Set(imported.map(g => g.course_name));
+    const filteredOld = grades.filter(g => !existingKeys.has(g.course_name));
+    const merged = [...filteredOld, ...imported];
     await handleSaveGrades(currentSemester, merged);
   };
 
