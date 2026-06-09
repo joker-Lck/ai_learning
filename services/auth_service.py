@@ -106,15 +106,15 @@ class AuthService:
         """检查是否需要重新哈希（旧版 SHA-256 → bcrypt）"""
         return not (stored_password.startswith('$2b$') or stored_password.startswith('$2a$'))
 
-    def register_user(self, username, password, email=None, role='user'):
+    def register_user(self, username, password, email=None, role='student'):
         """
         注册新用户
-        
+
         Args:
             username: 用户名
             password: 密码
             email: 邮箱（可选）
-            role: 角色（默认user）
+            role: 角色（默认student）
             
         Returns:
             dict: {'success': bool, 'message': str, 'user_id': int}

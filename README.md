@@ -126,7 +126,7 @@ cp .env.example .env
 
 ```bash
 # 多数据库架构 - 创建8个独立数据库
-python init_databases_v7.2.py
+python scripts/init_databases_v7.2.py
 ```
 
 **预期输出**:
@@ -140,7 +140,7 @@ python init_databases_v7.2.py
 ### 步骤4: 创建管理员账户
 
 ```bash
-python init_admin.py
+python scripts/init_admin.py
 ```
 
 默认账号: `admin / admin123`
@@ -1311,8 +1311,13 @@ def search_similar_questions(self, question_text, limit=5):
 │   │   └── layout/Sidebar.tsx    # ⭐ 侧边栏导航
 │   └── app/dashboard/page.tsx
 │
-├── init_databases_v7.2.py  # 多数据库初始化
-├── init_admin.py           # 管理员初始化
+├── scripts/                # 初始化脚本
+│   ├── init_databases_v7.2.py  # 多数据库初始化
+│   ├── init_admin.py           # 管理员初始化
+│   ├── init_rag_db.py          # RAG知识库初始化
+│   └── import_pdf_to_rag.py    # PDF导入知识库
+│
+├── resources/              # RAG知识库文件（PDF等）
 ├── .env.example            # 环境变量示例
 │
 └── README.md               # 本文档
@@ -1371,9 +1376,9 @@ mysqldump -u root -p ai_rag_knowledge > rag_backup.sql
 
 ### Q8: 如何导入RAG知识库数据？
 
-**A**: 
+**A**:
 ```bash
-python init_rag_db.py
+python scripts/init_rag_db.py
 ```
 
 ---

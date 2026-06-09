@@ -39,6 +39,12 @@ desktop.ini
 
 # Logs
 *.log
+logs/
+
+# Generated files
+generated_images/
+animations/
+exports/
 
 # Data files (generated)
 learning_data_backup.json

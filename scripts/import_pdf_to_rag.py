@@ -116,7 +116,7 @@ def save_to_rag(title: str, subject: str, content_text: str,
 
 def main():
     # ── 配置 ──
-    pdf_path = os.path.join(ROOT, "resourse", "13974463_机器学习.pdf")
+    pdf_path = os.path.join(ROOT, "resources", "13974463_机器学习.pdf")
 
     if not os.path.exists(pdf_path):
         print(f"❌ 文件不存在: {pdf_path}")

@@ -23,7 +23,6 @@ if not exist "%ROOT%.env" (
     if exist "%ROOT%.env.example" (
         copy "%ROOT%.env.example" "%ROOT%.env" >nul
         echo [WARN] .env created from .env.example - please edit it
-        echo        Run check_env.py after editing: .venv\Scripts\python.exe check_env.py
         pause
     )
 )
