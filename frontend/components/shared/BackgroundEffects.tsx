@@ -130,6 +130,7 @@ export function OrbScene() {
       for (let i = 0; i < orbs.length; i++) {
         for (let j = i + 1; j < orbs.length; j++) {
           const a = orbs[i], b = orbs[j];
+          if (!a || !b) continue;
           const ax = a.x * w, ay = a.y * h;
           const bx = b.x * w, by = b.y * h;
           const dist = Math.hypot(ax - bx, ay - by);

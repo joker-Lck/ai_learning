@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
 import { PROFILE_DIMENSIONS } from './constants';
@@ -11,15 +11,26 @@ import type {
 
 export function useDashboard() {
   const { user, isGuest } = useAuthStore();
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // URL 参数驱动模块切换
   const moduleParam = searchParams.get('module') as ModuleType;
-  const [activeModule, setActiveModule] = useState<ModuleType>(null);
+  const [activeModule, setActiveModuleState] = useState<ModuleType>(null);
 
   useEffect(() => {
-    setActiveModule(moduleParam || null);
+    setActiveModuleState(moduleParam || null);
   }, [moduleParam]);
+
+  // 同步更新 URL 和本地状态
+  const setActiveModule = useCallback((module: ModuleType) => {
+    setActiveModuleState(module);
+    if (module) {
+      router.push(`/dashboard?module=${module}`, { scroll: false });
+    } else {
+      router.push('/dashboard', { scroll: false });
+    }
+  }, [router]);
 
   // ── 画像构建状态 ──
   const [currentStep, setCurrentStep] = useState(0);
