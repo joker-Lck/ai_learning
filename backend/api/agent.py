@@ -560,12 +560,12 @@ async def upload_to_rag(
 @router.get("/rag-documents", response_model=BaseResponse)
 async def list_rag_documents(
     user: dict = Depends(get_current_user),
-    limit: int = 50,
+    limit: int = 200,
 ):
     """获取 RAG 知识库文档列表"""
     try:
         from data.rag_knowledge_base import rag_kb
-        docs = rag_kb.search_documents(limit=limit)
+        docs = rag_kb.get_all_documents(limit=limit)
         return BaseResponse(success=True, message="获取成功", data={"documents": docs})
     except Exception as e:
         error(f"获取RAG文档列表失败: {str(e)}")

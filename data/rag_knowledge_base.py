@@ -466,11 +466,11 @@ class RAGKnowledgeBase:
             self.close()
     
     def get_all_documents(self, limit=100, offset=0):
-        """获取所有文档（按学科分类，解析 JSON 数据）"""
+        """获取所有文档（按上传时间倒序，最新在前）"""
         try:
             self.connect()
-            sql = """SELECT * FROM knowledge_documents 
-                    ORDER BY subject, upload_time DESC 
+            sql = """SELECT * FROM knowledge_documents
+                    ORDER BY upload_time DESC
                     LIMIT %s OFFSET %s"""
             self.cursor.execute(sql, (limit, offset))
             results = self.cursor.fetchall()
