@@ -343,9 +343,9 @@ class ResourceAgent:
     def _generate_quiz(self, subject: str, topic: str,
                       profile: Dict, difficulty: str) -> Dict:
         """生成练习题目"""
-        
+
         weak_points = profile.get("weak_points", [])
-        
+
         prompt = f"""请为{subject}课程的"{topic}"主题生成一套练习题。
 
 学生薄弱点: {', '.join(weak_points[:3]) if weak_points else '无'}
@@ -377,15 +377,15 @@ class ResourceAgent:
     "estimated_time": 20
 }}
 """
-        
+
         try:
             response = qa_service.call_ai(prompt, max_tokens=2500)
             quiz_data = safe_parse_json(response)
 
-            # 如果解析失败，返回 None
+            # 如果解析失败，使用降级方案
             if not quiz_data or not isinstance(quiz_data, dict):
-                warning(f"AI 返回的题库数据无效")
-                return None
+                warning(f"AI 返回的题库数据无效，使用降级方案")
+                return self._fallback_quiz(subject, topic, difficulty)
 
             return {
                 "type": "quiz",
@@ -453,28 +453,26 @@ class ResourceAgent:
     
     def _generate_animation_script(self, subject: str, topic: str,
                                   profile: Dict, difficulty: str) -> Dict:
-        """生成教学动画 — AI 生成 SVG 交互动画"""
-        from services.video_generation_service import video_generation_service
+        """生成教学图片（原动画改为图片）"""
+        from services.image_service import image_service
 
-        description = f"{subject}课程{topic}的交互动画演示，难度{difficulty}"
-        result = video_generation_service.generate_animation(
-            subject=subject, topic=topic,
-            description=description, duration=4
+        # 生成教学图片
+        result = image_service.generate_image_from_suggestion(
+            f"{topic}教学示意图", topic, subject
         )
 
         content_data = {
-            "title": f"{topic}动画演示",
-            "duration_minutes": 4,
-            "frames": [],
-            "narration_script": "",
-            "visual_style": "SVG交互动画",
-            "generation_type": result.get("type", "failed"),
+            "title": f"{topic}教学图片",
+            "duration_minutes": 5,
+            "description": f"{topic}的教学示意图，帮助理解核心概念",
+            "visual_style": "SVG教学示意图",
+            "generation_type": result.get("type", "svg_image"),
             "media_url": result.get("url"),
         }
 
         return {
             "type": "animation",
-            "title": result.get("title", f"{topic}动画演示"),
+            "title": f"{topic}教学图片",
             "subject": subject,
             "difficulty_level": difficulty,
             "content_data": content_data,
@@ -518,10 +516,10 @@ class ResourceAgent:
             response = qa_service.call_ai(prompt, max_tokens=2500)
             code_data = safe_parse_json(response)
 
-            # 如果解析失败，返回 None
+            # 如果解析失败，使用降级方案
             if not code_data or not isinstance(code_data, dict):
-                warning(f"AI 返回的代码案例数据无效")
-                return None
+                warning(f"AI 返回的代码案例数据无效，使用降级方案")
+                return self._fallback_code(subject, topic, difficulty)
 
             return {
                 "type": "code_case",
@@ -534,7 +532,7 @@ class ResourceAgent:
             }
         except Exception as e:
             error(f"生成代码案例失败: {str(e)}")
-            return None
+            return self._fallback_code(subject, topic, difficulty)
     
     def _generate_reading_material(self, subject: str, topic: str,
                                   profile: Dict, difficulty: str) -> Dict:
@@ -571,10 +569,10 @@ class ResourceAgent:
             response = qa_service.call_ai(prompt, max_tokens=1800)
             reading_data = safe_parse_json(response)
 
-            # 如果解析失败，返回 None
+            # 如果解析失败，使用降级方案
             if not reading_data or not isinstance(reading_data, dict):
-                warning(f"AI 返回的阅读材料数据无效")
-                return None
+                warning(f"AI 返回的阅读材料数据无效，使用降级方案")
+                return self._fallback_reading(subject, topic, difficulty)
 
             # 添加引用
             if reading_data.get("references"):
@@ -583,7 +581,7 @@ class ResourceAgent:
                     reading_data.get("content", ""),
                     sources
                 )
-            
+
             return {
                 "type": "reading",
                 "title": reading_data.get("title", f"{topic}拓展阅读"),
@@ -595,7 +593,7 @@ class ResourceAgent:
             }
         except Exception as e:
             error(f"生成阅读材料失败: {str(e)}")
-            return None
+            return self._fallback_reading(subject, topic, difficulty)
     
     def _save_resources(self, resources: List[Dict]) -> List[int]:
         """保存资源到主数据库 + RAG 知识库"""
@@ -664,6 +662,97 @@ class ResourceAgent:
                 info(f"已同步 {saved}/{len(resources)} 条资源到 RAG 知识库")
         except Exception as e:
             warning(f"RAG 知识库写入失败（不影响主流程）: {e}")
+
+    # ──────────────────────────────────────────────
+    # 降级方案（AI 生成失败时使用）
+    # ──────────────────────────────────────────────
+
+    def _fallback_quiz(self, subject: str, topic: str, difficulty: str) -> Dict:
+        """题库降级方案"""
+        return {
+            "type": "quiz",
+            "title": f"{topic}练习题",
+            "subject": subject,
+            "difficulty_level": difficulty,
+            "content_data": {
+                "title": f"{topic}练习题",
+                "questions": [
+                    {"id": 1, "type": "multiple_choice", "question": f"以下关于{topic}的说法，正确的是？",
+                     "options": ["A. 选项A", "B. 选项B", "C. 选项C", "D. 选项D"],
+                     "answer": "A", "explanation": f"这是{topic}的基础概念", "difficulty": "easy", "knowledge_point": topic},
+                    {"id": 2, "type": "fill_blank", "question": f"{topic}的核心要素包括____",
+                     "answer": "核心要素", "explanation": f"考察{topic}的基本定义", "difficulty": "medium", "knowledge_point": topic},
+                    {"id": 3, "type": "essay", "question": f"请简述{topic}的基本原理和应用场景",
+                     "answer": f"{topic}是{subject}中的重要概念...", "explanation": "综合考察", "difficulty": "hard", "knowledge_point": topic}
+                ],
+                "total_questions": 3,
+                "estimated_time": 15
+            },
+            "duration_minutes": 15,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+    def _fallback_code(self, subject: str, topic: str, difficulty: str) -> Dict:
+        """代码案例降级方案"""
+        return {
+            "type": "code_case",
+            "title": f"{topic}代码案例",
+            "subject": subject,
+            "difficulty_level": difficulty,
+            "content_data": {
+                "title": f"{topic}代码案例",
+                "description": f"通过代码演示{topic}的核心概念",
+                "requirements": [f"理解{topic}的基本原理", "能够运行并理解代码"],
+                "implementation_steps": ["导入必要的库", "定义核心函数", "运行示例"],
+                "code": {"language": "python", "filename": "demo.py",
+                         "source_code": f"# {topic} 示例代码\n# {subject}课程\n\nprint('Hello, {topic}!')\n\n# TODO: 添加{topic}的核心实现"},
+                "expected_output": f"Hello, {topic}!",
+                "exercises": [f"修改代码实现{topic}的扩展功能"],
+                "estimated_time": 30
+            },
+            "duration_minutes": 30,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+    def _fallback_reading(self, subject: str, topic: str, difficulty: str) -> Dict:
+        """阅读材料降级方案"""
+        return {
+            "type": "reading",
+            "title": f"{topic}拓展阅读",
+            "subject": subject,
+            "difficulty_level": difficulty,
+            "content_data": {
+                "title": f"{topic}拓展阅读",
+                "content": f"# {topic}\n\n{topic}是{subject}中的重要概念。本文将介绍其基本原理和实际应用。\n\n## 基本概念\n\n{topic}的核心思想是...\n\n## 应用场景\n\n在实际应用中，{topic}可以用于...\n\n## 总结\n\n通过学习{topic}，我们可以更好地理解{subject}的核心知识。",
+                "case_studies": [f"{topic}在实际项目中的应用"],
+                "further_reading": [{"title": f"{topic}深入学习", "url": ""}],
+                "estimated_reading_time": 10,
+                "references": [f"{subject}教材"]
+            },
+            "duration_minutes": 10,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+    def _fallback_animation(self, subject: str, topic: str, difficulty: str) -> Dict:
+        """动画降级方案 — 生成图片"""
+        from services.image_service import image_service
+        result = image_service.generate_image_from_suggestion(
+            f"{topic}教学示意图", topic, subject
+        )
+        return {
+            "type": "animation",
+            "title": f"{topic}教学图片",
+            "subject": subject,
+            "difficulty_level": difficulty,
+            "content_data": {
+                "title": f"{topic}教学图片",
+                "description": f"{topic}的教学示意图",
+                "media_url": result.get("url"),
+                "generation_type": "svg_image"
+            },
+            "duration_minutes": 5,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
 
     def generate_resource(
         self, resource_type: str, subject: str, topic: str,

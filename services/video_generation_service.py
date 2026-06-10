@@ -119,35 +119,98 @@ class VideoGenerationService:
                 "scene_id": 1,
                 "title": f"什么是{topic}",
                 "narration": f"同学们好，今天我们来学习{subject}中的{topic}。这是一个非常重要的概念，在实际应用中有广泛的用途。让我们从最基本的概念开始了解。",
-                "visual_type": "text",
-                "visual_content": f"{topic}\n核心概念介绍",
-                "highlight": topic
+                "visual_type": "diagram",
+                "visual_content": f"<div style='font-size:48px;margin-bottom:16px'>📚</div><div style='font-size:24px;color:#67e8f9'>{topic}</div><div style='margin-top:12px;color:rgba(255,255,255,0.6)'>核心概念介绍</div>",
+                "highlight": topic,
+                "svg": self._generate_scene_svg("intro", topic, subject)
             },
             {
                 "scene_id": 2,
                 "title": f"{topic}的基本原理",
                 "narration": f"接下来我们来了解{topic}的基本原理。理解这些原理是掌握这个知识点的关键。我们通过图示来帮助大家理解。",
                 "visual_type": "diagram",
-                "visual_content": f"原理图示\n输入 → 处理 → 输出",
-                "highlight": "基本原理"
+                "visual_content": f"<div style='display:flex;align-items:center;gap:20px;justify-content:center'><div style='padding:12px 20px;background:rgba(6,182,212,0.2);border:1px solid rgba(6,182,212,0.4);border-radius:8px'>输入</div><div style='font-size:24px'>→</div><div style='padding:12px 20px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);border-radius:8px'>处理</div><div style='font-size:24px'>→</div><div style='padding:12px 20px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);border-radius:8px'>输出</div></div>",
+                "highlight": "基本原理",
+                "svg": self._generate_scene_svg("principle", topic, subject)
             },
             {
                 "scene_id": 3,
                 "title": f"{topic}的应用实例",
                 "narration": f"了解了基本原理后，让我们来看一个具体的应用实例。通过实例，我们可以更好地理解{topic}是如何在实际中发挥作用的。",
-                "visual_type": "text",
-                "visual_content": f"应用实例\n实际场景演示",
-                "highlight": "应用实例"
+                "visual_type": "diagram",
+                "visual_content": f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px'><div style='padding:16px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>🎯</div>场景一</div><div style='padding:16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>💡</div>场景二</div><div style='padding:16px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>🔧</div>场景三</div><div style='padding:16px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>📊</div>场景四</div></div>",
+                "highlight": "应用实例",
+                "svg": self._generate_scene_svg("example", topic, subject)
             },
             {
                 "scene_id": 4,
                 "title": "总结与回顾",
                 "narration": f"好的，让我们来总结一下今天学习的内容。{topic}是{subject}中非常重要的知识点，希望大家能够掌握并应用到实际中。",
                 "visual_type": "summary",
-                "visual_content": f"总结\n1. 基本概念\n2. 核心原理\n3. 实际应用",
-                "highlight": "总结"
+                "visual_content": f"<div style='text-align:left;display:inline-block'><div style='margin-bottom:12px;font-size:18px'>📋 知识要点</div><div style='padding:8px 16px;margin:4px 0;background:rgba(6,182,212,0.1);border-radius:6px'>1. 基本概念与定义</div><div style='padding:8px 16px;margin:4px 0;background:rgba(59,130,246,0.1);border-radius:6px'>2. 核心原理分析</div><div style='padding:8px 16px;margin:4px 0;background:rgba(245,158,11,0.1);border-radius:6px'>3. 实际应用场景</div></div>",
+                "highlight": "总结",
+                "svg": self._generate_scene_svg("summary", topic, subject)
             }
         ]
+
+    def _generate_scene_svg(self, scene_type: str, topic: str, subject: str) -> str:
+        """为场景生成配图 SVG"""
+        if scene_type == "intro":
+            return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0a1628"/><stop offset="100%" style="stop-color:#1a2a4a"/></linearGradient></defs>
+  <rect width="800" height="400" fill="url(#g1)" rx="12"/>
+  <circle cx="400" cy="160" r="60" fill="none" stroke="#06b6d4" stroke-width="3" opacity="0.6"/>
+  <circle cx="400" cy="160" r="40" fill="rgba(6,182,212,0.1)" stroke="#06b6d4" stroke-width="2"/>
+  <text x="400" y="170" text-anchor="middle" fill="#67e8f9" font-size="20" font-weight="bold">📚</text>
+  <text x="400" y="260" text-anchor="middle" fill="white" font-size="28" font-weight="bold">{topic}</text>
+  <text x="400" y="300" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="16">{subject} · 核心概念</text>
+  <line x1="200" y1="340" x2="600" y2="340" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
+</svg>'''
+        elif scene_type == "principle":
+            return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <rect width="800" height="400" fill="#0a1628" rx="12"/>
+  <rect x="100" y="120" width="150" height="80" rx="10" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="2"/>
+  <text x="175" y="168" text-anchor="middle" fill="#67e8f9" font-size="16">输入</text>
+  <line x1="250" y1="160" x2="330" y2="160" stroke="#06b6d4" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="330" y="120" width="150" height="80" rx="10" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="2"/>
+  <text x="405" y="168" text-anchor="middle" fill="#93c5fd" font-size="16">处理</text>
+  <line x1="480" y1="160" x2="560" y2="160" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="560" y="120" width="150" height="80" rx="10" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="2"/>
+  <text x="635" y="168" text-anchor="middle" fill="#fcd34d" font-size="16">输出</text>
+  <text x="400" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold">{topic}</text>
+  <text x="400" y="90" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="14">基本原理</text>
+  <text x="400" y="280" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="14">数据流向: 输入 → 处理 → 输出</text>
+</svg>'''
+        elif scene_type == "example":
+            return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <rect width="800" height="400" fill="#0a1628" rx="12"/>
+  <text x="400" y="50" text-anchor="middle" fill="white" font-size="22" font-weight="bold">应用实例</text>
+  <rect x="80" y="80" width="300" height="140" rx="10" fill="rgba(6,182,212,0.1)" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
+  <text x="230" y="130" text-anchor="middle" fill="#67e8f9" font-size="16">场景一</text>
+  <text x="230" y="160" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="12">基础应用</text>
+  <rect x="420" y="80" width="300" height="140" rx="10" fill="rgba(59,130,246,0.1)" stroke="rgba(59,130,246,0.3)" stroke-width="1"/>
+  <text x="570" y="130" text-anchor="middle" fill="#93c5fd" font-size="16">场景二</text>
+  <text x="570" y="160" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="12">进阶应用</text>
+  <rect x="80" y="240" width="300" height="140" rx="10" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.3)" stroke-width="1"/>
+  <text x="230" y="290" text-anchor="middle" fill="#fcd34d" font-size="16">场景三</text>
+  <text x="230" y="320" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="12">实际案例</text>
+  <rect x="420" y="240" width="300" height="140" rx="10" fill="rgba(16,185,129,0.1)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
+  <text x="570" y="290" text-anchor="middle" fill="#6ee7b7" font-size="16">场景四</text>
+  <text x="570" y="320" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="12">综合应用</text>
+</svg>'''
+        else:  # summary
+            return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <rect width="800" height="400" fill="#0a1628" rx="12"/>
+  <text x="400" y="50" text-anchor="middle" fill="white" font-size="24" font-weight="bold">📋 总结</text>
+  <rect x="150" y="80" width="500" height="50" rx="8" fill="rgba(6,182,212,0.15)" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
+  <text x="400" y="112" text-anchor="middle" fill="#67e8f9" font-size="16">1. 基本概念与定义</text>
+  <rect x="150" y="150" width="500" height="50" rx="8" fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.3)" stroke-width="1"/>
+  <text x="400" y="182" text-anchor="middle" fill="#93c5fd" font-size="16">2. 核心原理分析</text>
+  <rect x="150" y="220" width="500" height="50" rx="8" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.3)" stroke-width="1"/>
+  <text x="400" y="252" text-anchor="middle" fill="#fcd34d" font-size="16">3. 实际应用场景</text>
+  <rect x="250" y="300" width="300" height="50" rx="25" fill="url(#accent)" opacity="0.8"/>
+  <text x="400" y="332" text-anchor="middle" fill="white" font-size="16" font-weight="bold">掌握 {topic}</text>
+</svg>'''
 
     # ──────────────────────────────────────────────
     # 构建 HTML 视频
@@ -415,31 +478,41 @@ function init() {{
 // 显示场景
 function showScene(index) {{
   if (index < 0 || index >= scenes.length) return;
-  
+
   currentScene = index;
   const scene = scenes[index];
   const screen = document.getElementById('screen');
-  
+
   // 移除动画类
   screen.classList.remove('visible');
-  
+
   setTimeout(() => {{
     document.getElementById('sceneTitle').textContent = scene.title;
-    document.getElementById('sceneVisual').innerHTML = (scene.visual_content || '').replace(/\\n/g, '<br>');
+    
+    // 显示可视化内容（HTML 或 SVG）
+    const visualEl = document.getElementById('sceneVisual');
+    if (scene.svg) {{
+      // 显示 SVG 图片
+      visualEl.innerHTML = scene.svg;
+      visualEl.style.maxWidth = '700px';
+    }} else {{
+      visualEl.innerHTML = (scene.visual_content || '').replace(/\\n/g, '<br>');
+    }}
+    
     document.getElementById('sceneHighlight').textContent = scene.highlight || '';
     document.getElementById('narrationText').textContent = scene.narration || '';
-    
+
     // 触发动画
     screen.classList.add('visible');
-    
+
     // 更新进度
     updateProgress();
-    
+
     // 更新指示点
     document.querySelectorAll('.dot').forEach((dot, i) => {{
       dot.className = 'dot' + (i === index ? ' active' : '');
     }});
-    
+
     // 语音朗读
     if (isPlaying && voiceEnabled) {{
       speak(scene.narration);
