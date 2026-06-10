@@ -1,208 +1,296 @@
-from core.logger import info, error, warning
-"""AI 教学图片生成器 — 基于讯飞星火生成 SVG 教学示意图"""
+"""
+AI 教学图片生成器
+始终生成 SVG 教学示意图，保存为 HTML 文件可直接在浏览器查看
+"""
 
 import os
-import io
 import re
-import tempfile
+import hashlib
 from datetime import datetime
-from services.spark_client import spark_client, MODEL_SIMPLE
+from pathlib import Path
+from typing import Optional, Dict
+from core.logger import info, error, warning
+
+# 导出目录
+EXPORT_DIR = Path(__file__).parent.parent / "exports"
+EXPORT_DIR.mkdir(exist_ok=True)
 
 
 class ImageService:
-    """教学图片生成服务"""
+    """教学图片生成服务 — 始终生成可用的 SVG/HTML"""
 
     def __init__(self):
-        """初始化 — 使用 spark_client 单例"""
-        self.images_dir = "generated_images"
-        if not os.path.exists(self.images_dir):
-            os.makedirs(self.images_dir)
-    
-    def generate_image_from_suggestion(self, suggestion, topic, subject, slide_index=0):
-        """根据图片建议生成教学示意图"""
+        info("图片生成服务初始化完成")
+
+    def generate_image_from_suggestion(self, suggestion: str, topic: str,
+                                       subject: str, slide_index: int = 0) -> Dict:
+        """根据图片建议生成教学示意图 — 始终返回可用结果"""
         try:
-            # 1. 使用讯飞星火生成 SVG 代码
+            # 1. 使用 AI 生成 SVG
             svg_code = self._generate_svg(suggestion, topic, subject)
-            
+
+            # 2. 如果 AI 生成失败，使用模板生成
             if not svg_code:
-                return {"success": False, "error": "SVG 生成失败"}
-            
-            # 2. 转换为 PNG
-            png_data = self._svg_to_png(svg_code)
-            
-            if not png_data:
-                return {"success": False, "error": "PNG 转换失败"}
-            
-            # 3. 保存 PNG 文件
-            safe_name = re.sub(r'[^\w\u4e00-\u9fa5]', '_', suggestion)[:30]
-            png_filename = f"slide_{slide_index}_{safe_name}_{datetime.now().strftime('%H%M%S')}.png"
-            png_path = os.path.join(self.images_dir, png_filename)
-            
-            with open(png_path, 'wb') as f:
-                f.write(png_data)
-            
+                svg_code = self._generate_template_svg(suggestion, topic, subject)
+
+            # 3. 包装为 HTML 并保存
+            html = self._wrap_svg_html(svg_code, f"{subject} - {suggestion}")
+            safe_name = re.sub(r'[^\w]', '_', suggestion)[:30]
+            filename = f"img_{slide_index}_{safe_name}_{datetime.now().strftime('%H%M%S')}.html"
+            filepath = EXPORT_DIR / filename
+            filepath.write_text(html, encoding="utf-8")
+
+            url = f"/exports/{filename}"
+            info(f"教学图片生成成功: {filename}")
+
             return {
                 "success": True,
                 "svg_code": svg_code,
-                "png_path": png_path,
-                "png_data": png_data
+                "url": url,
+                "html_path": str(filepath),
+                "type": "svg_image"
             }
-            
+
         except Exception as e:
-            return {"success": False, "error": str(e)}
-    
-    def _generate_svg(self, suggestion, topic, subject):
-        """使用讯飞星火生成 SVG 教学示意图"""
-        svg_prompt = f"""你是专业的教学图示设计师。请根据以下信息生成一个清晰、美观的教学示意图（SVG 格式）。
+            error(f"图片生成失败: {str(e)}")
+            # 最终降级：生成简单占位图
+            return self._generate_placeholder(suggestion, topic, subject, slide_index)
 
-课程主题：{topic}
-学科：{subject}
-图片描述：{suggestion}
+    def _generate_svg(self, suggestion: str, topic: str, subject: str) -> Optional[str]:
+        """使用 AI 生成 SVG 教学示意图"""
+        from services.qa_service import qa_service
 
-要求：
-1. 生成纯 SVG 代码，不要使用外部资源
-2. 图片尺寸为 800x400 像素（viewBox="0 0 800 400"）
-3. 使用清晰的线条、形状和文字，配色专业美观
-4. 文字使用中文，字体大小适中（18-24px）
-5. 如果是数据结构图，要展示元素之间的关系（箭头、连线等）
-6. 如果是流程图，要清晰展示流程步骤
-7. 所有元素必须在 viewBox 范围内，布局合理
-8. 使用圆角矩形、箭头、不同颜色区分元素
+        prompt = f"""请为{subject}课程的"{topic}"主题生成一个教学示意图的 SVG 代码。
 
-请严格按照以下格式输出（只输出 SVG 代码，不要有其他文字）：
+图片描述: {suggestion}
 
-```svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
-  <rect width="800" height="400" fill="#ffffff" rx="10"/>
-  <!-- 你的图示内容 -->
-</svg>
-```
+要求:
+1. 生成纯 SVG 代码，viewBox="0 0 800 450"
+2. 使用清晰的线条、形状和中文文字标注
+3. 配色专业美观（蓝色、绿色、橙色等教学风格）
+4. 包含标题、关键元素和它们之间的关系
+5. 使用圆角矩形、箭头、不同颜色区分元素
+6. 所有元素必须在 viewBox 范围内
 
-现在请生成 "{suggestion}" 的 SVG 图示。"""
+只输出 SVG 代码（以 <svg 开头，以 </svg> 结尾），不要有其他文字。"""
 
         try:
-            content = spark_client.simple(svg_prompt, max_tokens=3000)
-
-            # 提取 SVG 代码
-            svg_match = re.search(r'```svg\s*(.*?)\s*```', content, re.DOTALL)
-            if svg_match:
-                return svg_match.group(1).strip()
-
-            # 尝试直接查找 SVG 标签
-            svg_start = content.find('<svg')
-            svg_end = content.find('</svg>')
-            if svg_start >= 0 and svg_end > svg_start:
-                return content[svg_start:svg_end + 6].strip()
-
-            return None
-
+            response = qa_service.call_ai(prompt, max_tokens=3000)
+            return self._extract_svg(response)
         except Exception as e:
-            info(f"SVG 生成失败：{str(e)}")
+            warning(f"AI SVG 生成失败: {e}")
             return None
-    
-    def _svg_to_png(self, svg_code):
-        """将 SVG 代码转换为 PNG 数据"""
-        try:
-            # 方法1：尝试使用 cairosvg（推荐）
-            try:
-                import cairosvg
-                png_data = cairosvg.svg2png(bytestring=svg_code.encode('utf-8'))
-                return png_data
-            except ImportError:
-                pass
-            
-            # 方法2：使用 svglib + reportlab
-            try:
-                from svglib.svglib import svg2rlg
-                from reportlab.graphics import renderPM
-                
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.svg', delete=False, encoding='utf-8') as f:
-                    f.write(svg_code)
-                    temp_svg = f.name
-                
-                drawing = svg2rlg(temp_svg)
-                png_data = renderPM.drawToString(drawing, fmt='PNG')
-                os.unlink(temp_svg)
-                return png_data
-            except ImportError:
-                pass
-            
-            # 方法3：降级方案 - 使用 Pillow 创建简单示意图
-            try:
-                from PIL import Image, ImageDraw, ImageFont
-                
-                img = Image.new('RGB', (800, 400), color='white')
-                draw = ImageDraw.Draw(img)
-                
-                # 尝试加载字体
-                try:
-                    font = ImageFont.truetype("msyh.ttc", 24)
-                    font_title = ImageFont.truetype("msyh.ttc", 28)
-                except:
-                    try:
-                        font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 24)
-                        font_title = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 28)
-                    except:
-                        font = ImageFont.load_default()
-                        font_title = font
-                
-                # 绘制圆角矩形边框
-                draw.rounded_rectangle([(20, 20), (780, 380)], radius=20, outline='#4a90d9', width=3)
-                draw.rounded_rectangle([(25, 25), (775, 375)], radius=18, outline='#e0e0e0', width=1)
-                
-                # 标题
-                title = "📊 " + suggestion[:20]
-                draw.text((400, 140), title, fill='#333333', font=font_title, anchor="mm")
-                
-                # 提示文字
-                hint = "提示：安装 cairosvg 可生成精美 SVG 示意图"
-                draw.text((400, 200), hint, fill='#666666', font=font, anchor="mm")
-                
-                hint2 = "pip install cairosvg"
-                draw.text((400, 240), hint2, fill='#999999', font=font, anchor="mm")
-                
-                img_data = io.BytesIO()
-                img.save(img_data, format='PNG')
-                return img_data.getvalue()
-            except Exception as e:
-                info(f"降级方案失败：{str(e)}")
-                return None
-            
-        except Exception as e:
-            info(f"SVG 转 PNG 失败：{str(e)}")
+
+    def _extract_svg(self, text: str) -> Optional[str]:
+        """从 AI 响应中提取 SVG 代码"""
+        if not text:
             return None
-    
-    def generate_batch_images(self, slides, topic, subject, progress_callback=None):
+        # 匹配 <svg ... </svg>
+        match = re.search(r'<svg[\s\S]*?</svg>', text, re.IGNORECASE)
+        if match:
+            return match.group(0)
+        # 匹配代码块中的 SVG
+        match = re.search(r'```(?:svg|xml|html)?\s*(<svg[\s\S]*?</svg>)\s*```', text, re.IGNORECASE)
+        if match:
+            return match.group(1)
+        return None
+
+    def _generate_template_svg(self, suggestion: str, topic: str, subject: str) -> str:
+        """模板生成 SVG（AI 失败时的降级方案）"""
+        return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a1628"/>
+      <stop offset="100%" style="stop-color:#1a2a4a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)" rx="12"/>
+  
+  <!-- 标题区域 -->
+  <rect x="200" y="30" width="400" height="50" rx="25" fill="url(#accent)" opacity="0.9"/>
+  <text x="400" y="62" text-anchor="middle" fill="white" font-size="20" font-weight="bold" font-family="Microsoft YaHei, sans-serif">{subject} - {topic}</text>
+  
+  <!-- 主内容区 -->
+  <rect x="50" y="100" width="700" height="300" rx="12" fill="white" opacity="0.05" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
+  
+  <!-- 核心概念 -->
+  <rect x="280" y="130" width="240" height="50" rx="10" fill="url(#accent)" filter="url(#glow)"/>
+  <text x="400" y="162" text-anchor="middle" fill="white" font-size="16" font-weight="bold" font-family="Microsoft YaHei, sans-serif">核心概念</text>
+  
+  <!-- 分支1 -->
+  <line x1="340" y1="180" x2="200" y2="230" stroke="#06b6d4" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="100" y="230" width="200" height="45" rx="8" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="1"/>
+  <text x="200" y="258" text-anchor="middle" fill="#67e8f9" font-size="14" font-family="Microsoft YaHei, sans-serif">基础知识</text>
+  
+  <!-- 分支2 -->
+  <line x1="400" y1="180" x2="400" y2="230" stroke="#3b82f6" stroke-width="2"/>
+  <rect x="300" y="230" width="200" height="45" rx="8" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="1"/>
+  <text x="400" y="258" text-anchor="middle" fill="#93c5fd" font-size="14" font-family="Microsoft YaHei, sans-serif">核心原理</text>
+  
+  <!-- 分支3 -->
+  <line x1="460" y1="180" x2="600" y2="230" stroke="#f59e0b" stroke-width="2"/>
+  <rect x="500" y="230" width="200" height="45" rx="8" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="1"/>
+  <text x="600" y="258" text-anchor="middle" fill="#fcd34d" font-size="14" font-family="Microsoft YaHei, sans-serif">实际应用</text>
+  
+  <!-- 底部说明 -->
+  <rect x="150" y="310" width="500" height="60" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <text x="400" y="335" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="12" font-family="Microsoft YaHei, sans-serif">{suggestion[:50]}</text>
+  <text x="400" y="355" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="10" font-family="Microsoft YaHei, sans-serif">AI 教学示意图</text>
+  
+  <!-- 装饰元素 -->
+  <circle cx="70" cy="70" r="20" fill="rgba(6,182,212,0.1)"/>
+  <circle cx="730" cy="380" r="15" fill="rgba(59,130,246,0.1)"/>
+  <circle cx="750" cy="80" r="10" fill="rgba(245,158,11,0.1)"/>
+</svg>'''
+
+    def _generate_placeholder(self, suggestion: str, topic: str,
+                              subject: str, slide_index: int) -> Dict:
+        """生成占位图（最终降级方案）"""
+        svg = self._generate_template_svg(suggestion, topic, subject)
+        html = self._wrap_svg_html(svg, f"{subject} - {suggestion}")
+        filename = f"img_{slide_index}_placeholder_{datetime.now().strftime('%H%M%S')}.html"
+        filepath = EXPORT_DIR / filename
+        filepath.write_text(html, encoding="utf-8")
+
+        return {
+            "success": True,
+            "svg_code": svg,
+            "url": f"/exports/{filename}",
+            "html_path": str(filepath),
+            "type": "svg_image",
+            "is_placeholder": True
+        }
+
+    def _wrap_svg_html(self, svg_code: str, title: str) -> str:
+        """将 SVG 包装为可查看/下载的 HTML 页面"""
+        return f'''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title}</title>
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{
+  background: #0a0f1e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: "Microsoft YaHei", system-ui, sans-serif;
+  padding: 20px;
+}}
+.container {{
+  max-width: 900px;
+  width: 100%;
+}}
+.toolbar {{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}}
+.toolbar h2 {{
+  color: #67e8f9;
+  font-size: 16px;
+}}
+.btn {{
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}}
+.btn-primary {{
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  color: white;
+}}
+.btn-primary:hover {{ opacity: 0.9; transform: translateY(-1px); }}
+.svg-wrapper {{
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 16px;
+  text-align: center;
+}}
+svg {{
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="toolbar">
+    <h2>📊 {title}</h2>
+    <button class="btn btn-primary" onclick="downloadSVG()">⬇ 下载 SVG</button>
+  </div>
+  <div class="svg-wrapper" id="svgContainer">
+    {svg_code}
+  </div>
+</div>
+<script>
+function downloadSVG() {{
+  const svg = document.querySelector('#svgContainer svg');
+  if (!svg) return;
+  const blob = new Blob([svg.outerHTML], {{type: 'image/svg+xml'}});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '{title.replace(" ", "_")}.svg';
+  a.click();
+  URL.revokeObjectURL(url);
+}}
+</script>
+</body>
+</html>'''
+
+    def generate_batch_images(self, slides: list, topic: str, subject: str,
+                              progress_callback=None) -> dict:
         """批量生成所有幻灯片的配图"""
         results = {}
         total = sum(1 for s in slides if s.get('image_suggestion', '').strip())
-        
+
         if total == 0:
             return results
-        
+
         current = 0
         for i, slide in enumerate(slides):
             suggestion = slide.get('image_suggestion', '').strip()
-            
             if suggestion:
                 current += 1
                 if progress_callback:
-                    progress_callback(current, total, f"正在生成第 {i+1} 页配图：{suggestion[:20]}...")
-                
+                    progress_callback(current, total, f"正在生成第 {i+1} 页配图...")
+
                 result = self.generate_image_from_suggestion(
-                    suggestion=suggestion,
-                    topic=topic,
-                    subject=subject,
-                    slide_index=i + 1
+                    suggestion=suggestion, topic=topic,
+                    subject=subject, slide_index=i + 1
                 )
                 result['slide_index'] = i + 1
                 result['suggestion'] = suggestion
                 results[i] = result
-                
+
                 if progress_callback:
-                    if result['success']:
-                        progress_callback(current, total, f"✅ 第 {i+1} 页配图生成成功")
-                    else:
-                        progress_callback(current, total, f"⚠️ 第 {i+1} 页配图生成失败：{result.get('error', '未知错误')}")
-        
+                    status = "✅" if result['success'] else "⚠️"
+                    progress_callback(current, total, f"{status} 第 {i+1} 页配图")
+
         return results
+
+
+# 全局单例
+image_service = ImageService()
