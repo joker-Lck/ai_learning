@@ -1,6 +1,6 @@
 """
 QA服务 — 供各智能体调用的 AI 文本生成
-底层委托给 spark_client（Kimi/Moonshot OpenAI 兼容接口）
+底层委托给 spark_client（讯飞星火 OpenAI 兼容接口）
 """
 
 from typing import Optional, Generator
@@ -12,7 +12,7 @@ class QAService:
     """QA 服务，供各 Agent 调用"""
 
     def __init__(self):
-        info("QA服务初始化完成（Kimi）")
+        info("QA服务初始化完成（讯飞星火）")
 
     def call_ai(
         self,

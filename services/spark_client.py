@@ -75,15 +75,19 @@ class SparkClient:
             api_key = os.getenv("SPARK_API_KEY", "")
             api_secret = os.getenv("SPARK_API_SECRET", "")
             base_url = os.getenv("SPARK_BASE_URL", "https://spark-api-open.xf-yun.com/v1")
-            
+
             if not api_key:
                 raise RuntimeError(
                     "SPARK_API_KEY 未配置，请在 .env 文件中设置。参考 .env.example"
                 )
-            
-            # 生成鉴权 Token
-            token = _generate_spark_token(api_key, api_secret) if api_secret else api_key
-            
+
+            # 讯飞星火 OpenAI 兼容接口使用 API Key 作为 Bearer Token
+            # 如果有 API Secret，生成签名 Token；否则直接使用 API Key
+            if api_secret:
+                token = _generate_spark_token(api_key, api_secret)
+            else:
+                token = api_key
+
             self._client = OpenAI(
                 api_key=token,
                 base_url=base_url,
