@@ -138,6 +138,11 @@ class KimiClient:
             for img in images:
                 content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}})
             messages.append({"role": "user", "content": content_parts})
+            
+            # k2.x 推理模型只允许 temperature=1
+            if model.startswith("kimi-k"):
+                temperature = 1
+            
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -174,6 +179,10 @@ class KimiClient:
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
+
+            # k2.x 推理模型只允许 temperature=1
+            if model.startswith("kimi-k"):
+                temperature = 1
 
             stream = self.client.chat.completions.create(
                 model=model,
