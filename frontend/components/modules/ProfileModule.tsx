@@ -220,7 +220,7 @@ function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
 
   return (
     <>
-      <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.docx,.pptx,.jpg,.png" onChange={handleFile} className="hidden" />
+      <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.bmp,.webp" onChange={handleFile} className="hidden" />
       <button onClick={() => fileRef.current?.click()} disabled={importing}
         className="px-3 py-1.5 bg-amber-500/15 border border-amber-400/20 text-amber-400 rounded-lg text-sm hover:border-amber-400/40 flex items-center gap-1.5 disabled:opacity-50 transition-all">
         {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}

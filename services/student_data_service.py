@@ -583,7 +583,7 @@ class StudentDataImportMixin:
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/xlsx/jpg/png 等格式"}
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
 
@@ -673,7 +673,7 @@ class StudentDataImportMixin:
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/xlsx/jpg/png 等格式"}
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             from core.json_utils import safe_parse_json
@@ -745,7 +745,7 @@ class StudentDataImportMixin:
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/docx/xlsx/jpg/png 等格式"}
+                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             from core.json_utils import safe_parse_json
