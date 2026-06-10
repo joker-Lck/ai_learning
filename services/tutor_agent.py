@@ -36,6 +36,7 @@ class TutorAgent:
         subject = input_data.get("subject", "综合")
         session_id = input_data.get("session_id", "default")
 
+        # 尝试使用记忆增强，失败则降级
         try:
             from services.memory_service import memory_service
 
@@ -93,7 +94,7 @@ class TutorAgent:
                 return result
 
         except Exception as e:
-            error(f"记忆增强问答失败，降级到普通问答: {str(e)}")
+            warning(f"记忆增强失败，降级到普通问答: {str(e)}")
             return self._fallback_answer(user_id, input_data)
 
     def _fallback_answer(self, user_id: int, input_data: Dict) -> Dict:
