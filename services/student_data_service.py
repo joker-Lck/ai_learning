@@ -558,19 +558,18 @@ class StudentDataImportMixin:
 只输出JSON数组，不要任何其他文字。"""
                 system_prompt = "你是一个精确的课程表识别系统。只输出JSON数组，不要解释。"
             else:
-                prompt = """请从以下文本中识别课程表信息。
+                prompt = """你是一个课程表识别专家。请先判断以下文本是否为课程表/课表/教学日历/选课结果。
 
-要求：
-- name: 课程名称（必填）
-- day: 星期几（周一~周日，必填）
-- start_time: 开始时间 HH:MM（必填）
-- end_time: 结束时间 HH:MM（必填）
-- location: 上课地点（可选）
-- teacher: 教师（可选）
+判断规则：
+- 如果包含「星期」「节次」「上课时间」「课程名称」等关键词，或包含类似表格结构（星期一~星期日 + 节次/时间），则判定为课程表
+- 如果是成绩单、错题本、实验报告、论文、简历等非课程表内容，直接输出：NOT_SCHEDULE
 
-节次→时间：第1-2节=08:00-09:40，第3-4节=10:00-11:40，第5-6节=14:00-15:40，第7-8节=16:00-17:40，第9-10节=19:00-20:40
+如果是课程表，请提取课程信息，输出严格JSON数组：
+[
+  {"name":"高等数学","day":"周一","start_time":"08:00","end_time":"09:40","location":"教A301","teacher":"张三"}
+]
 
-严格输出JSON数组，无课程返回[]。"""
+只输出JSON数组或NOT_SCHEDULE，不要其他文字。"""
                 system_prompt = None
 
             if is_image:
@@ -588,6 +587,11 @@ class StudentDataImportMixin:
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
 
             info(f"AI 识别课程表原始响应 (前300字): {response[:300]}")
+            
+            # 检查是否为非课程表内容
+            if 'NOT_SCHEDULE' in response or 'not_schedule' in response.lower():
+                return {"success": False, "message": "该文件不是课程表，请上传包含课程时间安排的文件（如课表截图、选课结果、教学日历等）"}
+            
             from core.json_utils import safe_parse_json
             courses = safe_parse_json(response)
             info(f"AI 识别课程表解析结果: {courses}")
@@ -652,19 +656,22 @@ class StudentDataImportMixin:
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
             is_image = ext in ('jpg', 'jpeg', 'png', 'bmp', 'webp')
 
-            prompt = """请从以下内容中识别出成绩信息，提取每条成绩的：
-- 课程名称 (course_name)
-- 分数 (score: 数字，0-100)
-- 学分 (credits: 数字，可选)
-- 成绩类型 (grade_type: exam=期末/quiz=测验/homework=作业/overall=总评)
-- 考试时间 (exam_date: YYYY-MM-DD 格式，可选，用于排序)
+            prompt = """你是一个成绩识别专家。请先判断以下内容是否为成绩单/成绩查询/分数记录。
 
-严格输出 JSON 数组格式（不要输出其他内容），例如:
-[
-  {"course_name": "高等数学", "score": 85, "credits": 4.0, "grade_type": "overall", "exam_date": "2026-01-15"}
-]
+判断规则：
+- 如果包含「成绩」「分数」「学分」「绩点」「GPA」等关键词，或包含课程名+分数的结构，则判定为成绩单
+- 如果是课程表、错题本、简历、论文等非成绩内容，直接输出：NOT_GRADES
 
-如果内容中没有成绩信息，返回空数组 []"""
+如果是成绩单，请提取每条成绩：
+- course_name: 课程名称
+- score: 分数（0-100数字）
+- credits: 学分（可选）
+- grade_type: 成绩类型（exam=期末/quiz=测验/homework=作业/overall=总评）
+- exam_date: 考试时间（YYYY-MM-DD，可选）
+
+严格输出JSON数组，不要输出其他内容。
+示例: [{"course_name":"高等数学","score":85,"credits":4.0,"grade_type":"overall"}]
+如果没有成绩信息，返回空数组 []"""
 
             if is_image:
                 image_b64 = _compress_image(content)
@@ -676,6 +683,13 @@ class StudentDataImportMixin:
                     return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
+            
+            info(f"AI 识别成绩原始响应 (前300字): {response[:300]}")
+            
+            # 检查是否为非成绩内容
+            if 'NOT_GRADES' in response or 'not_grades' in response.lower():
+                return {"success": False, "message": "该文件不是成绩单，请上传包含课程成绩的文件（如成绩单截图、成绩查询页面等）"}
+            
             from core.json_utils import safe_parse_json
             grades = safe_parse_json(response)
 
@@ -710,33 +724,26 @@ class StudentDataImportMixin:
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
             is_image = ext in ('jpg', 'jpeg', 'png', 'bmp', 'webp')
 
-            prompt = """你是一个错题识别专家。请仔细分析以下内容，提取所有错题/易错题信息。
+            prompt = """你是一个错题识别专家。请先判断以下内容是否为错题本/试卷订正/易错题记录。
 
-输出格式：严格 JSON 数组，每道题包含以下字段：
-- subject: 学科名称（必填，如"高等数学"、"英语"、"数据结构"）
-- chapter: 章节/知识点（没有则为空字符串）
-- question: 题目内容，尽量完整保留原题（必填）
-- my_answer: 错误答案/学生答案（没有则为空字符串）
-- correct_answer: 正确答案（没有则为空字符串）
-- error_reason: 错误原因分析（没有则为空字符串）
-- tags: 相关标签，字符串数组（没有则为空数组）
+判断规则：
+- 如果包含「错题」「订正」「错误答案」「正确答案」「易错」等关键词，或包含题目+批改痕迹的结构，则判定为错题
+- 如果是课程表、成绩单、简历、论文等非错题内容，直接输出：NOT_ERRORS
 
-常见错题格式参考：
-- "【数学】求导错误：f(x)=x²的导数，我写的2x，正确答案是2x"
-- 表格形式：题号、学科、题目、错误答案、正确答案
-- 试卷上的红叉标注、订正内容
-- 如果图片中有题目和批改痕迹，请仔细识别
+如果是错题，请提取所有错题信息：
+- subject: 学科名称（必填）
+- chapter: 章节/知识点（可选）
+- question: 题目内容，尽量完整（必填）
+- my_answer: 错误答案/学生答案（可选）
+- correct_answer: 正确答案（可选）
+- error_reason: 错误原因分析（可选）
+- tags: 相关标签数组（可选）
 
-注意：
-1. 只提取做错的题目，做对的不要
-2. 题目内容尽量完整，不要截断
-3. 只输出 JSON 数组，不要输出其他任何内容
-4. 如果确实没有错题信息，返回空数组 []
+注意：只提取做错的题目，做对的不要。
 
-示例输出：
-[
-  {"subject": "高等数学", "chapter": "第三章 导数", "question": "求f(x)=x³+2x的导数", "my_answer": "3x²+2x", "correct_answer": "3x²+2", "error_reason": "对常数项求导错误", "tags": ["导数", "计算错误"]}
-]"""
+严格输出JSON数组，不要输出其他内容。
+示例: [{"subject":"高等数学","chapter":"导数","question":"求f(x)=x²的导数","my_answer":"2x","correct_answer":"2x","error_reason":"计算错误","tags":["导数"]}]
+如果没有错题信息，返回空数组 []"""
 
             if is_image:
                 image_b64 = _compress_image(content)
@@ -748,6 +755,13 @@ class StudentDataImportMixin:
                     return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
                 from services.spark_client import spark_client
                 response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
+            
+            info(f"AI 识别错题原始响应 (前300字): {response[:300]}")
+            
+            # 检查是否为非错题内容
+            if 'NOT_ERRORS' in response or 'not_errors' in response.lower():
+                return {"success": False, "message": "该文件不是错题本，请上传包含错题/订正内容的文件（如试卷订正、错题本截图等）"}
+            
             from core.json_utils import safe_parse_json
             errors = safe_parse_json(response)
 
