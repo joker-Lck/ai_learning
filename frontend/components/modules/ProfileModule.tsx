@@ -543,7 +543,16 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
   };
   const removeCourse = async (idx: number) => { await onSave(semester, courses.filter((_, i) => i !== idx)); };
   const startEditCourse = (idx: number) => {
-    setForm({ ...courses[idx] });
+    const c = courses[idx];
+    if (!c) return;
+    setForm({
+      name: c.name,
+      day: c.day,
+      start_time: c.start_time,
+      end_time: c.end_time,
+      location: c.location || '',
+      teacher: c.teacher || '',
+    });
     setEditIdx(idx);
     setEditing(true);
   };
