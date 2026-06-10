@@ -195,9 +195,9 @@ async def tutor_query(
         if not input_data.get("question"):
             return JSONResponse(content={"success": False, "message": "问题内容不能为空", "data": None})
 
-        # 使用记忆增强型辅导服务
-        from services.memory_enhanced_tutor import memory_enhanced_tutor
-        result = memory_enhanced_tutor.answer_with_memory(user_id, input_data)
+        # 使用辅导服务（已集成记忆增强）
+        from services.tutor_agent import tutor_agent
+        result = tutor_agent.answer_query(user_id, input_data)
 
         info(f"辅导结果 - success: {result.get('success')}, 数据大小: {len(str(result.get('data', '')))} 字符")
 
@@ -232,8 +232,8 @@ async def get_knowledge_map(
 ):
     """获取用户知识图谱"""
     try:
-        from services.memory_enhanced_tutor import memory_enhanced_tutor
-        knowledge_map = memory_enhanced_tutor.get_user_knowledge_map(user['id'])
+        from services.tutor_agent import tutor_agent
+        knowledge_map = tutor_agent.get_user_knowledge_map(user['id'])
         return {"success": True, "data": knowledge_map}
     except Exception as e:
         error(f"获取知识图谱失败: {str(e)}")
@@ -247,8 +247,8 @@ async def get_learning_recommendations(
 ):
     """获取基于记忆的学习推荐"""
     try:
-        from services.memory_enhanced_tutor import memory_enhanced_tutor
-        recommendations = memory_enhanced_tutor.get_learning_recommendations(user['id'], subject)
+        from services.tutor_agent import tutor_agent
+        recommendations = tutor_agent.get_learning_recommendations(user['id'], subject)
         return {"success": True, "data": {"recommendations": recommendations}}
     except Exception as e:
         error(f"获取学习推荐失败: {str(e)}")
@@ -261,8 +261,8 @@ async def apply_memory_maintenance(
 ):
     """应用记忆维护（遗忘曲线、清理等）"""
     try:
-        from services.memory_enhanced_tutor import memory_enhanced_tutor
-        result = memory_enhanced_tutor.apply_memory_maintenance(user['id'])
+        from services.tutor_agent import tutor_agent
+        result = tutor_agent.apply_memory_maintenance(user['id'])
         return {"success": True, "data": result}
     except Exception as e:
         error(f"记忆维护失败: {str(e)}")

@@ -91,7 +91,7 @@
 - **weaknesses** - 劣势列表
 - **motivation** - 学习动机
 
-### 5. 无限长时记忆架构
+### 5. 无限长时记忆架构（集成在辅导智能体）
 
 - **短期记忆** - Token 级上下文窗口，自动保存对话历史
 - **情景记忆** - 对话事件和学习场景，按重要性衰减
@@ -100,7 +100,7 @@
 - **遗忘机制** - 基于艾宾浩斯遗忘曲线的智能衰减（R = e^(-t/S)）
 - **冲突修正** - 自动检测事实矛盾，三种解决策略
 - **记忆增强问答** - 自动检索相关记忆，构建增强上下文
-- **Handler 分层架构** - MemoryDB 基类 + 6 个专用 Handler + MemoryService 门面
+- **集成架构** - 记忆功能直接集成在 TutorAgent 中，无需独立服务
 
 ### 6. 混合检索系统（ANN + KNN + RRF）
 
@@ -1372,11 +1372,8 @@ def search_similar_questions(self, question_text, limit=5):
 │   ├── profile_agent.py      # ⭐ 画像智能体
 │   ├── resource_agent.py     # ⭐ 资源智能体
 │   ├── path_agent.py         # ⭐ 路径智能体
-│   ├── tutor_agent.py        # ⭐ 辅导智能体
+│   ├── tutor_agent.py        # ⭐ 辅导智能体（集成记忆增强）
 │   ├── assessment_agent.py   # ⭐ 评估智能体
-│   ├── memory_service.py     # ⭐ 记忆管理服务
-│   ├── memory_extractor.py   # ⭐ 记忆提取服务
-│   ├── memory_enhanced_tutor.py  # ⭐ 记忆增强辅导
 │   ├── content_safety_service.py  # ⭐ 内容安全
 │   └── streaming_service.py     # ⭐ 流式输出
 │
@@ -1394,9 +1391,7 @@ def search_similar_questions(self, question_text, limit=5):
 │   ├── init_databases_v7.2.py  # 多数据库初始化
 │   ├── init_admin.py           # 管理员初始化
 │   ├── init_rag_db.py          # RAG知识库初始化
-│   ├── init_memory_db.py       # 记忆系统初始化
-│   ├── import_pdf_to_rag.py    # PDF导入知识库
-│   └── test_memory.py          # 记忆系统测试
+│   └── import_pdf_to_rag.py    # PDF导入知识库
 │
 ├── resources/              # RAG知识库文件（PDF等）
 ├── .env.example            # 环境变量示例
