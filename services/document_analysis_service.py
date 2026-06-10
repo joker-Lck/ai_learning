@@ -157,8 +157,11 @@ class DocumentAnalysisService:
             reader = PdfReader(io.BytesIO(content))
             text = ""
             for page in reader.pages:
-                text += page.extract_text() or ""
-            return text
+                page_text = page.extract_text() or ""
+                # 清理乱码：保留可打印字符
+                cleaned = ''.join(c for c in page_text if c.isprintable() or c in '\n\r\t')
+                text += cleaned + "\n"
+            return text.strip()
         except ImportError:
             return "[需要安装 PyPDF2: pip install PyPDF2]"
         except Exception as e:
