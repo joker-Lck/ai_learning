@@ -1,905 +1,732 @@
 """
 无限长时记忆架构 - 记忆管理服务
 支持短期记忆、情景记忆、语义记忆、实体记忆、遗忘机制、冲突修正
+
+架构：
+  MemoryDB          — 通用数据库操作基类
+  ├── ShortTermHandler   — 短期记忆
+  ├── EpisodicHandler    — 情景记忆
+  ├── SemanticHandler    — 语义记忆（事实知识）
+  ├── EntityHandler      — 实体记忆（KV + 图谱）
+  ├── ForgettingHandler  — 遗忘机制
+  └── ConflictHandler    — 冲突修正
+  MemoryService     — 门面类，组合以上 Handler
 """
 
 import json
-import hashlib
 import numpy as np
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
 import mysql.connector
 from data.config import get_memory_db_config
 from core.logger import info, error, warning
 
 
-@dataclass
-class MemoryItem:
-    """记忆项基类"""
-    id: Optional[int] = None
-    user_id: int = 0
-    content: str = ""
-    importance: float = 0.5
-    access_count: int = 0
-    last_accessed_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
+# ==========================================
+# 数据库基类
+# ==========================================
+
+class MemoryDB:
+    """通用数据库操作基类，封装连接、执行、提交、回滚"""
+
+    # 表名映射（memory_type → 物理表）
+    TABLE_MAP = {
+        'short_term': 'short_term_memory',
+        'episodic':   'episodic_memory',
+        'semantic':   'semantic_memory',
+        'entity':     'entity_memory',
+        'relation':   'entity_relations',
+    }
+
+    def __init__(self, conn, cursor):
+        self.conn = conn
+        self.cursor = cursor
+
+    # ── 基础执行 ──────────────────────────────
+
+    def _execute(self, sql: str, params: tuple = None):
+        """执行 SQL（不提交）"""
+        self.cursor.execute(sql, params or ())
+
+    def _execute_commit(self, sql: str, params: tuple = None):
+        """执行 SQL 并提交"""
+        self._execute(sql, params)
+        self.conn.commit()
+
+    def _fetchone(self, sql: str, params: tuple = None) -> Optional[Dict]:
+        self._execute(sql, params)
+        return self.cursor.fetchone()
+
+    def _fetchall(self, sql: str, params: tuple = None) -> List[Dict]:
+        self._execute(sql, params)
+        return self.cursor.fetchall()
+
+    def _count(self, table: str, user_id: int, extra: str = "") -> int:
+        sql = f"SELECT COUNT(*) as cnt FROM {table} WHERE user_id = %s {extra}"
+        return self._fetchone(sql, (user_id,))['cnt']
+
+    def _last_id(self) -> int:
+        return self.cursor.lastrowid
+
+    def _table_for(self, memory_type: str) -> str:
+        return self.TABLE_MAP[memory_type]
 
 
-@dataclass
-class ShortTermMemory(MemoryItem):
-    """短期记忆"""
-    session_id: str = ""
-    role: str = "user"
-    token_count: int = 0
-    context_window_position: int = 0
+# ==========================================
+# 短期记忆
+# ==========================================
 
+class ShortTermHandler(MemoryDB):
+    """Token 级上下文窗口"""
 
-@dataclass
-class EpisodicMemory(MemoryItem):
-    """情景记忆"""
-    episode_type: str = "conversation"
-    title: str = ""
-    summary: str = ""
-    context: Optional[Dict] = None
-    emotions: Optional[Dict] = None
-    embedding: Optional[bytes] = None
-
-
-@dataclass
-class SemanticMemory(MemoryItem):
-    """语义记忆（事实知识）"""
-    fact_type: str = "knowledge"
-    subject: str = ""
-    predicate: str = ""
-    object: str = ""
-    confidence: float = 0.8
-    source: str = ""
-    is_verified: bool = False
-    conflict_resolution: Optional[Dict] = None
-
-
-@dataclass
-class EntityMemory(MemoryItem):
-    """实体记忆"""
-    entity_type: str = "concept"
-    entity_name: str = ""
-    entity_alias: str = ""
-    attributes: Optional[Dict] = None
-    description: str = ""
-
-
-@dataclass
-class EntityRelation:
-    """实体关系"""
-    id: Optional[int] = None
-    user_id: int = 0
-    source_entity_id: int = 0
-    target_entity_id: int = 0
-    relation_type: str = ""
-    relation_label: str = ""
-    weight: float = 1.0
-    context: str = ""
-
-
-class MemoryService:
-    """记忆管理服务"""
-    
-    # 遗忘曲线参数
-    DEFAULT_DECAY_RATE = 0.1
-    MIN_IMPORTANCE = 0.1
-    FORGET_THRESHOLD = 0.2
-    REINFORCEMENT_BOOST = 0.15
-    
-    # 上下文窗口大小
     MAX_CONTEXT_TOKENS = 4000
-    
-    def __init__(self):
-        self.config = get_memory_db_config()
-        self.conn = None
-        self.cursor = None
-        
-    def connect(self):
-        """建立数据库连接"""
+    KEEP_RECENT = 50
+
+    def add(self, user_id: int, session_id: str, role: str, content: str) -> int:
+        token_count = len(content) // 4
+        sql = """
+            INSERT INTO short_term_memory
+            (user_id, session_id, role, content, token_count, context_window_position)
+            VALUES (%s, %s, %s, %s, %s,
+                (SELECT COALESCE(MAX(t.context_window_position), 0) + 1
+                 FROM (SELECT context_window_position FROM short_term_memory
+                       WHERE user_id = %s AND session_id = %s) t))
+        """
+        self._execute_commit(sql, (user_id, session_id, role, content, token_count, user_id, session_id))
+        memory_id = self._last_id()
+        self._cleanup(user_id, session_id)
+        return memory_id
+
+    def get_context(self, user_id: int, session_id: str,
+                    max_tokens: int = None) -> List[Dict]:
+        max_tokens = max_tokens or self.MAX_CONTEXT_TOKENS
+        rows = self._fetchall(
+            "SELECT role, content, token_count, created_at "
+            "FROM short_term_memory WHERE user_id = %s AND session_id = %s "
+            "ORDER BY context_window_position DESC",
+            (user_id, session_id)
+        )
+        context, total = [], 0
+        for row in rows:
+            if total + row['token_count'] > max_tokens:
+                break
+            context.insert(0, {
+                'role': row['role'],
+                'content': row['content'],
+                'created_at': row['created_at'].isoformat() if row['created_at'] else None,
+            })
+            total += row['token_count']
+        return context
+
+    def _cleanup(self, user_id: int, session_id: str):
+        sql = """
+            DELETE FROM short_term_memory
+            WHERE user_id = %s AND session_id = %s
+            AND id NOT IN (
+                SELECT id FROM (
+                    SELECT id FROM short_term_memory
+                    WHERE user_id = %s AND session_id = %s
+                    ORDER BY context_window_position DESC LIMIT %s
+                ) t
+            )
+        """
         try:
-            self.conn = mysql.connector.connect(**self.config, use_pure=True)
-            self.cursor = self.conn.cursor(dictionary=True)
+            self._execute_commit(sql, (user_id, session_id, user_id, session_id, self.KEEP_RECENT))
         except Exception as e:
-            error(f"记忆数据库连接失败: {str(e)}")
-            raise
-            
-    def close(self):
-        """关闭数据库连接"""
-        if self.cursor:
-            self.cursor.close()
-        if self.conn:
-            self.conn.close()
-            
-    def __enter__(self):
-        self.connect()
-        return self
-        
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-        
-    # ==========================================
-    # 短期记忆管理
-    # ==========================================
-    
-    def add_short_term(self, user_id: int, session_id: str, role: str, content: str) -> int:
-        """添加短期记忆（对话上下文）"""
-        try:
-            token_count = len(content) // 4  # 粗略估计 token 数
-            
-            sql = """
-                INSERT INTO short_term_memory 
-                (user_id, session_id, role, content, token_count, context_window_position)
-                VALUES (%s, %s, %s, %s, %s, 
-                    (SELECT COALESCE(MAX(t.context_window_position), 0) + 1 
-                     FROM (SELECT context_window_position FROM short_term_memory 
-                           WHERE user_id = %s AND session_id = %s) t))
-            """
-            self.cursor.execute(sql, (user_id, session_id, role, content, token_count, user_id, session_id))
-            self.conn.commit()
-            
-            memory_id = self.cursor.lastrowid
-            self._log_access(user_id, 'short_term', memory_id, 'write')
-            
-            # 清理过期的短期记忆
-            self._cleanup_short_term(user_id, session_id)
-            
-            return memory_id
-        except Exception as e:
-            error(f"添加短期记忆失败: {str(e)}")
-            self.conn.rollback()
-            raise
-            
-    def get_short_term_context(self, user_id: int, session_id: str, max_tokens: int = None) -> List[Dict]:
-        """获取短期记忆上下文"""
-        if max_tokens is None:
-            max_tokens = self.MAX_CONTEXT_TOKENS
-            
-        try:
-            sql = """
-                SELECT role, content, token_count, created_at
-                FROM short_term_memory
-                WHERE user_id = %s AND session_id = %s
-                ORDER BY context_window_position DESC
-            """
-            self.cursor.execute(sql, (user_id, session_id))
-            rows = self.cursor.fetchall()
-            
-            # 从最新到最旧，直到达到 token 限制
-            context = []
-            total_tokens = 0
-            for row in rows:
-                if total_tokens + row['token_count'] > max_tokens:
-                    break
-                context.insert(0, {
-                    'role': row['role'],
-                    'content': row['content'],
-                    'created_at': row['created_at'].isoformat() if row['created_at'] else None
-                })
-                total_tokens += row['token_count']
-                
-            return context
-        except Exception as e:
-            error(f"获取短期记忆上下文失败: {str(e)}")
-            return []
-            
-    def _cleanup_short_term(self, user_id: int, session_id: str, keep_recent: int = 50):
-        """清理过期的短期记忆，保留最近的 N 条"""
-        try:
-            sql = """
-                DELETE FROM short_term_memory
-                WHERE user_id = %s AND session_id = %s
-                AND id NOT IN (
-                    SELECT id FROM (
-                        SELECT id FROM short_term_memory
-                        WHERE user_id = %s AND session_id = %s
-                        ORDER BY context_window_position DESC
-                        LIMIT %s
-                    ) t
-                )
-            """
-            self.cursor.execute(sql, (user_id, session_id, user_id, session_id, keep_recent))
-            self.conn.commit()
-        except Exception as e:
-            warning(f"清理短期记忆失败: {str(e)}")
-            
-    # ==========================================
-    # 情景记忆管理
-    # ==========================================
-    
-    def add_episodic(self, user_id: int, episode_type: str, title: str, 
-                     summary: str, content: str, context: Dict = None, 
-                     emotions: Dict = None, importance: float = 0.5) -> int:
-        """添加情景记忆"""
-        try:
-            sql = """
-                INSERT INTO episodic_memory 
-                (user_id, episode_type, title, summary, context, content, emotions, importance)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            self.cursor.execute(sql, (
-                user_id, episode_type, title, summary,
-                json.dumps(context, ensure_ascii=False) if context else None,
-                content,
-                json.dumps(emotions, ensure_ascii=False) if emotions else None,
-                importance
-            ))
-            self.conn.commit()
-            
-            memory_id = self.cursor.lastrowid
-            self._create_metadata('episodic', memory_id, user_id, importance)
-            self._log_access(user_id, 'episodic', memory_id, 'write')
-            
-            return memory_id
-        except Exception as e:
-            error(f"添加情景记忆失败: {str(e)}")
-            self.conn.rollback()
-            raise
-            
-    def search_episodic(self, user_id: int, query: str, limit: int = 5) -> List[Dict]:
-        """搜索情景记忆"""
-        try:
-            sql = """
-                SELECT id, episode_type, title, summary, context, content, 
-                       importance, access_count, created_at
-                FROM episodic_memory
-                WHERE user_id = %s 
-                  AND (title LIKE %s OR summary LIKE %s OR content LIKE %s)
-                ORDER BY importance DESC, created_at DESC
-                LIMIT %s
-            """
-            search_term = f"%{query}%"
-            self.cursor.execute(sql, (user_id, search_term, search_term, search_term, limit))
-            results = self.cursor.fetchall()
-            
-            # 更新访问计数
-            for row in results:
-                self._update_access('episodic', row['id'], user_id)
-                
-            return results
-        except Exception as e:
-            error(f"搜索情景记忆失败: {str(e)}")
-            return []
-            
-    def get_recent_episodes(self, user_id: int, limit: int = 10) -> List[Dict]:
-        """获取最近的情景记忆"""
-        try:
-            sql = """
-                SELECT id, episode_type, title, summary, importance, created_at
-                FROM episodic_memory
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                LIMIT %s
-            """
-            self.cursor.execute(sql, (user_id, limit))
-            return self.cursor.fetchall()
-        except Exception as e:
-            error(f"获取最近情景记忆失败: {str(e)}")
-            return []
-            
-    # ==========================================
-    # 语义记忆管理（事实知识）
-    # ==========================================
-    
-    def add_semantic(self, user_id: int, fact_type: str, subject: str, 
-                     predicate: str, object_val: str, confidence: float = 0.8,
-                     source: str = "") -> int:
-        """添加语义记忆（事实知识）"""
-        try:
-            # 检查是否存在冲突
-            conflict = self._detect_conflict(user_id, subject, predicate, object_val)
-            
-            sql = """
-                INSERT INTO semantic_memory 
-                (user_id, fact_type, subject, predicate, object, confidence, source)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    object = VALUES(object),
-                    confidence = VALUES(confidence),
-                    source = VALUES(source),
-                    access_count = access_count + 1,
-                    updated_at = CURRENT_TIMESTAMP
-            """
-            self.cursor.execute(sql, (user_id, fact_type, subject, predicate, object_val, confidence, source))
-            self.conn.commit()
-            
-            memory_id = self.cursor.lastrowid
-            
-            # 如果检测到冲突，记录冲突
-            if conflict:
-                self._record_conflict(user_id, 'fact_contradiction', 
-                                     'semantic', conflict['id'], 'semantic', memory_id)
-                                     
-            self._create_metadata('semantic', memory_id, user_id, confidence)
-            self._log_access(user_id, 'semantic', memory_id, 'write')
-            
-            return memory_id
-        except Exception as e:
-            error(f"添加语义记忆失败: {str(e)}")
-            self.conn.rollback()
-            raise
-            
-    def search_semantic(self, user_id: int, query: str, fact_type: str = None, 
-                       limit: int = 10) -> List[Dict]:
-        """搜索语义记忆"""
-        try:
-            conditions = ["user_id = %s", "(subject LIKE %s OR predicate LIKE %s OR object LIKE %s)"]
-            params = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
-            
-            if fact_type:
-                conditions.append("fact_type = %s")
-                params.append(fact_type)
-                
-            sql = f"""
-                SELECT id, fact_type, subject, predicate, object, confidence, 
-                       source, is_verified, access_count, created_at
-                FROM semantic_memory
-                WHERE {' AND '.join(conditions)}
-                ORDER BY confidence DESC, access_count DESC
-                LIMIT %s
-            """
-            params.append(limit)
-            self.cursor.execute(sql, params)
-            results = self.cursor.fetchall()
-            
-            # 更新访问计数
-            for row in results:
-                self._update_access('semantic', row['id'], user_id)
-                
-            return results
-        except Exception as e:
-            error(f"搜索语义记忆失败: {str(e)}")
-            return []
-            
-    def get_facts_by_subject(self, user_id: int, subject: str) -> List[Dict]:
-        """获取某个主题的所有事实"""
-        try:
-            sql = """
-                SELECT id, fact_type, subject, predicate, object, confidence, created_at
-                FROM semantic_memory
-                WHERE user_id = %s AND subject = %s
-                ORDER BY confidence DESC
-            """
-            self.cursor.execute(sql, (user_id, subject))
-            return self.cursor.fetchall()
-        except Exception as e:
-            error(f"获取主题事实失败: {str(e)}")
-            return []
-            
-    def _detect_conflict(self, user_id: int, subject: str, predicate: str, object_val: str) -> Optional[Dict]:
-        """检测事实冲突"""
-        try:
-            sql = """
-                SELECT id, object, confidence
-                FROM semantic_memory
-                WHERE user_id = %s AND subject = %s AND predicate = %s AND object != %s
-                ORDER BY confidence DESC
-                LIMIT 1
-            """
-            self.cursor.execute(sql, (user_id, subject, predicate, object_val))
-            return self.cursor.fetchone()
-        except Exception as e:
-            warning(f"检测冲突失败: {str(e)}")
-            return None
-            
+            warning(f"清理短期记忆失败: {e}")
+
+    def count(self, user_id: int) -> int:
+        return self._count('short_term_memory', user_id)
+
+
+# ==========================================
+# 情景记忆
+# ==========================================
+
+class EpisodicHandler(MemoryDB):
+    """对话事件 / 学习场景"""
+
+    def add(self, user_id: int, episode_type: str, title: str,
+            summary: str, content: str, context: Dict = None,
+            emotions: Dict = None, importance: float = 0.5) -> int:
+        sql = """
+            INSERT INTO episodic_memory
+            (user_id, episode_type, title, summary, context, content, emotions, importance)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        self._execute_commit(sql, (
+            user_id, episode_type, title, summary,
+            json.dumps(context, ensure_ascii=False) if context else None,
+            content,
+            json.dumps(emotions, ensure_ascii=False) if emotions else None,
+            importance
+        ))
+        return self._last_id()
+
+    def search(self, user_id: int, query: str, limit: int = 5) -> List[Dict]:
+        term = f"%{query}%"
+        return self._fetchall(
+            "SELECT id, episode_type, title, summary, context, content, "
+            "importance, access_count, created_at "
+            "FROM episodic_memory "
+            "WHERE user_id = %s AND (title LIKE %s OR summary LIKE %s OR content LIKE %s) "
+            "ORDER BY importance DESC, created_at DESC LIMIT %s",
+            (user_id, term, term, term, limit)
+        )
+
+    def recent(self, user_id: int, limit: int = 10) -> List[Dict]:
+        return self._fetchall(
+            "SELECT id, episode_type, title, summary, importance, created_at "
+            "FROM episodic_memory WHERE user_id = %s "
+            "ORDER BY created_at DESC LIMIT %s",
+            (user_id, limit)
+        )
+
+    def count(self, user_id: int) -> int:
+        return self._count('episodic_memory', user_id)
+
+
+# ==========================================
+# 语义记忆（SPO 三元组）
+# ==========================================
+
+class SemanticHandler(MemoryDB):
+    """事实知识存储，支持冲突检测"""
+
+    def add(self, user_id: int, fact_type: str, subject: str,
+            predicate: str, object_val: str, confidence: float = 0.8,
+            source: str = "") -> int:
+        conflict = self._detect_conflict(user_id, subject, predicate, object_val)
+
+        sql = """
+            INSERT INTO semantic_memory
+            (user_id, fact_type, subject, predicate, object, confidence, source)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                object = VALUES(object), confidence = VALUES(confidence),
+                source = VALUES(source), access_count = access_count + 1,
+                updated_at = CURRENT_TIMESTAMP
+        """
+        self._execute_commit(sql, (user_id, fact_type, subject, predicate, object_val, confidence, source))
+        memory_id = self._last_id()
+
+        if conflict:
+            self._record_conflict(user_id, 'fact_contradiction',
+                                  'semantic', conflict['id'], 'semantic', memory_id)
+        return memory_id
+
+    def search(self, user_id: int, query: str, fact_type: str = None,
+               limit: int = 10) -> List[Dict]:
+        conditions = ["user_id = %s", "(subject LIKE %s OR predicate LIKE %s OR object LIKE %s)"]
+        params: list = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
+        if fact_type:
+            conditions.append("fact_type = %s")
+            params.append(fact_type)
+        params.append(limit)
+        return self._fetchall(
+            f"SELECT id, fact_type, subject, predicate, object, confidence, "
+            f"source, is_verified, access_count, created_at "
+            f"FROM semantic_memory WHERE {' AND '.join(conditions)} "
+            f"ORDER BY confidence DESC, access_count DESC LIMIT %s",
+            tuple(params)
+        )
+
+    def get_by_subject(self, user_id: int, subject: str) -> List[Dict]:
+        return self._fetchall(
+            "SELECT id, fact_type, subject, predicate, object, confidence, created_at "
+            "FROM semantic_memory WHERE user_id = %s AND subject = %s "
+            "ORDER BY confidence DESC",
+            (user_id, subject)
+        )
+
+    def _detect_conflict(self, user_id: int, subject: str,
+                         predicate: str, object_val: str) -> Optional[Dict]:
+        return self._fetchone(
+            "SELECT id, object, confidence FROM semantic_memory "
+            "WHERE user_id = %s AND subject = %s AND predicate = %s AND object != %s "
+            "ORDER BY confidence DESC LIMIT 1",
+            (user_id, subject, predicate, object_val)
+        )
+
     def _record_conflict(self, user_id: int, conflict_type: str,
                          old_type: str, old_id: int, new_type: str, new_id: int):
-        """记录记忆冲突"""
         try:
-            sql = """
-                INSERT INTO memory_conflicts 
-                (user_id, conflict_type, old_memory_type, old_memory_id, new_memory_type, new_memory_id)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """
-            self.cursor.execute(sql, (user_id, conflict_type, old_type, old_id, new_type, new_id))
-            self.conn.commit()
+            self._execute_commit(
+                "INSERT INTO memory_conflicts "
+                "(user_id, conflict_type, old_memory_type, old_memory_id, new_memory_type, new_memory_id) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (user_id, conflict_type, old_type, old_id, new_type, new_id)
+            )
         except Exception as e:
-            warning(f"记录冲突失败: {str(e)}")
-            
-    # ==========================================
-    # 实体记忆管理（KV + 图谱）
-    # ==========================================
-    
-    def add_entity(self, user_id: int, entity_type: str, entity_name: str,
-                   attributes: Dict = None, description: str = "", 
-                   entity_alias: str = "", importance: float = 0.5) -> int:
-        """添加实体记忆"""
-        try:
-            sql = """
-                INSERT INTO entity_memory 
-                (user_id, entity_type, entity_name, entity_alias, attributes, description, importance)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    entity_alias = COALESCE(VALUES(entity_alias), entity_alias),
-                    attributes = JSON_MERGE_PATCH(attributes, VALUES(attributes)),
-                    description = COALESCE(NULLIF(VALUES(description), ''), description),
-                    importance = GREATEST(importance, VALUES(importance)),
-                    access_count = access_count + 1,
-                    updated_at = CURRENT_TIMESTAMP
-            """
-            self.cursor.execute(sql, (
-                user_id, entity_type, entity_name, entity_alias,
-                json.dumps(attributes, ensure_ascii=False) if attributes else None,
-                description, importance
-            ))
-            self.conn.commit()
-            
-            entity_id = self.cursor.lastrowid
-            self._create_metadata('entity', entity_id, user_id, importance)
-            self._log_access(user_id, 'entity', entity_id, 'write')
-            
-            return entity_id
-        except Exception as e:
-            error(f"添加实体记忆失败: {str(e)}")
-            self.conn.rollback()
-            raise
-            
-    def add_relation(self, user_id: int, source_entity_id: int, target_entity_id: int,
-                     relation_type: str, relation_label: str = "", 
+            warning(f"记录冲突失败: {e}")
+
+    def count(self, user_id: int) -> int:
+        return self._count('semantic_memory', user_id)
+
+
+# ==========================================
+# 实体记忆（KV + 图谱）
+# ==========================================
+
+class EntityHandler(MemoryDB):
+    """实体画像存储 + 知识图谱"""
+
+    def add(self, user_id: int, entity_type: str, entity_name: str,
+            attributes: Dict = None, description: str = "",
+            entity_alias: str = "", importance: float = 0.5) -> int:
+        sql = """
+            INSERT INTO entity_memory
+            (user_id, entity_type, entity_name, entity_alias, attributes, description, importance)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                entity_alias = COALESCE(VALUES(entity_alias), entity_alias),
+                attributes = JSON_MERGE_PATCH(attributes, VALUES(attributes)),
+                description = COALESCE(NULLIF(VALUES(description), ''), description),
+                importance = GREATEST(importance, VALUES(importance)),
+                access_count = access_count + 1, updated_at = CURRENT_TIMESTAMP
+        """
+        self._execute_commit(sql, (
+            user_id, entity_type, entity_name, entity_alias,
+            json.dumps(attributes, ensure_ascii=False) if attributes else None,
+            description, importance
+        ))
+        return self._last_id()
+
+    def add_relation(self, user_id: int, source_id: int, target_id: int,
+                     relation_type: str, label: str = "",
                      weight: float = 1.0, context: str = "") -> int:
-        """添加实体关系"""
+        sql = """
+            INSERT INTO entity_relations
+            (user_id, source_entity_id, target_entity_id, relation_type, relation_label, weight, context)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                weight = GREATEST(weight, VALUES(weight)),
+                context = COALESCE(NULLIF(VALUES(context), ''), context),
+                updated_at = CURRENT_TIMESTAMP
+        """
+        self._execute_commit(sql, (user_id, source_id, target_id, relation_type, label, weight, context))
+        return self._last_id()
+
+    def search(self, user_id: int, query: str, entity_type: str = None,
+               limit: int = 10) -> List[Dict]:
+        conditions = ["user_id = %s", "(entity_name LIKE %s OR entity_alias LIKE %s OR description LIKE %s)"]
+        params: list = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
+        if entity_type:
+            conditions.append("entity_type = %s")
+            params.append(entity_type)
+        params.append(limit)
+        rows = self._fetchall(
+            f"SELECT id, entity_type, entity_name, entity_alias, attributes, "
+            f"description, importance, access_count, created_at "
+            f"FROM entity_memory WHERE {' AND '.join(conditions)} "
+            f"ORDER BY importance DESC, access_count DESC LIMIT %s",
+            tuple(params)
+        )
+        for row in rows:
+            if row.get('attributes') and isinstance(row['attributes'], str):
+                row['attributes'] = json.loads(row['attributes'])
+        return rows
+
+    def get_relations(self, user_id: int, entity_id: int,
+                      direction: str = 'both') -> List[Dict]:
+        relations = []
+        if direction in ('out', 'both'):
+            rows = self._fetchall(
+                "SELECT er.*, em.entity_name as target_name, em.entity_type as target_type "
+                "FROM entity_relations er JOIN entity_memory em ON er.target_entity_id = em.id "
+                "WHERE er.source_entity_id = %s AND er.user_id = %s",
+                (entity_id, user_id)
+            )
+            for r in rows:
+                r['direction'] = 'out'
+            relations.extend(rows)
+        if direction in ('in', 'both'):
+            rows = self._fetchall(
+                "SELECT er.*, em.entity_name as source_name, em.entity_type as source_type "
+                "FROM entity_relations er JOIN entity_memory em ON er.source_entity_id = em.id "
+                "WHERE er.target_entity_id = %s AND er.user_id = %s",
+                (entity_id, user_id)
+            )
+            for r in rows:
+                r['direction'] = 'in'
+            relations.extend(rows)
+        return relations
+
+    def get_graph(self, user_id: int, center_id: int, depth: int = 2) -> Dict:
+        visited, nodes, edges, queue = set(), [], [], [(center_id, 0)]
+        while queue:
+            eid, d = queue.pop(0)
+            if eid in visited or d > depth:
+                continue
+            visited.add(eid)
+            entity = self._fetchone(
+                "SELECT * FROM entity_memory WHERE id = %s AND user_id = %s",
+                (eid, user_id)
+            )
+            if not entity:
+                continue
+            if entity.get('attributes') and isinstance(entity['attributes'], str):
+                entity['attributes'] = json.loads(entity['attributes'])
+            nodes.append(entity)
+            for rel in self.get_relations(user_id, eid, 'both'):
+                tid = rel.get('target_entity_id') if rel['direction'] == 'out' else rel.get('source_entity_id')
+                if tid and tid not in visited:
+                    queue.append((tid, d + 1))
+                edges.append({
+                    'source': rel.get('source_entity_id'),
+                    'target': rel.get('target_entity_id'),
+                    'relation': rel.get('relation_type'),
+                    'label': rel.get('relation_label'),
+                    'weight': rel.get('weight'),
+                })
+        return {'nodes': nodes, 'edges': edges}
+
+    def count(self, user_id: int) -> int:
+        return self._count('entity_memory', user_id)
+
+    def relation_count(self, user_id: int) -> int:
+        return self._count('entity_relations', user_id)
+
+
+# ==========================================
+# 遗忘机制
+# ==========================================
+
+class ForgettingHandler(MemoryDB):
+    """艾宾浩斯遗忘曲线 + 记忆强化"""
+
+    DEFAULT_DECAY_RATE = 0.1
+    FORGET_THRESHOLD  = 0.2
+    REINFORCE_BOOST   = 0.15
+
+    def create_metadata(self, memory_type: str, memory_id: int,
+                        user_id: int, importance: float):
+        decay_rate = self.DEFAULT_DECAY_RATE * (1 - importance * 0.5)
         try:
-            sql = """
-                INSERT INTO entity_relations 
-                (user_id, source_entity_id, target_entity_id, relation_type, relation_label, weight, context)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    weight = GREATEST(weight, VALUES(weight)),
-                    context = COALESCE(NULLIF(VALUES(context), ''), context),
-                    updated_at = CURRENT_TIMESTAMP
-            """
-            self.cursor.execute(sql, (
-                user_id, source_entity_id, target_entity_id,
-                relation_type, relation_label, weight, context
-            ))
-            self.conn.commit()
-            
-            relation_id = self.cursor.lastrowid
-            self._create_metadata('relation', relation_id, user_id, weight)
-            
-            return relation_id
+            self._execute_commit(
+                "INSERT INTO memory_metadata "
+                "(memory_type, memory_id, user_id, importance, decay_rate, last_accessed_at) "
+                "VALUES (%s, %s, %s, %s, %s, NOW())",
+                (memory_type, memory_id, user_id, importance, decay_rate)
+            )
         except Exception as e:
-            error(f"添加实体关系失败: {str(e)}")
-            self.conn.rollback()
-            raise
-            
-    def search_entities(self, user_id: int, query: str, entity_type: str = None,
-                       limit: int = 10) -> List[Dict]:
-        """搜索实体"""
+            warning(f"创建记忆元数据失败: {e}")
+
+    def update_access(self, memory_type: str, memory_id: int, user_id: int):
         try:
-            conditions = ["user_id = %s", "(entity_name LIKE %s OR entity_alias LIKE %s OR description LIKE %s)"]
-            params = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
-            
-            if entity_type:
-                conditions.append("entity_type = %s")
-                params.append(entity_type)
-                
-            sql = f"""
-                SELECT id, entity_type, entity_name, entity_alias, attributes, 
-                       description, importance, access_count, created_at
-                FROM entity_memory
-                WHERE {' AND '.join(conditions)}
-                ORDER BY importance DESC, access_count DESC
-                LIMIT %s
-            """
-            params.append(limit)
-            self.cursor.execute(sql, params)
-            results = self.cursor.fetchall()
-            
-            # 更新访问计数
-            for row in results:
-                self._update_access('entity', row['id'], user_id)
-                # 解析 JSON 字段
-                if row.get('attributes'):
-                    row['attributes'] = json.loads(row['attributes']) if isinstance(row['attributes'], str) else row['attributes']
-                    
-            return results
-        except Exception as e:
-            error(f"搜索实体失败: {str(e)}")
-            return []
-            
-    def get_entity_relations(self, user_id: int, entity_id: int, direction: str = 'both') -> List[Dict]:
-        """获取实体的关系"""
-        try:
-            relations = []
-            
-            if direction in ('out', 'both'):
-                sql = """
-                    SELECT er.*, em.entity_name as target_name, em.entity_type as target_type
-                    FROM entity_relations er
-                    JOIN entity_memory em ON er.target_entity_id = em.id
-                    WHERE er.source_entity_id = %s AND er.user_id = %s
-                """
-                self.cursor.execute(sql, (entity_id, user_id))
-                out_relations = self.cursor.fetchall()
-                for r in out_relations:
-                    r['direction'] = 'out'
-                relations.extend(out_relations)
-                
-            if direction in ('in', 'both'):
-                sql = """
-                    SELECT er.*, em.entity_name as source_name, em.entity_type as source_type
-                    FROM entity_relations er
-                    JOIN entity_memory em ON er.source_entity_id = em.id
-                    WHERE er.target_entity_id = %s AND er.user_id = %s
-                """
-                self.cursor.execute(sql, (entity_id, user_id))
-                in_relations = self.cursor.fetchall()
-                for r in in_relations:
-                    r['direction'] = 'in'
-                relations.extend(in_relations)
-                
-            return relations
-        except Exception as e:
-            error(f"获取实体关系失败: {str(e)}")
-            return []
-            
-    def get_entity_graph(self, user_id: int, center_entity_id: int, depth: int = 2) -> Dict:
-        """获取实体图谱（BFS 遍历）"""
-        try:
-            visited = set()
-            nodes = []
-            edges = []
-            queue = [(center_entity_id, 0)]
-            
-            while queue:
-                entity_id, current_depth = queue.pop(0)
-                
-                if entity_id in visited or current_depth > depth:
-                    continue
-                    
-                visited.add(entity_id)
-                
-                # 获取实体信息
-                sql = "SELECT * FROM entity_memory WHERE id = %s AND user_id = %s"
-                self.cursor.execute(sql, (entity_id, user_id))
-                entity = self.cursor.fetchone()
-                
-                if entity:
-                    if entity.get('attributes'):
-                        entity['attributes'] = json.loads(entity['attributes']) if isinstance(entity['attributes'], str) else entity['attributes']
-                    nodes.append(entity)
-                    
-                    # 获取关系
-                    relations = self.get_entity_relations(user_id, entity_id, 'both')
-                    for rel in relations:
-                        target_id = rel.get('target_entity_id') if rel['direction'] == 'out' else rel.get('source_entity_id')
-                        if target_id and target_id not in visited:
-                            queue.append((target_id, current_depth + 1))
-                            
-                        edges.append({
-                            'source': rel.get('source_entity_id'),
-                            'target': rel.get('target_entity_id'),
-                            'relation': rel.get('relation_type'),
-                            'label': rel.get('relation_label'),
-                            'weight': rel.get('weight')
-                        })
-                        
-            return {'nodes': nodes, 'edges': edges}
-        except Exception as e:
-            error(f"获取实体图谱失败: {str(e)}")
-            return {'nodes': [], 'edges': []}
-            
-    # ==========================================
-    # 遗忘机制
-    # ==========================================
-    
-    def _create_metadata(self, memory_type: str, memory_id: int, user_id: int, importance: float):
-        """创建记忆元数据"""
-        try:
-            sql = """
-                INSERT INTO memory_metadata 
-                (memory_type, memory_id, user_id, importance, decay_rate, last_accessed_at)
-                VALUES (%s, %s, %s, %s, %s, NOW())
-            """
-            # 重要性越高，衰减越慢
-            decay_rate = self.DEFAULT_DECAY_RATE * (1 - importance * 0.5)
-            self.cursor.execute(sql, (memory_type, memory_id, user_id, importance, decay_rate))
+            table = self._table_for(memory_type)
+            self._execute(
+                f"UPDATE {table} SET access_count = access_count + 1, last_accessed_at = NOW() WHERE id = %s",
+                (memory_id,)
+            )
+            self._execute(
+                "UPDATE memory_metadata SET access_count = access_count + 1, "
+                "last_accessed_at = NOW(), importance = LEAST(1.0, importance + %s) "
+                "WHERE memory_type = %s AND memory_id = %s AND user_id = %s",
+                (self.REINFORCE_BOOST * 0.1, memory_type, memory_id, user_id)
+            )
             self.conn.commit()
         except Exception as e:
-            warning(f"创建记忆元数据失败: {str(e)}")
-            
-    def _update_access(self, memory_type: str, memory_id: int, user_id: int):
-        """更新记忆访问记录"""
+            warning(f"更新访问记录失败: {e}")
+
+    def log_access(self, user_id: int, memory_type: str,
+                   memory_id: int, access_type: str):
         try:
-            # 更新原表
-            table_map = {
-                'episodic': 'episodic_memory',
-                'semantic': 'semantic_memory',
-                'entity': 'entity_memory'
-            }
-            table = table_map.get(memory_type)
-            if table:
-                sql = f"""
-                    UPDATE {table} 
-                    SET access_count = access_count + 1, last_accessed_at = NOW()
-                    WHERE id = %s
-                """
-                self.cursor.execute(sql, (memory_id,))
-                
-            # 更新元数据
-            sql = """
-                UPDATE memory_metadata 
-                SET access_count = access_count + 1, last_accessed_at = NOW(),
-                    importance = LEAST(1.0, importance + %s)
-                WHERE memory_type = %s AND memory_id = %s AND user_id = %s
-            """
-            self.cursor.execute(sql, (self.REINFORCEMENT_BOOST * 0.1, memory_type, memory_id, user_id))
-            self.conn.commit()
+            self._execute_commit(
+                "INSERT INTO memory_access_log (user_id, memory_type, memory_id, access_type) "
+                "VALUES (%s, %s, %s, %s)",
+                (user_id, memory_type, memory_id, access_type)
+            )
         except Exception as e:
-            warning(f"更新访问记录失败: {str(e)}")
-            
-    def _log_access(self, user_id: int, memory_type: str, memory_id: int, access_type: str):
-        """记录访问日志"""
+            warning(f"记录访问日志失败: {e}")
+
+    def apply_curve(self, user_id: int = None) -> Dict[str, int]:
+        """应用遗忘曲线，返回 {forgotten, reinforced}"""
         try:
-            sql = """
-                INSERT INTO memory_access_log (user_id, memory_type, memory_id, access_type)
-                VALUES (%s, %s, %s, %s)
-            """
-            self.cursor.execute(sql, (user_id, memory_type, memory_id, access_type))
-            self.conn.commit()
-        except Exception as e:
-            warning(f"记录访问日志失败: {str(e)}")
-            
-    def apply_forgetting_curve(self, user_id: int = None):
-        """应用遗忘曲线，衰减记忆重要性"""
-        try:
-            # 获取所有记忆元数据
-            sql = """
-                SELECT id, memory_type, memory_id, user_id, importance, 
-                       decay_rate, last_accessed_at, access_count
-                FROM memory_metadata
-                WHERE is_forgotten = FALSE
-            """
+            sql = "SELECT id, memory_type, memory_id, user_id, importance, decay_rate, last_accessed_at, access_count FROM memory_metadata WHERE is_forgotten = FALSE"
             params = []
             if user_id:
                 sql += " AND user_id = %s"
                 params.append(user_id)
-                
-            self.cursor.execute(sql, params)
-            memories = self.cursor.fetchall()
-            
-            forgotten_count = 0
-            reinforced_count = 0
-            
+            memories = self._fetchall(sql, tuple(params) if params else None)
+
+            forgotten = reinforced = 0
             for mem in memories:
-                # 计算时间衰减
-                if mem['last_accessed_at']:
-                    days_since_access = (datetime.now() - mem['last_accessed_at']).total_seconds() / 86400
+                days = (datetime.now() - mem['last_accessed_at']).total_seconds() / 86400 if mem['last_accessed_at'] else 30
+                stability = max(1, mem['access_count'] * 2)
+                retention = float(np.exp(-days / stability))
+                new_imp = mem['importance'] * retention
+
+                if new_imp < self.FORGET_THRESHOLD:
+                    self._execute("UPDATE memory_metadata SET is_forgotten = TRUE, forgotten_at = NOW(), importance = %s WHERE id = %s", (new_imp, mem['id']))
+                    forgotten += 1
                 else:
-                    days_since_access = 30  # 默认 30 天
-                    
-                # 遗忘曲线公式：R = e^(-t/S)
-                # R: 保留率, t: 时间, S: 稳定性
-                stability = max(1, mem['access_count'] * 2)  # 访问次数越多，稳定性越高
-                retention = np.exp(-days_since_access / stability)
-                
-                # 计算新的重要性
-                new_importance = mem['importance'] * retention
-                
-                if new_importance < self.FORGET_THRESHOLD:
-                    # 标记为遗忘
-                    sql = """
-                        UPDATE memory_metadata 
-                        SET is_forgotten = TRUE, forgotten_at = NOW(), importance = %s
-                        WHERE id = %s
-                    """
-                    self.cursor.execute(sql, (new_importance, mem['id']))
-                    forgotten_count += 1
-                else:
-                    # 更新重要性
-                    sql = """
-                        UPDATE memory_metadata 
-                        SET importance = %s
-                        WHERE id = %s
-                    """
-                    self.cursor.execute(sql, (new_importance, mem['id']))
-                    reinforced_count += 1
-                    
+                    self._execute("UPDATE memory_metadata SET importance = %s WHERE id = %s", (new_imp, mem['id']))
+                    reinforced += 1
+
             self.conn.commit()
-            info(f"遗忘曲线应用完成: 遗忘 {forgotten_count} 条, 保留 {reinforced_count} 条")
-            
-            return {'forgotten': forgotten_count, 'reinforced': reinforced_count}
+            info(f"遗忘曲线应用完成: 遗忘 {forgotten} 条, 保留 {reinforced} 条")
+            return {'forgotten': forgotten, 'reinforced': reinforced}
         except Exception as e:
-            error(f"应用遗忘曲线失败: {str(e)}")
+            error(f"应用遗忘曲线失败: {e}")
             self.conn.rollback()
             return {'forgotten': 0, 'reinforced': 0}
-            
-    def reinforce_memory(self, memory_type: str, memory_id: int, user_id: int, boost: float = None):
-        """强化记忆"""
-        if boost is None:
-            boost = self.REINFORCEMENT_BOOST
-            
+
+    def reinforce(self, memory_type: str, memory_id: int, user_id: int,
+                  boost: float = None):
+        boost = boost or self.REINFORCE_BOOST
         try:
-            sql = """
-                UPDATE memory_metadata 
-                SET importance = LEAST(1.0, importance + %s),
-                    reinforcement_count = reinforcement_count + 1,
-                    access_count = access_count + 1,
-                    last_accessed_at = NOW()
-                WHERE memory_type = %s AND memory_id = %s AND user_id = %s
-            """
-            self.cursor.execute(sql, (boost, memory_type, memory_id, user_id))
-            self.conn.commit()
-            
-            self._log_access(user_id, memory_type, memory_id, 'reinforce')
+            self._execute_commit(
+                "UPDATE memory_metadata SET importance = LEAST(1.0, importance + %s), "
+                "reinforcement_count = reinforcement_count + 1, "
+                "access_count = access_count + 1, last_accessed_at = NOW() "
+                "WHERE memory_type = %s AND memory_id = %s AND user_id = %s",
+                (boost, memory_type, memory_id, user_id)
+            )
         except Exception as e:
-            warning(f"强化记忆失败: {str(e)}")
-            
-    # ==========================================
-    # 冲突修正
-    # ==========================================
-    
-    def get_pending_conflicts(self, user_id: int) -> List[Dict]:
-        """获取待解决的冲突"""
+            warning(f"强化记忆失败: {e}")
+
+    def forgotten_count(self, user_id: int) -> int:
+        return self._count('memory_metadata', user_id, "AND is_forgotten = TRUE")
+
+    def cleanup(self, user_id: int = None, days: int = 30) -> int:
+        """清理超过 N 天的遗忘记忆"""
         try:
-            sql = """
-                SELECT mc.*, 
-                       om.subject as old_subject, om.predicate as old_predicate, om.object as old_object,
-                       nm.subject as new_subject, nm.predicate as new_predicate, nm.object as new_object
-                FROM memory_conflicts mc
-                LEFT JOIN semantic_memory om ON mc.old_memory_id = om.id AND mc.old_memory_type = 'semantic'
-                LEFT JOIN semantic_memory nm ON mc.new_memory_id = nm.id AND mc.new_memory_type = 'semantic'
-                WHERE mc.user_id = %s AND mc.resolved = FALSE
-                ORDER BY mc.created_at DESC
-            """
-            self.cursor.execute(sql, (user_id,))
-            return self.cursor.fetchall()
-        except Exception as e:
-            error(f"获取待解决冲突失败: {str(e)}")
-            return []
-            
-    def resolve_conflict(self, conflict_id: int, strategy: str, user_id: int) -> bool:
-        """解决冲突"""
-        try:
-            # 获取冲突信息
-            sql = "SELECT * FROM memory_conflicts WHERE id = %s AND user_id = %s"
-            self.cursor.execute(sql, (conflict_id, user_id))
-            conflict = self.cursor.fetchone()
-            
-            if not conflict:
-                return False
-                
-            resolution_result = {}
-            
-            if strategy == 'keep_old':
-                # 保留旧记忆，删除新记忆
-                self._delete_memory(conflict['new_memory_type'], conflict['new_memory_id'])
-                resolution_result = {'action': 'kept_old', 'deleted_new': conflict['new_memory_id']}
-                
-            elif strategy == 'keep_new':
-                # 保留新记忆，删除旧记忆
-                self._delete_memory(conflict['old_memory_type'], conflict['old_memory_id'])
-                resolution_result = {'action': 'kept_new', 'deleted_old': conflict['old_memory_id']}
-                
-            elif strategy == 'merge':
-                # 合并记忆（保留两者，标记为已验证）
-                self._verify_memory(conflict['old_memory_type'], conflict['old_memory_id'])
-                self._verify_memory(conflict['new_memory_type'], conflict['new_memory_id'])
-                resolution_result = {'action': 'merged', 'verified_both': True}
-                
-            # 更新冲突状态
-            sql = """
-                UPDATE memory_conflicts 
-                SET resolved = TRUE, resolved_at = NOW(), 
-                    resolution_strategy = %s, resolution_result = %s
-                WHERE id = %s
-            """
-            self.cursor.execute(sql, (strategy, json.dumps(resolution_result), conflict_id))
-            self.conn.commit()
-            
-            return True
-        except Exception as e:
-            error(f"解决冲突失败: {str(e)}")
-            self.conn.rollback()
-            return False
-            
-    def _delete_memory(self, memory_type: str, memory_id: int):
-        """删除记忆"""
-        table_map = {
-            'episodic': 'episodic_memory',
-            'semantic': 'semantic_memory',
-            'entity': 'entity_memory'
-        }
-        table = table_map.get(memory_type)
-        if table:
-            sql = f"DELETE FROM {table} WHERE id = %s"
-            self.cursor.execute(sql, (memory_id,))
-            
-            # 删除元数据
-            sql = "DELETE FROM memory_metadata WHERE memory_type = %s AND memory_id = %s"
-            self.cursor.execute(sql, (memory_type, memory_id))
-            
-    def _verify_memory(self, memory_type: str, memory_id: int):
-        """标记记忆为已验证"""
-        if memory_type == 'semantic':
-            sql = "UPDATE semantic_memory SET is_verified = TRUE WHERE id = %s"
-            self.cursor.execute(sql, (memory_id,))
-            
-    # ==========================================
-    # 统计与清理
-    # ==========================================
-    
-    def get_memory_stats(self, user_id: int) -> Dict:
-        """获取记忆统计信息"""
-        try:
-            stats = {}
-            
-            # 短期记忆数量
-            sql = "SELECT COUNT(*) as cnt FROM short_term_memory WHERE user_id = %s"
-            self.cursor.execute(sql, (user_id,))
-            stats['short_term'] = self.cursor.fetchone()['cnt']
-            
-            # 情景记忆数量
-            sql = "SELECT COUNT(*) as cnt FROM episodic_memory WHERE user_id = %s"
-            self.cursor.execute(sql, (user_id,))
-            stats['episodic'] = self.cursor.fetchone()['cnt']
-            
-            # 语义记忆数量
-            sql = "SELECT COUNT(*) as cnt FROM semantic_memory WHERE user_id = %s"
-            self.cursor.execute(sql, (user_id,))
-            stats['semantic'] = self.cursor.fetchone()['cnt']
-            
-            # 实体记忆数量
-            sql = "SELECT COUNT(*) as cnt FROM entity_memory WHERE user_id = %s"
-            self.cursor.execute(sql, (user_id,))
-            stats['entity'] = self.cursor.fetchone()['cnt']
-            
-            # 关系数量
-            sql = "SELECT COUNT(*) as cnt FROM entity_relations WHERE user_id = %s"
-            self.cursor.execute(sql, (user_id,))
-            stats['relations'] = self.cursor.fetchone()['cnt']
-            
-            # 待解决冲突数量
-            sql = "SELECT COUNT(*) as cnt FROM memory_conflicts WHERE user_id = %s AND resolved = FALSE"
-            self.cursor.execute(sql, (user_id,))
-            stats['pending_conflicts'] = self.cursor.fetchone()['cnt']
-            
-            # 已遗忘记忆数量
-            sql = "SELECT COUNT(*) as cnt FROM memory_metadata WHERE user_id = %s AND is_forgotten = TRUE"
-            self.cursor.execute(sql, (user_id,))
-            stats['forgotten'] = self.cursor.fetchone()['cnt']
-            
-            return stats
-        except Exception as e:
-            error(f"获取记忆统计失败: {str(e)}")
-            return {}
-            
-    def cleanup_forgotten_memories(self, user_id: int = None, days: int = 30):
-        """清理已被遗忘超过指定天数的记忆"""
-        try:
-            # 获取要清理的记忆
-            sql = """
-                SELECT memory_type, memory_id 
-                FROM memory_metadata
-                WHERE is_forgotten = TRUE 
-                  AND forgotten_at < DATE_SUB(NOW(), INTERVAL %s DAY)
-            """
-            params = [days]
+            sql = "SELECT memory_type, memory_id FROM memory_metadata WHERE is_forgotten = TRUE AND forgotten_at < DATE_SUB(NOW(), INTERVAL %s DAY)"
+            params: list = [days]
             if user_id:
                 sql += " AND user_id = %s"
                 params.append(user_id)
-                
-            self.cursor.execute(sql, params)
-            to_cleanup = self.cursor.fetchall()
-            
-            deleted_count = 0
-            for mem in to_cleanup:
-                self._delete_memory(mem['memory_type'], mem['memory_id'])
-                deleted_count += 1
-                
+            to_clean = self._fetchall(sql, tuple(params))
+
+            deleted = 0
+            for mem in to_clean:
+                table = self._table_for(mem['memory_type'])
+                self._execute(f"DELETE FROM {table} WHERE id = %s", (mem['memory_id'],))
+                self._execute("DELETE FROM memory_metadata WHERE memory_type = %s AND memory_id = %s",
+                              (mem['memory_type'], mem['memory_id']))
+                deleted += 1
             self.conn.commit()
-            info(f"清理遗忘记忆完成: 删除 {deleted_count} 条")
-            
-            return deleted_count
+            info(f"清理遗忘记忆完成: 删除 {deleted} 条")
+            return deleted
         except Exception as e:
-            error(f"清理遗忘记忆失败: {str(e)}")
+            error(f"清理遗忘记忆失败: {e}")
             self.conn.rollback()
             return 0
+
+
+# ==========================================
+# 冲突修正
+# ==========================================
+
+class ConflictHandler(MemoryDB):
+    """记忆冲突检测与修正"""
+
+    def get_pending(self, user_id: int) -> List[Dict]:
+        return self._fetchall(
+            "SELECT mc.*, "
+            "om.subject as old_subject, om.predicate as old_predicate, om.object as old_object, "
+            "nm.subject as new_subject, nm.predicate as new_predicate, nm.object as new_object "
+            "FROM memory_conflicts mc "
+            "LEFT JOIN semantic_memory om ON mc.old_memory_id = om.id AND mc.old_memory_type = 'semantic' "
+            "LEFT JOIN semantic_memory nm ON mc.new_memory_id = nm.id AND mc.new_memory_type = 'semantic' "
+            "WHERE mc.user_id = %s AND mc.resolved = FALSE ORDER BY mc.created_at DESC",
+            (user_id,)
+        )
+
+    def pending_count(self, user_id: int) -> int:
+        return self._count('memory_conflicts', user_id, "AND resolved = FALSE")
+
+    def resolve(self, conflict_id: int, strategy: str, user_id: int) -> bool:
+        try:
+            conflict = self._fetchone(
+                "SELECT * FROM memory_conflicts WHERE id = %s AND user_id = %s",
+                (conflict_id, user_id)
+            )
+            if not conflict:
+                return False
+
+            result = {}
+            if strategy == 'keep_old':
+                self._delete_memory(conflict['new_memory_type'], conflict['new_memory_id'])
+                result = {'action': 'kept_old'}
+            elif strategy == 'keep_new':
+                self._delete_memory(conflict['old_memory_type'], conflict['old_memory_id'])
+                result = {'action': 'kept_new'}
+            elif strategy == 'merge':
+                self._verify(conflict['old_memory_type'], conflict['old_memory_id'])
+                self._verify(conflict['new_memory_type'], conflict['new_memory_id'])
+                result = {'action': 'merged'}
+
+            self._execute_commit(
+                "UPDATE memory_conflicts SET resolved = TRUE, resolved_at = NOW(), "
+                "resolution_strategy = %s, resolution_result = %s WHERE id = %s",
+                (strategy, json.dumps(result), conflict_id)
+            )
+            return True
+        except Exception as e:
+            error(f"解决冲突失败: {e}")
+            self.conn.rollback()
+            return False
+
+    def _delete_memory(self, memory_type: str, memory_id: int):
+        table = self._table_for(memory_type)
+        self._execute(f"DELETE FROM {table} WHERE id = %s", (memory_id,))
+        self._execute("DELETE FROM memory_metadata WHERE memory_type = %s AND memory_id = %s",
+                      (memory_type, memory_id))
+
+    def _verify(self, memory_type: str, memory_id: int):
+        if memory_type == 'semantic':
+            self._execute("UPDATE semantic_memory SET is_verified = TRUE WHERE id = %s", (memory_id,))
+
+
+# ==========================================
+# 门面类 — 对外统一接口
+# ==========================================
+
+class MemoryService:
+    """记忆管理服务（门面模式）
+
+    用法：
+        with MemoryService() as ms:
+            ms.short_term.add(user_id, session_id, 'user', '你好')
+            facts = ms.semantic.search(user_id, '机器学习')
+    """
+
+    def __init__(self):
+        self._config = get_memory_db_config()
+        self.conn = None
+        self.cursor = None
+
+        # 各 Handler 在 connect() 后初始化
+        self.short_term: ShortTermHandler = None
+        self.episodic:   EpisodicHandler   = None
+        self.semantic:   SemanticHandler   = None
+        self.entity:     EntityHandler     = None
+        self.forgetting: ForgettingHandler = None
+        self.conflict:   ConflictHandler   = None
+
+    # ── 连接管理 ──────────────────────────────
+
+    def connect(self):
+        self.conn   = mysql.connector.connect(**self._config, use_pure=True)
+        self.cursor = self.conn.cursor(dictionary=True)
+        self.short_term = ShortTermHandler(self.conn, self.cursor)
+        self.episodic   = EpisodicHandler(self.conn, self.cursor)
+        self.semantic   = SemanticHandler(self.conn, self.cursor)
+        self.entity     = EntityHandler(self.conn, self.cursor)
+        self.forgetting = ForgettingHandler(self.conn, self.cursor)
+        self.conflict   = ConflictHandler(self.conn, self.cursor)
+
+    def close(self):
+        if self.cursor: self.cursor.close()
+        if self.conn:   self.conn.close()
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    # ── 向后兼容 API（代理到各 Handler）─────────
+
+    def add_short_term(self, user_id, session_id, role, content):
+        mid = self.short_term.add(user_id, session_id, role, content)
+        self.forgetting.log_access(user_id, 'short_term', mid, 'write')
+        return mid
+
+    def get_short_term_context(self, user_id, session_id, max_tokens=None):
+        return self.short_term.get_context(user_id, session_id, max_tokens)
+
+    def add_episodic(self, user_id, episode_type, title, summary, content,
+                     context=None, emotions=None, importance=0.5):
+        mid = self.episodic.add(user_id, episode_type, title, summary, content, context, emotions, importance)
+        self.forgetting.create_metadata('episodic', mid, user_id, importance)
+        self.forgetting.log_access(user_id, 'episodic', mid, 'write')
+        return mid
+
+    def search_episodic(self, user_id, query, limit=5):
+        results = self.episodic.search(user_id, query, limit)
+        for r in results:
+            self.forgetting.update_access('episodic', r['id'], user_id)
+        return results
+
+    def get_recent_episodes(self, user_id, limit=10):
+        return self.episodic.recent(user_id, limit)
+
+    def add_semantic(self, user_id, fact_type, subject, predicate, object_val,
+                     confidence=0.8, source=""):
+        mid = self.semantic.add(user_id, fact_type, subject, predicate, object_val, confidence, source)
+        self.forgetting.create_metadata('semantic', mid, user_id, confidence)
+        self.forgetting.log_access(user_id, 'semantic', mid, 'write')
+        return mid
+
+    def search_semantic(self, user_id, query, fact_type=None, limit=10):
+        results = self.semantic.search(user_id, query, fact_type, limit)
+        for r in results:
+            self.forgetting.update_access('semantic', r['id'], user_id)
+        return results
+
+    def get_facts_by_subject(self, user_id, subject):
+        return self.semantic.get_by_subject(user_id, subject)
+
+    def add_entity(self, user_id, entity_type, entity_name, attributes=None,
+                   description="", entity_alias="", importance=0.5):
+        eid = self.entity.add(user_id, entity_type, entity_name, attributes, description, entity_alias, importance)
+        self.forgetting.create_metadata('entity', eid, user_id, importance)
+        self.forgetting.log_access(user_id, 'entity', eid, 'write')
+        return eid
+
+    def add_relation(self, user_id, source_id, target_id, relation_type,
+                     label="", weight=1.0, context=""):
+        rid = self.entity.add_relation(user_id, source_id, target_id, relation_type, label, weight, context)
+        self.forgetting.create_metadata('relation', rid, user_id, weight)
+        return rid
+
+    def search_entities(self, user_id, query, entity_type=None, limit=10):
+        results = self.entity.search(user_id, query, entity_type, limit)
+        for r in results:
+            self.forgetting.update_access('entity', r['id'], user_id)
+        return results
+
+    def get_entity_relations(self, user_id, entity_id, direction='both'):
+        return self.entity.get_relations(user_id, entity_id, direction)
+
+    def get_entity_graph(self, user_id, center_id, depth=2):
+        return self.entity.get_graph(user_id, center_id, depth)
+
+    def apply_forgetting_curve(self, user_id=None):
+        return self.forgetting.apply_curve(user_id)
+
+    def reinforce_memory(self, memory_type, memory_id, user_id, boost=None):
+        self.forgetting.reinforce(memory_type, memory_id, user_id, boost)
+        self.forgetting.log_access(user_id, memory_type, memory_id, 'reinforce')
+
+    def get_pending_conflicts(self, user_id):
+        return self.conflict.get_pending(user_id)
+
+    def resolve_conflict(self, conflict_id, strategy, user_id):
+        return self.conflict.resolve(conflict_id, strategy, user_id)
+
+    def get_memory_stats(self, user_id: int) -> Dict:
+        try:
+            return {
+                'short_term':        self.short_term.count(user_id),
+                'episodic':          self.episodic.count(user_id),
+                'semantic':          self.semantic.count(user_id),
+                'entity':            self.entity.count(user_id),
+                'relations':         self.entity.relation_count(user_id),
+                'pending_conflicts': self.conflict.pending_count(user_id),
+                'forgotten':         self.forgetting.forgotten_count(user_id),
+            }
+        except Exception as e:
+            error(f"获取记忆统计失败: {e}")
+            return {}
+
+    def cleanup_forgotten_memories(self, user_id=None, days=30):
+        return self.forgetting.cleanup(user_id, days)
 
 
 # 全局单例

@@ -92,10 +92,10 @@ def test_memory_system():
         if "Python" in entity_ids and "机器学习" in entity_ids:
             rel_id = ms.add_relation(
                 user_id=user_id,
-                source_entity_id=entity_ids["Python"],
-                target_entity_id=entity_ids["机器学习"],
+                source_id=entity_ids["Python"],
+                target_id=entity_ids["机器学习"],
                 relation_type="used_for",
-                relation_label="用于实现"
+                label="用于实现"
             )
             print(f"  ✅ 实体关系: Python -> 机器学习 (ID: {rel_id})")
             

@@ -6,7 +6,7 @@
 import json
 import re
 from typing import List, Dict, Any, Optional
-from services.memory_service import memory_service, SemanticMemory, EntityMemory, EpisodicMemory
+from services.memory_service import memory_service
 from core.logger import info, error, warning
 
 
