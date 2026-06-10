@@ -8,6 +8,7 @@ echo   AI Learning Agent - Starting...
 echo ========================================
 if not exist "%ROOT%.venv\Scripts\python.exe" (
     echo [ERROR] .venv not found
+    echo        Run setup.bat first to configure the environment
     pause
     exit /b 1
 )
