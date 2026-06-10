@@ -21,7 +21,6 @@ from slowapi.errors import RateLimitExceeded
 from backend.api.auth import router as auth_router
 from backend.api.agent import router as agent_router
 from backend.api.stream import router as stream_router
-from backend.api.memory import router as memory_router
 
 from core.logger import info, error as log_error
 
@@ -85,7 +84,6 @@ app.add_middleware(
 # 核心功能 - 多智能体系统
 app.include_router(agent_router, prefix="/api", tags=["🎯 学习智能体 (核心)"])
 app.include_router(stream_router, prefix="/api/stream", tags=["⚡ 流式输出与安全 (核心)"])
-app.include_router(memory_router, prefix="/api", tags=["🧠 记忆系统 (核心)"])
 
 # 基础功能
 app.include_router(auth_router, prefix="/api/auth", tags=["🔐 认证"])
