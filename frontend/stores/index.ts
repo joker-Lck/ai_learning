@@ -36,10 +36,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('is_guest');
     set({ user: null, token: null, isLoggedIn: false, isGuest: false });
   },
 
   setGuest: () => {
+    localStorage.setItem('is_guest', 'true');
     set({
       user: { id: 0, username: '游客', role: 'guest' },
       token: null,
@@ -49,6 +51,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   restoreAuth: () => {
+    const isGuest = localStorage.getItem('is_guest') === 'true';
+    if (isGuest) {
+      set({
+        user: { id: 0, username: '游客', role: 'guest' },
+        token: null,
+        isLoggedIn: true,
+        isGuest: true,
+      });
+      return;
+    }
     const token = localStorage.getItem('auth_token');
     if (token) {
       set({

@@ -177,11 +177,8 @@ export default function LoginPage() {
 
   const handleGuest = async () => {
     setLoading(true);
-    try {
-      const res: any = await api.guestLogin();
-      if (res.token) api.setToken(res.token);
-      setGuest();
-    } catch { setGuest(); }
+    // 游客模式不调用后端 API，纯前端本地状态
+    setGuest();
     window.location.href = '/dashboard';
   };
 
