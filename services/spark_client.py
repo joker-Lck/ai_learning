@@ -173,10 +173,165 @@ class SparkClient:
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
     ) -> str:
-        """多模态调用 — 发送图片 + 文本，支持单张或多张图片"""
+        """
+        多模态调用 — 讯飞星火图片理解 API
+        使用 WebSocket 协议: wss://spark-api.cn-huabei-1.xf-yun.com/v2.1/image
+        """
+        try:
+            import websocket
+            import hashlib
+            import hmac
+            import base64
+            from datetime import datetime, timezone
+            from urllib.parse import urlencode, urlparse
+            
+            images = [image_b64] if isinstance(image_b64, str) else image_b64
+            info(f"讯飞图片理解: prompt={prompt[:50]}..., 图片数量={len(images)}")
+            
+            app_id = os.getenv("SPARK_APPID", "")
+            api_key = os.getenv("SPARK_API_KEY", "")
+            api_secret = os.getenv("SPARK_API_SECRET", "")
+            
+            if not app_id or not api_key or not api_secret:
+                error("讯飞图片理解 API 配置不完整（需要 APPID/APIKey/APISecret）")
+                return f"错误: API 配置不完整"
+            
+            # 构建鉴权 URL
+            ws_url = "wss://spark-api.cn-huabei-1.xf-yun.com/v2.1/image"
+            parsed = urlparse(ws_url)
+            host = parsed.hostname
+            path = parsed.path
+            
+            now = datetime.now(timezone.utc)
+            date = now.strftime('%a, %d %b %Y %H:%M:%S GMT')
+            
+            # 构建签名原始字符串
+            signature_origin = f"host: {host}\ndate: {date}\nGET {path} HTTP/1.1"
+            
+            # HMAC-SHA256 签名
+            signature_sha = hmac.new(
+                api_secret.encode('utf-8'),
+                signature_origin.encode('utf-8'),
+                digestmod=hashlib.sha256
+            ).digest()
+            signature_sha_base64 = base64.b64encode(signature_sha).decode('utf-8')
+            
+            # 构建 authorization_origin
+            authorization_origin = f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha_base64}"'
+            authorization = base64.b64encode(authorization_origin.encode('utf-8')).decode('utf-8')
+            
+            # 构建完整 URL
+            params = {
+                "authorization": authorization,
+                "date": date,
+                "host": host
+            }
+            full_url = f"{ws_url}?{urlencode(params)}"
+            
+            # 构建请求消息
+            # 将图片转为 URL 格式（data:image/jpeg;base64,...）
+            image_urls = []
+            for img in images:
+                if img.startswith('data:'):
+                    image_urls.append(img)
+                else:
+                    image_urls.append(f"data:image/jpeg;base64,{img}")
+            
+            # 构建用户消息
+            user_content = []
+            for img_url in image_urls:
+                user_content.append({"role": "user", "content": img_url})
+            user_content.append({"role": "user", "content": prompt})
+            
+            request_data = {
+                "header": {
+                    "app_id": app_id,
+                    "uid": "user_001"
+                },
+                "parameter": {
+                    "chat": {
+                        "domain": "image",
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                        "top_k": 4,
+                        "auditing": "default"
+                    }
+                },
+                "payload": {
+                    "message": {
+                        "text": user_content
+                    }
+                }
+            }
+            
+            # WebSocket 调用
+            result_text = []
+            
+            def on_message(ws, message):
+                try:
+                    data = json.loads(message)
+                    if data.get("header", {}).get("code") != 0:
+                        error(f"讯飞图片理解错误: {data.get('header', {}).get('message', '未知错误')}")
+                        ws.close()
+                        return
+                    
+                    text = data.get("payload", {}).get("choices", {}).get("text", [])
+                    for item in text:
+                        if item.get("content"):
+                            result_text.append(item["content"])
+                    
+                    if data.get("header", {}).get("status") == 2:
+                        ws.close()
+                except Exception as e:
+                    error(f"解析消息失败: {e}")
+                    ws.close()
+            
+            def on_error(ws, error):
+                error(f"WebSocket 错误: {error}")
+            
+            def on_close(ws, close_status_code, close_msg):
+                pass
+            
+            def on_open(ws):
+                ws.send(json.dumps(request_data))
+            
+            ws = websocket.WebSocketApp(
+                full_url,
+                on_message=on_message,
+                on_error=on_error,
+                on_close=on_close,
+                on_open=on_open
+            )
+            
+            ws.run_forever(ping_timeout=30)
+            
+            result = "".join(result_text)
+            if not result:
+                warning("讯飞图片理解返回空结果")
+                return ""
+            
+            info(f"讯飞图片理解成功: {len(result)} 字符")
+            return result
+            
+        except ImportError:
+            warning("websocket-client 未安装，降级到 HTTP API")
+            return self._chat_with_image_http(prompt, image_b64, model, max_tokens, temperature, system_prompt)
+        except Exception as e:
+            error(f"讯飞图片理解失败: {e}")
+            return self._chat_with_image_http(prompt, image_b64, model, max_tokens, temperature, system_prompt)
+
+    def _chat_with_image_http(
+        self,
+        prompt: str,
+        image_b64: str | List[str],
+        model: str = MODEL_VISION,
+        max_tokens: int = 4000,
+        temperature: float = 0.3,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        """HTTP 降级方案 — 使用 OpenAI 兼容接口"""
         try:
             images = [image_b64] if isinstance(image_b64, str) else image_b64
-            info(f"多模态调用: model={model}, 图片数量={len(images)}")
             messages: List[Dict] = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
@@ -184,10 +339,6 @@ class SparkClient:
             for img in images:
                 content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}})
             messages.append({"role": "user", "content": content_parts})
-            
-            # 讯飞推理模型只允许 temperature=1
-            if "Ultra" in model or "ultra" in model.lower():
-                temperature = 1
             
             response = self.client.chat.completions.create(
                 model=model,
@@ -199,7 +350,6 @@ class SparkClient:
             content = msg.content or ""
             if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
                 reasoning = msg.reasoning_content
-                info(f"讯飞推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
                 import re
                 json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', reasoning, re.DOTALL)
                 if json_matches:
@@ -213,7 +363,7 @@ class SparkClient:
                         content = lines[-1] if lines else ""
             return content
         except Exception as e:
-            error(f"讯飞多模态调用失败 (model={model}): {type(e).__name__}: {e}")
+            error(f"HTTP 降级调用失败: {e}")
             return f"错误: {e}"
 
     def chat_stream(
