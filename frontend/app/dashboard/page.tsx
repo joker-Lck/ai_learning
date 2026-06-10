@@ -9,7 +9,7 @@ import DashboardContent from '@/components/DashboardContent';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isLoggedIn, restoreAuth } = useAuthStore();
+  const { isLoggedIn, isGuest, restoreAuth } = useAuthStore();
   const { sidebarOpen } = useUIStore();
   const [hydrated, setHydrated] = useState(false);
 
@@ -19,12 +19,12 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (hydrated && !isLoggedIn) {
+    if (hydrated && !isLoggedIn && !isGuest) {
       router.push('/');
     }
-  }, [hydrated, isLoggedIn, router]);
+  }, [hydrated, isLoggedIn, isGuest, router]);
 
-  if (!hydrated || !isLoggedIn) return null;
+  if (!hydrated || (!isLoggedIn && !isGuest)) return null;
 
   return (
     <div className="flex min-h-screen" style={{ background: '#060d1f' }}>
