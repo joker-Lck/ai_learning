@@ -244,7 +244,12 @@ class ResourceAgent:
         try:
             response = qa_service.call_ai(prompt, max_tokens=2000)
             doc_data = safe_parse_json(response)
-            
+
+            # 如果解析失败，返回 None
+            if not doc_data or not isinstance(doc_data, dict):
+                warning(f"AI 返回的文档数据无效")
+                return None
+
             # 添加引用标注
             if doc_data.get("references"):
                 sources = [{"title": ref} for ref in doc_data["references"]]
@@ -252,7 +257,7 @@ class ResourceAgent:
                     json.dumps(doc_data["sections"], ensure_ascii=False),
                     sources
                 )
-            
+
             return {
                 "type": "document",
                 "title": doc_data.get("title", f"{topic}讲解文档"),
@@ -316,7 +321,12 @@ class ResourceAgent:
         try:
             response = qa_service.call_ai(prompt, max_tokens=2000)
             mindmap_data = safe_parse_json(response)
-            
+
+            # 如果解析失败，返回 None
+            if not mindmap_data or not isinstance(mindmap_data, dict):
+                warning(f"AI 返回的思维导图数据无效")
+                return None
+
             return {
                 "type": "mindmap",
                 "title": mindmap_data.get("title", f"{topic}思维导图"),
@@ -371,7 +381,12 @@ class ResourceAgent:
         try:
             response = qa_service.call_ai(prompt, max_tokens=2500)
             quiz_data = safe_parse_json(response)
-            
+
+            # 如果解析失败，返回 None
+            if not quiz_data or not isinstance(quiz_data, dict):
+                warning(f"AI 返回的题库数据无效")
+                return None
+
             return {
                 "type": "quiz",
                 "title": quiz_data.get("title", f"{topic}练习题"),
@@ -502,7 +517,12 @@ class ResourceAgent:
         try:
             response = qa_service.call_ai(prompt, max_tokens=2500)
             code_data = safe_parse_json(response)
-            
+
+            # 如果解析失败，返回 None
+            if not code_data or not isinstance(code_data, dict):
+                warning(f"AI 返回的代码案例数据无效")
+                return None
+
             return {
                 "type": "code_case",
                 "title": code_data.get("title", f"{topic}代码案例"),
@@ -550,7 +570,12 @@ class ResourceAgent:
         try:
             response = qa_service.call_ai(prompt, max_tokens=1800)
             reading_data = safe_parse_json(response)
-            
+
+            # 如果解析失败，返回 None
+            if not reading_data or not isinstance(reading_data, dict):
+                warning(f"AI 返回的阅读材料数据无效")
+                return None
+
             # 添加引用
             if reading_data.get("references"):
                 sources = [{"title": ref} for ref in reading_data["references"]]

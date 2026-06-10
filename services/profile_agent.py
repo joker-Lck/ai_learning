@@ -176,10 +176,15 @@ class ProfileAgent:
         try:
             # 调用大模型提取特征
             response = qa_service.call_ai(prompt, max_tokens=3000)
-            
+
             # 解析JSON响应
             profile_data = safe_parse_json(response)
-            
+
+            # 如果解析失败，使用降级方案
+            if not profile_data or not isinstance(profile_data, dict):
+                warning(f"AI 返回的画像数据无效，使用降级方案")
+                return self._fallback_extract(basic_info, existing_profile)
+
             # 合并到现有画像
             if existing_profile:
                 for key, value in profile_data.items():
@@ -188,7 +193,7 @@ class ProfileAgent:
                 return existing_profile
             else:
                 return profile_data
-                
+
         except Exception as e:
             error(f"AI提取画像特征失败: {str(e)}")
             # 降级:使用基本信息填充
