@@ -153,10 +153,12 @@ export default function LoginPage() {
       if (res.success && res.user) {
         api.setToken(res.token);
         login(res.user, res.token);
+        // 不关闭 loading，保持动画直到页面跳转
         window.location.href = '/dashboard';
+        return;
       } else { setError(res.message || '登录失败'); }
     } catch (err: any) { setError(err.message || '网络错误'); }
-    finally { setLoading(false); }
+    setLoading(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -174,11 +176,13 @@ export default function LoginPage() {
   };
 
   const handleGuest = async () => {
+    setLoading(true);
     try {
       const res: any = await api.guestLogin();
       if (res.token) api.setToken(res.token);
-      setGuest(); window.location.href = '/dashboard';
-    } catch { setGuest(); window.location.href = '/dashboard'; }
+      setGuest();
+    } catch { setGuest(); }
+    window.location.href = '/dashboard';
   };
 
   return (
@@ -401,17 +405,23 @@ export default function LoginPage() {
                   <motion.button
                     type="button"
                     onClick={handleGuest}
+                    disabled={loading}
                     className="
                       w-full py-3 rounded-xl
                       border border-white/[0.08] bg-white/[0.02]
                       text-white/40 text-sm
                       flex items-center justify-center gap-2
+                      disabled:opacity-40
                     "
                     whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.04)' }}
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                   >
-                    游客模式体验
+                    {loading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      '游客模式体验'
+                    )}
                   </motion.button>
                 </motion.form>
               ) : (
