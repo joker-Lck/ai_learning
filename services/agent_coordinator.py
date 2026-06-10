@@ -260,7 +260,7 @@ class AgentCoordinator:
         ctx.add_participant(AgentRole.PATH)
         ctx.log_message(msg)
 
-        response = message_bus.request(msg, timeout=30)
+        response = message_bus.request(msg, timeout=90)
         if response:
             ctx.log_message(response)
             ctx.set_result("path", response.payload)
@@ -282,7 +282,7 @@ class AgentCoordinator:
         ctx.add_participant(AgentRole.TUTOR)
         ctx.log_message(msg)
 
-        response = message_bus.request(msg, timeout=30)
+        response = message_bus.request(msg, timeout=90)
         if response:
             ctx.log_message(response)
             ctx.set_result("tutor_answer", response.payload)

@@ -124,15 +124,20 @@ class PathAgent:
         try:
             response = qa_service.call_ai(prompt, max_tokens=2000)
             path_data = safe_parse_json(response)
-            
+
+            # 如果解析失败，使用降级方案
+            if not path_data or not isinstance(path_data, dict):
+                warning(f"AI 返回的学习路径数据无效，使用降级方案")
+                return self._fallback_path(resources)
+
             # 添加元数据
             path_data["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             path_data["status"] = "active"
             path_data["current_step"] = 1
             path_data["completed_steps"] = 0
-            
+
             return path_data
-            
+
         except Exception as e:
             error(f"AI生成学习路径失败: {str(e)}")
             # 降级方案:简单线性路径
