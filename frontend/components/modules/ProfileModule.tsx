@@ -376,63 +376,21 @@ function SemesterSelector({ current, semesters, onChange }: { current: string; s
 // ==================== 画像 Tab ====================
 
 function ProfileTabContent(props: ProfileModuleProps) {
-  const { profileData, profileLoading, currentStep, currentDimension, currentChat, handleSendMessage, goToPreviousStep, goToNextStep, dimensionChats } = props;
-  if (profileData) return <ProfileEditView profileData={profileData} onUpdate={props.handleUpdateProfileField} />;
+  const { profileData } = props;
 
-  return (
-    <div className="space-y-4">
-      <div className="glass-card rounded-xl p-3">
-        <div className="flex items-center justify-between">
-          {PROFILE_DIMENSIONS.map((dim, idx) => {
-            const Icon = dim.icon;
-            const done = dimensionChats[dim.id]?.completed;
-            const cur = idx === currentStep;
-            return (
-              <div key={dim.id} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${done ? 'bg-cyan-500 text-white' : cur ? `bg-gradient-to-r ${dim.color} text-white` : 'bg-white/[0.08] text-white/30'}`}>
-                  {done ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
-                </div>
-                {idx < PROFILE_DIMENSIONS.length - 1 && <div className={`w-4 h-0.5 mx-1 ${done ? 'bg-cyan-500' : 'bg-white/[0.08]'}`} />}
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex justify-between mt-1 text-xs text-white/30">
-          {PROFILE_DIMENSIONS.map((dim, idx) => <span key={dim.id} className={idx === currentStep ? 'font-semibold text-white' : ''}>{dim.title}</span>)}
-        </div>
-      </div>
-      <div className="glass-card rounded-xl overflow-hidden">
-        <div className={`p-3 border-b border-white/[0.06] bg-gradient-to-r ${currentDimension.color} text-white`}>
-          <div className="flex items-center gap-2">
-            <currentDimension.icon className="w-5 h-5" /><h4 className="font-bold">{currentDimension.title}</h4>
-            <span className="text-xs opacity-80 ml-auto">步骤 {currentStep + 1}/{PROFILE_DIMENSIONS.length}</span>
-          </div>
-        </div>
-        <div className="h-64 overflow-y-auto p-4 space-y-3">
-          {currentChat.messages.map((msg: any, idx: number) => (
-            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${msg.role === 'user' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'bg-white/[0.06] text-white/80'}`}>{msg.content}</div>
-            </div>
-          ))}
-          {profileLoading && <div className="flex justify-start"><div className="bg-white/[0.06] rounded-xl px-3 py-2"><Loader2 className="w-4 h-4 animate-spin text-cyan-400" /></div></div>}
-        </div>
-        <div className="p-3 border-t border-white/[0.06]">
-          <div className="flex gap-2">
-            <input id="profile-input" type="text" onKeyPress={e => e.key === 'Enter' && handleSendMessage()} placeholder={currentDimension.placeholder}
-              className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none text-sm" disabled={profileLoading} />
-            <button onClick={handleSendMessage} disabled={profileLoading}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
-              {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} 发送
-            </button>
-          </div>
-          <div className="flex justify-between mt-2">
-            <button onClick={goToPreviousStep} disabled={currentStep === 0} className="px-3 py-1 text-sm text-white/40 hover:bg-white/[0.04] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"><ChevronLeft className="w-4 h-4" /> 上一步</button>
-            <button onClick={goToNextStep} disabled={currentStep === PROFILE_DIMENSIONS.length - 1} className="px-3 py-1 text-sm text-white/40 hover:bg-white/[0.04] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">下一步 <ChevronRight className="w-4 h-4" /></button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  // 始终显示卡片式编辑界面（删除旧的问答式界面）
+  const emptyProfile: ProfileData = profileData || {
+    major: '',
+    grade_level: '',
+    cognitive_style: '',
+    knowledge_base: null,
+    learning_goals: [],
+    interest_areas: [],
+    weak_points: [],
+    preferred_resources: [],
+  };
+
+  return <ProfileEditView profileData={emptyProfile} onUpdate={props.handleUpdateProfileField} />;
 }
 
 // ==================== 画像编辑 ====================
