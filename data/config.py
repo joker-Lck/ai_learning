@@ -107,6 +107,18 @@ def get_rag_db_config():
     }
 
 
+def get_memory_db_config():
+    """获取记忆系统配置"""
+    return {
+        'host': os.getenv('MEMORY_DB_HOST', 'localhost'),
+        'port': int(os.getenv('MEMORY_DB_PORT', '3306')),
+        'user': os.getenv('MEMORY_DB_USER', 'root'),
+        'password': os.getenv('MEMORY_DB_PASSWORD', ''),
+        'database': os.getenv('MEMORY_DB_NAME', 'ai_memory'),
+        'charset': 'utf8mb4'
+    }
+
+
 # ==================== 向后兼容函数 ====================
 
 def get_db_config():
@@ -133,6 +145,7 @@ def get_connection_string(db_type='auth'):
         'assessments': get_assessments_db_config,
         'agents': get_agents_db_config,
         'rag': get_rag_db_config,
+        'memory': get_memory_db_config,
     }
     
     config_func = config_funcs.get(db_type, get_auth_db_config)

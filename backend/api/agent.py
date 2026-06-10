@@ -2,7 +2,7 @@
 学习智能体 API - 多智能体系统接口
 包括学生画像、资源生成、路径规划、智能辅导、效果评估
 """
-from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
 from typing import Dict, List, Optional, Any
 from backend.schemas.models import BaseResponse
@@ -177,13 +177,14 @@ async def tutor_query(
     user: dict = Depends(get_current_user)  # 允许guest用户
 ):
     """
-    智能辅导答疑 - 多模态解答
+    智能辅导答疑 - 多模态解答（记忆增强版）
 
     输入格式:
     {
         "question": "问题内容",
         "subject": "学科",
-        "preferred_format": "text/diagram/video/all"
+        "preferred_format": "text/diagram/video/all",
+        "session_id": "会话ID（可选）"
     }
     """
     try:
@@ -194,11 +195,9 @@ async def tutor_query(
         if not input_data.get("question"):
             return JSONResponse(content={"success": False, "message": "问题内容不能为空", "data": None})
 
-        result = agent_coordinator.execute_task(
-            task_type="tutor_query",
-            user_id=user_id,
-            input_data=input_data
-        )
+        # 使用记忆增强型辅导服务
+        from services.memory_enhanced_tutor import memory_enhanced_tutor
+        result = memory_enhanced_tutor.answer_with_memory(user_id, input_data)
 
         info(f"辅导结果 - success: {result.get('success')}, 数据大小: {len(str(result.get('data', '')))} 字符")
 
@@ -225,6 +224,49 @@ async def tutor_query(
             status_code=500,
             content={"success": False, "message": f"辅导失败: {str(e)}", "data": None}
         )
+
+
+@router.get("/knowledge-map")
+async def get_knowledge_map(
+    user: dict = Depends(get_current_user)
+):
+    """获取用户知识图谱"""
+    try:
+        from services.memory_enhanced_tutor import memory_enhanced_tutor
+        knowledge_map = memory_enhanced_tutor.get_user_knowledge_map(user['id'])
+        return {"success": True, "data": knowledge_map}
+    except Exception as e:
+        error(f"获取知识图谱失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning-recommendations")
+async def get_learning_recommendations(
+    subject: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user)
+):
+    """获取基于记忆的学习推荐"""
+    try:
+        from services.memory_enhanced_tutor import memory_enhanced_tutor
+        recommendations = memory_enhanced_tutor.get_learning_recommendations(user['id'], subject)
+        return {"success": True, "data": {"recommendations": recommendations}}
+    except Exception as e:
+        error(f"获取学习推荐失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/memory/maintenance")
+async def apply_memory_maintenance(
+    user: dict = Depends(require_auth)
+):
+    """应用记忆维护（遗忘曲线、清理等）"""
+    try:
+        from services.memory_enhanced_tutor import memory_enhanced_tutor
+        result = memory_enhanced_tutor.apply_memory_maintenance(user['id'])
+        return {"success": True, "data": result}
+    except Exception as e:
+        error(f"记忆维护失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/assess", response_model=BaseResponse)

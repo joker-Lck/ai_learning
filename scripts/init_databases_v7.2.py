@@ -12,7 +12,8 @@ from data.config import (
     get_tutor_db_config,
     get_assessments_db_config,
     get_agents_db_config,
-    get_rag_db_config
+    get_rag_db_config,
+    get_memory_db_config
 )
 
 def create_database(config, db_name):
@@ -635,6 +636,7 @@ def main():
         (get_assessments_db_config(), 'ai_assessments'),
         (get_agents_db_config(), 'ai_agents'),
         (get_rag_db_config(), 'ai_rag_knowledge'),
+        (get_memory_db_config(), 'ai_memory'),
     ]
     
     print("\n📊 创建数据库...")
@@ -651,6 +653,10 @@ def main():
     init_agents_database()
     init_rag_database()
     
+    # 初始化记忆系统数据库
+    from init_memory_db import init_memory_tables
+    init_memory_tables()
+
     print("\n" + "=" * 60)
     print(" 所有数据库初始化完成!")
     print("=" * 60)
@@ -663,6 +669,7 @@ def main():
     print("  6. ai_assessments - 学习效果评估")
     print("  7. ai_agents - 智能体协作")
     print("  8. ai_rag_knowledge - RAG知识库")
+    print("  9. ai_memory - 记忆系统")
 
 if __name__ == "__main__":
     main()

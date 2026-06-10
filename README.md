@@ -91,6 +91,15 @@
 - **weaknesses** - 劣势列表
 - **motivation** - 学习动机
 
+### 5. 无限长时记忆架构
+
+- **短期记忆** - Token 级上下文窗口，自动保存对话历史
+- **情景记忆** - 对话事件和学习场景，按重要性衰减
+- **语义记忆** - SPO 三元组事实知识，支持冲突检测与修正
+- **实体记忆** - KV 画像存储 + 知识图谱关系
+- **遗忘机制** - 基于艾宾浩斯遗忘曲线的智能衰减
+- **记忆增强问答** - 自动检索相关记忆，构建增强上下文
+
 ---
 
 ## 快速开始
@@ -311,6 +320,51 @@ CREATE TABLE knowledge_documents (
     file_path VARCHAR(500),
     metadata JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### 4. ai_memory (记忆系统)
+
+```sql
+-- 短期记忆：Token 级上下文窗口
+CREATE TABLE short_term_memory (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    session_id VARCHAR(64) NOT NULL,
+    role ENUM('user', 'assistant', 'system') NOT NULL,
+    content TEXT NOT NULL,
+    token_count INT DEFAULT 0
+);
+
+-- 语义记忆：SPO 三元组事实知识
+CREATE TABLE semantic_memory (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    fact_type ENUM('preference', 'knowledge', 'skill', 'habit', 'goal', 'constraint'),
+    subject VARCHAR(255) NOT NULL,
+    predicate VARCHAR(255) NOT NULL,
+    object TEXT NOT NULL,
+    confidence FLOAT DEFAULT 0.8
+);
+
+-- 实体记忆：KV 画像 + 知识图谱
+CREATE TABLE entity_memory (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    entity_type ENUM('person', 'concept', 'skill', 'course', 'tool', 'organization'),
+    entity_name VARCHAR(255) NOT NULL,
+    attributes JSON,
+    description TEXT
+);
+
+-- 记忆元数据：遗忘机制控制
+CREATE TABLE memory_metadata (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    memory_type ENUM('short_term', 'episodic', 'semantic', 'entity', 'relation'),
+    memory_id BIGINT NOT NULL,
+    importance FLOAT DEFAULT 0.5,
+    decay_rate FLOAT DEFAULT 0.1,
+    is_forgotten BOOLEAN DEFAULT FALSE
 );
 ```
 
@@ -1288,6 +1342,7 @@ def search_similar_questions(self, question_text, limit=5):
 │   ├── api/
 │   │   ├── agent.py     # ⭐ 多智能体API
 │   │   ├── stream.py    # ⭐ 流式输出
+│   │   ├── memory.py    # ⭐ 记忆系统API
 │   │   └── auth.py      # 认证API
 │   └── main.py
 │
@@ -1298,6 +1353,9 @@ def search_similar_questions(self, question_text, limit=5):
 │   ├── path_agent.py         # ⭐ 路径智能体
 │   ├── tutor_agent.py        # ⭐ 辅导智能体
 │   ├── assessment_agent.py   # ⭐ 评估智能体
+│   ├── memory_service.py     # ⭐ 记忆管理服务
+│   ├── memory_extractor.py   # ⭐ 记忆提取服务
+│   ├── memory_enhanced_tutor.py  # ⭐ 记忆增强辅导
 │   ├── content_safety_service.py  # ⭐ 内容安全
 │   └── streaming_service.py     # ⭐ 流式输出
 │
@@ -1315,7 +1373,9 @@ def search_similar_questions(self, question_text, limit=5):
 │   ├── init_databases_v7.2.py  # 多数据库初始化
 │   ├── init_admin.py           # 管理员初始化
 │   ├── init_rag_db.py          # RAG知识库初始化
-│   └── import_pdf_to_rag.py    # PDF导入知识库
+│   ├── init_memory_db.py       # 记忆系统初始化
+│   ├── import_pdf_to_rag.py    # PDF导入知识库
+│   └── test_memory.py          # 记忆系统测试
 │
 ├── resources/              # RAG知识库文件（PDF等）
 ├── .env.example            # 环境变量示例
