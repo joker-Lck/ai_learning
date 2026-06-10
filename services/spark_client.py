@@ -11,6 +11,11 @@
 """
 
 import os
+import hashlib
+import hmac
+import base64
+import json
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Generator
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -25,6 +30,32 @@ MODEL_STANDARD = os.getenv("SPARK_MODEL_STANDARD", "generalv3.5")    # 标准任
 MODEL_ADVANCED = os.getenv("SPARK_MODEL_ADVANCED", "4.0Ultra")       # 复杂推理
 MODEL_ULTRA    = os.getenv("SPARK_MODEL_ULTRA", "4.0Ultra")          # 最强推理
 MODEL_VISION   = os.getenv("SPARK_MODEL_VISION", "generalv3.5")      # 图片多模态
+
+
+def _generate_spark_token(api_key: str, api_secret: str) -> str:
+    """生成讯飞星火 OpenAI 兼容接口的 Bearer Token"""
+    # 构建鉴权参数
+    now = datetime.now(timezone.utc)
+    date = now.strftime('%a, %d %b %Y %H:%M:%S GMT')
+    
+    # 拼接签名原始字符串
+    signature_origin = f"host: spark-api-open.xf-yun.com\ndate: {date}\nGET /v1/chat/completions HTTP/1.1"
+    
+    # HMAC-SHA256 签名
+    signature_sha = hmac.new(
+        api_secret.encode('utf-8'),
+        signature_origin.encode('utf-8'),
+        digestmod=hashlib.sha256
+    ).digest()
+    signature_sha_base64 = base64.b64encode(signature_sha).decode('utf-8')
+    
+    # 构建 authorization_origin
+    authorization_origin = f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha_base64}"'
+    
+    # Base64 编码
+    authorization = base64.b64encode(authorization_origin.encode('utf-8')).decode('utf-8')
+    
+    return authorization
 
 
 class SparkClient:
@@ -42,13 +73,19 @@ class SparkClient:
     def client(self):
         if self._client is None:
             api_key = os.getenv("SPARK_API_KEY", "")
+            api_secret = os.getenv("SPARK_API_SECRET", "")
             base_url = os.getenv("SPARK_BASE_URL", "https://spark-api-open.xf-yun.com/v1")
+            
             if not api_key:
                 raise RuntimeError(
                     "SPARK_API_KEY 未配置，请在 .env 文件中设置。参考 .env.example"
                 )
+            
+            # 生成鉴权 Token
+            token = _generate_spark_token(api_key, api_secret) if api_secret else api_key
+            
             self._client = OpenAI(
-                api_key=api_key,
+                api_key=token,
                 base_url=base_url,
                 timeout=httpx.Timeout(90.0, connect=15.0),
                 max_retries=3,
