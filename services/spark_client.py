@@ -100,13 +100,23 @@ class KimiClient:
             if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
                 reasoning = msg.reasoning_content
                 info(f"k2.x 推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
-                # 尝试从推理过程中提取 JSON 或最后一段
+                # 尝试从推理过程中提取 JSON
                 import re
-                json_match = re.search(r'\[.*\]|\{.*\}', reasoning, re.DOTALL)
-                if json_match:
-                    content = json_match.group(0)
+                # 1. 尝试提取完整的 JSON 对象或数组
+                # 使用非贪婪匹配，从最后一个 } 或 ] 开始
+                json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', reasoning, re.DOTALL)
+                if json_matches:
+                    # 取最后一个匹配的 JSON（通常是最终答案）
+                    content = json_matches[-1]
                 else:
-                    content = reasoning.strip().split('\n')[-1]
+                    # 2. 尝试更宽松的匹配
+                    json_match = re.search(r'\{[\s\S]*\}|\[[\s\S]*\]', reasoning)
+                    if json_match:
+                        content = json_match.group(0)
+                    else:
+                        # 3. 取最后一段非空行
+                        lines = [line.strip() for line in reasoning.strip().split('\n') if line.strip()]
+                        content = lines[-1] if lines else ""
             if not content:
                 error(f"k2.x 模型返回空内容 (model={model}, finish_reason={response.choices[0].finish_reason})")
             return content
@@ -153,12 +163,19 @@ class KimiClient:
             content = msg.content or ""
             if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
                 reasoning = msg.reasoning_content
+                info(f"k2.x 推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
                 import re
-                json_match = re.search(r'\[.*\]|\{.*\}', reasoning, re.DOTALL)
-                if json_match:
-                    content = json_match.group(0)
+                # 尝试从推理过程中提取 JSON
+                json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', reasoning, re.DOTALL)
+                if json_matches:
+                    content = json_matches[-1]
                 else:
-                    content = reasoning.strip().split('\n')[-1]
+                    json_match = re.search(r'\{[\s\S]*\}|\[[\s\S]*\]', reasoning)
+                    if json_match:
+                        content = json_match.group(0)
+                    else:
+                        lines = [line.strip() for line in reasoning.strip().split('\n') if line.strip()]
+                        content = lines[-1] if lines else ""
             return content
         except Exception as e:
             error(f"Kimi 多模态调用失败 (model={model}): {type(e).__name__}: {e}")
