@@ -49,6 +49,10 @@ class ApiClient {
     });
 
     if (response.status === 401) {
+      // 游客模式不跳转
+      if (typeof window !== 'undefined' && localStorage.getItem('is_guest') === 'true') {
+        throw new Error('游客模式无法使用此功能');
+      }
       this.setToken(null);
       if (typeof window !== 'undefined') {
         window.location.href = '/';
@@ -292,6 +296,9 @@ class ApiClient {
     });
 
     if (response.status === 401) {
+      if (typeof window !== 'undefined' && localStorage.getItem('is_guest') === 'true') {
+        throw new Error('游客模式无法使用此功能');
+      }
       this.setToken(null);
       if (typeof window !== 'undefined') window.location.href = '/';
       throw new Error('认证已过期，请重新登录');
@@ -321,6 +328,9 @@ class ApiClient {
     });
 
     if (response.status === 401) {
+      if (typeof window !== 'undefined' && localStorage.getItem('is_guest') === 'true') {
+        throw new Error('游客模式无法使用此功能');
+      }
       this.setToken(null);
       if (typeof window !== 'undefined') window.location.href = '/';
       throw new Error('认证已过期，请重新登录');

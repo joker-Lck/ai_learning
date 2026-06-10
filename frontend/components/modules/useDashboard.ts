@@ -40,6 +40,7 @@ export function useDashboard() {
 
   // 打开画像模块时自动加载已有画像
   useEffect(() => {
+    if (isGuest) return;
     if (activeModule === 'profile' && !profileData && !profileLoading) {
       setProfileLoading(true);
       api.getProfile().then((res: any) => {
@@ -81,6 +82,7 @@ export function useDashboard() {
 
   // 加载学期列表
   useEffect(() => {
+    if (isGuest) return;
     if (activeModule === 'profile') {
       api.listSemesters().then((res: any) => {
         if (res.success && Array.isArray(res.data)) {
@@ -108,6 +110,7 @@ export function useDashboard() {
   };
 
   useEffect(() => {
+    if (isGuest) return;
     if (activeModule === 'profile' && currentSemester) {
       loadSemesterData(currentSemester);
     }
@@ -148,6 +151,7 @@ export function useDashboard() {
   };
 
   useEffect(() => {
+    if (isGuest) return;
     if (activeModule === 'profile' && profileTab === 'errors') loadErrorNotes();
   }, [activeModule, profileTab]);
 
@@ -187,6 +191,7 @@ export function useDashboard() {
   };
 
   useEffect(() => {
+    if (isGuest) return;
     if (activeModule === 'path') loadStudyPlans();
   }, [activeModule]);
 
