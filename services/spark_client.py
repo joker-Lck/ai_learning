@@ -1,11 +1,13 @@
 """
-Kimi (Moonshot) API 客户端 — OpenAI 兼容 HTTP 接口
+讯飞星火 API 客户端 — OpenAI 兼容接口
 所有 API Key 仅存后端 .env
 
 模型分层策略:
-  kimi-k2.5                         — 简单/标准任务（推理模型）
-  kimi-k2.6                         — 复杂/高级推理任务
-  moonshot-v1-32k-vision-preview    — 图片多模态识别
+  spark-lite      — 简单任务（免费）
+  spark-pro       — 标准任务
+  spark-max       — 复杂推理
+  spark-4.0-ultra — 最强推理
+  spark-image     — 图片多模态识别
 """
 
 import os
@@ -17,18 +19,18 @@ import httpx
 
 load_dotenv()
 
-# ── 模型路由表 ──────────────────────────────────────────────
-MODEL_SIMPLE = os.getenv("KIMI_MODEL_SIMPLE", "kimi-k2.5")
-MODEL_STANDARD = os.getenv("KIMI_MODEL_STANDARD", "kimi-k2.5")
-MODEL_ADVANCED = os.getenv("KIMI_MODEL_ADVANCED", "kimi-k2.6")
-MODEL_ULTRA = os.getenv("KIMI_MODEL_ULTRA", "kimi-k2.6")
-MODEL_VISION = os.getenv("KIMI_MODEL_VISION", "moonshot-v1-32k-vision-preview")
+# ── 模型路由表（讯飞星火）──────────────────────────────────────
+MODEL_SIMPLE   = os.getenv("SPARK_MODEL_SIMPLE", "generalv3.5")      # 简单任务
+MODEL_STANDARD = os.getenv("SPARK_MODEL_STANDARD", "generalv3.5")    # 标准任务
+MODEL_ADVANCED = os.getenv("SPARK_MODEL_ADVANCED", "4.0Ultra")       # 复杂推理
+MODEL_ULTRA    = os.getenv("SPARK_MODEL_ULTRA", "4.0Ultra")          # 最强推理
+MODEL_VISION   = os.getenv("SPARK_MODEL_VISION", "generalv3.5")      # 图片多模态
 
 
-class KimiClient:
-    """Kimi (Moonshot) OpenAI 兼容客户端（单例，懒加载）"""
+class SparkClient:
+    """讯飞星火 OpenAI 兼容客户端（单例，懒加载）"""
 
-    _instance: Optional["KimiClient"] = None
+    _instance: Optional["SparkClient"] = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -39,11 +41,11 @@ class KimiClient:
     @property
     def client(self):
         if self._client is None:
-            api_key = os.getenv("KIMI_API_KEY", "")
-            base_url = os.getenv("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
+            api_key = os.getenv("SPARK_API_KEY", "")
+            base_url = os.getenv("SPARK_BASE_URL", "https://spark-api-open.xf-yun.com/v1")
             if not api_key:
                 raise RuntimeError(
-                    "KIMI_API_KEY 未配置，请在 .env 文件中设置。参考 .env.example"
+                    "SPARK_API_KEY 未配置，请在 .env 文件中设置。参考 .env.example"
                 )
             self._client = OpenAI(
                 api_key=api_key,
@@ -51,7 +53,7 @@ class KimiClient:
                 timeout=httpx.Timeout(90.0, connect=15.0),
                 max_retries=3,
             )
-            info(f"Kimi 客户端初始化完成 (base_url={base_url})")
+            info(f"讯飞星火客户端初始化完成 (base_url={base_url})")
         return self._client
 
     # ── 核心调用 ──────────────────────────────────────────────
@@ -60,17 +62,17 @@ class KimiClient:
         prompt: str,
         *,
         model: str = MODEL_STANDARD,
-        max_tokens: int = 4000,
+        max_tokens: int = 2000,
         temperature: float = 0.7,
         system_prompt: Optional[str] = None,
     ) -> str:
         """
-        通用文本生成（兼容 k2.x 推理模型）
+        标准文本生成调用
 
         Args:
             prompt: 用户提示词
-            model: Kimi 模型 ID
-            max_tokens: 最大输出 token
+            model: 模型名称
+            max_tokens: 最大 token 数
             temperature: 温度
             system_prompt: 系统提示词
 
@@ -83,8 +85,8 @@ class KimiClient:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
-            # k2.x 推理模型只允许 temperature=1
-            if model.startswith("kimi-k"):
+            # 讯飞推理模型只允许 temperature=1
+            if "Ultra" in model or "ultra" in model.lower():
                 temperature = 1
 
             response = self.client.chat.completions.create(
@@ -96,33 +98,28 @@ class KimiClient:
 
             msg = response.choices[0].message
             content = msg.content or ""
-            # k2.x 推理模型：content 为空时从 reasoning_content 提取
+            # 讯飞推理模型：content 为空时从 reasoning_content 提取
             if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
                 reasoning = msg.reasoning_content
-                info(f"k2.x 推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
-                # 尝试从推理过程中提取 JSON
+                info(f"讯飞推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
                 import re
-                # 1. 尝试提取完整的 JSON 对象或数组
-                # 使用非贪婪匹配，从最后一个 } 或 ] 开始
+                # 尝试从推理过程中提取 JSON
                 json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', reasoning, re.DOTALL)
                 if json_matches:
-                    # 取最后一个匹配的 JSON（通常是最终答案）
                     content = json_matches[-1]
                 else:
-                    # 2. 尝试更宽松的匹配
                     json_match = re.search(r'\{[\s\S]*\}|\[[\s\S]*\]', reasoning)
                     if json_match:
                         content = json_match.group(0)
                     else:
-                        # 3. 取最后一段非空行
                         lines = [line.strip() for line in reasoning.strip().split('\n') if line.strip()]
                         content = lines[-1] if lines else ""
             if not content:
-                error(f"k2.x 模型返回空内容 (model={model}, finish_reason={response.choices[0].finish_reason})")
+                error(f"讯飞模型返回空内容 (model={model}, finish_reason={response.choices[0].finish_reason})")
             return content
 
         except Exception as e:
-            error(f"Kimi API 调用失败 (model={model}): {e}")
+            error(f"讯飞 API 调用失败 (model={model}): {e}")
             return f"错误: {e}"
 
     def chat_with_image(
@@ -137,20 +134,18 @@ class KimiClient:
     ) -> str:
         """多模态调用 — 发送图片 + 文本，支持单张或多张图片"""
         try:
-            # 统一为列表
             images = [image_b64] if isinstance(image_b64, str) else image_b64
             info(f"多模态调用: model={model}, 图片数量={len(images)}")
             messages: List[Dict] = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
-            # 构建 content: 文本 + 多张图片
             content_parts: List[Dict] = [{"type": "text", "text": prompt}]
             for img in images:
                 content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}})
             messages.append({"role": "user", "content": content_parts})
             
-            # k2.x 推理模型只允许 temperature=1
-            if model.startswith("kimi-k"):
+            # 讯飞推理模型只允许 temperature=1
+            if "Ultra" in model or "ultra" in model.lower():
                 temperature = 1
             
             response = self.client.chat.completions.create(
@@ -163,9 +158,8 @@ class KimiClient:
             content = msg.content or ""
             if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
                 reasoning = msg.reasoning_content
-                info(f"k2.x 推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
+                info(f"讯飞推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
                 import re
-                # 尝试从推理过程中提取 JSON
                 json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', reasoning, re.DOTALL)
                 if json_matches:
                     content = json_matches[-1]
@@ -178,7 +172,7 @@ class KimiClient:
                         content = lines[-1] if lines else ""
             return content
         except Exception as e:
-            error(f"Kimi 多模态调用失败 (model={model}): {type(e).__name__}: {e}")
+            error(f"讯飞多模态调用失败 (model={model}): {type(e).__name__}: {e}")
             return f"错误: {e}"
 
     def chat_stream(
@@ -197,8 +191,8 @@ class KimiClient:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
-            # k2.x 推理模型只允许 temperature=1
-            if model.startswith("kimi-k"):
+            # 讯飞推理模型只允许 temperature=1
+            if "Ultra" in model or "ultra" in model.lower():
                 temperature = 1
 
             stream = self.client.chat.completions.create(
@@ -215,26 +209,26 @@ class KimiClient:
                     yield delta.content
 
         except Exception as e:
-            error(f"Kimi 流式调用失败 (model={model}): {e}")
+            error(f"讯飞流式调用失败 (model={model}): {e}")
             yield f"错误: {e}"
 
-    # ── 便捷方法：按任务复杂度选模型 ──────────────────────────
-    def simple(self, prompt: str, **kw) -> str:
-        """简单任务 — kimi-k2.5"""
-        return self.chat(prompt, model=MODEL_SIMPLE, **kw)
+    # ── 新接口：按任务复杂度调用 ──────────────────────────────
+    def simple(self, prompt: str, max_tokens: int = 1500, system_prompt: str = None) -> str:
+        """简单任务 — spark-lite（免费）"""
+        return self.chat(prompt, model=MODEL_SIMPLE, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def standard(self, prompt: str, **kw) -> str:
-        """标准任务 — kimi-k2.5"""
-        return self.chat(prompt, model=MODEL_STANDARD, **kw)
+    def standard(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+        """标准任务 — spark-pro"""
+        return self.chat(prompt, model=MODEL_STANDARD, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def advanced(self, prompt: str, **kw) -> str:
-        """高级任务 — kimi-k2.6"""
-        return self.chat(prompt, model=MODEL_ADVANCED, **kw)
+    def advanced(self, prompt: str, max_tokens: int = 3000, system_prompt: str = None) -> str:
+        """高级任务 — spark-max"""
+        return self.chat(prompt, model=MODEL_ADVANCED, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def ultra(self, prompt: str, **kw) -> str:
-        """最强推理 — kimi-k2.6"""
-        return self.chat(prompt, model=MODEL_ULTRA, **kw)
+    def ultra(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+        """最强推理 — spark-4.0-ultra"""
+        return self.chat(prompt, model=MODEL_ULTRA, max_tokens=max_tokens, system_prompt=system_prompt)
 
 
-# ── 全局单例 ──────────────────────────────────────────────────
-spark_client = KimiClient()  # 保持变量名兼容，避免改所有 import
+# 全局单例 — 保持变量名兼容，避免改所有 import
+spark_client = SparkClient()
