@@ -12,11 +12,11 @@ from core.logger import info, error, warning
 
 class MemoryExtractor:
     """记忆提取器"""
-    
-    def __init__(self, kimi_client=None):
-        self.kimi_client = kimi_client
-        
-    def extract_from_conversation(self, user_id: int, session_id: str, 
+
+    def __init__(self, ai_client=None):
+        self.ai_client = ai_client
+
+    def extract_from_conversation(self, user_id: int, session_id: str,
                                   user_message: str, assistant_response: str) -> Dict[str, int]:
         """从对话中提取记忆"""
         results = {
@@ -26,18 +26,18 @@ class MemoryExtractor:
             'entity': 0,
             'relations': 0
         }
-        
+
         try:
             with memory_service as ms:
                 # 1. 保存短期记忆
                 ms.add_short_term(user_id, session_id, 'user', user_message)
                 ms.add_short_term(user_id, session_id, 'assistant', assistant_response)
                 results['short_term'] = 2
-                
+
                 # 2. 使用 AI 提取长期记忆
-                if self.kimi_client:
+                if self.ai_client:
                     extracted = self._extract_with_ai(user_message, assistant_response)
-                    
+
                     # 3. 保存语义记忆（事实）
                     for fact in extracted.get('facts', []):
                         ms.add_semantic(
@@ -152,7 +152,7 @@ class MemoryExtractor:
 
 返回纯 JSON，不要包含其他文字。"""
 
-            response = self.kimi_client.chat(
+            response = self.ai_client.chat(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3
             )

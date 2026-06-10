@@ -1,5 +1,5 @@
 """
-向量化服务模块 - 使用 Kimi (Moonshot) Embedding API
+向量化服务模块 - 使用讯飞星火 Embedding API
 支持文本向量化和相似度计算
 """
 
@@ -21,14 +21,21 @@ class EmbeddingService:
     @property
     def client(self):
         if self._client is None:
-            api_key = os.getenv('KIMI_API_KEY', '')
-            base_url = os.getenv('KIMI_BASE_URL', 'https://api.moonshot.cn/v1')
+            api_key = os.getenv('SPARK_API_KEY', '')
+            api_secret = os.getenv('SPARK_API_SECRET', '')
+            base_url = os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
             if not api_key:
                 raise RuntimeError(
-                    "KIMI_API_KEY 未配置，请在 .env 文件中设置。"
+                    "SPARK_API_KEY 未配置，请在 .env 文件中设置。"
                     "参考 .env.example"
                 )
-            self._client = OpenAI(api_key=api_key, base_url=base_url)
+            # 讯飞星火 OpenAI 兼容接口
+            if api_secret:
+                from services.spark_client import _generate_spark_token
+                token = _generate_spark_token(api_key, api_secret)
+            else:
+                token = api_key
+            self._client = OpenAI(api_key=token, base_url=base_url)
         return self._client
     
     def get_embedding(self, text, model='general'):

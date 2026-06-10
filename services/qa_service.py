@@ -42,7 +42,7 @@ class QAService:
             return f"错误: {e}"
 
     # 向后兼容别名
-    call_kimi_api = call_ai
+    call_kimi_api = call_ai  # 已迁移到讯飞星火，保留别名兼容
 
     def call_ai_stream(
         self,
