@@ -540,6 +540,171 @@ class SparkClient:
             error(f"SparkChain 图片生成失败: {e}")
             return None
 
+    # ── 讯飞 OCR 文字识别 ──────────────────────────────
+    def ocr_handwriting(self, image_b64: str) -> Optional[str]:
+        """
+        讯飞手写文字识别
+        
+        Args:
+            image_b64: base64 编码的图片数据
+            
+        Returns:
+            识别出的文字，失败返回 None
+        """
+        import requests
+        import time
+        
+        app_id = os.getenv("SPARK_APPID", "")
+        api_key = os.getenv("SPARK_API_KEY", "")
+        
+        if not app_id or not api_key:
+            error("讯飞 OCR 配置不完整（需要 APPID/APIKey）")
+            return None
+        
+        url = "https://webapi.xfyun.cn/v1/service/v1/ocr/handwriting"
+        
+        # 构建请求头
+        cur_time = str(int(time.time()))
+        param = {
+            "engine_type": "handwriting",
+            "status": 3
+        }
+        param_base64 = base64.b64encode(json.dumps(param).encode('utf-8')).decode('utf-8')
+        
+        # 构建签名
+        checksum = hashlib.md5((api_key + cur_time + param_base64).encode('utf-8')).hexdigest()
+        
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Appid": app_id,
+            "X-CurTime": cur_time,
+            "X-Param": param_base64,
+            "X-CheckSum": checksum
+        }
+        
+        data = {
+            "image": image_b64
+        }
+        
+        try:
+            info("讯飞手写文字识别...")
+            resp = requests.post(url, headers=headers, data=data, timeout=30)
+            resp.raise_for_status()
+            
+            result = resp.json()
+            if result.get("code") == "0":
+                text = result.get("data", {}).get("region", "")
+                if text:
+                    info(f"手写识别成功: {len(text)} 字符")
+                    return text
+            
+            warning(f"手写识别返回: {result}")
+            return None
+            
+        except Exception as e:
+            error(f"手写识别失败: {e}")
+            return None
+
+    def ocr_print(self, image_b64: str) -> Optional[str]:
+        """
+        讯飞印刷文字识别
+        
+        Args:
+            image_b64: base64 编码的图片数据
+            
+        Returns:
+            识别出的文字，失败返回 None
+        """
+        import requests
+        
+        api_key = os.getenv("SPARK_API_KEY", "")
+        api_secret = os.getenv("SPARK_API_SECRET", "")
+        
+        if not api_key or not api_secret:
+            error("讯飞 OCR 配置不完整（需要 APIKey/APISecret）")
+            return None
+        
+        url = "https://cn-east-1.api.xf-yun.com/v1/ocr"
+        
+        # 生成鉴权 Token
+        token = _generate_spark_token(api_key, api_secret)
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}"
+        }
+        
+        payload = {
+            "header": {
+                "app_id": os.getenv("SPARK_APPID", ""),
+                "status": 3
+            },
+            "parameter": {
+                "ocr": {
+                    "result_option": "normal"
+                }
+            },
+            "payload": {
+                "image": {
+                    "encoding": "jpg",
+                    "image": image_b64,
+                    "status": 3
+                }
+            }
+        }
+        
+        try:
+            info("讯飞印刷文字识别...")
+            resp = requests.post(url, headers=headers, json=payload, timeout=30)
+            resp.raise_for_status()
+            
+            result = resp.json()
+            code = result.get("header", {}).get("code", -1)
+            
+            if code == 0:
+                # 提取识别结果
+                pages = result.get("payload", {}).get("result", {}).get("page", [])
+                texts = []
+                for page in pages:
+                    for line in page.get("line", []):
+                        for word in line.get("word", []):
+                            if word.get("content"):
+                                texts.append(word["content"])
+                
+                text = "\n".join(texts)
+                if text:
+                    info(f"印刷识别成功: {len(text)} 字符")
+                    return text
+            
+            warning(f"印刷识别返回: {result}")
+            return None
+            
+        except Exception as e:
+            error(f"印刷识别失败: {e}")
+            return None
+
+    def ocr_image(self, image_b64: str, ocr_type: str = "auto") -> Optional[str]:
+        """
+        智能 OCR 识别（自动选择手写或印刷）
+        
+        Args:
+            image_b64: base64 编码的图片数据
+            ocr_type: "handwriting" | "print" | "auto"
+            
+        Returns:
+            识别出的文字，失败返回 None
+        """
+        if ocr_type == "handwriting":
+            return self.ocr_handwriting(image_b64)
+        elif ocr_type == "print":
+            return self.ocr_print(image_b64)
+        else:
+            # 自动模式：先尝试印刷识别，失败再尝试手写
+            result = self.ocr_print(image_b64)
+            if result:
+                return result
+            return self.ocr_handwriting(image_b64)
+
 
 # 全局单例 — 保持变量名兼容，避免改所有 import
 spark_client = SparkClient()
