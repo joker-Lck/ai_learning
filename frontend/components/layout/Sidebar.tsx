@@ -6,7 +6,7 @@ import { useAuthStore, useUIStore } from '@/stores';
 import {
   LogOut, ChevronLeft, ChevronRight, GraduationCap,
   LayoutDashboard, Brain, Route,
-  Target, Lightbulb, TrendingUp, Sparkles
+  Target, Lightbulb, TrendingUp, Sparkles, Eye
 } from 'lucide-react';
 
 const menuItems = [
@@ -130,6 +130,23 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* 游客模式提示 */}
+      {isGuest && (
+        <div className="mx-3 mb-2 px-3 py-2.5 rounded-xl border border-amber-400/20 bg-amber-400/5">
+          <div className="flex items-center gap-2 mb-1">
+            <Eye className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+            {sidebarOpen && (
+              <span className="text-xs font-medium text-amber-400">游客模式</span>
+            )}
+          </div>
+          {sidebarOpen && (
+            <p className="text-[11px] text-amber-300/50 leading-relaxed">
+              仅可浏览界面，无法使用任何功能。请登录后体验完整功能。
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 用户信息 */}
       <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>

@@ -1,9 +1,11 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   GraduationCap, Zap, Brain, Route, Lightbulb, TrendingUp,
-  UserCheck, ArrowRight, Award, Database,
+  UserCheck, ArrowRight, Award, Database, Clock,
 } from 'lucide-react';
 import { useDashboard } from './modules/useDashboard';
 import { STATS } from './modules/constants';
@@ -136,9 +138,57 @@ export default function DashboardContent() {
     }
   };
 
+  // 游客模式：5 分钟后自动跳转回登录页
+  const router = useRouter();
+  const GUEST_TIMEOUT = 5 * 60 * 1000; // 5 分钟
+  const [guestCountdown, setGuestCountdown] = useState(GUEST_TIMEOUT / 1000);
+
+  useEffect(() => {
+    if (!d.isGuest) return;
+
+    const interval = setInterval(() => {
+      setGuestCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          window.location.href = '/';
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [d.isGuest]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="max-w-7xl mx-auto relative">
       <DashboardBackground />
+
+      {/* 游客模式提示横幅 */}
+      {d.isGuest && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 px-5 py-3.5 rounded-2xl border border-amber-400/20 bg-amber-400/5 backdrop-blur-sm flex items-center gap-3"
+        >
+          <span className="text-lg">👁️</span>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-400">游客模式 — 仅可浏览界面</p>
+            <p className="text-xs text-amber-300/40 mt-0.5">所有功能按钮已禁用，请登录后体验完整功能</p>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400/10 border border-amber-400/20">
+            <Clock className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-sm font-mono font-medium text-amber-400">{formatTime(guestCountdown)}</span>
+          </div>
+        </motion.div>
+      )}
+
       {/* 欢迎区域 - 仅在未选择模块时显示 */}
       {!d.activeModule && (
         <motion.div
@@ -223,11 +273,17 @@ export default function DashboardContent() {
               return (
                 <button
                   key={module.id}
-                  onClick={() => d.setActiveModule(module.id as ModuleType)}
+                  onClick={() => {
+                    if (d.isGuest) return;
+                    d.setActiveModule(module.id as ModuleType);
+                  }}
+                  disabled={d.isGuest}
                   className={`p-4 rounded-xl transition-all ${
-                    isActive
-                      ? `bg-gradient-to-r ${colorMap[module.color]} text-white scale-105`
-                      : 'glass-card hover:bg-white/[0.06] text-white/60 hover:text-white'
+                    d.isGuest
+                      ? 'glass-card opacity-40 cursor-not-allowed text-white/30'
+                      : isActive
+                        ? `bg-gradient-to-r ${colorMap[module.color]} text-white scale-105`
+                        : 'glass-card hover:bg-white/[0.06] text-white/60 hover:text-white'
                   }`}
                 >
                   <div className="text-2xl mb-2">{module.emoji}</div>
