@@ -273,17 +273,11 @@ export default function DashboardContent() {
               return (
                 <button
                   key={module.id}
-                  onClick={() => {
-                    if (d.isGuest) return;
-                    d.setActiveModule(module.id as ModuleType);
-                  }}
-                  disabled={d.isGuest}
+                  onClick={() => d.setActiveModule(module.id as ModuleType)}
                   className={`p-4 rounded-xl transition-all ${
-                    d.isGuest
-                      ? 'glass-card opacity-40 cursor-not-allowed text-white/30'
-                      : isActive
-                        ? `bg-gradient-to-r ${colorMap[module.color]} text-white scale-105`
-                        : 'glass-card hover:bg-white/[0.06] text-white/60 hover:text-white'
+                    isActive
+                      ? `bg-gradient-to-r ${colorMap[module.color]} text-white scale-105`
+                      : 'glass-card hover:bg-white/[0.06] text-white/60 hover:text-white'
                   }`}
                 >
                   <div className="text-2xl mb-2">{module.emoji}</div>
@@ -301,9 +295,23 @@ export default function DashboardContent() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-          className="glass-card rounded-2xl p-6"
+          className="glass-card rounded-2xl p-6 relative"
         >
           {renderModule()}
+          {/* 游客模式遮罩 */}
+          {d.isGuest && (
+            <div className="absolute inset-0 rounded-2xl bg-[#060d1f]/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+              <span className="text-4xl mb-3">🔒</span>
+              <p className="text-white font-medium mb-1">游客模式无法使用此功能</p>
+              <p className="text-white/40 text-sm mb-4">请登录后体验完整功能</p>
+              <button
+                onClick={() => { localStorage.removeItem('is_guest'); window.location.href = '/'; }}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                立即登录
+              </button>
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -322,8 +330,7 @@ export default function DashboardContent() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => d.setActiveModule('profile')}
-              disabled={d.isGuest}
-              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/30 hover:bg-cyan-400/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/30 hover:bg-cyan-400/5 transition-all group"
             >
               <div className="w-10 h-10 rounded-lg bg-cyan-400/10 flex items-center justify-center group-hover:bg-cyan-400/20 transition-colors">
                 <UserCheck className="w-5 h-5 text-cyan-400" />
@@ -337,8 +344,7 @@ export default function DashboardContent() {
 
             <button
               onClick={() => d.setActiveModule('resources')}
-              disabled={d.isGuest}
-              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-purple-400/30 hover:bg-purple-400/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-purple-400/30 hover:bg-purple-400/5 transition-all group"
             >
               <div className="w-10 h-10 rounded-lg bg-purple-400/10 flex items-center justify-center group-hover:bg-purple-400/20 transition-colors">
                 <Brain className="w-5 h-5 text-purple-400" />
@@ -352,8 +358,7 @@ export default function DashboardContent() {
 
             <button
               onClick={() => d.setActiveModule('assessment')}
-              disabled={d.isGuest}
-              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-indigo-400/30 hover:bg-indigo-400/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-indigo-400/30 hover:bg-indigo-400/5 transition-all group"
             >
               <div className="w-10 h-10 rounded-lg bg-indigo-400/10 flex items-center justify-center group-hover:bg-indigo-400/20 transition-colors">
                 <Award className="w-5 h-5 text-indigo-400" />
