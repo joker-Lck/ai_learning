@@ -266,6 +266,126 @@ class SparkClient:
         """最强推理 — spark-4.0-ultra"""
         return self.chat(prompt, model=MODEL_ULTRA, max_tokens=max_tokens, system_prompt=system_prompt)
 
+    # ── SparkChain 图片生成 ──────────────────────────────
+    def generate_image(self, prompt: str, width: int = 1024, height: int = 1024) -> Optional[str]:
+        """
+        使用讯飞 SparkChain 生成图片
+        
+        Args:
+            prompt: 图片描述
+            width: 图片宽度
+            height: 图片高度
+            
+        Returns:
+            base64 编码的图片数据，失败返回 None
+        """
+        import requests
+        
+        api_key = os.getenv("SPARK_API_KEY", "")
+        api_secret = os.getenv("SPARK_API_SECRET", "")
+        app_id = os.getenv("SPARK_APPID", "")
+        
+        if not api_key or not api_secret:
+            error("SparkChain API 配置不完整")
+            return None
+        
+        # 生成鉴权 Token
+        token = _generate_spark_token(api_key, api_secret)
+        
+        # SparkChain 图片生成 API
+        url = "https://spark-api-open.xf-yun.com/v1/images/generations"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}"
+        }
+        
+        payload = {
+            "model": "generalv3",  # 使用通用模型生成图片
+            "prompt": prompt,
+            "n": 1,
+            "size": f"{width}x{height}",
+            "response_format": "b64_json"
+        }
+        
+        try:
+            info(f"SparkChain 图片生成: prompt={prompt[:50]}...")
+            resp = requests.post(url, headers=headers, json=payload, timeout=120)
+            resp.raise_for_status()
+            
+            result = resp.json()
+            if result.get("data") and len(result["data"]) > 0:
+                b64_data = result["data"][0].get("b64_json")
+                if b64_data:
+                    info(f"SparkChain 图片生成成功")
+                    return b64_data
+            
+            warning(f"SparkChain 返回无图片数据: {result}")
+            return None
+            
+        except Exception as e:
+            error(f"SparkChain 图片生成失败: {e}")
+            return None
+
+    def generate_image_url(self, prompt: str, width: int = 1024, height: int = 1024) -> Optional[str]:
+        """
+        使用讯飞 SparkChain 生成图片，返回 URL
+        
+        Args:
+            prompt: 图片描述
+            width: 图片宽度
+            height: 图片高度
+            
+        Returns:
+            图片 URL，失败返回 None
+        """
+        import requests
+        
+        api_key = os.getenv("SPARK_API_KEY", "")
+        api_secret = os.getenv("SPARK_API_SECRET", "")
+        
+        if not api_key or not api_secret:
+            error("SparkChain API 配置不完整")
+            return None
+        
+        # 生成鉴权 Token
+        token = _generate_spark_token(api_key, api_secret)
+        
+        # SparkChain 图片生成 API
+        url = "https://spark-api-open.xf-yun.com/v1/images/generations"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}"
+        }
+        
+        payload = {
+            "model": "generalv3",
+            "prompt": prompt,
+            "n": 1,
+            "size": f"{width}x{height}",
+            "response_format": "url"
+        }
+        
+        try:
+            info(f"SparkChain 图片生成(URL): prompt={prompt[:50]}...")
+            resp = requests.post(url, headers=headers, json=payload, timeout=120)
+            resp.raise_for_status()
+            
+            result = resp.json()
+            if result.get("data") and len(result["data"]) > 0:
+                img_url = result["data"][0].get("url")
+                if img_url:
+                    info(f"SparkChain 图片生成成功: {img_url[:50]}...")
+                    return img_url
+            
+            warning(f"SparkChain 返回无图片数据: {result}")
+            return None
+            
+        except Exception as e:
+            error(f"SparkChain 图片生成失败: {e}")
+            return None
+
 
 # 全局单例 — 保持变量名兼容，避免改所有 import
 spark_client = SparkClient()

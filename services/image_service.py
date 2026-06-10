@@ -1,11 +1,12 @@
 """
 AI 教学图片生成器
-始终生成 SVG 教学示意图，保存为 HTML 文件可直接在浏览器查看
+优先使用讯飞 SparkChain 生成真实图片，降级为 SVG
 """
 
 import os
 import re
 import hashlib
+import base64
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict
@@ -17,23 +18,28 @@ EXPORT_DIR.mkdir(exist_ok=True)
 
 
 class ImageService:
-    """教学图片生成服务 — 始终生成可用的 SVG/HTML"""
+    """教学图片生成服务 — 优先 SparkChain，降级 SVG"""
 
     def __init__(self):
         info("图片生成服务初始化完成")
 
     def generate_image_from_suggestion(self, suggestion: str, topic: str,
                                        subject: str, slide_index: int = 0) -> Dict:
-        """根据图片建议生成教学示意图 — 始终返回可用结果"""
+        """根据图片建议生成教学示意图"""
         try:
-            # 1. 使用 AI 生成 SVG
+            # 1. 优先使用 SparkChain 生成真实图片
+            spark_result = self._generate_with_sparkchain(suggestion, topic, subject)
+            if spark_result:
+                return spark_result
+
+            # 2. 降级：使用 AI 生成 SVG
             svg_code = self._generate_svg(suggestion, topic, subject)
 
-            # 2. 如果 AI 生成失败，使用模板生成
+            # 3. 如果 AI 生成失败，使用模板生成
             if not svg_code:
                 svg_code = self._generate_template_svg(suggestion, topic, subject)
 
-            # 3. 包装为 HTML 并保存
+            # 4. 包装为 HTML 并保存
             html = self._wrap_svg_html(svg_code, f"{subject} - {suggestion}")
             safe_name = re.sub(r'[^\w]', '_', suggestion)[:30]
             filename = f"img_{slide_index}_{safe_name}_{datetime.now().strftime('%H%M%S')}.html"
@@ -41,7 +47,7 @@ class ImageService:
             filepath.write_text(html, encoding="utf-8")
 
             url = f"/exports/{filename}"
-            info(f"教学图片生成成功: {filename}")
+            info(f"教学图片生成成功(SVG): {filename}")
 
             return {
                 "success": True,
@@ -53,8 +59,129 @@ class ImageService:
 
         except Exception as e:
             error(f"图片生成失败: {str(e)}")
-            # 最终降级：生成简单占位图
             return self._generate_placeholder(suggestion, topic, subject, slide_index)
+
+    def _generate_with_sparkchain(self, suggestion: str, topic: str, subject: str) -> Optional[Dict]:
+        """使用讯飞 SparkChain 生成真实图片"""
+        try:
+            from services.spark_client import spark_client
+            
+            # 构建图片生成提示词
+            prompt = f"{subject}课程{topic}的教学示意图，{suggestion}，清晰美观，教育风格，专业图表"
+            
+            # 生成图片
+            b64_data = spark_client.generate_image(prompt, width=1024, height=768)
+            
+            if not b64_data:
+                return None
+            
+            # 保存为 HTML 文件（包含 base64 图片）
+            html = self._wrap_image_html(b64_data, f"{subject} - {suggestion}")
+            safe_name = re.sub(r'[^\w]', '_', suggestion)[:30]
+            filename = f"img_{safe_name}_{datetime.now().strftime('%H%M%S')}.html"
+            filepath = EXPORT_DIR / filename
+            filepath.write_text(html, encoding="utf-8")
+            
+            url = f"/exports/{filename}"
+            info(f"SparkChain 图片生成成功: {filename}")
+            
+            return {
+                "success": True,
+                "url": url,
+                "html_path": str(filepath),
+                "type": "sparkchain_image"
+            }
+            
+        except Exception as e:
+            warning(f"SparkChain 图片生成失败，降级到 SVG: {e}")
+            return None
+
+    def _wrap_image_html(self, b64_data: str, title: str) -> str:
+        """将 base64 图片包装为可查看/下载的 HTML 页面"""
+        return f'''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title}</title>
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{
+  background: #060d1f;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: "Microsoft YaHei", system-ui, sans-serif;
+  padding: 20px;
+}}
+.container {{
+  max-width: 1000px;
+  width: 100%;
+}}
+.toolbar {{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}}
+.toolbar h2 {{
+  color: #67e8f9;
+  font-size: 16px;
+}}
+.btn {{
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}}
+.btn-primary {{
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  color: white;
+}}
+.btn-primary:hover {{ opacity: 0.9; transform: translateY(-1px); }}
+.image-wrapper {{
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 16px;
+  text-align: center;
+}}
+img {{
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="toolbar">
+    <h2>🖼️ {title}</h2>
+    <button class="btn btn-primary" onclick="downloadImage()">⬇ 下载图片</button>
+  </div>
+  <div class="image-wrapper">
+    <img src="data:image/png;base64,{b64_data}" alt="{title}" />
+  </div>
+</div>
+<script>
+function downloadImage() {{
+  const img = document.querySelector('img');
+  const a = document.createElement('a');
+  a.href = img.src;
+  a.download = '{title.replace(" ", "_")}.png';
+  a.click();
+}}
+</script>
+</body>
+</html>'''
 
     def _generate_svg(self, suggestion: str, topic: str, subject: str) -> Optional[str]:
         """使用 AI 生成 SVG 教学示意图"""
