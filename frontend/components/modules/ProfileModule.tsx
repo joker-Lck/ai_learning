@@ -157,10 +157,19 @@ export default function ProfileModule(props: ProfileModuleProps) {
         })}
       </div>
 
-      {profileTab === 'profile' && <ProfileTabContent {...props} />}
-      {profileTab === 'schedule' && <ScheduleTabContent courses={props.courses} loading={props.courseLoading} semester={currentSemester} onSave={props.handleSaveCourses} onImport={props.handleImportCourses} onConfirmImport={props.handleConfirmImportCourses} />}
-      {profileTab === 'grades' && <GradesTabContent grades={props.grades} loading={props.gradeLoading} semester={currentSemester} onSave={props.handleSaveGrades} onImport={props.handleImportGrades} onConfirmImport={props.handleConfirmImportGrades} />}
-      {profileTab === 'errors' && <ErrorsTabContent notes={props.errorNotes} loading={props.errorLoading} onAdd={props.handleAddErrorNote} onToggleMastery={props.handleToggleMastery} onDelete={props.handleDeleteErrorNote} onImport={props.handleImportErrors} onConfirmImport={props.handleConfirmImportErrors} />}
+      {/* 使用 display:none 而非条件渲染，保持组件挂载以支持后台 AI 识别 */}
+      <div style={{ display: profileTab === 'profile' ? 'block' : 'none' }}>
+        <ProfileTabContent {...props} />
+      </div>
+      <div style={{ display: profileTab === 'schedule' ? 'block' : 'none' }}>
+        <ScheduleTabContent courses={props.courses} loading={props.courseLoading} semester={currentSemester} onSave={props.handleSaveCourses} onImport={props.handleImportCourses} onConfirmImport={props.handleConfirmImportCourses} />
+      </div>
+      <div style={{ display: profileTab === 'grades' ? 'block' : 'none' }}>
+        <GradesTabContent grades={props.grades} loading={props.gradeLoading} semester={currentSemester} onSave={props.handleSaveGrades} onImport={props.handleImportGrades} onConfirmImport={props.handleConfirmImportGrades} />
+      </div>
+      <div style={{ display: profileTab === 'errors' ? 'block' : 'none' }}>
+        <ErrorsTabContent notes={props.errorNotes} loading={props.errorLoading} onAdd={props.handleAddErrorNote} onToggleMastery={props.handleToggleMastery} onDelete={props.handleDeleteErrorNote} onImport={props.handleImportErrors} onConfirmImport={props.handleConfirmImportErrors} />
+      </div>
     </div>
   );
 }
