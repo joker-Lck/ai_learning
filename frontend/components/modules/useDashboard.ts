@@ -229,6 +229,19 @@ export function useDashboard() {
   const [tutorMessages, setTutorMessages] = useState<TutorMessage[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const streamingContentRef = useRef('');
+  const tutorInitialized = useRef(false);
+
+  // 打开辅导模块时显示欢迎消息
+  useEffect(() => {
+    if (activeModule === 'tutor' && !tutorInitialized.current && tutorMessages.length === 0) {
+      tutorInitialized.current = true;
+      setTutorMessages([{
+        role: 'assistant',
+        content: '你好！我是你的 AI 学习助手 👋\n\n有什么学习上的问题都可以问我，比如：\n- 📚 某个知识点的讲解\n- 💡 习题的解题思路\n- 🔍 概念之间的区别和联系\n\n请在下方输入你的问题吧！',
+        timestamp: new Date(),
+      }]);
+    }
+  }, [activeModule]);
 
   // ── 学习评估状态 ──
   const [assessLoading, setAssessLoading] = useState(false);
