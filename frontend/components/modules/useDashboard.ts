@@ -421,7 +421,8 @@ export function useDashboard() {
         teacher: String(c.teacher || '').trim(),
       })).filter(c => c.name && c.day && c.start_time && c.end_time) as CourseItem[];
     }
-    throw new Error(res.error || res.message || 'AI识别失败');
+    // 识别失败时提示用户手动添加
+    throw new Error(res.message || 'AI识别失败，请使用「手动添加」按钮录入课程');
   };
 
   const handleImportGrades = async (file: File) => {

@@ -603,7 +603,7 @@ class StudentDataImportMixin:
                     except Exception:
                         pass
             if not isinstance(courses, list):
-                return {"success": False, "message": "AI 未能识别出课程表信息，请检查文件内容"}
+                return {"success": False, "message": "AI 未能识别出课程表，可能是文件内容编码问题。请使用「手动添加」按钮逐条录入课程。"}
 
             # 验证和清理数据
             valid_courses = []

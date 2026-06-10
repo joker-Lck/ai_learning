@@ -5,7 +5,7 @@ import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
   CalendarDays, BarChart3, AlertCircle, Plus, Trash2, Check, X,
-  ChevronDown, Edit3, Save, Upload, Minus, Search,
+  ChevronDown, Edit3, Save, Upload, Minus, Search, Pencil,
 } from 'lucide-react';
 import { PROFILE_DIMENSIONS } from './constants';
 import type {
@@ -167,11 +167,12 @@ export default function ProfileModule(props: ProfileModuleProps) {
 
 // ==================== 文件导入按钮 ====================
 
-function FileImporter({ onImport, onConfirm, label, previewType }: {
+function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
   onImport: (file: File) => Promise<any[]>;
   onConfirm: (data: any[]) => Promise<void>;
   label: string;
   previewType: 'courses' | 'grades' | 'errors';
+  onFail?: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -194,7 +195,8 @@ function FileImporter({ onImport, onConfirm, label, previewType }: {
       }
     } catch (err: any) {
       setResult(`❌ ${err.message}`);
-      setTimeout(() => setResult(null), 4000);
+      if (onFail) onFail();
+      setTimeout(() => setResult(null), 6000);
     } finally {
       setImporting(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -513,14 +515,29 @@ function ProfileEditView({ profileData, onUpdate }: { profileData: ProfileData; 
 
 function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onConfirmImport }: { courses: CourseItem[]; loading: boolean; semester: string; onSave: (s: string, c: CourseItem[]) => Promise<void>; onImport: (f: File) => Promise<CourseItem[]>; onConfirmImport: (data: CourseItem[]) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
+  const [editIdx, setEditIdx] = useState<number | null>(null);
   const [form, setForm] = useState<CourseItem>({ name: '', day: '周一', start_time: '08:00', end_time: '09:40', location: '', teacher: '' });
 
   const addCourse = async () => {
     if (!form.name.trim()) return;
-    await onSave(semester, [...courses, { ...form }]);
+    if (editIdx !== null) {
+      // 编辑模式：更新已有课程
+      const updated = [...courses];
+      updated[editIdx] = { ...form };
+      await onSave(semester, updated);
+      setEditIdx(null);
+    } else {
+      // 新增模式
+      await onSave(semester, [...courses, { ...form }]);
+    }
     setForm({ name: '', day: '周一', start_time: '08:00', end_time: '09:40', location: '', teacher: '' });
   };
   const removeCourse = async (idx: number) => { await onSave(semester, courses.filter((_, i) => i !== idx)); };
+  const startEditCourse = (idx: number) => {
+    setForm({ ...courses[idx] });
+    setEditIdx(idx);
+    setEditing(true);
+  };
 
   const byDay: Record<string, { c: CourseItem; i: number }[]> = {};
   DAYS.forEach(d => byDay[d] = []);
@@ -532,7 +549,7 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-white/40">{semester} · {courses.length} 门课程</p>
         <div className="flex items-center gap-2">
-          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="上传课表" previewType="courses" />
+          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="上传课表" previewType="courses" onFail={() => setEditing(true)} />
           <button onClick={() => setEditing(!editing)}
             className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all ${editing ? 'bg-red-500/20 text-red-400 border border-red-400/20' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-400/20'}`}>
             {editing ? <><Minus className="w-3.5 h-3.5" /> 收起</> : <><Plus className="w-3.5 h-3.5" /> 手动添加</>}
@@ -562,7 +579,7 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
               className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
             <button onClick={addCourse} disabled={loading || !form.name.trim()}
               className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center justify-center gap-1 disabled:opacity-40">
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} 添加
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : editIdx !== null ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />} {editIdx !== null ? '保存修改' : '添加'}
             </button>
           </div>
         </div>
@@ -611,6 +628,11 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
                         <p className="text-[9px] text-white/50 truncate">{c.start_time}-{c.end_time}</p>
                         {c.location && <p className="text-[9px] text-white/30 truncate">{c.location}</p>}
                       </div>
+                      <button onClick={(e) => { e.stopPropagation(); startEditCourse(i); }}
+                        className="absolute top-0.5 left-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-cyan-500/80 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-cyan-500"
+                        title="编辑此课程">
+                        <Pencil className="w-3 h-3 text-white" />
+                      </button>
                       <button onClick={(e) => { e.stopPropagation(); removeCourse(i); }}
                         className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/80 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-red-500"
                         title="删除此课程">
