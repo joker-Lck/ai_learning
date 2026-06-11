@@ -579,10 +579,10 @@ class SparkClient:
         """
         import requests
         
-        # OCR 使用图片生成的凭证
-        app_id = os.getenv("SPARK_IMAGE_APPID", os.getenv("SPARK_APPID", ""))
-        api_key = os.getenv("SPARK_IMAGE_API_KEY", os.getenv("SPARK_API_KEY", ""))
-        api_secret = os.getenv("SPARK_IMAGE_API_SECRET", os.getenv("SPARK_API_SECRET", ""))
+        # OCR 使用独立凭证
+        app_id = os.getenv("SPARK_OCR_APPID", os.getenv("SPARK_APPID", ""))
+        api_key = os.getenv("SPARK_OCR_API_KEY", os.getenv("SPARK_API_KEY", ""))
+        api_secret = os.getenv("SPARK_OCR_API_SECRET", os.getenv("SPARK_API_SECRET", ""))
         
         if not app_id or not api_key:
             error("讯飞 OCR 配置不完整")
