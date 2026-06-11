@@ -249,6 +249,10 @@ cd frontend && npm run dev
 - RAG检索增强
 - 向量相似度检索
 - 防幻觉机制
+- Spark-X2-Flash 推理模型
+- 图片生成 (TTI API)
+- OCR 文字识别
+- 语音合成 (TTS API)
 
 ---
 
