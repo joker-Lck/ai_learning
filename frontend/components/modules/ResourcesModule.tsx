@@ -161,8 +161,10 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
   const mediaUrl = resource.content_data?.media_url as string | undefined;
   const generationType = resource.content_data?.generation_type as string | undefined;
   const hasMedia = !!mediaUrl;
-  const isVideo = generationType === 'video' || (mediaUrl && mediaUrl.endsWith('.mp4'));
+  const isVideo = generationType === 'video' || generationType === 'video_with_images' || (mediaUrl && mediaUrl.endsWith('.mp4'));
   const isSvgAnim = generationType === 'svg_animation' || (mediaUrl && mediaUrl.endsWith('.html'));
+  const isMindmap = resource.type === 'mindmap' && (resource.content_data?.has_svg || mediaUrl?.includes('mindmap'));
+  const isImage = resource.type === 'animation' || generationType === 'tti_image';
 
   return (
     <div className="glass-card rounded-xl overflow-hidden">
@@ -176,6 +178,8 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
               {getTypeName(resource.type)}
               {hasMedia && isVideo && <span className="ml-2 text-purple-400">● AI生成视频</span>}
               {hasMedia && isSvgAnim && <span className="ml-2 text-pink-400">● AI生成动画</span>}
+              {hasMedia && isMindmap && <span className="ml-2 text-emerald-400">● SVG思维导图</span>}
+              {hasMedia && isImage && <span className="ml-2 text-cyan-400">● AI生成图片</span>}
             </span>
           </div>
         </div>

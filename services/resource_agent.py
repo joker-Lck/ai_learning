@@ -327,6 +327,22 @@ class ResourceAgent:
                 warning(f"AI 返回的思维导图数据无效")
                 return None
 
+            # 生成 SVG 思维导图
+            svg_code = self._generate_mindmap_svg(mindmap_data, topic)
+
+            # 保存为 HTML 文件
+            if svg_code:
+                from pathlib import Path
+                import hashlib
+                EXPORT_DIR = Path(__file__).parent.parent / "exports"
+                EXPORT_DIR.mkdir(exist_ok=True)
+                html = self._wrap_svg_html(svg_code, f"{topic} - 思维导图")
+                filename = f"mindmap_{hashlib.md5(topic.encode()).hexdigest()[:8]}_{datetime.now().strftime('%H%M%S')}.html"
+                filepath = EXPORT_DIR / filename
+                filepath.write_text(html, encoding="utf-8")
+                mindmap_data["media_url"] = f"/exports/{filename}"
+                mindmap_data["has_svg"] = True
+
             return {
                 "type": "mindmap",
                 "title": mindmap_data.get("title", f"{topic}思维导图"),
@@ -339,6 +355,113 @@ class ResourceAgent:
         except Exception as e:
             error(f"生成思维导图失败: {str(e)}")
             return None
+
+    def _generate_mindmap_svg(self, data: Dict, topic: str) -> str:
+        """将思维导图 JSON 转换为 SVG"""
+        try:
+            root = data.get("root", {})
+            root_name = root.get("name", topic)
+            children = root.get("children", [])
+
+            if not children:
+                return ""
+
+            # 计算布局
+            branch_count = len(children)
+            svg_width = 900
+            svg_height = max(400, 100 + branch_count * 80)
+            center_x = 150
+            center_y = svg_height // 2
+
+            svg_parts = [
+                f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {svg_width} {svg_height}">',
+                '<defs>',
+                '<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0a1628"/><stop offset="100%" style="stop-color:#1a2a4a"/></linearGradient>',
+                '<linearGradient id="branch" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#06b6d4"/><stop offset="100%" style="stop-color:#3b82f6"/></linearGradient>',
+                '</defs>',
+                f'<rect width="{svg_width}" height="{svg_height}" fill="url(#bg)" rx="12"/>',
+            ]
+
+            # 根节点
+            svg_parts.append(f'<rect x="{center_x - 60}" y="{center_y - 20}" width="120" height="40" rx="20" fill="url(#branch)"/>')
+            svg_parts.append(f'<text x="{center_x}" y="{center_y + 5}" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="Microsoft YaHei, sans-serif">{root_name}</text>')
+
+            # 分支
+            branch_spacing = (svg_height - 100) / max(1, branch_count)
+            colors = ['#06b6d4', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444']
+
+            for i, branch in enumerate(children):
+                branch_name = branch.get("name", f"分支{i+1}")
+                branch_y = 50 + i * branch_spacing + branch_spacing / 2
+                branch_x = 350
+                color = colors[i % len(colors)]
+
+                # 连接线
+                svg_parts.append(f'<line x1="{center_x + 60}" y1="{center_y}" x2="{branch_x - 10}" y2="{branch_y}" stroke="{color}" stroke-width="2" opacity="0.6"/>')
+
+                # 分支节点
+                svg_parts.append(f'<rect x="{branch_x - 10}" y="{branch_y - 18}" width="160" height="36" rx="8" fill="{color}" opacity="0.15" stroke="{color}" stroke-width="1"/>')
+                svg_parts.append(f'<text x="{branch_x + 70}" y="{branch_y + 5}" text-anchor="middle" fill="{color}" font-size="13" font-weight="bold" font-family="Microsoft YaHei, sans-serif">{branch_name}</text>')
+
+                # 子节点
+                sub_children = branch.get("children", [])
+                for j, sub in enumerate(sub_children):
+                    sub_name = sub.get("name", f"知识点{j+1}")
+                    sub_x = 600
+                    sub_y = branch_y - (len(sub_children) - 1) * 15 + j * 30
+
+                    svg_parts.append(f'<line x1="{branch_x + 150}" y1="{branch_y}" x2="{sub_x - 5}" y2="{sub_y}" stroke="{color}" stroke-width="1" opacity="0.4"/>')
+                    svg_parts.append(f'<rect x="{sub_x - 5}" y="{sub_y - 12}" width="140" height="24" rx="6" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>')
+                    svg_parts.append(f'<text x="{sub_x + 65}" y="{sub_y + 4}" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="11" font-family="Microsoft YaHei, sans-serif">{sub_name}</text>')
+
+            svg_parts.append('</svg>')
+            return '\n'.join(svg_parts)
+
+        except Exception as e:
+            error(f"生成思维导图SVG失败: {e}")
+            return ""
+
+    def _wrap_svg_html(self, svg_code: str, title: str) -> str:
+        """将 SVG 包装为可查看/下载的 HTML"""
+        return f'''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>{title}</title>
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{ background: #060d1f; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; font-family: "Microsoft YaHei", system-ui, sans-serif; }}
+.container {{ max-width: 1000px; width: 100%; }}
+.toolbar {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 12px 16px; background: rgba(255,255,255,0.05); border-radius: 8px; }}
+.toolbar h2 {{ color: #67e8f9; font-size: 16px; }}
+.btn {{ padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; background: linear-gradient(135deg, #06b6d4, #3b82f6); color: white; }}
+.btn:hover {{ opacity: 0.9; }}
+svg {{ width: 100%; height: auto; border-radius: 12px; }}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="toolbar">
+    <h2>🧠 {title}</h2>
+    <button class="btn" onclick="downloadSVG()">⬇ 下载 SVG</button>
+  </div>
+  {svg_code}
+</div>
+<script>
+function downloadSVG() {{
+  const svg = document.querySelector('svg');
+  if (!svg) return;
+  const blob = new Blob([svg.outerHTML], {{type: 'image/svg+xml'}});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '{title}.svg';
+  a.click();
+  URL.revokeObjectURL(url);
+}}
+</script>
+</body>
+</html>'''
     
     def _generate_quiz(self, subject: str, topic: str,
                       profile: Dict, difficulty: str) -> Dict:
@@ -402,61 +525,128 @@ class ResourceAgent:
     
     def _generate_video_script(self, subject: str, topic: str,
                               profile: Dict, difficulty: str) -> Dict:
-        """生成教学视频 — 优先调用视频 API 生成真实视频，降级为 SVG 动画"""
-        from services.video_generation_service import video_generation_service
+        """生成教学视频 — spark-x 脚本 + TTI 图片 + TTS 语音"""
+        from services.spark_client import spark_client
 
         cognitive_style = profile.get("cognitive_style", "visual")
 
-        # 先生成脚本文本
-        prompt = f"""请为{subject}课程的"{topic}"主题生成一个简短的教学视频脚本描述（2-3句话），用于视频AI生成的提示词。
+        # 1. 使用 spark-x 生成视频脚本
+        prompt = f"""请为{subject}课程的"{topic}"主题生成一个教学视频脚本。
 
 学习者认知风格: {cognitive_style}
 难度级别: {difficulty}
 
-要求:
-1. 描述视频的核心内容和视觉风格
-2. 突出关键知识点的可视化展示方式
-3. 100字以内
+要求：
+1. 生成 4-6 个场景，每个场景讲解一个知识点
+2. 每个场景包含：标题、讲解文字（50-100字，口语化）、关键要点
+3. 循序渐进，从基础到进阶
+4. 最后一个场景做总结
 
-只输出描述文本，不要JSON。
-"""
+输出严格JSON格式：
+{{
+    "title": "{topic}教学视频",
+    "scenes": [
+        {{
+            "scene_id": 1,
+            "title": "场景标题",
+            "narration": "讲解文字（口语化）",
+            "key_point": "关键要点",
+            "image_prompt": "用于生成配图的英文描述"
+        }}
+    ],
+    "total_scenes": 4
+}}
+
+只输出JSON，不要其他文字。"""
+
         try:
-            description = qa_service.call_ai(prompt, max_tokens=300)
-        except Exception:
-            description = f"{subject}课程{topic}的教学视频"
+            response = spark_client.chat(prompt, max_tokens=3000)
+            script_data = safe_parse_json(response)
 
-        # 调用视频生成服务
-        result = video_generation_service.generate_video(
-            subject=subject, topic=topic,
-            description=description, duration=10
-        )
+            if not script_data or not isinstance(script_data, dict):
+                warning("AI 视频脚本生成失败，使用降级方案")
+                script_data = self._default_video_script(subject, topic)
 
-        content_data = {
+            # 2. 为每个场景生成配图（TTI API）
+            scenes = script_data.get("scenes", [])
+            for scene in scenes:
+                img_prompt = scene.get("image_prompt", f"{topic} {scene.get('title', '')}")
+                img_b64 = spark_client.generate_image(img_prompt, width=512, height=512)
+                if img_b64:
+                    scene["image_b64"] = img_b64
+                    scene["has_image"] = True
+                else:
+                    scene["has_image"] = False
+
+            # 3. 生成语音（TTS API）
+            full_narration = " ".join([s.get("narration", "") for s in scenes])
+            audio_data = spark_client.text_to_speech(full_narration[:500])  # 限制长度
+            has_audio = audio_data is not None
+
+            content_data = {
+                "title": script_data.get("title", f"{topic}教学视频"),
+                "duration_minutes": len(scenes) * 2,
+                "scenes": scenes,
+                "total_scenes": len(scenes),
+                "target_audience": f"{cognitive_style}型学习者",
+                "generation_type": "video_with_images",
+                "has_audio": has_audio,
+                "narration_text": full_narration[:500]
+            }
+
+            return {
+                "type": "video",
+                "title": script_data.get("title", f"{topic}教学视频"),
+                "subject": subject,
+                "difficulty_level": difficulty,
+                "content_data": content_data,
+                "duration_minutes": len(scenes) * 2,
+                "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+
+        except Exception as e:
+            error(f"生成视频失败: {str(e)}")
+            return self._fallback_video(subject, topic, difficulty)
+
+    def _default_video_script(self, subject: str, topic: str) -> Dict:
+        """默认视频脚本"""
+        return {
             "title": f"{topic}教学视频",
-            "duration_minutes": 10,
-            "scenes": [],
-            "key_visuals": [],
-            "target_audience": f"{cognitive_style}型学习者",
-            "generation_type": result.get("type", "failed"),
-            "media_url": result.get("url"),
+            "scenes": [
+                {"scene_id": 1, "title": f"什么是{topic}", "narration": f"同学们好，今天我们来学习{subject}中的{topic}。这是一个非常重要的概念。", "key_point": "基本概念", "image_prompt": f"{topic} concept diagram"},
+                {"scene_id": 2, "title": f"{topic}的基本原理", "narration": f"接下来我们来了解{topic}的基本原理。", "key_point": "基本原理", "image_prompt": f"{topic} principle diagram"},
+                {"scene_id": 3, "title": f"{topic}的应用", "narration": f"了解了基本原理后，让我们来看{topic}的实际应用。", "key_point": "实际应用", "image_prompt": f"{topic} application example"},
+                {"scene_id": 4, "title": "总结", "narration": f"好的，让我们来总结一下今天学习的{topic}。", "key_point": "总结回顾", "image_prompt": f"{topic} summary"}
+            ],
+            "total_scenes": 4
         }
 
+    def _fallback_video(self, subject: str, topic: str, difficulty: str) -> Dict:
+        """视频降级方案"""
+        script = self._default_video_script(subject, topic)
         return {
             "type": "video",
-            "title": result.get("title", f"{topic}教学视频"),
+            "title": f"{topic}教学视频",
             "subject": subject,
             "difficulty_level": difficulty,
-            "content_data": content_data,
-            "duration_minutes": 10,
+            "content_data": {
+                "title": f"{topic}教学视频",
+                "duration_minutes": 8,
+                "scenes": script["scenes"],
+                "total_scenes": 4,
+                "generation_type": "fallback"
+            },
+            "duration_minutes": 8,
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     
     def _generate_animation_script(self, subject: str, topic: str,
                                   profile: Dict, difficulty: str) -> Dict:
-        """生成教学图片（原动画改为图片）"""
+        """生成教学图片（TTI API）"""
+        from services.spark_client import spark_client
         from services.image_service import image_service
 
-        # 生成教学图片
+        # 使用 TTI API 生成图片
         result = image_service.generate_image_from_suggestion(
             f"{topic}教学示意图", topic, subject
         )
@@ -465,8 +655,8 @@ class ResourceAgent:
             "title": f"{topic}教学图片",
             "duration_minutes": 5,
             "description": f"{topic}的教学示意图，帮助理解核心概念",
-            "visual_style": "SVG教学示意图",
-            "generation_type": result.get("type", "svg_image"),
+            "visual_style": "AI生成图片",
+            "generation_type": result.get("type", "tti_image"),
             "media_url": result.get("url"),
         }
 
@@ -476,7 +666,7 @@ class ResourceAgent:
             "subject": subject,
             "difficulty_level": difficulty,
             "content_data": content_data,
-            "duration_minutes": 4,
+            "duration_minutes": 5,
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     

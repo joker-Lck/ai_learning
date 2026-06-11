@@ -28,22 +28,46 @@ class ResourceExportService:
     def export_resource(self, resource: Dict) -> Optional[Dict]:
         """
         根据资源类型导出为相应格式的文件
-        
+
         Args:
             resource: 资源数据字典
-            
+
         Returns:
             导出结果: {success, file_path, file_type, message}
         """
         try:
             resource_type = resource.get("type")
-            
+            content_data = resource.get("content_data", {})
+
+            # 如果有 media_url（图片/视频/动画），直接返回该URL
+            media_url = content_data.get("media_url")
+            if media_url and media_url.startswith("/exports/"):
+                file_path = media_url.replace("/exports/", "")
+                full_path = os.path.join(self.export_dir, file_path)
+                if os.path.exists(full_path):
+                    return {
+                        "success": True,
+                        "file_path": full_path,
+                        "file_type": file_path.split(".")[-1],
+                        "filename": file_path,
+                        "message": "导出成功"
+                    }
+
             if resource_type in ["document", "quiz"]:
                 return self._export_to_word(resource)
             elif resource_type == "mindmap":
-                return self._export_mindmap_to_jpg(resource)
-            elif resource_type in ["video", "animation"]:
-                return self._export_script_to_txt(resource)
+                # 思维导图优先导出 SVG HTML
+                if content_data.get("has_svg") and media_url:
+                    return self._export_media(media_url)
+                return self._export_mindmap_to_svg(resource)
+            elif resource_type == "video":
+                # 视频导出场景脚本 + 图片
+                return self._export_video(resource)
+            elif resource_type == "animation":
+                # 图片导出
+                if media_url:
+                    return self._export_media(media_url)
+                return self._export_to_markdown(resource)
             elif resource_type in ["code_case", "reading"]:
                 return self._export_to_markdown(resource)
             else:
@@ -52,13 +76,62 @@ class ResourceExportService:
                     "success": False,
                     "message": f"不支持的资源类型: {resource_type}"
                 }
-                
+
         except Exception as e:
             error(f"导出资源失败: {str(e)}")
             return {
                 "success": False,
                 "message": f"导出失败: {str(e)}"
             }
+
+    def _export_media(self, media_url: str) -> Dict:
+        """导出媒体文件（图片/视频/动画）"""
+        file_path = media_url.replace("/exports/", "")
+        full_path = os.path.join(self.export_dir, file_path)
+        if os.path.exists(full_path):
+            return {
+                "success": True,
+                "file_path": full_path,
+                "file_type": file_path.split(".")[-1],
+                "filename": file_path,
+                "message": "导出成功"
+            }
+        return {"success": False, "message": "文件不存在"}
+
+    def _export_mindmap_to_svg(self, resource: Dict) -> Dict:
+        """导出思维导图为 SVG"""
+        content_data = resource.get("content_data", {})
+        title = resource.get("title", "思维导图")
+
+        # 如果有 SVG 数据，直接导出
+        if content_data.get("svg_code"):
+            filename = f"mindmap_{datetime.now().strftime('%Y%m%d_%H%M%S')}.svg"
+            filepath = os.path.join(self.export_dir, filename)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(content_data["svg_code"])
+            return {
+                "success": True,
+                "file_path": filepath,
+                "file_type": "svg",
+                "filename": filename,
+                "message": "导出成功"
+            }
+
+        # 否则导出为 JSON
+        return self._export_to_markdown(resource)
+
+    def _export_video(self, resource: Dict) -> Dict:
+        """导出视频资源（脚本 + 图片）"""
+        content_data = resource.get("content_data", {})
+        title = resource.get("title", "教学视频")
+
+        # 如果有 media_url，直接导出
+        media_url = content_data.get("media_url")
+        if media_url:
+            return self._export_media(media_url)
+
+        # 否则导出脚本为 Markdown
+        return self._export_to_markdown(resource)
     
     def _export_to_word(self, resource: Dict) -> Dict:
         """导出文档或题库为Word格式"""
