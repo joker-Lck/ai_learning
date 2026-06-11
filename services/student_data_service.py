@@ -580,12 +580,24 @@ class StudentDataImportMixin:
                 system_prompt = None
 
             if is_image:
+                # 使用 OCR 提取文字，再用 AI 解析
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
-                response = spark_client.chat_with_image(
-                    prompt, image_b64, max_tokens=4000,
-                    system_prompt=system_prompt,
-                )
+                
+                # 1. 先用 OCR 提取文字
+                ocr_text = spark_client.ocr_image(image_b64)
+                
+                if ocr_text and len(ocr_text) > 10:
+                    # 2. 用 AI 解析 OCR 提取的文字
+                    info(f"OCR 提取文字成功: {len(ocr_text)} 字符")
+                    response = spark_client.simple(f"{prompt}\n\nOCR提取内容:\n{ocr_text[:8000]}", max_tokens=4000)
+                else:
+                    # OCR 失败，降级到图片理解
+                    info("OCR 提取失败，降级到图片理解")
+                    response = spark_client.chat_with_image(
+                        prompt, image_b64, max_tokens=4000,
+                        system_prompt=system_prompt,
+                    )
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
@@ -681,9 +693,21 @@ class StudentDataImportMixin:
 如果没有成绩信息，返回空数组 []"""
 
             if is_image:
+                # 使用 OCR 提取文字，再用 AI 解析
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
-                response = spark_client.chat_with_image(prompt, image_b64)
+                
+                # 1. 先用 OCR 提取文字
+                ocr_text = spark_client.ocr_image(image_b64)
+                
+                if ocr_text and len(ocr_text) > 10:
+                    # 2. 用 AI 解析 OCR 提取的文字
+                    info(f"OCR 提取文字成功: {len(ocr_text)} 字符")
+                    response = spark_client.simple(f"{prompt}\n\nOCR提取内容:\n{ocr_text[:8000]}", max_tokens=4000)
+                else:
+                    # OCR 失败，降级到图片理解
+                    info("OCR 提取失败，降级到图片理解")
+                    response = spark_client.chat_with_image(prompt, image_b64)
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
@@ -753,9 +777,21 @@ class StudentDataImportMixin:
 如果没有错题信息，返回空数组 []"""
 
             if is_image:
+                # 使用 OCR 提取文字，再用 AI 解析
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
-                response = spark_client.chat_with_image(prompt, image_b64, max_tokens=4000)
+                
+                # 1. 先用 OCR 提取文字
+                ocr_text = spark_client.ocr_image(image_b64)
+                
+                if ocr_text and len(ocr_text) > 10:
+                    # 2. 用 AI 解析 OCR 提取的文字
+                    info(f"OCR 提取文字成功: {len(ocr_text)} 字符")
+                    response = spark_client.simple(f"{prompt}\n\nOCR提取内容:\n{ocr_text[:8000]}", max_tokens=4000)
+                else:
+                    # OCR 失败，降级到图片理解
+                    info("OCR 提取失败，降级到图片理解")
+                    response = spark_client.chat_with_image(prompt, image_b64, max_tokens=4000)
             else:
                 text = self._parse_upload_file(filename, content)
                 if not text or text.startswith("["):
