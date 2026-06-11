@@ -413,7 +413,7 @@ class SparkClient:
     def generate_image(self, prompt: str, width: int = 1024, height: int = 1024) -> Optional[str]:
         """
         使用讯飞 TTI API 生成图片
-        WebSocket: wss://spark-api.cn-huabei-1.xf-yun.com/v2.1/tti
+        HTTP: https://spark-api.cn-huabei-1.xf-yun.com/v2.1/tti
         
         Args:
             prompt: 图片描述
@@ -423,126 +423,72 @@ class SparkClient:
         Returns:
             base64 编码的图片数据，失败返回 None
         """
-        try:
-            import websocket
-            import time
-            
-            app_id = os.getenv("SPARK_IMAGE_APPID", os.getenv("SPARK_APPID", ""))
-            api_key = os.getenv("SPARK_IMAGE_API_KEY", os.getenv("SPARK_API_KEY", ""))
-            api_secret = os.getenv("SPARK_IMAGE_API_SECRET", os.getenv("SPARK_API_SECRET", ""))
-            
-            if not app_id or not api_key or not api_secret:
-                error("讯飞图片生成 API 配置不完整")
-                return None
-            
-            # 构建鉴权 URL
-            ws_url = "wss://spark-api.cn-huabei-1.xf-yun.com/v2.1/tti"
-            parsed = urlparse(ws_url)
-            host = parsed.hostname
-            path = parsed.path
-            
-            now = datetime.now(timezone.utc)
-            date = now.strftime('%a, %d %b %Y %H:%M:%S GMT')
-            
-            # 构建签名
-            signature_origin = f"host: {host}\ndate: {date}\nGET {path} HTTP/1.1"
-            signature_sha = hmac.new(
-                api_secret.encode('utf-8'),
-                signature_origin.encode('utf-8'),
-                digestmod=hashlib.sha256
-            ).digest()
-            signature_sha_base64 = base64.b64encode(signature_sha).decode('utf-8')
-            
-            authorization_origin = f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha_base64}"'
-            authorization = base64.b64encode(authorization_origin.encode('utf-8')).decode('utf-8')
-            
-            params = {"authorization": authorization, "date": date, "host": host}
-            full_url = f"{ws_url}?{urlencode(params)}"
-            
-            # 构建请求
-            request_data = {
-                "header": {
-                    "app_id": app_id,
-                    "uid": "user_001"
-                },
-                "parameter": {
-                    "chat": {
-                        "domain": "tti",
-                        "width": width,
-                        "height": height
-                    }
-                },
-                "payload": {
-                    "message": {
-                        "text": [
-                            {"role": "user", "content": prompt}
-                        ]
-                    }
+        import requests
+        
+        app_id = os.getenv("SPARK_IMAGE_APPID", os.getenv("SPARK_APPID", ""))
+        api_key = os.getenv("SPARK_IMAGE_API_KEY", os.getenv("SPARK_API_KEY", ""))
+        api_secret = os.getenv("SPARK_IMAGE_API_SECRET", os.getenv("SPARK_API_SECRET", ""))
+        
+        if not app_id or not api_key:
+            error("讯飞图片生成 API 配置不完整")
+            return None
+        
+        url = os.getenv("SPARK_IMAGE_URL", "https://spark-api.cn-huabei-1.xf-yun.com/v2.1/tti")
+        
+        # 生成鉴权 Token
+        token = _generate_spark_token(api_key, api_secret)
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+            "appid": app_id
+        }
+        
+        payload = {
+            "header": {
+                "app_id": app_id,
+                "uid": "user_001"
+            },
+            "parameter": {
+                "chat": {
+                    "domain": "tti",
+                    "width": width,
+                    "height": height
+                }
+            },
+            "payload": {
+                "message": {
+                    "text": [
+                        {"role": "user", "content": prompt}
+                    ]
                 }
             }
-            
-            result_data = []
-            
-            def on_message(ws, message):
-                try:
-                    data = json.loads(message)
-                    code = data.get("header", {}).get("code", -1)
-                    
-                    if code != 0:
-                        error(f"讯飞图片生成错误: {data.get('header', {}).get('message', '未知错误')}")
-                        ws.close()
-                        return
-                    
-                    # 获取图片数据
-                    payload = data.get("payload", {})
-                    choices = payload.get("choices", {})
-                    text_list = choices.get("text", [])
-                    
-                    for item in text_list:
-                        if item.get("content"):
-                            result_data.append(item["content"])
-                    
-                    status = data.get("header", {}).get("status", 0)
-                    if status == 2:
-                        ws.close()
-                except Exception as e:
-                    error(f"解析消息失败: {e}")
-                    ws.close()
-            
-            def on_error(ws, err):
-                error(f"WebSocket 错误: {err}")
-            
-            def on_close(ws, close_status_code, close_msg):
-                pass
-            
-            def on_open(ws):
-                ws.send(json.dumps(request_data))
-            
+        }
+        
+        try:
             info(f"讯飞图片生成: prompt={prompt[:50]}...")
+            resp = requests.post(url, headers=headers, json=payload, timeout=120)
+            resp.raise_for_status()
             
-            ws = websocket.WebSocketApp(
-                full_url,
-                on_message=on_message,
-                on_error=on_error,
-                on_close=on_close,
-                on_open=on_open
-            )
+            result = resp.json()
+            code = result.get("header", {}).get("code", -1)
             
-            ws.run_forever(ping_timeout=30)
+            if code == 0:
+                # 获取图片数据
+                payload_data = result.get("payload", {})
+                choices = payload_data.get("choices", {})
+                text_list = choices.get("text", [])
+                
+                for item in text_list:
+                    if item.get("content"):
+                        img_data = item["content"]
+                        if len(img_data) > 100:
+                            info(f"讯飞图片生成成功")
+                            return img_data
             
-            if result_data:
-                # 返回 base64 图片数据
-                img_data = result_data[0]
-                if len(img_data) > 100:  # 有效的 base64 数据
-                    info(f"讯飞图片生成成功")
-                    return img_data
-            
-            warning("讯飞图片生成返回空结果")
+            warning(f"讯飞图片生成返回: {result}")
             return None
             
-        except ImportError:
-            warning("websocket-client 未安装")
-            return None
         except Exception as e:
             error(f"讯飞图片生成失败: {e}")
             return None
