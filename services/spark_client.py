@@ -128,8 +128,8 @@ class SparkClient:
 
             msg = response.choices[0].message
             content = msg.content or ""
-            # 讯飞推理模型：content 为空时从 reasoning_content 提取
-            if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
+            # 讯飞推理模型：content 为空或过短时从 reasoning_content 提取
+            if (not content or len(content) < 20) and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
                 reasoning = msg.reasoning_content
                 info(f"讯飞推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
                 import re
@@ -142,8 +142,17 @@ class SparkClient:
                     if json_match:
                         content = json_match.group(0)
                     else:
-                        lines = [line.strip() for line in reasoning.strip().split('\n') if line.strip()]
-                        content = lines[-1] if lines else ""
+                        # 提取包含关键信息的句子
+                        sentences = re.split(r'[。！？\n]', reasoning)
+                        definition_keywords = ['是', '指', '用于', '属于', '一种', '方法', '技术', '算法']
+                        definition_sentences = [s.strip() for s in sentences if any(kw in s for kw in definition_keywords) and len(s.strip()) > 15]
+                        if definition_sentences:
+                            content = definition_sentences[0]
+                        else:
+                            lines = [line.strip() for line in reasoning.strip().split('\n') if line.strip()]
+                            reasoning_starters = ('嗯，', '首先', '其次', '接下来', '我需要', '让我', '现在', '用户让', '然后', '可能', '还要', '另外', '最后')
+                            answer_lines = [l for l in lines if not any(l.startswith(s) for s in reasoning_starters) and len(l) > 15]
+                            content = answer_lines[-1] if answer_lines else (lines[-1] if lines else "")
             if not content:
                 error(f"讯飞模型返回空内容 (model={model}, finish_reason={response.choices[0].finish_reason})")
             return content
