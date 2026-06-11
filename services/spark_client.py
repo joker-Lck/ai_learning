@@ -670,6 +670,118 @@ class SparkClient:
                 return result
             return self.ocr_handwriting(image_b64)
 
+    # ── 讯飞语音合成 (TTS) ──────────────────────────────
+    def text_to_speech(self, text: str, voice: str = "xiaoyan") -> Optional[bytes]:
+        """
+        讯飞长文本语音合成
+        https://api-dx.xf-yun.com/v1/private/dts_create
+        
+        Args:
+            text: 要合成的文字
+            voice: 发音人（xiaoyan, xiaoyu, vixy 等）
+            
+        Returns:
+            音频数据（PCM格式），失败返回 None
+        """
+        import requests
+        import time
+        
+        app_id = os.getenv("SPARK_TTS_APPID", os.getenv("SPARK_APPID", ""))
+        api_key = os.getenv("SPARK_TTS_API_KEY", os.getenv("SPARK_API_KEY", ""))
+        api_secret = os.getenv("SPARK_TTS_API_SECRET", os.getenv("SPARK_API_SECRET", ""))
+        
+        if not app_id or not api_key:
+            error("讯飞语音合成配置不完整")
+            return None
+        
+        url = os.getenv("SPARK_TTS_URL", "https://api-dx.xf-yun.com/v1/private/dts_create")
+        
+        # 生成鉴权 Token
+        token = _generate_spark_token(api_key, api_secret)
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+            "appid": app_id
+        }
+        
+        payload = {
+            "header": {
+                "app_id": app_id,
+                "uid": "user_001",
+                "status": 3
+            },
+            "parameter": {
+                "tts": {
+                    "vcn": voice,  # 发音人
+                    "speed": 50,   # 语速 (0-100)
+                    "volume": 50,  # 音量 (0-100)
+                    "pitch": 50,   # 音高 (0-100)
+                    "bgs": 0,      # 背景音
+                    "tte": "UTF8",  # 文本编码
+                    "rdn": "0"     # 数字发音方式
+                }
+            },
+            "payload": {
+                "text": {
+                    "encoding": "utf8",
+                    "compress": "raw",
+                    "format": "plain",
+                    "text": base64.b64encode(text.encode('utf-8')).decode('utf-8'),
+                    "status": 3
+                }
+            }
+        }
+        
+        try:
+            info(f"讯飞语音合成: text={text[:50]}...")
+            resp = requests.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            
+            result = resp.json()
+            code = result.get("header", {}).get("code", -1)
+            
+            if code == 0:
+                # 获取音频数据
+                audio_data = result.get("payload", {}).get("audio", {})
+                audio_bytes = audio_data.get("audio", "")
+                
+                if audio_bytes:
+                    audio_pcm = base64.b64decode(audio_bytes)
+                    info(f"语音合成成功: {len(audio_pcm)} 字节")
+                    return audio_pcm
+            
+            warning(f"语音合成返回: {result}")
+            return None
+            
+        except Exception as e:
+            error(f"语音合成失败: {e}")
+            return None
+
+    def text_to_speech_file(self, text: str, output_path: str, voice: str = "xiaoyan") -> bool:
+        """
+        语音合成并保存为文件
+        
+        Args:
+            text: 要合成的文字
+            output_path: 输出文件路径（.pcm 或 .wav）
+            voice: 发音人
+            
+        Returns:
+            是否成功
+        """
+        audio_data = self.text_to_speech(text, voice)
+        if audio_data:
+            try:
+                with open(output_path, 'wb') as f:
+                    f.write(audio_data)
+                info(f"语音文件保存成功: {output_path}")
+                return True
+            except Exception as e:
+                error(f"保存语音文件失败: {e}")
+                return False
+        return False
+
 
 # 全局单例 — 保持变量名兼容，避免改所有 import
 spark_client = SparkClient()
