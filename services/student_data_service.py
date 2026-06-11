@@ -266,7 +266,7 @@ class StudentDataService:
                 semester=semester,
             )
 
-            result = qa_service.chat(prompt)
+            result = qa_service.call_ai(prompt)
             plan_data = self._parse_plan_result(result)
 
             # 保存到数据库
