@@ -40,17 +40,25 @@ class PathAgent:
             
             # AI规划学习路径
             path_data = self._generate_learning_path(profile, resources, learning_goal)
-            
+
+            # 确保返回格式符合前端期望
+            result_path = {
+                "goal": learning_goal or path_data.get("path_name", "学习路径"),
+                "total_steps": path_data.get("total_steps", len(path_data.get("steps", []))),
+                "estimated_duration": f"{path_data.get('estimated_hours', 0)}小时",
+                "steps": self._format_steps(path_data.get("steps", []))
+            }
+
             # 保存到数据库
             path_id = self._save_path(user_id, path_data)
-            
+
             result = {
                 "path_id": path_id,
-                "path": path_data,
-                "message": f"学习路径规划完成,共 {path_data['total_steps']} 个步骤"
+                "path": result_path,
+                "message": f"学习路径规划完成,共 {result_path['total_steps']} 个步骤"
             }
-            
-            info(f"学习路径规划完成: {result['path']['total_steps']} 个步骤")
+
+            info(f"学习路径规划完成: {result_path['total_steps']} 个步骤")
             return result
             
         except Exception as e:
@@ -60,6 +68,21 @@ class PathAgent:
                 "message": f"规划失败: {str(e)}"
             }
     
+    def _format_steps(self, steps: List[Dict]) -> List[Dict]:
+        """格式化步骤数据，确保符合前端期望"""
+        formatted = []
+        for i, step in enumerate(steps):
+            formatted.append({
+                "step_number": step.get("step_id", i + 1),
+                "title": step.get("title", f"步骤 {i + 1}"),
+                "description": step.get("description", step.get("learning_objective", "")),
+                "estimated_time": f"{step.get('estimated_time', 30)}分钟",
+                "prerequisites": step.get("prerequisites", []),
+                "resource_type": step.get("resource_type", ""),
+                "resource_id": step.get("resource_id")
+            })
+        return formatted
+
     def _generate_learning_path(self, profile: Dict, resources: List, 
                                learning_goal: str) -> Dict:
         """通过AI生成学习路径"""
