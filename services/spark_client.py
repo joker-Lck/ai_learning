@@ -575,8 +575,8 @@ class SparkClient:
         import requests
         import time
         
-        app_id = os.getenv("SPARK_APPID", "")
-        api_key = os.getenv("SPARK_API_KEY", "")
+        app_id = os.getenv("SPARK_IMAGE_APPID", os.getenv("SPARK_APPID", ""))
+        api_key = os.getenv("SPARK_IMAGE_API_KEY", os.getenv("SPARK_API_KEY", ""))
         
         if not app_id or not api_key:
             error("讯飞 OCR 配置不完整（需要 APPID/APIKey）")
@@ -628,36 +628,33 @@ class SparkClient:
 
     def ocr_print(self, image_b64: str) -> Optional[str]:
         """
-        讯飞印刷文字识别
-        
-        Args:
-            image_b64: base64 编码的图片数据
-            
-        Returns:
-            识别出的文字，失败返回 None
+        讯飞通用文档识别 (OCR大模型)
+        https://cbm01.cn-huabei-1.xf-yun.com/v1/private/se75ocrbm
         """
         import requests
         
-        api_key = os.getenv("SPARK_API_KEY", "")
-        api_secret = os.getenv("SPARK_API_SECRET", "")
+        app_id = os.getenv("SPARK_IMAGE_APPID", os.getenv("SPARK_APPID", ""))
+        api_key = os.getenv("SPARK_IMAGE_API_KEY", os.getenv("SPARK_API_KEY", ""))
+        api_secret = os.getenv("SPARK_IMAGE_API_SECRET", os.getenv("SPARK_API_SECRET", ""))
         
-        if not api_key or not api_secret:
-            error("讯飞 OCR 配置不完整（需要 APIKey/APISecret）")
+        if not app_id or not api_key:
+            error("讯飞 OCR 配置不完整")
             return None
         
-        url = "https://cn-east-1.api.xf-yun.com/v1/ocr"
+        url = os.getenv("SPARK_OCR_URL", "https://cbm01.cn-huabei-1.xf-yun.com/v1/private/se75ocrbm")
         
         # 生成鉴权 Token
         token = _generate_spark_token(api_key, api_secret)
         
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}"
+            "Authorization": f"Bearer {token}",
+            "appid": app_id
         }
         
         payload = {
             "header": {
-                "app_id": os.getenv("SPARK_APPID", ""),
+                "app_id": app_id,
                 "status": 3
             },
             "parameter": {
@@ -675,7 +672,7 @@ class SparkClient:
         }
         
         try:
-            info("讯飞印刷文字识别...")
+            info("讯飞通用文档识别(OCR大模型)...")
             resp = requests.post(url, headers=headers, json=payload, timeout=30)
             resp.raise_for_status()
             
@@ -694,14 +691,14 @@ class SparkClient:
                 
                 text = "\n".join(texts)
                 if text:
-                    info(f"印刷识别成功: {len(text)} 字符")
+                    info(f"OCR识别成功: {len(text)} 字符")
                     return text
             
-            warning(f"印刷识别返回: {result}")
+            warning(f"OCR识别返回: {result}")
             return None
             
         except Exception as e:
-            error(f"印刷识别失败: {e}")
+            error(f"OCR识别失败: {e}")
             return None
 
     def ocr_image(self, image_b64: str, ocr_type: str = "auto") -> Optional[str]:
