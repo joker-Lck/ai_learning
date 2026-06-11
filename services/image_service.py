@@ -70,7 +70,7 @@ class ImageService:
             prompt = f"{subject}课程{topic}的教学示意图，{suggestion}，清晰美观，教育风格，专业图表"
             
             # 生成图片
-            b64_data = spark_client.generate_image(prompt, width=1024, height=768)
+            b64_data = spark_client.generate_image(prompt, width=512, height=512)
             
             if not b64_data:
                 return None

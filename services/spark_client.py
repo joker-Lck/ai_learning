@@ -410,15 +410,15 @@ class SparkClient:
         return self.chat(prompt, model=MODEL_ULTRA, max_tokens=max_tokens, system_prompt=system_prompt)
 
     # ── 讯飞图片生成 (TTI) ──────────────────────────────
-    def generate_image(self, prompt: str, width: int = 1024, height: int = 1024) -> Optional[str]:
+    def generate_image(self, prompt: str, width: int = 512, height: int = 512) -> Optional[str]:
         """
         使用讯飞 TTI API 生成图片
         HTTP: https://spark-api.cn-huabei-1.xf-yun.com/v2.1/tti
         
         Args:
             prompt: 图片描述
-            width: 图片宽度
-            height: 图片高度
+            width: 图片宽度 (支持: 512, 768, 1024)
+            height: 图片高度 (支持: 512, 768, 1024)
             
         Returns:
             base64 编码的图片数据，失败返回 None
@@ -493,7 +493,7 @@ class SparkClient:
             error(f"讯飞图片生成失败: {e}")
             return None
 
-    def generate_image_url(self, prompt: str, width: int = 1024, height: int = 1024) -> Optional[str]:
+    def generate_image_url(self, prompt: str, width: int = 512, height: int = 512) -> Optional[str]:
         """
         使用讯飞 TTI API 生成图片，返回 base64 数据（与 generate_image 相同）
         
