@@ -458,6 +458,7 @@ class StudentDataService:
 
     def _parse_plan_result(self, result: str) -> Dict:
         """解析 AI 返回的学习计划"""
+        import re as _re
         try:
             from core.json_utils import safe_parse_json
             parsed = safe_parse_json(result)
@@ -466,13 +467,27 @@ class StudentDataService:
         except Exception:
             pass
 
-        # 降级：返回原始文本
+        # 清理代码块标记
+        cleaned = result.strip()
+        code_match = _re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', cleaned, _re.DOTALL)
+        if code_match:
+            cleaned = code_match.group(1).strip()
+            # 再次尝试解析清理后的 JSON
+            try:
+                from core.json_utils import safe_parse_json
+                parsed = safe_parse_json(cleaned)
+                if parsed and isinstance(parsed, dict) and 'daily_plans' in parsed:
+                    return parsed
+            except Exception:
+                pass
+
+        # 降级：返回原始文本（已清理代码块标记）
         return {
             "title": "学习计划",
-            "summary": result[:200] if result else "暂无",
+            "summary": cleaned[:200] if cleaned else "暂无",
             "total_days": 7,
             "daily_plans": [],
-            "raw_text": result,
+            "raw_text": cleaned,
             "focus_areas": [],
             "tips": []
         }

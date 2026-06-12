@@ -209,7 +209,9 @@ function PlanTabContent({ plans, loading, onGenerate }: { plans: StudyPlan[]; lo
           {/* 原始文本降级 */}
           {display.raw_text && !display.daily_plans?.length && (
             <div className="border border-white/[0.06] rounded-lg p-4 bg-white/[0.02]">
-              <div className="text-sm text-white/70 whitespace-pre-wrap">{display.raw_text}</div>
+              <div className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">
+                {display.raw_text.replace(/```json\s*/g, '').replace(/```\s*/g, '')}
+              </div>
             </div>
           )}
 
