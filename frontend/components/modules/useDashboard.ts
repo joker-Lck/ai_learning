@@ -251,6 +251,21 @@ export function useDashboard() {
       const res: any = await api.generateStudyPlan({ semester: currentSemester, ...data });
       if (res.success && res.data) {
         setStudyPlans(prev => [{ ...res.data, semester: currentSemester, plan_type: data.plan_type }, ...prev]);
+
+        // 记录活动日志
+        try {
+          const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+          logs.unshift({
+            id: `plan-${Date.now()}`,
+            type: 'path',
+            action: '生成了学习计划',
+            detail: data.plan_type === 'weekly' ? '周计划' : data.plan_type === 'exam' ? '备考计划' : '自定义计划',
+            time: new Date().toISOString(),
+          });
+          localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+          window.dispatchEvent(new Event('activity-updated'));
+        } catch {}
+
         return res.data;
       }
     } finally { setPlanLoading(false); }
@@ -289,6 +304,39 @@ export function useDashboard() {
   const [difficulty, setDifficulty] = useState('intermediate');
   const [resourceLoading, setResourceLoading] = useState(false);
   const [resources, setResources] = useState<ResourceItem[]>([]);
+
+  // 资源生成后同步保存到 localStorage + 记录活动日志
+  useEffect(() => {
+    if (resources.length === 0) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem('generated_resources') || '[]');
+      const newItems = resources
+        .filter(r => r.status === 'complete')
+        .map(r => ({
+          ...r,
+          subject,
+          topic,
+          created_at: new Date().toISOString(),
+        }));
+      const merged = [...newItems, ...stored].slice(0, 50);
+      localStorage.setItem('generated_resources', JSON.stringify(merged));
+      window.dispatchEvent(new Event('resources-updated'));
+
+      // 记录活动日志
+      if (newItems.length > 0) {
+        const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+        logs.unshift({
+          id: `res-${Date.now()}`,
+          type: 'resource',
+          action: `生成了${newItems.length}个${topic}相关资源`,
+          detail: subject,
+          time: new Date().toISOString(),
+        });
+        localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+        window.dispatchEvent(new Event('activity-updated'));
+      }
+    } catch {}
+  }, [resources]);
 
   // ── 学习路径状态 ──
   const [learningGoal, setLearningGoal] = useState('掌握深度学习基础');
@@ -421,6 +469,20 @@ export function useDashboard() {
       const response: any = await api.planPath({ learning_goal: learningGoal });
       if (response?.success && response?.data) {
         setLearningPath(response.data.path || response.data);
+
+        // 记录活动日志
+        try {
+          const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+          logs.unshift({
+            id: `path-${Date.now()}`,
+            type: 'path',
+            action: '生成了学习路径',
+            detail: learningGoal,
+            time: new Date().toISOString(),
+          });
+          localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+          window.dispatchEvent(new Event('activity-updated'));
+        } catch {}
       } else {
         alert(response?.message || '路径生成失败，请重试');
       }
@@ -463,6 +525,20 @@ export function useDashboard() {
           timestamp: new Date(),
         }]);
         setTutorLoading(false);
+
+        // 记录活动日志
+        try {
+          const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+          logs.unshift({
+            id: `tutor-${Date.now()}`,
+            type: 'tutor',
+            action: '解答了一个学习问题',
+            detail: q.length > 30 ? q.slice(0, 30) + '...' : q,
+            time: new Date().toISOString(),
+          });
+          localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+          window.dispatchEvent(new Event('activity-updated'));
+        } catch {}
       },
       // onError
       (errMsg) => {
@@ -481,6 +557,20 @@ export function useDashboard() {
       const res: any = await api.assess({ user_id: user?.id, assessment_type: 'comprehensive' });
       if (res.success && res.data?.assessment) {
         setAssessment(res.data.assessment);
+
+        // 记录活动日志
+        try {
+          const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+          logs.unshift({
+            id: `assess-${Date.now()}`,
+            type: 'assess',
+            action: '完成了学习效果评估',
+            detail: res.data.assessment.grade || '',
+            time: new Date().toISOString(),
+          });
+          localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+          window.dispatchEvent(new Event('activity-updated'));
+        } catch {}
       } else {
         console.error('评估返回异常:', res);
         alert(res.message || '评估失败，请稍后重试');

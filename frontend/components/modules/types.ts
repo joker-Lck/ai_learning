@@ -2,6 +2,15 @@
 
 export type ModuleType = 'profile' | 'resources' | 'path' | 'tutor' | 'assessment' | 'rag' | null;
 
+export interface NavigationContext {
+  subject?: string;
+  topic?: string;
+  learningGoal?: string;
+  tutorSubject?: string;
+  autoPlan?: boolean;
+  autoGenerate?: boolean;
+}
+
 export interface DimensionChat {
   dimensionId: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;

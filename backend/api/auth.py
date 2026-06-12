@@ -33,6 +33,20 @@ async def login(request: Request, req: LoginRequest):
 
         user_login(req.username, True)
 
+        # 记录登录活动
+        try:
+            from data.db_operations import assessment_db
+            import json
+            if assessment_db.connect():
+                assessment_db.cursor.execute(
+                    "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (%s, %s, %s)",
+                    (user['id'], 'login', json.dumps({"action": "用户登录"}, ensure_ascii=False))
+                )
+                assessment_db.conn.commit()
+                assessment_db.close()
+        except Exception:
+            pass
+
         return AuthResponse(
             success=True,
             message=result["message"],

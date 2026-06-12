@@ -131,11 +131,50 @@ async def stream_generate_resources_real(
 
                     if result.get("success"):
                         res_data = result.get("data", {})
+                        title = res_data.get("title", f"{topic} - {type_label}")
+                        content_data = res_data.get("content_data", res_data)
+
+                        # 自动保存到数据库
+                        try:
+                            from data.db_operations import resource_db
+                            if resource_db.connect():
+                                resource_db.cursor.execute("""
+                                    INSERT INTO learning_resources
+                                    (title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent, duration_minutes)
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                """, (
+                                    title, rtype, subject, topic, difficulty,
+                                    json.dumps(content_data, ensure_ascii=False),
+                                    f"user_{user_id}",
+                                    res_data.get("duration_minutes")
+                                ))
+                                resource_db.conn.commit()
+                                resource_db.close()
+                                info(f"资源自动保存成功: {title}")
+                        except Exception as save_err:
+                            error(f"资源自动保存失败: {save_err}")
+
+                        # 记录活动日志
+                        try:
+                            from data.db_operations import assessment_db
+                            if assessment_db.connect():
+                                assessment_db.cursor.execute("""
+                                    INSERT INTO learning_activities (user_id, activity_type, metadata)
+                                    VALUES (%s, %s, %s)
+                                """, (
+                                    user_id, 'resource_generate',
+                                    json.dumps({"resource_type": rtype, "subject": subject, "topic": topic, "title": title}, ensure_ascii=False)
+                                ))
+                                assessment_db.conn.commit()
+                                assessment_db.close()
+                        except Exception as log_err:
+                            error(f"活动日志记录失败: {log_err}")
+
                         yield _sse({
                             "type": "resource",
                             "resource_type": rtype,
-                            "title": res_data.get("title", f"{topic} - {type_label}"),
-                            "content_data": res_data.get("content_data", res_data),
+                            "title": title,
+                            "content_data": content_data,
                             "duration_minutes": res_data.get("duration_minutes"),
                             "elapsed_seconds": elapsed,
                             "message": f"✅ {type_label} 生成完成 ({elapsed}s)"

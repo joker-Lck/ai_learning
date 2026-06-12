@@ -2,6 +2,7 @@
 学习智能体 API - 多智能体系统接口
 包括学生画像、资源生成、路径规划、智能辅导、效果评估
 """
+import json
 from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
 from typing import Dict, List, Optional, Any
@@ -120,7 +121,33 @@ async def generate_learning_resources(
             user_id=user_id,
             input_data=input_data
         )
-        
+
+        # 自动保存生成的资源到数据库
+        if result.get("success") and result.get("data"):
+            try:
+                resources_data = result["data"].get("resources", [])
+                from data.db_operations import resource_db
+                if resource_db.connect():
+                    for res in resources_data:
+                        resource_db.cursor.execute("""
+                            INSERT INTO learning_resources
+                            (title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            res.get("title", ""),
+                            res.get("type", res.get("resource_type", "document")),
+                            input_data.get("subject", ""),
+                            input_data.get("topic", ""),
+                            input_data.get("difficulty", "intermediate"),
+                            json.dumps(res.get("content_data", res), ensure_ascii=False),
+                            f"user_{user_id}"
+                        ))
+                    resource_db.conn.commit()
+                    resource_db.close()
+                    info(f"非流式资源自动保存成功: {len(resources_data)} 条")
+            except Exception as save_err:
+                error(f"非流式资源自动保存失败: {save_err}")
+
         return BaseResponse(
             success=result["success"],
             message=result["message"],
@@ -214,6 +241,23 @@ async def tutor_query(
             error(f"JSON 序列化失败，降级处理: {ser_err}")
             resp_content["data"] = str(result.get("data", ""))
 
+        # 记录活动日志
+        if resp_content.get("success"):
+            try:
+                from data.db_operations import assessment_db
+                if assessment_db.connect():
+                    assessment_db.cursor.execute(
+                        "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (%s, %s, %s)",
+                        (user_id, 'tutor_query', json.dumps({
+                            "question": input_data.get("question", "")[:100],
+                            "subject": input_data.get("subject", "")
+                        }, ensure_ascii=False))
+                    )
+                    assessment_db.conn.commit()
+                    assessment_db.close()
+            except Exception as log_err:
+                error(f"辅导活动日志记录失败: {log_err}")
+
         return JSONResponse(content=resp_content)
 
     except Exception as e:
@@ -293,7 +337,27 @@ async def assess_learning(
             user_id=user_id,
             input_data=input_data
         )
-        
+
+        # 记录活动日志
+        if result.get("success"):
+            try:
+                from data.db_operations import assessment_db
+                if assessment_db.connect():
+                    grade = ""
+                    if result.get("data") and result["data"].get("assessment"):
+                        grade = result["data"]["assessment"].get("grade", "")
+                    assessment_db.cursor.execute(
+                        "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (%s, %s, %s)",
+                        (user_id, 'assessment', json.dumps({
+                            "assessment_type": input_data.get("assessment_type", "comprehensive"),
+                            "grade": grade
+                        }, ensure_ascii=False))
+                    )
+                    assessment_db.conn.commit()
+                    assessment_db.close()
+            except Exception as log_err:
+                error(f"评估活动日志记录失败: {log_err}")
+
         return BaseResponse(
             success=result["success"],
             message=result["message"],
@@ -1009,3 +1073,126 @@ async def import_errors_from_file(
     except Exception as e:
         error(f"导入错题失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 工作台 API ====================
+
+
+@router.get("/dashboard/stats")
+async def get_dashboard_stats(user: dict = Depends(get_current_user)):
+    """获取工作台统计数据"""
+    try:
+        user_id = user["id"]
+        stats = {}
+
+        from data.db_operations import resource_db, assessment_db
+
+        # 资源数量
+        if resource_db.connect():
+            resource_db.cursor.execute(
+                "SELECT COUNT(*) as cnt FROM learning_resources WHERE generated_by_agent = %s",
+                (f"user_{user_id}",)
+            )
+            stats["resource_count"] = resource_db.cursor.fetchone()["cnt"]
+            resource_db.close()
+        else:
+            stats["resource_count"] = 0
+
+        # 活动统计
+        if assessment_db.connect():
+            assessment_db.cursor.execute(
+                "SELECT COUNT(*) as cnt FROM learning_activities WHERE user_id = %s",
+                (user_id,)
+            )
+            stats["activity_count"] = assessment_db.cursor.fetchone()["cnt"]
+
+            assessment_db.cursor.execute(
+                "SELECT COUNT(DISTINCT DATE(created_at)) as days FROM learning_activities WHERE user_id = %s AND activity_type IN ('login', 'resource_generate', 'tutor_query', 'assessment')",
+                (user_id,)
+            )
+            stats["login_days"] = assessment_db.cursor.fetchone()["days"]
+
+            assessment_db.cursor.execute(
+                "SELECT COALESCE(SUM(duration_seconds), 0) as total FROM learning_activities WHERE user_id = %s AND activity_type = 'session'",
+                (user_id,)
+            )
+            stats["total_study_seconds"] = assessment_db.cursor.fetchone()["total"]
+
+            assessment_db.close()
+        else:
+            stats["activity_count"] = 0
+            stats["login_days"] = 0
+            stats["total_study_seconds"] = 0
+
+        return {"success": True, "data": stats}
+
+    except Exception as e:
+        error(f"获取工作台统计失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/activity-logs")
+async def get_activity_logs(
+    limit: int = Query(10, ge=1, le=50),
+    user: dict = Depends(get_current_user)
+):
+    """获取用户最近活动日志"""
+    try:
+        user_id = user["id"]
+        from data.db_operations import assessment_db
+
+        if not assessment_db.connect():
+            return BaseResponse(success=False, message="数据库连接失败", data=None)
+
+        assessment_db.cursor.execute("""
+            SELECT id, activity_type, metadata, created_at
+            FROM learning_activities
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (user_id, limit))
+
+        rows = assessment_db.cursor.fetchall()
+        for row in rows:
+            if row.get("metadata"):
+                try:
+                    row["metadata"] = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"]
+                except:
+                    pass
+            if row.get("created_at"):
+                row["created_at"] = str(row["created_at"])
+
+        assessment_db.close()
+
+        return BaseResponse(success=True, data={"logs": rows})
+
+    except Exception as e:
+        error(f"获取活动日志失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/activity-logs")
+async def record_session_time(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(get_current_user)
+):
+    """记录会话学习时长"""
+    try:
+        user_id = user["id"]
+        seconds = input_data.get("seconds", 0)
+        if seconds < 10:
+            return {"success": True, "message": "ignored"}
+
+        from data.db_operations import assessment_db
+        if assessment_db.connect():
+            assessment_db.cursor.execute(
+                "INSERT INTO learning_activities (user_id, activity_type, metadata, duration_seconds) VALUES (%s, %s, %s, %s)",
+                (user_id, 'session', json.dumps({"action": "页面浏览"}, ensure_ascii=False), seconds)
+            )
+            assessment_db.conn.commit()
+            assessment_db.close()
+
+        return {"success": True}
+    except Exception as e:
+        error(f"记录会话时长失败: {str(e)}")
+        return {"success": False}

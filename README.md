@@ -80,6 +80,22 @@
 6. 💻 **Code Case** - 代码案例
 7. 📖 **Reading** - 阅读材料
 
+### 4. 首页工作台
+
+系统首页为**动态工作台**，所有数据从后端实时获取，与登录用户绑定：
+
+| 区域 | 功能 | 数据来源 |
+|------|------|---------|
+| **顶部问候** | 显示用户名 + 累计学习天数/时长 | `GET /dashboard/stats` |
+| **统计卡片** | 学习记录/兴趣领域/生成资源/薄弱待补 | `GET /get-profile` |
+| **继续学习** | 最近生成的资源列表，点击直接预览 | `GET /list-resources` |
+| **最近生成** | 所有 AI 生成资源，支持弹窗预览 | `GET /list-resources` |
+| **今日建议** | 基于记忆系统的个性化推荐 | `GET /learning-recommendations` |
+| **快速开始** | AI问答/资源生成/学习评估/上传文档 | 模块入口 |
+| **协同动态** | 智能体活动日志实时流 | `GET /activity-logs` |
+
+**页面切换**：工作台与功能选择页通过上下滑动切换（scroll-snap），工作台内部内容可独立滚动。
+
 ### 4. 8维度学生画像
 
 - **knowledge_base** - 知识基础
@@ -396,41 +412,35 @@ CREATE TABLE memory_metadata (
 
 ### 单页面导航系统
 
-**设计理念**: 保留导航菜单，但不跳转页面，通过URL参数控制模块切换。
+**设计理念**: 三屏滑动切换，无页面跳转，通过 scroll-snap 实现全屏页面切换。
 
-#### 导航菜单（6个入口）
-
-```
-📊 工作台          → /dashboard
-🎯 学生画像        → /dashboard?module=profile
-🤖 资源生成        → /dashboard?module=resources
-🗺️ 学习路径        → /dashboard?module=path
-💡 智能辅导        → /dashboard?module=tutor
-📈 效果评估        → /dashboard?module=assessment
-```
-
-#### 工作流程
+#### 三屏布局
 
 ```
-用户点击"学生画像"
-    ↓
-router.push('/dashboard?module=profile')
-    ↓
-URL变为 /dashboard?module=profile
-    ↓
-DashboardContent检测到URL参数变化
-    ↓
-setActiveModule('profile')
-    ↓
-显示学生画像模块（无刷新）
+Section 0: Hero 首页         → 品牌展示 + 统计概览
+Section 1: 工作台            → 用户数据仪表盘（内部可滚动）
+Section 2: 功能选择/模块内容  → 6大模块入口或具体模块内容
 ```
 
-#### 关键特点
+#### 工作台页面
 
-- ✅ **无页面刷新**: 整个流程在同一个页面完成
-- ✅ **URL可分享**: URL包含模块信息
-- ✅ **浏览器历史**: 可以使用前进/后退按钮
-- ✅ **状态保持**: 切换模块时状态不变
+工作台是登录后的默认首页，所有数据动态获取：
+- 顶部：问候语 + 用户名 + 学习天数/时长统计
+- 统计卡片：学习记录/兴趣领域/生成资源/薄弱待补
+- 继续学习：最近资源列表，点击弹窗预览
+- 今日建议：基于记忆系统的个性化推荐
+- 协同动态：智能体活动日志
+
+#### 模块导航
+
+```
+📄 学生画像   → URL参数 ?module=profile
+🤖 资源生成   → URL参数 ?module=resources
+🗺️ 学习路径   → URL参数 ?module=path
+💡 智能辅导   → URL参数 ?module=tutor
+📈 效果评估   → URL参数 ?module=assessment
+📚 知识库     → URL参数 ?module=rag
+```
 
 ---
 
@@ -568,6 +578,11 @@ AI: 已更新您的学习偏好为"实践型"...
 | `/api/agent/plan-path` | POST | 规划学习路径 |
 | `/api/agent/tutor` | POST | 智能辅导答疑 |
 | `/api/agent/assess` | POST | 学习效果评估 |
+| `/api/agent/list-resources` | GET | 获取资源列表（按用户过滤） |
+| `/api/agent/save-resource` | POST | 保存资源到数据库 |
+| `/api/agent/dashboard/stats` | GET | 工作台统计数据 |
+| `/api/agent/activity-logs` | GET/POST | 活动日志查询/记录 |
+| `/api/agent/learning-recommendations` | GET | 个性化学习推荐 |
 
 ### 流式输出与安全API（核心）
 
@@ -1396,8 +1411,9 @@ def search_similar_questions(self, question_text, limit=5):
 ├── core/                # 核心工具
 ├── frontend/            # 前端应用
 │   ├── components/
-│   │   ├── DashboardContent.tsx  # ⭐ 主内容区
-│   │   └── layout/Sidebar.tsx    # ⭐ 侧边栏导航
+│   │   ├── DashboardContent.tsx    # ⭐ 主内容区（滑屏控制）
+│   │   ├── WorkSpaceSection.tsx    # ⭐ 首页工作台（动态数据）
+│   │   └── modules/               # 6大功能模块
 │   └── app/dashboard/page.tsx
 │
 ├── scripts/                # 初始化脚本

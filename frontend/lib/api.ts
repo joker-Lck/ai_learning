@@ -178,6 +178,29 @@ class ApiClient {
     });
   }
 
+  async getResources(params?: { resource_type?: string; subject?: string; limit?: number; offset?: number }) {
+    const q = new URLSearchParams();
+    if (params?.resource_type) q.set('resource_type', params.resource_type);
+    if (params?.subject) q.set('subject', params.subject);
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.offset) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return this.request(`/agent/list-resources${qs ? '?' + qs : ''}`, { method: 'GET' });
+  }
+
+  async getLearningRecommendations(subject?: string) {
+    const q = subject ? `?subject=${encodeURIComponent(subject)}` : '';
+    return this.request(`/agent/learning-recommendations${q}`, { method: 'GET' });
+  }
+
+  async getDashboardStats() {
+    return this.request('/agent/dashboard/stats', { method: 'GET' });
+  }
+
+  async getActivityLogs(limit = 10) {
+    return this.request(`/agent/activity-logs?limit=${limit}`, { method: 'GET' });
+  }
+
   /**
    * 流式生成多种资源 — SSE 实时进度
    * 返回 AbortController，调用方可通过 controller.abort() 取消

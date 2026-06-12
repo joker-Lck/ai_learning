@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useDashboard } from './modules/useDashboard';
 import { STATS } from './modules/constants';
-import type { ModuleType } from './modules/types';
+import type { ModuleType, NavigationContext } from './modules/types';
 import { DashboardBackground } from './shared/BackgroundEffects';
 import ProfileModule from './modules/ProfileModule';
 import ResourcesModule from './modules/ResourcesModule';
@@ -16,6 +16,9 @@ import PathModule from './modules/PathModule';
 import TutorModule from './modules/TutorModule';
 import AssessmentModule from './modules/AssessmentModule';
 import RagKnowledgeModule from './modules/RagKnowledgeModule';
+import WorkSpaceSection from './WorkSpaceSection';
+
+const TOTAL_SECTIONS = 3; // 0: Hero, 1: Workspace, 2: Module Select
 
 const modules = [
   { id: 'profile', label: '学生画像', desc: '对话式画像构建', icon: UserCheck },
@@ -31,6 +34,8 @@ export default function DashboardContent() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentSection, setCurrentSection] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const [autoPlan, setAutoPlan] = useState(false);
 
   const requireLogin = (callback: () => void) => {
     const hasToken = !!localStorage.getItem('auth_token');
@@ -61,9 +66,22 @@ export default function DashboardContent() {
     const handleWheel = (e: WheelEvent) => {
       if (isScrolling) return;
       if (Math.abs(e.deltaY) < 30) return;
-      
+
+      // 工作台内部滚动：如果事件来自工作台区域，检查是否已到边界
+      if (currentSection === 1) {
+        const workspaceMain = (e.target as HTMLElement)?.closest?.('[data-workspace-scroll]');
+        if (workspaceMain) {
+          const { scrollTop, scrollHeight, clientHeight } = workspaceMain;
+          const atTop = scrollTop <= 0;
+          const atBottom = scrollTop + clientHeight >= scrollHeight - 2;
+
+          if (e.deltaY > 0 && !atBottom) return; // 向下滚但未到底，放行内部滚动
+          if (e.deltaY < 0 && !atTop) return;     // 向上滚但未到顶，放行内部滚动
+        }
+      }
+
       e.preventDefault();
-      if (e.deltaY > 0 && currentSection < 2) {
+      if (e.deltaY > 0 && currentSection < TOTAL_SECTIONS - 1) {
         scrollToSection(currentSection + 1);
       } else if (e.deltaY < 0 && currentSection > 0) {
         scrollToSection(currentSection - 1);
@@ -83,7 +101,7 @@ export default function DashboardContent() {
       const diffX = touchStartX - touchEndX;
 
       if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
-        if (diffY > 0 && currentSection < 2) {
+        if (diffY > 0 && currentSection < TOTAL_SECTIONS - 1) {
           scrollToSection(currentSection + 1);
         } else if (diffY < 0 && currentSection > 0) {
           scrollToSection(currentSection - 1);
@@ -101,6 +119,29 @@ export default function DashboardContent() {
       container.removeEventListener('touchend', handleTouchEnd);
     };
   }, [currentSection, isScrolling]);
+
+  const navigateToModule = (moduleId: ModuleType, ctx?: NavigationContext) => {
+    requireLogin(() => {
+      // 预填充上下文数据
+      if (ctx?.subject) d.setSubject(ctx.subject);
+      if (ctx?.topic) d.setTopic(ctx.topic);
+      if (ctx?.learningGoal) d.setLearningGoal(ctx.learningGoal);
+      if (ctx?.tutorSubject) d.setTutorSubject(ctx.tutorSubject);
+
+      // 设置自动触发标志
+      setAutoPlan(!!ctx?.autoPlan);
+
+      // 启动过渡动画
+      setTransitioning(true);
+
+      setTimeout(() => {
+        d.setActiveModule(moduleId);
+        scrollToSection(2);
+        // 动画结束
+        setTimeout(() => setTransitioning(false), 400);
+      }, 300);
+    });
+  };
 
   const renderModule = () => {
     switch (d.activeModule) {
@@ -223,7 +264,32 @@ export default function DashboardContent() {
     <div ref={containerRef} className="min-h-screen relative" style={{ background: '#0a0a0a' }}>
       <DashboardBackground />
 
-      {/* Section 1: Hero */}
+      {/* 页面切换过渡动画 */}
+      <AnimatePresence>
+        {transitioning && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{ background: 'rgba(10, 10, 10, 0.92)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 1.05, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="flex flex-col items-center gap-4"
+            >
+              <div className="w-10 h-10 border-2 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
+              <span className="text-sm text-white/40">加载中...</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Section 0: Hero */}
       <section
         ref={el => { sectionRefs.current[0] = el; }}
         className="snap-section relative px-6"
@@ -295,23 +361,31 @@ export default function DashboardContent() {
         )}
       </section>
 
+      {/* Section 1: 工作台 */}
+      <section
+        ref={el => { sectionRefs.current[1] = el; }}
+        className="snap-section"
+      >
+        <WorkSpaceSection onNavigateModule={navigateToModule} />
+      </section>
+
       {/* Section 2: 模块选择 或 模块内容 */}
       <AnimatePresence mode="wait">
         {d.activeModule ? (
           <motion.section
             key="module-content"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            ref={el => { sectionRefs.current[1] = el; }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+            ref={el => { sectionRefs.current[2] = el; }}
             className="min-h-screen px-8 py-20 overflow-y-auto"
           >
             <div className="max-w-7xl mx-auto">
-              {/* 返回按钮 */}
               <motion.button
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
                 onClick={() => d.setActiveModule(null)}
                 className="flex items-center gap-3 text-white/40 hover:text-white/70 mb-10 transition-colors"
               >
@@ -322,7 +396,7 @@ export default function DashboardContent() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ delay: 0.1, duration: 0.35 }}
               >
                 {renderModule()}
               </motion.div>
@@ -334,8 +408,8 @@ export default function DashboardContent() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            ref={el => { sectionRefs.current[1] = el; }}
+            transition={{ duration: 0.25 }}
+            ref={el => { sectionRefs.current[2] = el; }}
             className="snap-section px-6"
           >
             <div className="max-w-6xl mx-auto px-4">
@@ -360,7 +434,7 @@ export default function DashboardContent() {
                       transition={{ delay: index * 0.08, duration: 0.4 }}
                       onClick={() => requireLogin(() => {
                         d.setActiveModule(mod.id as ModuleType);
-                        setTimeout(() => scrollToSection(1), 100);
+                        setTimeout(() => scrollToSection(2), 100);
                       })}
                       className="group p-10 rounded-2xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.05] hover:border-purple-500/20 transition-all text-left"
                     >
@@ -382,7 +456,7 @@ export default function DashboardContent() {
       {/* 页面指示器 */}
       {!d.activeModule && (
         <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2">
-          {[0, 1].map(i => (
+          {[0, 1, 2].map(i => (
             <button
               key={i}
               onClick={() => scrollToSection(i)}

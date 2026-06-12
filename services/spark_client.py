@@ -132,18 +132,59 @@ class SparkClient:
             if (not content or len(content) < 20) and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
                 reasoning = msg.reasoning_content
                 info(f"讯飞推理模型 content 为空，从 reasoning_content 提取 (len={len(reasoning)})")
-                import re
-                # 尝试从推理过程中提取 JSON
-                json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', reasoning, re.DOTALL)
-                if json_matches:
-                    content = json_matches[-1]
+                from core.json_utils import safe_parse_json
+                parsed = safe_parse_json(reasoning)
+                if parsed is not None:
+                    import json
+                    content = json.dumps(parsed, ensure_ascii=False)
                 else:
-                    json_match = re.search(r'\{[\s\S]*\}|\[[\s\S]*\]', reasoning)
-                    if json_match:
-                        content = json_match.group(0)
+                    # 尝试提取最后一个完整的 JSON 对象
+                    import re
+                    # 用括号深度匹配提取 JSON（支持任意嵌套）
+                    def _extract_last_json(text):
+                        candidates = []
+                        for start_ch, end_ch in [('{', '}'), ('[', ']')]:
+                            i = 0
+                            while i < len(text):
+                                start = text.find(start_ch, i)
+                                if start == -1:
+                                    break
+                                depth = 0
+                                in_str = False
+                                esc = False
+                                for j in range(start, len(text)):
+                                    c = text[j]
+                                    if esc:
+                                        esc = False
+                                        continue
+                                    if c == '\\' and in_str:
+                                        esc = True
+                                        continue
+                                    if c == '"' and not esc:
+                                        in_str = not in_str
+                                        continue
+                                    if not in_str:
+                                        if c == start_ch:
+                                            depth += 1
+                                        elif c == end_ch:
+                                            depth -= 1
+                                            if depth == 0:
+                                                candidates.append(text[start:j + 1])
+                                                i = j + 1
+                                                break
+                                else:
+                                    i += 1
+                                    continue
+                        # 返回最长的 JSON 候选
+                        return max(candidates, key=len) if candidates else None
+
+                    json_str = _extract_last_json(reasoning)
+                    if json_str:
+                        content = json_str
                     else:
-                        # 提取包含关键信息的句子
-                        sentences = re.split(r'[。！？\n]', reasoning)
+                        # 降级：提取关键句子
+                        import re as re2
+                        sentences = re2.split(r'[。！？\n]', reasoning)
                         definition_keywords = ['是', '指', '用于', '属于', '一种', '方法', '技术', '算法']
                         definition_sentences = [s.strip() for s in sentences if any(kw in s for kw in definition_keywords) and len(s.strip()) > 15]
                         if definition_sentences:
