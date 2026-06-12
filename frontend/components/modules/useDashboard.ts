@@ -298,8 +298,8 @@ export function useDashboard() {
   };
 
   // ── 资源生成状态 ──
-  const [subject, setSubject] = useState('机器学习');
-  const [topic, setTopic] = useState('神经网络');
+  const [subject, setSubject] = useState('');
+  const [topic, setTopic] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['document', 'quiz', 'mindmap']);
   const [difficulty, setDifficulty] = useState('intermediate');
   const [resourceLoading, setResourceLoading] = useState(false);
@@ -339,13 +339,13 @@ export function useDashboard() {
   }, [resources]);
 
   // ── 学习路径状态 ──
-  const [learningGoal, setLearningGoal] = useState('掌握深度学习基础');
+  const [learningGoal, setLearningGoal] = useState('');
   const [pathLoading, setPathLoading] = useState(false);
   const [learningPath, setLearningPath] = useState<LearningPath | null>(null);
 
   // ── 智能辅导状态 ──
   const [question, setQuestion] = useState('');
-  const [tutorSubject, setTutorSubject] = useState('机器学习');
+  const [tutorSubject, setTutorSubject] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<TutorMessage[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
