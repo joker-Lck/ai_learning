@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Route, Lightbulb, TrendingUp,
   UserCheck, Database, Bell,
-  Play, FileText, Video, Image as ImageIcon, BarChart3,
+  FileText, Video, BarChart3,
   ArrowRight, Clock, Zap, Users, ChevronRight,
   Sparkles, Target, X, GitBranch, FileCode, Code, BookOpen,
   Maximize2, Loader2,
