@@ -1,48 +1,31 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { useAuthStore, useUIStore } from '@/stores';
-import Sidebar from '@/components/layout/Sidebar';
+import { useAuthStore } from '@/stores';
 import DashboardContent from '@/components/DashboardContent';
+import FloatingMenu from '@/components/layout/FloatingMenu';
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const { isLoggedIn, isGuest, restoreAuth } = useAuthStore();
-  const { sidebarOpen } = useUIStore();
-  const [hydrated, setHydrated] = useState(false);
+  const { restoreAuth } = useAuthStore();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    const hasToken = !!localStorage.getItem('auth_token');
+    const isGuest = localStorage.getItem('is_guest') === 'true';
+    if (!hasToken && !isGuest) {
+      window.location.href = '/';
+      return;
+    }
     restoreAuth();
-    setHydrated(true);
+    setReady(true);
   }, []);
 
-  useEffect(() => {
-    if (hydrated && !isLoggedIn && !isGuest) {
-      router.push('/');
-    }
-  }, [hydrated, isLoggedIn, isGuest, router]);
-
-  if (!hydrated || (!isLoggedIn && !isGuest)) return null;
+  if (!ready) return null;
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#060d1f' }}>
-      <Sidebar />
-      <main
-        className={`flex-1 transition-all duration-300 ${
-          sidebarOpen ? 'ml-64' : 'ml-20'
-        }`}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-          className="p-8"
-        >
-          <DashboardContent />
-        </motion.div>
-      </main>
+    <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
+      <FloatingMenu />
+      <DashboardContent />
     </div>
   );
 }

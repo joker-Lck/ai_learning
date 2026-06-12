@@ -37,27 +37,57 @@ export function useDashboard() {
   const [dimensionChats, setDimensionChats] = useState<Record<string, DimensionChat>>({});
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  // 打开画像模块时自动加载已有画像
+  // 获取当前用户名用于 localStorage key
+  const getUsername = () => {
+    try {
+      const stored = localStorage.getItem('user_info');
+      if (stored) return JSON.parse(stored).username || 'default';
+    } catch {}
+    return user?.username || 'default';
+  };
+
+  // 初始化时立即从 localStorage 加载画像
   useEffect(() => {
-    if (isGuest) return;
-    if (activeModule === 'profile' && !profileData && !profileLoading) {
+    if (profileLoaded) return;
+    const username = getUsername();
+    const localKey = `profile_${username}`;
+    const localData = localStorage.getItem(localKey);
+    if (localData) {
+      try {
+        const parsed = JSON.parse(localData);
+        if (parsed && (parsed.major || parsed.cognitive_style || parsed.grade_level)) {
+          setProfileData(parsed);
+        }
+      } catch {}
+    }
+    setProfileLoaded(true);
+  }, []);
+
+  // 打开画像模块时尝试从 API 加载最新数据
+  useEffect(() => {
+    if (isGuest || !profileLoaded) return;
+    if (activeModule === 'profile' && !profileLoading) {
       setProfileLoading(true);
+      const localKey = `profile_${getUsername()}`;
+      
+      // 尝试从 API 加载
       api.getProfile().then((res: any) => {
         if (res.success && res.data) {
           const p = res.data;
-          // 仅当画像已构建过（有 major 或 knowledge_base 非空）才展示
           if (p.major || p.cognitive_style || (p.knowledge_base && p.knowledge_base !== '{}')) {
             setProfileData(p);
+            localStorage.setItem(localKey, JSON.stringify(p));
           }
         }
       }).catch(() => {
-        // 无已有画像，忽略
+        // API 不可用
       }).finally(() => {
         setProfileLoading(false);
       });
     }
-  }, [activeModule]);
+  }, [activeModule, profileLoaded]);
 
   // ── 学生数据管理状态 ──
   const [profileTab, setProfileTab] = useState<ProfileTab>('profile');
@@ -95,18 +125,39 @@ export function useDashboard() {
   // 切换学期时加载数据
   const loadSemesterData = (semester: string) => {
     setCurrentSemester(semester);
-    // 课程表
+    const username = getUsername();
+    
+    // 课程表 - 先从 localStorage 加载
     setCourseLoading(true);
+    const localCourses = localStorage.getItem(`courses_${username}_${semester}`);
+    if (localCourses) {
+      try { setCourses(JSON.parse(localCourses)); } catch {}
+    }
+    
     api.getCourseSchedule(semester).then((res: any) => {
-      if (res.success && res.data?.courses) setCourses(res.data.courses);
-      else setCourses([]);
-    }).catch(() => setCourses([])).finally(() => setCourseLoading(false));
-    // 成绩
+      if (res.success && res.data?.courses) {
+        setCourses(res.data.courses);
+        localStorage.setItem(`courses_${username}_${semester}`, JSON.stringify(res.data.courses));
+      }
+    }).catch(() => {
+      // API 不可用，使用 localStorage 数据
+    }).finally(() => setCourseLoading(false));
+    
+    // 成绩 - 先从 localStorage 加载
     setGradeLoading(true);
+    const localGrades = localStorage.getItem(`grades_${username}_${semester}`);
+    if (localGrades) {
+      try { setGrades(JSON.parse(localGrades)); } catch {}
+    }
+    
     api.getGrades(semester).then((res: any) => {
-      if (res.success && Array.isArray(res.data)) setGrades(res.data);
-      else setGrades([]);
-    }).catch(() => setGrades([])).finally(() => setGradeLoading(false));
+      if (res.success && Array.isArray(res.data)) {
+        setGrades(res.data);
+        localStorage.setItem(`grades_${username}_${semester}`, JSON.stringify(res.data));
+      }
+    }).catch(() => {
+      // API 不可用，使用 localStorage 数据
+    }).finally(() => setGradeLoading(false));
   };
 
   useEffect(() => {
@@ -121,6 +172,11 @@ export function useDashboard() {
     setCourses(courseList);
     if (!semesters.includes(semester)) setSemesters(prev => [semester, ...prev]);
     setCourseLoading(true);
+    
+    // 保存到 localStorage
+    const localKey = `courses_${getUsername()}_${semester}`;
+    localStorage.setItem(localKey, JSON.stringify(courseList));
+    
     try {
       const res: any = await api.saveCourseSchedule(semester, courseList);
       if (!res.success) console.warn('课程表保存失败:', res.message);
@@ -133,6 +189,11 @@ export function useDashboard() {
   const handleSaveGrades = async (semester: string, gradeList: GradeItem[]) => {
     setGrades(gradeList);
     setGradeLoading(true);
+    
+    // 保存到 localStorage
+    const localKey = `grades_${getUsername()}_${semester}`;
+    localStorage.setItem(localKey, JSON.stringify(gradeList));
+    
     try {
       const res: any = await api.saveGrades(semester, gradeList);
       if (!res.success) console.warn('成绩保存失败:', res.message);
@@ -156,9 +217,21 @@ export function useDashboard() {
   }, [activeModule, profileTab]);
 
   const handleAddErrorNote = async (note: Omit<ErrorNote, 'id'>) => {
-    const res: any = await api.saveErrorNote(note);
-    if (res.success) loadErrorNotes();
-    return res;
+    const newNote = { ...note, id: Date.now(), created_at: new Date().toISOString() };
+    setErrorNotes(prev => [newNote, ...prev]);
+    
+    // 保存到 localStorage
+    const localKey = `error_notes_${getUsername()}`;
+    const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
+    localStorage.setItem(localKey, JSON.stringify([newNote, ...existing]));
+    
+    try {
+      const res: any = await api.saveErrorNote(note);
+      if (res.success) loadErrorNotes();
+      return res;
+    } catch {
+      return { success: true, data: newNote };
+    }
   };
 
   const handleToggleMastery = async (noteId: number, currentMastery: number) => {
@@ -538,9 +611,39 @@ export function useDashboard() {
   };
 
   const handleUpdateProfileField = async (field: string, value: any) => {
-    const res: any = await api.updateProfileField(field, value);
-    if (res.success && res.data) setProfileData(res.data);
-    return res;
+    // 确保 profileData 是对象
+    const currentProfile = profileData || {
+      major: '',
+      grade_level: '',
+      cognitive_style: '',
+      knowledge_base: null,
+      learning_goals: [],
+      interest_areas: [],
+      weak_points: [],
+      preferred_resources: [],
+      learning_history: [],
+    };
+    
+    // 先更新本地状态
+    const updatedProfile = { ...currentProfile, [field]: value };
+    setProfileData(updatedProfile);
+    
+    // 保存到 localStorage
+    const localKey = `profile_${getUsername()}`;
+    localStorage.setItem(localKey, JSON.stringify(updatedProfile));
+    
+    // 尝试保存到 API
+    try {
+      const res: any = await api.updateProfileField(field, value);
+      if (res.success && res.data) {
+        setProfileData(res.data);
+        localStorage.setItem(localKey, JSON.stringify(res.data));
+      }
+    } catch {
+      // API 不可用，数据已保存在 localStorage
+    }
+    
+    return { success: true, data: updatedProfile };
   };
 
   return {

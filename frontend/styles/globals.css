@@ -5,16 +5,15 @@
 /* ==================== 全局基础样式 ==================== */
 
 :root {
-  --primary: #0a192f;
-  --accent-cyan: #64ffda;
-  --accent-blue: #00d4ff;
-  --accent-orange: #f59e0b;
-  --surface: #ffffff;
-  --text: #1e293b;
-  --text-secondary: #64748b;
-  --bg-dark: #060d1f;
-  --bg-card: rgba(255, 255, 255, 0.05);
-  --border-subtle: rgba(255, 255, 255, 0.08);
+  --primary: #6643FF;
+  --accent-purple: #6643FF;
+  --accent-cyan: #8B7AFF;
+  --surface: #111111;
+  --text: #f5f5f5;
+  --text-secondary: #888888;
+  --bg-dark: #0a0a0a;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --border-subtle: rgba(255, 255, 255, 0.06);
 }
 
 * {
@@ -29,10 +28,17 @@ html {
 
 body {
   font-family: 'Inter', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
-  background: var(--bg-dark);
-  color: #e2e8f0;
+  background: #0a0a0a;
+  color: #e0e0e0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv01', 'cv02', 'cv03', 'cv04';
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+  letter-spacing: -0.02em;
 }
 
 /* ==================== 滚动条美化 ==================== */
@@ -47,62 +53,56 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 255, 218, 0.15);
+  background: rgba(102, 67, 255, 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 255, 218, 0.3);
+  background: rgba(102, 67, 255, 0.4);
 }
 
 /* ==================== 选中文本样式 ==================== */
 
 ::selection {
-  background: rgba(100, 255, 218, 0.3);
-  color: var(--primary);
+  background: rgba(102, 67, 255, 0.3);
+  color: #fff;
 }
 
 /* ==================== 工具类 ==================== */
 
 @layer utilities {
-  /* 玻璃态效果 */
+  /* 扁平卡片 */
   .glass {
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .glass-dark {
-    background: rgba(10, 25, 47, 0.6);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(100, 255, 218, 0.08);
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 1rem;
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
   }
 
   .glass-card-hover:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: #161616;
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   /* 渐变文字 */
   .text-gradient {
-    background: linear-gradient(135deg, #64ffda 0%, #00d4ff 100%);
+    background: linear-gradient(135deg, #6643FF 0%, #8B7AFF 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .text-gradient-purple {
-    background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+    background: linear-gradient(135deg, #6643FF 0%, #a78bfa 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -110,22 +110,21 @@ body {
 
   /* 渐变背景 */
   .bg-gradient-primary {
-    background: linear-gradient(135deg, #0a192f 0%, #1a3a5c 100%);
+    background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
   }
 
   .bg-gradient-accent {
-    background: linear-gradient(135deg, #64ffda 0%, #00d4ff 100%);
+    background: linear-gradient(135deg, #6643FF 0%, #8B7AFF 100%);
   }
 
   /* 卡片悬停效果 */
   .card-hover {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.2s, border-color 0.2s;
   }
 
   .card-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    border-color: rgba(100, 255, 218, 0.15);
+    background: #161616;
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   /* 按钮涟漪效果 */
@@ -190,12 +189,12 @@ body {
 }
 
 .markdown-body code {
-  background: rgba(100, 255, 218, 0.1);
+  background: rgba(102, 67, 255, 0.1);
   padding: 0.15em 0.4em;
   border-radius: 4px;
   font-size: 0.9em;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  color: #64ffda;
+  color: #8B7AFF;
 }
 
 .markdown-body pre {
@@ -214,10 +213,10 @@ body {
 }
 
 .markdown-body blockquote {
-  border-left: 4px solid #64ffda;
+  border-left: 4px solid #6643FF;
   padding-left: 1em;
   margin: 1em 0;
-  color: #64748b;
+  color: #888888;
   font-style: italic;
 }
 
@@ -244,9 +243,94 @@ body {
   color: #e2e8f0;
 }
 
-/* 隐藏 Spline 3D 场景自带的 "move your mouse" 等提示文字 */
-.spline-bg-wrapper + *,
-.spline-bg-wrapper ~ [class*="spline"],
-div[style*="position: absolute"][style*="pointer-events"] {
-  display: none !important;
+/* ==================== SVG 背景动画 ==================== */
+
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  20% { transform: translate(15px, -20px) rotate(1.5deg) scale(1.02); }
+  40% { transform: translate(-10px, 15px) rotate(-1deg) scale(0.98); }
+  60% { transform: translate(20px, 5px) rotate(0.8deg) scale(1.01); }
+  80% { transform: translate(-8px, -10px) rotate(-0.5deg) scale(1); }
+}
+
+@keyframes float-slower {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  25% { transform: translate(-18px, 12px) rotate(-1.2deg) scale(1.03); }
+  50% { transform: translate(10px, -18px) rotate(1deg) scale(0.97); }
+  75% { transform: translate(14px, 8px) rotate(-0.6deg) scale(1.01); }
+}
+
+@keyframes spin-slow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -100; }
+}
+
+@keyframes pulse-line {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes draw-in {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+.svg-float-1 {
+  animation: float-slow 20s ease-in-out infinite, pulse-line 8s ease-in-out infinite;
+}
+
+.svg-float-2 {
+  animation: float-slower 25s ease-in-out infinite, pulse-line 10s ease-in-out infinite 2s;
+}
+
+.svg-float-3 {
+  animation: spin-slow 50s linear infinite;
+}
+
+.svg-dash {
+  stroke-dasharray: 12 8;
+  animation: dash-flow 4s linear infinite;
+}
+
+.svg-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw-in 3s ease-out forwards;
+}
+
+/* ==================== 全屏滚动 ==================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+.snap-container {
+  scroll-snap-type: y mandatory;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+.snap-section {
+  scroll-snap-align: start;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ==================== 减少动画偏好 ==================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .svg-float-1, .svg-float-2, .svg-float-3 {
+    animation: none !important;
+  }
 }

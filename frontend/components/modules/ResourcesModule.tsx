@@ -142,7 +142,7 @@ function contentToMarkdown(data: any, type: string): string {
 }
 
 const TYPE_ICONS: Record<string, { icon: typeof FileText; color: string }> = {
-  document: { icon: FileText, color: 'text-cyan-400' },
+  document: { icon: FileText, color: 'text-purple-400' },
   mindmap: { icon: GitBranch, color: 'text-emerald-400' },
   quiz: { icon: FileCode, color: 'text-amber-400' },
   video: { icon: Video, color: 'text-purple-400' },
@@ -167,36 +167,35 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
   const isImage = resource.type === 'animation' || generationType === 'tti_image';
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden">
-      {/* 头部 */}
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-3 min-w-0">
+    <div className="border-b border-white/[0.06] py-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <Icon className={`w-5 h-5 ${typeInfo.color} flex-shrink-0`} />
-          <div className="min-w-0">
-            <span className="font-semibold text-white block truncate">{resource.title}</span>
-            <span className="text-xs text-white/40">
+          <div className="min-w-0 flex-1">
+            <span className="font-medium text-white text-base block truncate">{resource.title}</span>
+            <span className="text-sm text-white/35">
               {getTypeName(resource.type)}
               {hasMedia && isVideo && <span className="ml-2 text-purple-400">● AI生成视频</span>}
               {hasMedia && isSvgAnim && <span className="ml-2 text-pink-400">● AI生成动画</span>}
               {hasMedia && isMindmap && <span className="ml-2 text-emerald-400">● SVG思维导图</span>}
-              {hasMedia && isImage && <span className="ml-2 text-cyan-400">● AI生成图片</span>}
+              {hasMedia && isImage && <span className="ml-2 text-purple-400">● AI生成图片</span>}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="p-2 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white transition-colors"
+            className="p-1.5 rounded-md hover:bg-white/[0.06] text-white/35 hover:text-white transition-colors"
           >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
           {hasMedia && (
             <button
               onClick={() => window.open(mediaUrl, '_blank')}
-              className="p-2 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white transition-colors"
+              className="p-1.5 rounded-md hover:bg-white/[0.06] text-white/35 hover:text-white transition-colors"
               title="全屏打开"
             >
-              <Maximize2 className="w-4 h-4" />
+              <Maximize2 className="w-3.5 h-3.5" />
             </button>
           )}
           <button
@@ -219,16 +218,16 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
                 alert(`导出失败: ${error.message || '网络错误'}`);
               }
             }}
-            className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:opacity-90 transition text-sm flex items-center gap-1"
+            className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 rounded-md hover:bg-emerald-500/25 transition-colors text-xs flex items-center gap-1"
           >
-            📥 导出
+            导出
           </button>
-          {resource.status === 'complete' && <CheckCircle className="w-4 h-4 text-emerald-400" />}
+          {resource.status === 'complete' && <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />}
         </div>
       </div>
       {/* 内容 */}
       {expanded && (
-        <div className="px-4 pb-4 border-t border-white/[0.06] pt-4">
+        <div className="px-3 pb-3 border-t border-white/[0.04] pt-3">
           {/* AI 生成的视频 */}
           {hasMedia && isVideo && (
             <video
@@ -265,26 +264,26 @@ export default function ResourcesModule({
   difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
 }: ResourcesModuleProps) {
   return (
-    <div className="space-y-4">
-      <h3 className="text-xl font-bold text-white">多智能体资源生成</h3>
+    <div className="space-y-8">
+      <h3 className="text-3xl font-bold text-white">多智能体资源生成</h3>
 
-      <div className="glass-card rounded-xl p-4 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-white/60 mb-1">学科</label>
+            <label className="block text-base font-medium text-white/60 mb-2">学科</label>
             <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none" />
+              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/60 mb-1">主题</label>
+            <label className="block text-base font-medium text-white/60 mb-2">主题</label>
             <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)}
-              className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none" />
+              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none" />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white/60 mb-2">资源类型</label>
-          <div className="flex flex-wrap gap-2">
+          <label className="block text-base font-medium text-white/60 mb-3">资源类型</label>
+          <div className="flex flex-wrap gap-3">
             {[
               { id: 'document', label: ' 文档', icon: FileText },
               { id: 'mindmap', label: ' 思维导图', icon: GitBranch },
@@ -297,10 +296,10 @@ export default function ResourcesModule({
               <button
                 key={type.id}
                 onClick={() => setSelectedTypes(prev => prev.includes(type.id) ? prev.filter(t => t !== type.id) : [...prev, type.id])}
-                className={`px-3 py-2 rounded-lg border transition-all text-sm ${
+                className={`px-4 py-2.5 rounded-lg border transition-all text-base ${
                   selectedTypes.includes(type.id)
-                    ? 'border-cyan-400/30 bg-cyan-400/10 text-cyan-400'
-                    : 'border-white/[0.08] bg-white/[0.02] text-white/40 hover:border-white/[0.15] hover:text-white/60'
+                    ? 'border-purple-400/30 bg-purple-400/10 text-purple-400'
+                    : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:border-white/[0.12] hover:text-white/60'
                 }`}
               >
                 {type.label}
@@ -310,9 +309,9 @@ export default function ResourcesModule({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white/60 mb-1">难度级别</label>
+          <label className="block text-base font-medium text-white/60 mb-2">难度级别</label>
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
-            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white rounded-lg focus:border-cyan-400/30 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
+            className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white rounded-lg text-base focus:border-purple-500/30 focus:outline-none [&>option]:bg-[#0f0f0f] [&>option]:text-white">
             <option value="beginner">初级</option>
             <option value="intermediate">中级</option>
             <option value="advanced">高级</option>
@@ -322,7 +321,7 @@ export default function ResourcesModule({
         <button
           onClick={handleGenerateResources}
           disabled={resourceLoading || selectedTypes.length === 0}
-          className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
+          className="w-full py-3.5 bg-purple-500 text-white rounded-lg hover:bg-purple-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold text-base transition-colors"
         >
           {resourceLoading ? (
             <><Loader2 className="w-5 h-5 animate-spin" /> 生成中...</>
@@ -334,7 +333,7 @@ export default function ResourcesModule({
 
       {resources.length > 0 && (
         <div className="space-y-3">
-          <h4 className="font-bold text-white">生成的资源 ({resources.length})</h4>
+          <h4 className="font-semibold text-white text-sm">生成的资源 ({resources.length})</h4>
           {resources.map((resource, idx) => (
             <ResourceCard key={idx} resource={resource} getTypeName={getTypeName} />
           ))}

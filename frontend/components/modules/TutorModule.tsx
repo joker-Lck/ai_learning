@@ -23,25 +23,25 @@ export default function TutorModule({
   tutorLoading, tutorMessages, handleAskTutor, streamingContent,
 }: TutorModuleProps) {
   return (
-    <div className="space-y-4">
-      <h3 className="text-xl font-bold text-white">智能辅导系统</h3>
+    <div className="space-y-8">
+      <h3 className="text-3xl font-bold text-white">智能辅导系统</h3>
 
-      <div className="glass-card rounded-2xl p-6 min-h-[500px] max-h-[600px] overflow-y-auto">
+      <div className="min-h-[60vh] max-h-[70vh] overflow-y-auto p-6 space-y-5">
         {tutorMessages.map((msg, idx) => (
-          <div key={idx} className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] px-4 py-3 rounded-2xl ${
-              msg.role === 'user'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
-                : 'bg-white/[0.06] text-white/80 border border-white/[0.06] rounded-bl-md'
-            }`}>
-              <div className="flex items-start gap-2">
+            <div key={idx} className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] px-5 py-4 rounded-xl ${
+                msg.role === 'user'
+                  ? 'bg-purple-500 text-white'
+                  : 'bg-white/[0.04] text-white/80 border border-white/[0.06]'
+              }`}>
+              <div className="flex items-start gap-3">
                 {msg.role === 'assistant' && (
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Lightbulb className="w-3 h-3 text-white" />
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Lightbulb className="w-4 h-4 text-white" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs opacity-70 mb-1">{msg.timestamp.toLocaleTimeString()}</div>
+                  <div className="text-sm opacity-70 mb-1.5">{msg.timestamp.toLocaleTimeString()}</div>
                   {/* Markdown 渲染 */}
                   <MarkdownRenderer content={msg.content} className={msg.role === 'user' ? '[&_*]:!text-white/90' : ''} />
                   {/* Mermaid 图表 */}
@@ -51,7 +51,7 @@ export default function TutorModule({
                   {/* 旧格式 diagram 兼容 */}
                   {msg.diagram && typeof msg.diagram === 'string' && (
                     <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
-                      <div className="text-cyan-400 font-medium mb-1">📊 图解说明</div>
+                      <div className="text-purple-400 font-medium mb-1">📊 图解说明</div>
                       <MarkdownRenderer content={msg.diagram} />
                     </div>
                   )}
@@ -73,14 +73,14 @@ export default function TutorModule({
         {/* 流式输出中 */}
         {tutorLoading && streamingContent && (
           <div className="mb-4 flex justify-start">
-            <div className="max-w-[85%] px-4 py-3 rounded-2xl bg-white/[0.06] text-white/80 border border-white/[0.06] rounded-bl-md">
-              <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Lightbulb className="w-3 h-3 text-white" />
+            <div className="max-w-[85%] px-5 py-4 rounded-xl bg-white/[0.04] text-white/80 border border-white/[0.06]">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Lightbulb className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <MarkdownRenderer content={streamingContent} />
-                  <span className="animate-pulse text-cyan-400">▌</span>
+                  <span className="animate-pulse text-purple-400">▌</span>
                 </div>
               </div>
             </div>
@@ -95,26 +95,26 @@ export default function TutorModule({
         )}
       </div>
 
-      <div className="glass-card rounded-xl p-4 space-y-3">
+      <div className="space-y-4 pt-4 border-t border-white/[0.06]">
         <div>
-          <label className="block text-sm font-medium text-white/60 mb-1">学科</label>
+          <label className="block text-base font-medium text-white/60 mb-2">学科</label>
           <input type="text" value={tutorSubject} onChange={(e) => setTutorSubject(e.target.value)}
-            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none" />
+            className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none" />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAskTutor()}
             placeholder="输入你的问题..."
-            className="flex-1 px-4 py-2 bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/15 rounded-lg focus:border-cyan-400/30 focus:outline-none"
+            className="flex-1 px-5 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none"
             disabled={tutorLoading}
           />
           <button
             onClick={handleAskTutor}
             disabled={tutorLoading || !question.trim()}
-            className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-8 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-base transition-colors"
           >
             {tutorLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             提问

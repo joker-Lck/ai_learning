@@ -442,6 +442,179 @@ async def export_resource_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== 学习资源管理库 ====================
+
+@router.post("/save-resource", response_model=BaseResponse)
+async def save_resource(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(get_current_user)
+):
+    """
+    保存学习资源到管理库
+    
+    输入格式:
+    {
+        "title": "资源标题",
+        "resource_type": "document/quiz/mindmap/video/animation/code/reading",
+        "subject": "学科",
+        "topic": "主题",
+        "difficulty_level": "beginner/intermediate/advanced",
+        "content_data": {资源内容},
+        "tags": ["标签1", "标签2"]
+    }
+    """
+    try:
+        user_id = user["id"]
+        info(f"用户 {user_id} 保存学习资源: {input_data.get('title')}")
+        
+        from data.db_operations import resource_db
+        
+        if not resource_db.connect():
+            return BaseResponse(success=False, message="数据库连接失败", data=None)
+        
+        sql = """
+            INSERT INTO learning_resources 
+            (title, resource_type, subject, topic, difficulty_level, content_data, tags, generated_by_agent)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        resource_db.cursor.execute(sql, (
+            input_data.get("title", ""),
+            input_data.get("resource_type", "document"),
+            input_data.get("subject", ""),
+            input_data.get("topic", ""),
+            input_data.get("difficulty_level", "intermediate"),
+            json.dumps(input_data.get("content_data", {}), ensure_ascii=False),
+            json.dumps(input_data.get("tags", []), ensure_ascii=False),
+            f"user_{user_id}"
+        ))
+        resource_db.conn.commit()
+        resource_id = resource_db.cursor.lastrowid
+        resource_db.close()
+        
+        info(f"学习资源保存成功: resource_id={resource_id}")
+        return BaseResponse(
+            success=True,
+            message="资源保存成功",
+            data={"resource_id": resource_id}
+        )
+        
+    except Exception as e:
+        error(f"保存学习资源失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/list-resources", response_model=BaseResponse)
+async def list_resources(
+    resource_type: str = Query("", description="资源类型筛选"),
+    subject: str = Query("", description="学科筛选"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user: dict = Depends(get_current_user)
+):
+    """
+    获取学习资源列表
+    """
+    try:
+        user_id = user["id"]
+        
+        from data.db_operations import resource_db
+        
+        if not resource_db.connect():
+            return BaseResponse(success=False, message="数据库连接失败", data=None)
+        
+        conditions = ["generated_by_agent = %s"]
+        params = [f"user_{user_id}"]
+        
+        if resource_type:
+            conditions.append("resource_type = %s")
+            params.append(resource_type)
+        
+        if subject:
+            conditions.append("subject LIKE %s")
+            params.append(f"%{subject}%")
+        
+        where = " AND ".join(conditions)
+        sql = f"""
+            SELECT id, title, resource_type, subject, topic, difficulty_level, 
+                   content_data, tags, usage_count, rating, duration_minutes, created_at
+            FROM learning_resources 
+            WHERE {where}
+            ORDER BY created_at DESC
+            LIMIT %s OFFSET %s
+        """
+        params.extend([limit, offset])
+        
+        resource_db.cursor.execute(sql, params)
+        rows = resource_db.cursor.fetchall()
+        
+        # 解析 JSON 字段
+        for row in rows:
+            if row.get("content_data"):
+                try:
+                    row["content_data"] = json.loads(row["content_data"])
+                except:
+                    pass
+            if row.get("tags"):
+                try:
+                    row["tags"] = json.loads(row["tags"])
+                except:
+                    pass
+            if row.get("created_at"):
+                row["created_at"] = str(row["created_at"])
+        
+        # 获取总数
+        count_sql = f"SELECT COUNT(*) as total FROM learning_resources WHERE {where}"
+        resource_db.cursor.execute(count_sql, params[:-2])
+        total = resource_db.cursor.fetchone()["total"]
+        
+        resource_db.close()
+        
+        return BaseResponse(
+            success=True,
+            message="获取成功",
+            data={"resources": rows, "total": total}
+        )
+        
+    except Exception as e:
+        error(f"获取学习资源列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/delete-resource/{resource_id}", response_model=BaseResponse)
+async def delete_resource(
+    resource_id: int,
+    user: dict = Depends(get_current_user)
+):
+    """删除学习资源"""
+    try:
+        user_id = user["id"]
+        
+        from data.db_operations import resource_db
+        
+        if not resource_db.connect():
+            return BaseResponse(success=False, message="数据库连接失败", data=None)
+        
+        # 验证资源属于当前用户
+        sql = "SELECT id FROM learning_resources WHERE id = %s AND generated_by_agent = %s"
+        resource_db.cursor.execute(sql, (resource_id, f"user_{user_id}"))
+        if not resource_db.cursor.fetchone():
+            resource_db.close()
+            return BaseResponse(success=False, message="资源不存在或无权限删除", data=None)
+        
+        # 删除资源
+        delete_sql = "DELETE FROM learning_resources WHERE id = %s"
+        resource_db.cursor.execute(delete_sql, (resource_id,))
+        resource_db.conn.commit()
+        resource_db.close()
+        
+        info(f"用户 {user_id} 删除资源: resource_id={resource_id}")
+        return BaseResponse(success=True, message="删除成功")
+        
+    except Exception as e:
+        error(f"删除学习资源失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/analyze-documents", response_model=BaseResponse)
 async def analyze_documents(
     files: List[UploadFile] = File(...),

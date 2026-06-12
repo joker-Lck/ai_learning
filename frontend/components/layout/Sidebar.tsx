@@ -57,18 +57,16 @@ export default function Sidebar() {
     <motion.aside
       className="fixed left-0 top-0 h-full z-50 flex flex-col"
       style={{
-        background: 'rgba(10, 25, 47, 0.85)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderRight: '1px solid rgba(100, 255, 218, 0.06)',
+        background: '#0f0f0f',
+        borderRight: '1px solid rgba(255, 255, 255, 0.05)',
       }}
       animate={{ width: sidebarOpen ? 256 : 80 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
       {/* Logo */}
-      <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center flex-shrink-0 shadow-lg" style={{ boxShadow: '0 0 20px rgba(6,182,212,0.2)' }}>
-          <GraduationCap className="w-6 h-6 text-white" />
+      <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        <div className="w-9 h-9 rounded-lg bg-purple-500/15 flex items-center justify-center flex-shrink-0">
+          <GraduationCap className="w-4 h-4 text-purple-400" />
         </div>
         <AnimatePresence>
           {sidebarOpen && (
@@ -78,8 +76,8 @@ export default function Sidebar() {
               exit={{ opacity: 0, width: 0 }}
               className="overflow-hidden whitespace-nowrap"
             >
-              <h1 className="text-lg font-bold text-white">AI 学习助手</h1>
-              <p className="text-[10px] text-white/30 tracking-widest">MULTI-AGENT</p>
+              <h1 className="text-sm font-semibold text-white">AI 学习助手</h1>
+              <p className="text-[10px] text-white/20 tracking-widest">MULTI-AGENT</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -97,19 +95,18 @@ export default function Sidebar() {
             <motion.button
               key={item.path}
               onClick={() => handleNavClick(item)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
                 isActive
-                  ? 'text-cyan-400'
-                  : 'text-white/40 hover:text-white/70'
+                  ? 'text-purple-400 bg-white/[0.06]'
+                  : 'text-white/35 hover:text-white/60 hover:bg-white/[0.03]'
               }`}
-              style={isActive ? { background: 'rgba(100, 255, 218, 0.08)' } : undefined}
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
             >
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-cyan-400 rounded-r-full"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-purple-400 rounded-r-full"
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
@@ -133,26 +130,26 @@ export default function Sidebar() {
 
       {/* 游客模式提示 */}
       {isGuest && (
-        <div className="mx-3 mb-2 px-3 py-2.5 rounded-xl border border-amber-400/20 bg-amber-400/5">
-          <div className="flex items-center gap-2 mb-1">
-            <Eye className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+        <div className="mx-3 mb-2 px-3 py-2 rounded-lg border border-amber-400/15 bg-amber-400/5">
+          <div className="flex items-center gap-2 mb-0.5">
+            <Eye className="w-3 h-3 text-amber-400 flex-shrink-0" />
             {sidebarOpen && (
-              <span className="text-xs font-medium text-amber-400">游客模式</span>
+              <span className="text-xs font-medium text-amber-400">游客</span>
             )}
           </div>
           {sidebarOpen && (
-            <p className="text-[11px] text-amber-300/50 leading-relaxed">
-              仅可浏览界面，无法使用任何功能。请登录后体验完整功能。
+            <p className="text-[11px] text-amber-300/40 leading-relaxed">
+              仅可浏览，无法使用功能。请登录后体验。
             </p>
           )}
         </div>
       )}
 
       {/* 用户信息 */}
-      <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex items-center gap-3 px-3 py-2 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
-            <span className="text-sm">{roleIcon[user?.role || 'guest']}</span>
+          <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center flex-shrink-0 border border-white/[0.06]">
+            <span className="text-xs">{roleIcon[user?.role || 'guest']}</span>
           </div>
           <AnimatePresence>
             {sidebarOpen && (
@@ -162,8 +159,8 @@ export default function Sidebar() {
                 exit={{ opacity: 0, width: 0 }}
                 className="overflow-hidden whitespace-nowrap flex-1 min-w-0"
               >
-                <p className="text-sm font-medium text-white/80 truncate">{user?.username || '用户'}</p>
-                <p className="text-xs text-white/30">{roleLabel[user?.role || 'guest']}</p>
+                <p className="text-xs font-medium text-white/60 truncate">{user?.username || '用户'}</p>
+                <p className="text-[10px] text-white/20">{roleLabel[user?.role || 'guest']}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -171,16 +168,16 @@ export default function Sidebar() {
 
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/30 hover:text-white/60 hover:bg-white/5 transition-all"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/25 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
         >
-          <LogOut className="w-4 h-4 flex-shrink-0" />
+          <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
           <AnimatePresence>
             {sidebarOpen && (
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-sm"
+                className="text-xs"
               >
                 退出登录
               </motion.span>
@@ -192,8 +189,7 @@ export default function Sidebar() {
       {/* 折叠按钮 */}
       <button
         onClick={toggleSidebar}
-        className="absolute top-1/2 -right-3 w-6 h-6 rounded-full shadow-md flex items-center justify-center text-cyan-400 transition-colors z-50"
-        style={{ background: 'rgba(10, 25, 47, 0.9)', border: '1px solid rgba(100, 255, 218, 0.2)' }}
+        className="absolute top-1/2 -right-3 w-6 h-6 rounded-full shadow-md flex items-center justify-center text-purple-400 transition-colors z-50 bg-[#0f0f0f] border border-white/[0.08]"
       >
         {sidebarOpen ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
       </button>

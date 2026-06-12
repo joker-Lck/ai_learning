@@ -104,20 +104,20 @@ function getCourseHeight(start: string, end: string): number {
 }
 
 const PROFILE_DISPLAY = [
-  { key: 'major', label: '专业', icon: GraduationCap, color: 'from-blue-500 to-cyan-400', fmt: (v: any) => v || '未填写' },
-  { key: 'grade_level', label: '年级', icon: User, color: 'from-violet-500 to-purple-400', fmt: (v: any) => v || '未填写' },
-  { key: 'cognitive_style', label: '认知风格', icon: Brain, color: 'from-green-500 to-emerald-400', fmt: (v: any) => v || '未评估' },
-  { key: 'knowledge_base', label: '知识基础', icon: BookOpen, color: 'from-amber-500 to-orange-400', fmt: (v: any) => {
+  { key: 'major', label: '专业', icon: GraduationCap, color: 'from-purple-500 to-purple-400', fmt: (v: any) => v || '未填写' },
+  { key: 'grade_level', label: '年级', icon: User, color: 'from-purple-400 to-purple-300', fmt: (v: any) => v || '未填写' },
+  { key: 'cognitive_style', label: '认知风格', icon: Brain, color: 'from-purple-500 to-purple-400', fmt: (v: any) => v || '未评估' },
+  { key: 'knowledge_base', label: '知识基础', icon: BookOpen, color: 'from-purple-400 to-purple-300', fmt: (v: any) => {
     if (!v) return '未评估'; if (typeof v === 'string') return v;
     if (v.level) return `水平: ${v.level}${v.topics?.length ? ' · ' + v.topics.join('、') : ''}`;
     return JSON.stringify(v);
   }},
-  { key: 'learning_goals', label: '学习目标', icon: Target, color: 'from-red-500 to-pink-400', fmt: (v: any) => {
+  { key: 'learning_goals', label: '学习目标', icon: Target, color: 'from-purple-500 to-purple-400', fmt: (v: any) => {
     if (!v) return '未设定'; if (Array.isArray(v)) return v.join('、'); if (typeof v === 'string') return v; return JSON.stringify(v);
   }},
-  { key: 'interest_areas', label: '兴趣领域', icon: Sparkles, color: 'from-indigo-500 to-purple-400', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '未填写' },
-  { key: 'weak_points', label: '薄弱环节', icon: Lightbulb, color: 'from-yellow-500 to-amber-400', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '暂无' },
-  { key: 'preferred_resources', label: '偏好资源', icon: Trophy, color: 'from-teal-500 to-cyan-400', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '未设定' },
+  { key: 'interest_areas', label: '兴趣领域', icon: Sparkles, color: 'from-purple-400 to-purple-300', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '未填写' },
+  { key: 'weak_points', label: '薄弱环节', icon: Lightbulb, color: 'from-purple-500 to-purple-400', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '暂无' },
+  { key: 'preferred_resources', label: '偏好资源', icon: Trophy, color: 'from-purple-400 to-purple-300', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '未设定' },
 ];
 
 // ==================== 主组件 ====================
@@ -126,14 +126,14 @@ export default function ProfileModule(props: ProfileModuleProps) {
   const { profileTab, setProfileTab, currentSemester, setCurrentSemester, semesters, profileData } = props;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
-          <Target className="w-5 h-5 text-white" />
+    <div className="space-y-8">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-lg bg-purple-500/15 flex items-center justify-center">
+          <Target className="w-5 h-5 text-purple-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-xl font-bold text-white">学生画像</h3>
-          <p className="text-sm text-white/40">
+          <h3 className="text-3xl font-bold text-white">学生画像</h3>
+          <p className="text-base text-white/35">
             {profileData ? '个性化学习画像 · 课程 · 成绩 · 错题' : '通过对话构建学习画像，管理你的学习数据'}
           </p>
         </div>
@@ -142,16 +142,16 @@ export default function ProfileModule(props: ProfileModuleProps) {
         )}
       </div>
 
-      <div className="flex gap-1 bg-white/[0.03] rounded-xl p-1">
+      <div className="flex gap-2 p-1 border-b border-white/[0.06]">
         {TABS.map(tab => {
           const Icon = tab.icon;
           const active = profileTab === tab.key;
           return (
             <button key={tab.key} onClick={() => setProfileTab(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
-                active ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-400/20' : 'text-white/40 hover:text-white/60 hover:bg-white/[0.03]'
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-base font-medium transition-colors ${
+                active ? 'bg-white/[0.06] text-white' : 'text-white/35 hover:text-white/55 hover:bg-white/[0.03]'
               }`}>
-              <Icon className="w-4 h-4" />{tab.label}
+              <Icon className="w-5 h-5" />{tab.label}
             </button>
           );
         })}
@@ -251,7 +251,7 @@ function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {previewType === 'courses' && preview.map((c: any, i: number) => (
                 <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg">
-                  <div className="w-1 h-8 rounded-full bg-cyan-400/50" />
+                  <div className="w-1 h-8 rounded-full bg-purple-400/50" />
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{c.name}</p>
                     <p className="text-white/40 text-xs">{c.day} {c.start_time}-{c.end_time}{c.location ? ` · ${c.location}` : ''}{c.teacher ? ` · ${c.teacher}` : ''}</p>
@@ -281,7 +281,7 @@ function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
             <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-white/[0.06]">
               <button onClick={() => setPreview(null)} className="px-4 py-2 text-white/50 text-sm hover:text-white/80 transition-colors">取消</button>
               <button onClick={handleConfirm} disabled={saving}
-                className="px-5 py-2 bg-cyan-400/20 border border-cyan-400/30 text-cyan-400 rounded-lg text-sm hover:bg-cyan-400/30 flex items-center gap-2 disabled:opacity-50 transition-all">
+                className="px-5 py-2 bg-purple-400/20 border border-purple-400/30 text-purple-400 rounded-lg text-sm hover:bg-purple-400/30 flex items-center gap-2 disabled:opacity-50 transition-all">
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                 {saving ? '导入中...' : `确认导入 ${preview.length} 条`}
               </button>
@@ -322,8 +322,8 @@ function SemesterSelector({ current, semesters, onChange }: { current: string; s
 
   return (
     <div className="relative">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white/70 hover:border-cyan-400/30 transition-colors">
-        <CalendarDays className="w-4 h-4 text-cyan-400" />{current || '选择学期'}<ChevronDown className="w-3 h-3" />
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white/70 hover:border-purple-400/30 transition-colors">
+        <CalendarDays className="w-4 h-4 text-purple-400" />{current || '选择学期'}<ChevronDown className="w-3 h-3" />
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 w-56 bg-[#0f1a30] border border-white/[0.1] rounded-xl shadow-2xl z-50 overflow-hidden">
@@ -332,7 +332,7 @@ function SemesterSelector({ current, semesters, onChange }: { current: string; s
             <div className="max-h-40 overflow-y-auto">
               {semesters.map(s => (
                 <button key={s} onClick={() => { onChange(s); setOpen(false); }}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-white/[0.06] ${s === current ? 'text-cyan-400 bg-cyan-400/10' : 'text-white/60'}`}>{s}</button>
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-white/[0.06] ${s === current ? 'text-purple-400 bg-purple-400/10' : 'text-white/60'}`}>{s}</button>
               ))}
             </div>
           )}
@@ -343,26 +343,26 @@ function SemesterSelector({ current, semesters, onChange }: { current: string; s
               <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="如 2026-秋"
                 className="flex-1 px-2 py-1 bg-white/[0.04] border border-white/[0.08] rounded text-xs text-white placeholder:text-white/20 focus:outline-none" />
               <button onClick={() => { if (custom.trim()) { onChange(custom.trim()); setCustom(''); setOpen(false); } }}
-                className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-xs hover:bg-cyan-500/30"><Plus className="w-3 h-3" /></button>
+                className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs hover:bg-purple-500/30"><Plus className="w-3 h-3" /></button>
             </div>
             {/* 选择开学日期 */}
             {!showDatePicker ? (
               <button onClick={() => setShowDatePicker(true)}
-                className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs text-cyan-400 hover:bg-cyan-400/10 rounded transition-colors">
+                className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs text-purple-400 hover:bg-purple-400/10 rounded transition-colors">
                 <CalendarDays className="w-3 h-3" />选择开学日期自动识别学期
               </button>
             ) : (
               <div className="space-y-1.5">
                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                  className="w-full px-2 py-1 bg-white/[0.04] border border-white/[0.08] rounded text-xs text-white focus:outline-none focus:border-cyan-400/30" />
+                  className="w-full px-2 py-1 bg-white/[0.04] border border-white/[0.08] rounded text-xs text-white focus:outline-none focus:border-purple-400/30" />
                 <div className="flex gap-1">
                   <button onClick={handleDateSelect} disabled={!startDate}
-                    className="flex-1 px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-xs hover:bg-cyan-500/30 disabled:opacity-30">确认</button>
+                    className="flex-1 px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs hover:bg-purple-500/30 disabled:opacity-30">确认</button>
                   <button onClick={() => { setShowDatePicker(false); setStartDate(''); }}
                     className="px-2 py-1 bg-white/[0.04] text-white/40 rounded text-xs hover:bg-white/[0.08]">取消</button>
                 </div>
                 {startDate && (
-                  <p className="text-[10px] text-white/30">将识别为: <span className="text-cyan-400">{getSemesterFromDate(startDate)}</span></p>
+                  <p className="text-[10px] text-white/30">将识别为: <span className="text-purple-400">{getSemesterFromDate(startDate)}</span></p>
                 )}
               </div>
             )}
@@ -376,10 +376,10 @@ function SemesterSelector({ current, semesters, onChange }: { current: string; s
 // ==================== 画像 Tab ====================
 
 function ProfileTabContent(props: ProfileModuleProps) {
-  const { profileData } = props;
+  const { profileData, profileLoading } = props;
 
-  // 始终显示卡片式编辑界面（删除旧的问答式界面）
-  const emptyProfile: ProfileData = profileData || {
+  // 始终显示编辑界面，用空数据兜底
+  const displayProfile: ProfileData = profileData || {
     major: '',
     grade_level: '',
     cognitive_style: '',
@@ -388,9 +388,17 @@ function ProfileTabContent(props: ProfileModuleProps) {
     interest_areas: [],
     weak_points: [],
     preferred_resources: [],
+    learning_history: [],
   };
 
-  return <ProfileEditView profileData={emptyProfile} onUpdate={props.handleUpdateProfileField} />;
+  return (
+    <div>
+      {profileLoading && (
+        <div className="text-center py-4 text-white/30 text-sm">加载中...</div>
+      )}
+      <ProfileEditView profileData={displayProfile} onUpdate={props.handleUpdateProfileField} />
+    </div>
+  );
 }
 
 // ==================== 画像编辑 ====================
@@ -426,17 +434,17 @@ function ProfileEditView({ profileData, onUpdate }: { profileData: ProfileData; 
 
   return (
     <div className="space-y-4">
-      <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl p-5 border border-cyan-400/20">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <User className="w-8 h-8 text-white" />
+      <div className="border border-white/[0.06] rounded-xl p-4 bg-white/[0.02]">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-lg bg-purple-500/15 flex items-center justify-center">
+            <User className="w-5 h-5 text-purple-400" />
           </div>
           <div className="flex-1">
-            <h4 className="text-lg font-bold text-white">{profileData.major || '学生'}</h4>
-            <p className="text-sm text-white/50">{profileData.grade_level || ''}</p>
-            {profileData.update_time && <p className="text-xs text-white/30 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> 更新于 {profileData.update_time}</p>}
+            <h4 className="text-base font-semibold text-white">{profileData.major || '学生'}</h4>
+            <p className="text-xs text-white/40">{profileData.grade_level || ''}</p>
+            {profileData.update_time && <p className="text-[11px] text-white/25 mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /> 更新于 {profileData.update_time}</p>}
           </div>
-          <p className="text-xs text-white/30">点击卡片右上角编辑</p>
+          <p className="text-[11px] text-white/25">点击卡片右上角编辑</p>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -447,22 +455,22 @@ function ProfileEditView({ profileData, onUpdate }: { profileData: ProfileData; 
           const empty = !raw || (Array.isArray(raw) && raw.length === 0) || ['未填写', '未评估', '未设定', '暂无'].includes(text);
           const isEditing = editing === dim.key;
           return (
-            <div key={dim.key} className={`glass-card rounded-xl p-4 transition-all ${empty ? 'opacity-50' : ''} ${isEditing ? 'border-cyan-400/30' : 'hover:border-white/10'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${dim.color} flex items-center justify-center`}><Icon className="w-4 h-4 text-white" /></div>
+            <div key={dim.key} className={`border border-white/[0.06] rounded-lg p-3 transition-colors bg-white/[0.02] ${empty ? 'opacity-50' : ''} ${isEditing ? 'border-white/[0.12]' : 'hover:border-white/[0.1]'}`}>
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className={`w-7 h-7 rounded-md bg-gradient-to-br ${dim.color} flex items-center justify-center`}><Icon className="w-3.5 h-3.5 text-white" /></div>
                 <span className="font-semibold text-sm text-white flex-1">{dim.label}</span>
-                {!isEditing && <button onClick={() => startEdit(dim.key, raw)} className="p-1 rounded-lg hover:bg-white/[0.06] text-white/30 hover:text-cyan-400 transition-colors"><Edit3 className="w-3.5 h-3.5" /></button>}
+                {!isEditing && <button onClick={() => startEdit(dim.key, raw)} className="p-1 rounded-lg hover:bg-white/[0.06] text-white/30 hover:text-purple-400 transition-colors"><Edit3 className="w-3.5 h-3.5" /></button>}
               </div>
               {isEditing ? (
                 <div className="space-y-2 mt-1">
                   {['major', 'grade_level', 'cognitive_style'].includes(dim.key) ? (
-                    <input value={editValue} onChange={e => setEditValue(e.target.value)} className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-cyan-400/30" autoFocus />
+                    <input value={editValue} onChange={e => setEditValue(e.target.value)} className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-purple-400/30" autoFocus />
                   ) : (
-                    <textarea value={editValue} onChange={e => setEditValue(e.target.value)} rows={3} className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-cyan-400/30 resize-none" placeholder={dim.key === 'knowledge_base' ? '如：中等：数据结构、算法' : '多个内容用逗号分隔'} autoFocus />
+                    <textarea value={editValue} onChange={e => setEditValue(e.target.value)} rows={3} className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-purple-400/30 resize-none" placeholder={dim.key === 'knowledge_base' ? '如：中等：数据结构、算法' : '多个内容用逗号分隔'} autoFocus />
                   )}
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setEditing(null)} className="px-3 py-1 text-xs text-white/40 hover:text-white/60 rounded-lg hover:bg-white/[0.04]">取消</button>
-                    <button onClick={() => save(dim.key)} disabled={saving} className="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 disabled:opacity-50 flex items-center gap-1">
+                    <button onClick={() => save(dim.key)} disabled={saving} className="px-3 py-1 text-xs bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 disabled:opacity-50 flex items-center gap-1">
                       {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} 保存
                     </button>
                   </div>
@@ -527,17 +535,17 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
         <div className="flex items-center gap-2">
           <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="上传课表" previewType="courses" onFail={() => setEditing(true)} />
           <button onClick={() => setEditing(!editing)}
-            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all ${editing ? 'bg-red-500/20 text-red-400 border border-red-400/20' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-400/20'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all ${editing ? 'bg-red-500/20 text-red-400 border border-red-400/20' : 'bg-purple-500/20 text-purple-400 border border-purple-400/20'}`}>
             {editing ? <><Minus className="w-3.5 h-3.5" /> 收起</> : <><Plus className="w-3.5 h-3.5" /> 手动添加</>}
           </button>
         </div>
       </div>
 
       {editing && (
-        <div className="glass-card rounded-xl p-4 space-y-3 border border-cyan-400/10">
+        <div className="border border-white/[0.06] rounded-lg p-4 space-y-3 border-purple-400/10 bg-white/[0.02]">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="课程名称 *"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30" />
+              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30" />
             <select value={form.day} onChange={e => setForm(p => ({ ...p, day: e.target.value }))}
               className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
               {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -554,7 +562,7 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
             <input value={form.teacher || ''} onChange={e => setForm(p => ({ ...p, teacher: e.target.value }))} placeholder="教师"
               className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
             <button onClick={addCourse} disabled={loading || !form.name.trim()}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center justify-center gap-1 disabled:opacity-40">
+              className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center justify-center gap-1 disabled:opacity-40">
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : editIdx !== null ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />} {editIdx !== null ? '保存修改' : '添加'}
             </button>
           </div>
@@ -562,12 +570,12 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
       )}
 
       {courses.length === 0 ? (
-        <div className="glass-card rounded-xl p-8 text-center text-white/30">
+        <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
           <CalendarDays className="w-10 h-10 mx-auto mb-2 opacity-30" />
           <p>暂无课程，点击"手动添加"或"上传课表"开始</p>
         </div>
       ) : (
-        <div className="glass-card rounded-xl overflow-hidden overflow-x-auto">
+        <div className="border border-white/[0.06] rounded-lg overflow-hidden overflow-x-auto bg-white/[0.02]">
           <div className="min-w-[700px]">
             {/* 表头 */}
             <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-white/[0.06]">
@@ -605,7 +613,7 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
                         {c.location && <p className="text-[9px] text-white/30 truncate">{c.location}</p>}
                       </div>
                       <button onClick={(e) => { e.stopPropagation(); startEditCourse(i); }}
-                        className="absolute top-0.5 left-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-cyan-500/80 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-cyan-500"
+                        className="absolute top-0.5 left-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-purple-500/80 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-purple-500"
                         title="编辑此课程">
                         <Pencil className="w-3 h-3 text-white" />
                       </button>
@@ -648,7 +656,7 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfi
   const getScoreColor = (s: number | null) => {
     if (s === null) return 'text-white/30';
     if (s >= 90) return 'text-green-400';
-    if (s >= 80) return 'text-cyan-400';
+    if (s >= 80) return 'text-purple-400';
     if (s >= 70) return 'text-amber-400';
     if (s >= 60) return 'text-orange-400';
     return 'text-red-400';
@@ -656,7 +664,7 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfi
   const getScoreBg = (s: number | null) => {
     if (s === null) return 'bg-white/[0.03]';
     if (s >= 90) return 'bg-green-500/10';
-    if (s >= 80) return 'bg-cyan-500/10';
+    if (s >= 80) return 'bg-purple-500/10';
     if (s >= 70) return 'bg-amber-500/10';
     if (s >= 60) return 'bg-orange-500/10';
     return 'bg-red-500/10';
@@ -689,14 +697,14 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfi
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索课程名称、考试类型..."
-          className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30 transition-colors" />
+          className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30 transition-colors" />
         {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50"><X className="w-3.5 h-3.5" /></button>}
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <p className="text-sm text-white/40">{semester} 成绩</p>
-          {gradedOnly.length > 0 && <span className="text-sm font-bold text-cyan-400">均分 {avgScore}</span>}
+          {gradedOnly.length > 0 && <span className="text-sm font-bold text-purple-400">均分 {avgScore}</span>}
           {q && <span className="text-xs text-white/30">找到 {searched.length} 条</span>}
         </div>
         <div className="flex items-center gap-2">
@@ -708,17 +716,17 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfi
             <option value="date">按时间</option>
           </select>
           <button onClick={() => setShowForm(!showForm)}
-            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${showForm ? 'bg-red-500/20 text-red-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${showForm ? 'bg-red-500/20 text-red-400' : 'bg-purple-500/20 text-purple-400'}`}>
             {showForm ? <><Minus className="w-3.5 h-3.5" /> 收起</> : <><Plus className="w-3.5 h-3.5" /> 录入</>}
           </button>
         </div>
       </div>
 
       {showForm && (
-        <div className="glass-card rounded-xl p-4 space-y-3 border border-cyan-400/10">
+        <div className="border border-white/[0.06] rounded-lg p-4 space-y-3 border-purple-400/10 bg-white/[0.02]">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <input value={form.course_name} onChange={e => setForm(p => ({ ...p, course_name: e.target.value }))} placeholder="课程名称 *"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30" />
+              className="px-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/[0.12]" />
             <input type="number" min="0" max="100" value={form.score ?? ''} onChange={e => setForm(p => ({ ...p, score: e.target.value ? Number(e.target.value) : null }))} placeholder="成绩"
               className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
             <input type="number" min="0" step="0.5" value={form.credits ?? ''} onChange={e => setForm(p => ({ ...p, credits: e.target.value ? Number(e.target.value) : null }))} placeholder="学分"
@@ -729,14 +737,14 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfi
             </select>
           </div>
           <button onClick={addGrade} disabled={loading || !form.course_name.trim()}
-            className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center gap-1 disabled:opacity-40">
+            className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center gap-1 disabled:opacity-40">
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} 添加
           </button>
         </div>
       )}
 
       {grades.length === 0 ? (
-        <div className="glass-card rounded-xl p-8 text-center text-white/30">
+        <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>暂无成绩，点击"录入"或"上传成绩"开始</p>
         </div>
       ) : (
@@ -745,10 +753,10 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfi
             const groupGraded = items.filter(g => g.score !== null);
             const groupAvg = groupGraded.length ? (groupGraded.reduce((s, g) => s + (g.score || 0), 0) / groupGraded.length).toFixed(1) : '--';
             return (
-              <div key={courseName} className="glass-card rounded-xl overflow-hidden">
+              <div key={courseName} className="border border-white/[0.06] rounded-lg overflow-hidden bg-white/[0.02]">
                 <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06]">
                   <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-cyan-400" />
+                    <BookOpen className="w-4 h-4 text-purple-400" />
                     <span className="font-semibold text-sm text-white">{courseName}</span>
                     <span className="text-xs text-white/30">{items.length} 条记录</span>
                   </div>
@@ -826,7 +834,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索题目、学科、章节、错因、标签..."
-          className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30 transition-colors" />
+          className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30 transition-colors" />
         {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50"><X className="w-3.5 h-3.5" /></button>}
       </div>
 
@@ -852,22 +860,22 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
             <option value="subject">按学科</option>
           </select>
           <button onClick={() => setShowForm(!showForm)}
-            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${showForm ? 'bg-red-500/20 text-red-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${showForm ? 'bg-red-500/20 text-red-400' : 'bg-purple-500/20 text-purple-400'}`}>
             {showForm ? <><Minus className="w-3.5 h-3.5" /> 收起</> : <><Plus className="w-3.5 h-3.5" /> 添加错题</>}
           </button>
         </div>
       </div>
 
       {showForm && (
-        <div className="glass-card rounded-xl p-4 space-y-3 border border-cyan-400/10">
+        <div className="border border-white/[0.06] rounded-lg p-4 space-y-3 border-purple-400/10 bg-white/[0.02]">
           <div className="grid grid-cols-2 gap-2">
             <input value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} placeholder="学科 *"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30" />
+              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30" />
             <input value={form.chapter} onChange={e => setForm(p => ({ ...p, chapter: e.target.value }))} placeholder="章节"
               className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
           </div>
           <textarea value={form.question} onChange={e => setForm(p => ({ ...p, question: e.target.value }))} placeholder="题目内容 *" rows={2}
-            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-400/30 resize-none" />
+            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30 resize-none" />
           <div className="grid grid-cols-2 gap-2">
             <textarea value={form.my_answer} onChange={e => setForm(p => ({ ...p, my_answer: e.target.value }))} placeholder="我的答案" rows={2}
               className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
@@ -880,7 +888,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
             <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))} placeholder="标签（逗号分隔）"
               className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
             <button onClick={handleSubmit} disabled={!form.subject.trim() || !form.question.trim()}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center gap-1 disabled:opacity-40">
+              className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center gap-1 disabled:opacity-40">
               <Plus className="w-4 h-4" /> 添加
             </button>
           </div>
@@ -888,7 +896,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
       )}
 
       {filtered.length === 0 ? (
-        <div className="glass-card rounded-xl p-8 text-center text-white/30">
+        <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
           <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>{filterSubject ? `${filterSubject} 暂无错题` : '暂无错题，点击"添加错题"或"上传错题"开始'}</p>
         </div>
       ) : (
@@ -932,7 +940,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
 function ErrorNoteCard({ note, onToggleMastery, onDelete }: { note: ErrorNote; onToggleMastery: (id: number, m: number) => Promise<void>; onDelete: (id: number) => Promise<void> }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className={`glass-card rounded-xl overflow-hidden transition-all ${note.mastery ? 'opacity-50' : ''}`}>
+    <div className={`border border-white/[0.06] rounded-lg overflow-hidden transition-colors bg-white/[0.02] ${note.mastery ? 'opacity-50' : ''}`}>
       <div className="flex items-start gap-3 p-3 cursor-pointer hover:bg-white/[0.02]" onClick={() => setExpanded(!expanded)}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">

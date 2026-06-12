@@ -1,11 +1,10 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState, useRef } from 'react';
 import {
-  GraduationCap, Zap, Brain, Route, Lightbulb, TrendingUp,
-  UserCheck, ArrowRight, Award, Database, Clock,
+  GraduationCap, Brain, Route, Lightbulb, TrendingUp,
+  UserCheck, ArrowRight, Database, ChevronDown,
 } from 'lucide-react';
 import { useDashboard } from './modules/useDashboard';
 import { STATS } from './modules/constants';
@@ -18,8 +17,90 @@ import TutorModule from './modules/TutorModule';
 import AssessmentModule from './modules/AssessmentModule';
 import RagKnowledgeModule from './modules/RagKnowledgeModule';
 
+const modules = [
+  { id: 'profile', label: '学生画像', desc: '对话式画像构建', icon: UserCheck },
+  { id: 'resources', label: '资源生成', desc: '7种多模态资源', icon: Brain },
+  { id: 'path', label: '学习路径', desc: 'AI路径推荐', icon: Route },
+  { id: 'tutor', label: '智能辅导', desc: '智能问答辅导', icon: Lightbulb },
+  { id: 'assessment', label: '效果评估', desc: '多维度评估', icon: TrendingUp },
+  { id: 'rag', label: '知识库', desc: '上传文档知识库', icon: Database },
+];
+
 export default function DashboardContent() {
   const d = useDashboard();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [currentSection, setCurrentSection] = useState(0);
+  const [isScrolling, setIsScrolling] = useState(false);
+
+  const requireLogin = (callback: () => void) => {
+    const hasToken = !!localStorage.getItem('auth_token');
+    if (!hasToken) {
+      window.location.href = '/';
+      return;
+    }
+    callback();
+  };
+
+  const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+
+  const scrollToSection = (index: number) => {
+    if (isScrolling) return;
+    setIsScrolling(true);
+    sectionRefs.current[index]?.scrollIntoView({ behavior: 'smooth' });
+    setCurrentSection(index);
+    setTimeout(() => setIsScrolling(false), 800);
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let touchStartY = 0;
+    let touchStartX = 0;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (isScrolling) return;
+      if (Math.abs(e.deltaY) < 30) return;
+      
+      e.preventDefault();
+      if (e.deltaY > 0 && currentSection < 2) {
+        scrollToSection(currentSection + 1);
+      } else if (e.deltaY < 0 && currentSection > 0) {
+        scrollToSection(currentSection - 1);
+      }
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+      touchStartX = e.touches[0]?.clientX ?? 0;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (isScrolling) return;
+      const touchEndY = e.changedTouches[0]?.clientY ?? 0;
+      const touchEndX = e.changedTouches[0]?.clientX ?? 0;
+      const diffY = touchStartY - touchEndY;
+      const diffX = touchStartX - touchEndX;
+
+      if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
+        if (diffY > 0 && currentSection < 2) {
+          scrollToSection(currentSection + 1);
+        } else if (diffY < 0 && currentSection > 0) {
+          scrollToSection(currentSection - 1);
+        }
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [currentSection, isScrolling]);
 
   const renderModule = () => {
     switch (d.activeModule) {
@@ -138,239 +219,181 @@ export default function DashboardContent() {
     }
   };
 
-  // 游客模式：5 分钟后自动跳转回登录页
-  const router = useRouter();
-  const GUEST_TIMEOUT = 5 * 60 * 1000; // 5 分钟
-  const [guestCountdown, setGuestCountdown] = useState(GUEST_TIMEOUT / 1000);
-
-  useEffect(() => {
-    if (!d.isGuest) return;
-
-    const interval = setInterval(() => {
-      setGuestCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          window.location.href = '/';
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [d.isGuest]);
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
-
   return (
-    <div className="max-w-7xl mx-auto relative">
+    <div ref={containerRef} className="min-h-screen relative" style={{ background: '#0a0a0a' }}>
       <DashboardBackground />
 
-      {/* 游客模式提示横幅 */}
-      {d.isGuest && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 px-5 py-3.5 rounded-2xl border border-amber-400/20 bg-amber-400/5 backdrop-blur-sm flex items-center gap-3"
-        >
-          <span className="text-lg">👁️</span>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-amber-400">游客模式 — 仅可浏览界面</p>
-            <p className="text-xs text-amber-300/40 mt-0.5">所有功能按钮已禁用，请登录后体验完整功能</p>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400/10 border border-amber-400/20">
-            <Clock className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-sm font-mono font-medium text-amber-400">{formatTime(guestCountdown)}</span>
-          </div>
-        </motion.div>
-      )}
-
-      {/* 欢迎区域 - 仅在未选择模块时显示 */}
-      {!d.activeModule && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-          className="mb-8"
-        >
-          <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <GraduationCap className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold mb-1">基于多智能体的个性化学习资源生成系统</h1>
-                <p className="text-white/80 text-sm">
-                  对话式画像构建 · 多智能体协同 · 防幻觉机制 · 流式输出
-                </p>
-              </div>
+      {/* Section 1: Hero */}
+      <section
+        ref={el => { sectionRefs.current[0] = el; }}
+        className="snap-section relative px-6"
+      >
+        <div className="max-w-3xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/20 bg-purple-500/5 mb-8">
+              <GraduationCap className="w-3.5 h-3.5 text-purple-400" />
+              <span className="text-xs text-purple-300">多智能体协同 · 个性化学习</span>
             </div>
-          </div>
 
-          {/* 统计卡片 */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {STATS.map((stat, index) => {
+            <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-10 leading-none">
+              多模态 AI
+              <br />
+              <span className="text-purple-400">教学智能体</span>
+            </h1>
+
+            <p className="text-white/40 text-xl md:text-2xl mb-14 max-w-2xl mx-auto leading-relaxed">
+              6 大智能体协同工作，7 种资源类型一键生成，构建专属你的沉浸式学习体验
+            </p>
+
+            <div className="flex items-center justify-center">
+              <motion.button
+                onClick={() => scrollToSection(1)}
+                className="px-12 py-4 bg-purple-500 text-white rounded-lg text-lg font-medium hover:bg-purple-400 transition-colors"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                开始探索
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* 统计 */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6"
+          >
+            {STATS.map((stat, i) => {
               const Icon = stat.icon;
               return (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1, type: 'spring', stiffness: 200, damping: 25 }}
-                  className="glass-card rounded-xl p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg bg-white/[0.06] flex items-center justify-center ${stat.color}`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-white">{stat.value}</div>
-                      <div className="text-xs text-white/40">{stat.label}</div>
-                    </div>
-                  </div>
-                </motion.div>
+                <div key={stat.label} className="text-center">
+                  <Icon className={`w-7 h-7 mx-auto mb-3 ${stat.color}`} />
+                  <div className="text-4xl font-bold text-white">{stat.value}</div>
+                  <div className="text-base text-white/30 mt-1.5">{stat.label}</div>
+                </div>
               );
             })}
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        </div>
 
-      {/* 功能模块选择 - 仅在未选择模块时显示 */}
-      {!d.activeModule && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 25 }}
-          className="mb-6"
-        >
-          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-cyan-400" />
-            功能模块
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { id: 'profile', label: '学生画像', icon: UserCheck, color: 'cyan', emoji: '' },
-              { id: 'resources', label: '资源生成', icon: Brain, color: 'purple', emoji: '🤖' },
-              { id: 'path', label: '学习路径', icon: Route, color: 'amber', emoji: '🗺️' },
-              { id: 'tutor', label: '智能辅导', icon: Lightbulb, color: 'green', emoji: '💡' },
-              { id: 'assessment', label: '效果评估', icon: TrendingUp, color: 'blue', emoji: '' },
-              { id: 'rag', label: '知识库', icon: Database, color: 'emerald', emoji: '📚' },
-            ].map((module) => {
-              const Icon = module.icon;
-              const isActive = d.activeModule === module.id;
-              const colorMap: Record<string, string> = {
-                cyan: 'from-cyan-500 to-blue-500',
-                purple: 'from-purple-500 to-pink-500',
-                amber: 'from-amber-500 to-orange-500',
-                green: 'from-emerald-500 to-teal-500',
-                blue: 'from-blue-500 to-indigo-500',
-                emerald: 'from-emerald-500 to-green-500',
-              };
-              return (
-                <button
-                  key={module.id}
-                  onClick={() => d.setActiveModule(module.id as ModuleType)}
-                  className={`p-4 rounded-xl transition-all ${
-                    isActive
-                      ? `bg-gradient-to-r ${colorMap[module.color]} text-white scale-105`
-                      : 'glass-card hover:bg-white/[0.06] text-white/60 hover:text-white'
-                  }`}
-                >
-                  <div className="text-2xl mb-2">{module.emoji}</div>
-                  <div className="text-sm font-semibold">{module.label}</div>
-                </button>
-              );
-            })}
-          </div>
-        </motion.div>
-      )}
+        {/* 滚动指示 */}
+        {!d.activeModule && (
+          <motion.div
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer"
+            onClick={() => scrollToSection(1)}
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <span className="text-[10px] text-white/20 tracking-widest uppercase">Scroll</span>
+            <ChevronDown className="w-4 h-4 text-white/20" />
+          </motion.div>
+        )}
+      </section>
 
-      {/* 功能模块内容 */}
-      {d.activeModule && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-          className="glass-card rounded-2xl p-6 relative"
-        >
-          {renderModule()}
-          {/* 游客模式遮罩 */}
-          {d.isGuest && (
-            <div className="absolute inset-0 rounded-2xl bg-[#060d1f]/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
-              <span className="text-4xl mb-3">🔒</span>
-              <p className="text-white font-medium mb-1">游客模式无法使用此功能</p>
-              <p className="text-white/40 text-sm mb-4">请登录后体验完整功能</p>
-              <button
-                onClick={() => { localStorage.removeItem('is_guest'); window.location.href = '/'; }}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+      {/* Section 2: 模块选择 或 模块内容 */}
+      <AnimatePresence mode="wait">
+        {d.activeModule ? (
+          <motion.section
+            key="module-content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            ref={el => { sectionRefs.current[1] = el; }}
+            className="min-h-screen px-8 py-20 overflow-y-auto"
+          >
+            <div className="max-w-7xl mx-auto">
+              {/* 返回按钮 */}
+              <motion.button
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                onClick={() => d.setActiveModule(null)}
+                className="flex items-center gap-3 text-white/40 hover:text-white/70 mb-10 transition-colors"
               >
-                立即登录
-              </button>
+                <ArrowRight className="w-5 h-5 rotate-180" />
+                <span className="text-base">返回</span>
+              </motion.button>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderModule()}
+              </motion.div>
             </div>
-          )}
-        </motion.div>
-      )}
+          </motion.section>
+        ) : (
+          <motion.section
+            key="module-select"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            ref={el => { sectionRefs.current[1] = el; }}
+            className="snap-section px-6"
+          >
+            <div className="max-w-6xl mx-auto px-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-center mb-16"
+              >
+                <h2 className="text-4xl md:text-5xl font-bold text-white mb-5">选择功能模块</h2>
+                <p className="text-white/35 text-lg">选择一个模块开始你的学习之旅</p>
+              </motion.div>
 
-      {/* 快捷操作 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {modules.map((mod, index) => {
+                  const Icon = mod.icon;
+                  return (
+                    <motion.button
+                      key={mod.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.08, duration: 0.4 }}
+                      onClick={() => requireLogin(() => {
+                        d.setActiveModule(mod.id as ModuleType);
+                        setTimeout(() => scrollToSection(1), 100);
+                      })}
+                      className="group p-10 rounded-2xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.05] hover:border-purple-500/20 transition-all text-left"
+                    >
+                      <div className="w-16 h-16 rounded-xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:bg-purple-500/20 transition-colors">
+                        <Icon className="w-8 h-8 text-purple-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-white mb-2">{mod.label}</h3>
+                      <p className="text-base text-white/35">{mod.desc}</p>
+                      <ArrowRight className="w-5 h-5 text-white/15 mt-6 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* 页面指示器 */}
       {!d.activeModule && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, type: 'spring', stiffness: 200, damping: 25 }}
-          className="glass-card rounded-2xl p-6"
-        >
-          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Lightbulb className="w-5 h-5 text-cyan-400" />
-            快速开始
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2">
+          {[0, 1].map(i => (
             <button
-              onClick={() => d.setActiveModule('profile')}
-              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/30 hover:bg-cyan-400/5 transition-all group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-cyan-400/10 flex items-center justify-center group-hover:bg-cyan-400/20 transition-colors">
-                <UserCheck className="w-5 h-5 text-cyan-400" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-white">构建画像</div>
-                <div className="text-xs text-white/40">对话式8维度画像</div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-white/30 ml-auto group-hover:text-cyan-400" />
-            </button>
-
-            <button
-              onClick={() => d.setActiveModule('resources')}
-              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-purple-400/30 hover:bg-purple-400/5 transition-all group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-purple-400/10 flex items-center justify-center group-hover:bg-purple-400/20 transition-colors">
-                <Brain className="w-5 h-5 text-purple-400" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-white">生成资源</div>
-                <div className="text-xs text-white/40">7种多模态资源</div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-white/30 ml-auto group-hover:text-purple-400" />
-            </button>
-
-            <button
-              onClick={() => d.setActiveModule('assessment')}
-              className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-indigo-400/30 hover:bg-indigo-400/5 transition-all group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-indigo-400/10 flex items-center justify-center group-hover:bg-indigo-400/20 transition-colors">
-                <Award className="w-5 h-5 text-indigo-400" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-white">效果评估</div>
-                <div className="text-xs text-white/40">多维度评估反馈</div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-white/30 ml-auto group-hover:text-indigo-400" />
-            </button>
-          </div>
-        </motion.div>
+              key={i}
+              onClick={() => scrollToSection(i)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                currentSection === i
+                  ? 'bg-purple-400 scale-125'
+                  : 'bg-white/15 hover:bg-white/30'
+              }`}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
