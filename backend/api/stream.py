@@ -140,9 +140,10 @@ async def stream_generate_resources_real(
                             if resource_db.connect():
                                 resource_db.cursor.execute("""
                                     INSERT INTO learning_resources
-                                    (title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent, duration_minutes)
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                    (user_id, title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent, duration_minutes)
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                                 """, (
+                                    user_id,
                                     title, rtype, subject, topic, difficulty,
                                     json.dumps(content_data, ensure_ascii=False),
                                     f"user_{user_id}",
