@@ -108,7 +108,7 @@ def save_to_rag(title: str, subject: str, content_text: str,
         content_text=content_text,
         knowledge_points=knowledge_points,
         ai_summary=ai_summary,
-        uploaded_by="pdf_import",
+        uploaded_by=None,
         file_size=os.path.getsize(file_path),
     )
     return doc_id

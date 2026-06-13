@@ -131,9 +131,10 @@ async def generate_learning_resources(
                     for res in resources_data:
                         resource_db.cursor.execute("""
                             INSERT INTO learning_resources
-                            (title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            (user_id, title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """, (
+                            user_id,
                             res.get("title", ""),
                             res.get("type", res.get("resource_type", "document")),
                             input_data.get("subject", ""),
@@ -415,7 +416,7 @@ async def update_path_progress(
     """更新学习路径进度"""
     try:
         user_id = user["id"]
-        result = path_agent.update_path_progress(path_id, completed_step)
+        result = path_agent.update_path_progress(path_id, completed_step, user_id)
         
         return BaseResponse(
             success=result["success"],
@@ -538,10 +539,11 @@ async def save_resource(
         
         sql = """
             INSERT INTO learning_resources 
-            (title, resource_type, subject, topic, difficulty_level, content_data, tags, generated_by_agent)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (user_id, title, resource_type, subject, topic, difficulty_level, content_data, tags, generated_by_agent)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         resource_db.cursor.execute(sql, (
+            user_id,
             input_data.get("title", ""),
             input_data.get("resource_type", "document"),
             input_data.get("subject", ""),
@@ -586,8 +588,8 @@ async def list_resources(
         if not resource_db.connect():
             return BaseResponse(success=False, message="数据库连接失败", data=None)
         
-        conditions = ["generated_by_agent = %s"]
-        params = [f"user_{user_id}"]
+        conditions = ["(user_id = %s OR (user_id IS NULL AND generated_by_agent = %s))"]
+        params = [user_id, f"user_{user_id}"]
         
         if resource_type:
             conditions.append("resource_type = %s")
@@ -659,8 +661,8 @@ async def delete_resource(
             return BaseResponse(success=False, message="数据库连接失败", data=None)
         
         # 验证资源属于当前用户
-        sql = "SELECT id FROM learning_resources WHERE id = %s AND generated_by_agent = %s"
-        resource_db.cursor.execute(sql, (resource_id, f"user_{user_id}"))
+        sql = "SELECT id FROM learning_resources WHERE id = %s AND (user_id = %s OR (user_id IS NULL AND generated_by_agent = %s))"
+        resource_db.cursor.execute(sql, (resource_id, user_id, f"user_{user_id}"))
         if not resource_db.cursor.fetchone():
             resource_db.close()
             return BaseResponse(success=False, message="资源不存在或无权限删除", data=None)
@@ -814,7 +816,7 @@ async def upload_to_rag(
                 content_text=text,
                 knowledge_points=kp_list,
                 ai_summary=summary,
-                uploaded_by=str(user_id),
+                uploaded_by=user_id,
                 file_size=len(content),
             )
 
@@ -838,13 +840,13 @@ async def upload_to_rag(
 
 @router.get("/rag-documents", response_model=BaseResponse)
 async def list_rag_documents(
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_auth),
     limit: int = 200,
 ):
-    """获取 RAG 知识库文档列表"""
+    """获取 RAG 知识库文档列表（仅当前用户）"""
     try:
         from data.rag_knowledge_base import rag_kb
-        docs = rag_kb.get_all_documents(limit=limit)
+        docs = rag_kb.get_documents_by_user(str(user["id"]), limit=limit)
         return BaseResponse(success=True, message="获取成功", data={"documents": docs})
     except Exception as e:
         error(f"获取RAG文档列表失败: {str(e)}")
@@ -1090,8 +1092,8 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         # 资源数量
         if resource_db.connect():
             resource_db.cursor.execute(
-                "SELECT COUNT(*) as cnt FROM learning_resources WHERE generated_by_agent = %s",
-                (f"user_{user_id}",)
+                "SELECT COUNT(*) as cnt FROM learning_resources WHERE user_id = %s OR (user_id IS NULL AND generated_by_agent = %s)",
+                (user_id, f"user_{user_id}")
             )
             stats["resource_count"] = resource_db.cursor.fetchone()["cnt"]
             resource_db.close()

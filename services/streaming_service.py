@@ -21,6 +21,10 @@ class ProgressTracker:
     def create_task(self, task_id: str, task_type: str, user_id: int, 
                    total_steps: int = 100) -> Dict:
         """创建新任务"""
+        # 定期清理过期任务
+        if len(self.tasks) > 100:
+            self.cleanup_old_tasks()
+
         task_data = {
             "task_id": task_id,
             "task_type": task_type,

@@ -48,6 +48,9 @@ export function useDashboard() {
     return user?.username || 'default';
   };
 
+  const getActivityLogsKey = () => `activity_logs_${getUsername()}`;
+  const getGeneratedResourcesKey = () => `generated_resources_${getUsername()}`;
+
   // 初始化时立即从 localStorage 加载画像
   useEffect(() => {
     if (profileLoaded) return;
@@ -254,7 +257,7 @@ export function useDashboard() {
 
         // 记录活动日志
         try {
-          const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+          const logs = JSON.parse(localStorage.getItem(getActivityLogsKey()) || '[]');
           logs.unshift({
             id: `plan-${Date.now()}`,
             type: 'path',
@@ -262,7 +265,7 @@ export function useDashboard() {
             detail: data.plan_type === 'weekly' ? '周计划' : data.plan_type === 'exam' ? '备考计划' : '自定义计划',
             time: new Date().toISOString(),
           });
-          localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+          localStorage.setItem(getActivityLogsKey(), JSON.stringify(logs.slice(0, 50)));
           window.dispatchEvent(new Event('activity-updated'));
         } catch {}
 
@@ -309,7 +312,7 @@ export function useDashboard() {
   useEffect(() => {
     if (resources.length === 0) return;
     try {
-      const stored = JSON.parse(localStorage.getItem('generated_resources') || '[]');
+      const stored = JSON.parse(localStorage.getItem(getGeneratedResourcesKey()) || '[]');
       const newItems = resources
         .filter(r => r.status === 'complete')
         .map(r => ({
@@ -319,12 +322,12 @@ export function useDashboard() {
           created_at: new Date().toISOString(),
         }));
       const merged = [...newItems, ...stored].slice(0, 50);
-      localStorage.setItem('generated_resources', JSON.stringify(merged));
+      localStorage.setItem(getGeneratedResourcesKey(), JSON.stringify(merged));
       window.dispatchEvent(new Event('resources-updated'));
 
       // 记录活动日志
       if (newItems.length > 0) {
-        const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+        const logs = JSON.parse(localStorage.getItem(getActivityLogsKey()) || '[]');
         logs.unshift({
           id: `res-${Date.now()}`,
           type: 'resource',
@@ -332,7 +335,7 @@ export function useDashboard() {
           detail: subject,
           time: new Date().toISOString(),
         });
-        localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+        localStorage.setItem(getActivityLogsKey(), JSON.stringify(logs.slice(0, 50)));
         window.dispatchEvent(new Event('activity-updated'));
       }
     } catch {}
@@ -472,7 +475,7 @@ export function useDashboard() {
 
         // 记录活动日志
         try {
-          const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+          const logs = JSON.parse(localStorage.getItem(getActivityLogsKey()) || '[]');
           logs.unshift({
             id: `path-${Date.now()}`,
             type: 'path',
@@ -480,7 +483,7 @@ export function useDashboard() {
             detail: learningGoal,
             time: new Date().toISOString(),
           });
-          localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+          localStorage.setItem(getActivityLogsKey(), JSON.stringify(logs.slice(0, 50)));
           window.dispatchEvent(new Event('activity-updated'));
         } catch {}
       } else {
@@ -528,7 +531,7 @@ export function useDashboard() {
 
         // 记录活动日志
         try {
-          const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+          const logs = JSON.parse(localStorage.getItem(getActivityLogsKey()) || '[]');
           logs.unshift({
             id: `tutor-${Date.now()}`,
             type: 'tutor',
@@ -536,7 +539,7 @@ export function useDashboard() {
             detail: q.length > 30 ? q.slice(0, 30) + '...' : q,
             time: new Date().toISOString(),
           });
-          localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+          localStorage.setItem(getActivityLogsKey(), JSON.stringify(logs.slice(0, 50)));
           window.dispatchEvent(new Event('activity-updated'));
         } catch {}
       },
@@ -560,7 +563,7 @@ export function useDashboard() {
 
         // 记录活动日志
         try {
-          const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+          const logs = JSON.parse(localStorage.getItem(getActivityLogsKey()) || '[]');
           logs.unshift({
             id: `assess-${Date.now()}`,
             type: 'assess',
@@ -568,7 +571,7 @@ export function useDashboard() {
             detail: res.data.assessment.grade || '',
             time: new Date().toISOString(),
           });
-          localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 50)));
+          localStorage.setItem(getActivityLogsKey(), JSON.stringify(logs.slice(0, 50)));
           window.dispatchEvent(new Event('activity-updated'));
         } catch {}
       } else {

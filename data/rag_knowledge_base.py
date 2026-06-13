@@ -288,7 +288,7 @@ class RAGKnowledgeBase:
     # ========== 知识文档相关操作 ==========
     
     def add_document(self, title, subject, file_path, file_type, content_text, 
-                     knowledge_points=None, ai_summary=None, uploaded_by='teacher', 
+                     knowledge_points=None, ai_summary=None, uploaded_by=None, 
                      file_size=0, embedding=None):
         """
         添加知识文档到库中（JSON 格式存储）
@@ -499,6 +499,36 @@ class RAGKnowledgeBase:
             return results
         except Exception as e:
             error(f"获取所有文档失败：{str(e)}")
+            return []
+        finally:
+            self.close()
+    
+    def get_documents_by_user(self, user_id, limit=100, offset=0):
+        """获取指定用户上传的文档"""
+        try:
+            self.connect()
+            sql = """SELECT * FROM knowledge_documents
+                    WHERE uploaded_by = %s
+                    ORDER BY upload_time DESC
+                    LIMIT %s OFFSET %s"""
+            self.cursor.execute(sql, (int(user_id), limit, offset))
+            results = self.cursor.fetchall()
+            
+            for record in results:
+                if record.get('document_data'):
+                    record['document_data'] = json.loads(record['document_data'])
+                    doc_data = record['document_data']
+                    content = doc_data.get('content', '')
+                    if isinstance(content, dict):
+                        record['content_text'] = content.get('raw_text', '')
+                    else:
+                        record['content_text'] = content
+                    record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
+                    record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
+            
+            return results
+        except Exception as e:
+            error(f"获取用户文档失败：{str(e)}")
             return []
         finally:
             self.close()

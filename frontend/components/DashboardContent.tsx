@@ -39,7 +39,9 @@ export default function DashboardContent() {
 
   const requireLogin = (callback: () => void) => {
     const hasToken = !!localStorage.getItem('auth_token');
-    if (!hasToken) {
+    const isGuest = localStorage.getItem('is_guest') === 'true';
+    if (!hasToken || isGuest) {
+      sessionStorage.setItem('guest_prompt', '1');
       window.location.href = '/';
       return;
     }

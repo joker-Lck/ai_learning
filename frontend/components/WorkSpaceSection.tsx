@@ -219,20 +219,31 @@ function Header({ profile, stats }: { profile: ProfileData | null; stats: Dashbo
   const [sessionMinutes, setSessionMinutes] = useState(0);
 
   useEffect(() => {
-    const sessionStart = Number(localStorage.getItem('session_start') || Date.now());
-    if (!localStorage.getItem('session_start')) {
-      localStorage.setItem('session_start', String(Date.now()));
+    const stored = localStorage.getItem('session_start');
+    const today = new Date().toDateString();
+    let start: number;
+
+    if (stored) {
+      const storedDate = new Date(Number(stored)).toDateString();
+      if (storedDate !== today) {
+        start = Date.now();
+        localStorage.setItem('session_start', String(start));
+      } else {
+        start = Number(stored);
+      }
+    } else {
+      start = Date.now();
+      localStorage.setItem('session_start', String(start));
     }
 
     const tick = () => {
-      setSessionMinutes(Math.floor((Date.now() - sessionStart) / 60000));
+      setSessionMinutes(Math.floor((Date.now() - start) / 60000));
     };
     tick();
     const interval = setInterval(tick, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // 页面关闭时上报本次会话时长
   useEffect(() => {
     const report = () => {
       const sessionStart = Number(localStorage.getItem('session_start') || Date.now());
@@ -242,6 +253,7 @@ function Header({ profile, stats }: { profile: ProfileData | null; stats: Dashbo
         const blob = new Blob([JSON.stringify({ seconds })], { type: 'application/json' });
         navigator.sendBeacon?.(`${base}/agent/activity-logs`, blob);
       }
+      localStorage.removeItem('session_start');
     };
     window.addEventListener('beforeunload', report);
     return () => window.removeEventListener('beforeunload', report);
@@ -522,6 +534,7 @@ export default function WorkSpaceSection({ onNavigateModule }: WorkSpaceSectionP
   const [loading, setLoading] = useState(true);
 
   const loadActivityLogs = useCallback(() => {
+    if (localStorage.getItem('is_guest') === 'true') return;
     api.getActivityLogs(8).then((r: any) => {
       if (r?.success) {
         const actionMap: Record<string, string> = {
@@ -549,6 +562,10 @@ export default function WorkSpaceSection({ onNavigateModule }: WorkSpaceSectionP
   }, []);
 
   useEffect(() => {
+    if (localStorage.getItem('is_guest') === 'true') {
+      setLoading(false);
+      return;
+    }
     const loadAll = async () => {
       setLoading(true);
       try {
@@ -586,6 +603,7 @@ export default function WorkSpaceSection({ onNavigateModule }: WorkSpaceSectionP
     loadAll();
 
     const onResUpdate = () => {
+      if (localStorage.getItem('is_guest') === 'true') return;
       api.getResources({ limit: 12 }).then((r: any) => {
         if (r?.success) setResources(r.data.resources || []);
       }).catch(() => {});

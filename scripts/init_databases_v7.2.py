@@ -48,7 +48,7 @@ def init_auth_database():
                 username VARCHAR(50) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL COMMENT '加密后的密码',
                 email VARCHAR(100),
-                role ENUM('user', 'admin') DEFAULT 'user',
+                role ENUM('user', 'admin', 'guest') DEFAULT 'user',
                 major VARCHAR(100) COMMENT '专业',
                 grade_level VARCHAR(50) COMMENT '年级',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -199,6 +199,7 @@ def init_resources_database():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS learning_resources (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT COMMENT '关联用户ID',
                 title VARCHAR(200) NOT NULL,
                 resource_type ENUM('document', 'mindmap', 'quiz', 'video', 'animation', 'code_case', 'reading') NOT NULL,
                 subject VARCHAR(50),
@@ -215,6 +216,7 @@ def init_resources_database():
                 duration_minutes INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user (user_id),
                 INDEX idx_type_subject (resource_type, subject),
                 INDEX idx_difficulty (difficulty_level)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学习资源表'
@@ -520,7 +522,7 @@ def init_rag_database():
                 document_data JSON COMMENT '文档完整数据（JSON格式）',
                 embedding JSON COMMENT '文档向量（Embedding）',
                 embedding_model VARCHAR(100) DEFAULT 'spark-embedding' COMMENT '向量模型名称',
-                uploaded_by VARCHAR(100) DEFAULT 'teacher' COMMENT '上传者',
+                uploaded_by INT COMMENT '上传者用户ID',
                 upload_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
                 usage_count INT DEFAULT 0 COMMENT '使用次数',
                 is_public TINYINT(1) DEFAULT 1 COMMENT '是否公开',

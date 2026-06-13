@@ -33,6 +33,11 @@ export default function Sidebar() {
   };
 
   const handleNavClick = (item: typeof menuItems[0]) => {
+    if (isGuest) {
+      sessionStorage.setItem('guest_prompt', '1');
+      window.location.href = '/';
+      return;
+    }
     if (item.module === null) {
       router.push('/dashboard');
     } else {

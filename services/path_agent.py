@@ -230,14 +230,18 @@ class PathAgent:
             error(f"保存学习路径失败: {str(e)}")
             raise
     
-    def update_path_progress(self, path_id: int, completed_step: int) -> Dict:
+    def update_path_progress(self, path_id: int, completed_step: int, user_id: int = None) -> Dict:
         """更新学习路径进度"""
         try:
             from data.db_operations import path_db
             with path_db:
-                # 获取当前路径
-                sql = "SELECT path_data, total_steps FROM learning_paths WHERE id = %s"
-                path_db.cursor.execute(sql, (path_id,))
+                # 获取当前路径（验证所有权）
+                if user_id is not None:
+                    sql = "SELECT path_data, total_steps FROM learning_paths WHERE id = %s AND user_id = %s"
+                    path_db.cursor.execute(sql, (path_id, user_id))
+                else:
+                    sql = "SELECT path_data, total_steps FROM learning_paths WHERE id = %s"
+                    path_db.cursor.execute(sql, (path_id,))
                 result = path_db.cursor.fetchone()
 
                 if not result:

@@ -132,7 +132,7 @@ class ResourceAgent:
                     # 继续生成其他资源
             
             # 保存到数据库
-            resource_ids = self._save_resources(generated_resources)
+            resource_ids = self._save_resources(generated_resources, user_id)
             
             result = {
                 "resources": generated_resources,
@@ -785,7 +785,7 @@ function downloadSVG() {{
             error(f"生成阅读材料失败: {str(e)}")
             return self._fallback_reading(subject, topic, difficulty)
     
-    def _save_resources(self, resources: List[Dict]) -> List[int]:
+    def _save_resources(self, resources: List[Dict], user_id: int = None) -> List[int]:
         """保存资源到主数据库 + RAG 知识库"""
         try:
             from data.db_operations import resource_db
@@ -795,16 +795,18 @@ function downloadSVG() {{
                 for resource in resources:
                     sql = """
                         INSERT INTO learning_resources
-                        (title, resource_type, subject, difficulty_level, content_data, duration_minutes)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        (user_id, title, resource_type, subject, difficulty_level, content_data, duration_minutes, generated_by_agent)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     resource_db.cursor.execute(sql, (
+                        user_id,
                         resource["title"],
                         resource["type"],
                         resource["subject"],
                         resource["difficulty_level"],
                         json.dumps(resource["content_data"], ensure_ascii=False),
-                        resource["duration_minutes"]
+                        resource["duration_minutes"],
+                        f"user_{user_id}" if user_id else "system"
                     ))
                     resource_ids.append(resource_db.cursor.lastrowid)
 
@@ -813,7 +815,7 @@ function downloadSVG() {{
                 info(f"成功保存 {len(resource_ids)} 个资源到主数据库")
 
             # 同步写入 RAG 知识库
-            self._save_to_rag(resources)
+            self._save_to_rag(resources, user_id)
 
             return resource_ids
 
@@ -821,7 +823,7 @@ function downloadSVG() {{
             error(f"保存资源失败: {str(e)}")
             return []
 
-    def _save_to_rag(self, resources: List[Dict]) -> None:
+    def _save_to_rag(self, resources: List[Dict], user_id: int = None) -> None:
         """将生成的资源同步写入 RAG 知识库"""
         try:
             from data.rag_knowledge_base import rag_kb
@@ -840,7 +842,7 @@ function downloadSVG() {{
                         content_text=content_text,
                         knowledge_points=knowledge_points,
                         ai_summary=content_text[:200] if content_text else "",
-                        uploaded_by="ai_agent",
+                        uploaded_by=user_id or 0,
                     )
                     if doc_id:
                         saved += 1

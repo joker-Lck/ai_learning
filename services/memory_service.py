@@ -18,6 +18,7 @@ import numpy as np
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+import threading
 import mysql.connector
 from data.config import get_memory_db_config
 from core.logger import info, error, warning
@@ -596,16 +597,71 @@ class MemoryService:
 
     def __init__(self):
         self._config = get_memory_db_config()
-        self.conn = None
-        self.cursor = None
+        self._local = threading.local()
 
-        # 各 Handler 在 connect() 后初始化
-        self.short_term: ShortTermHandler = None
-        self.episodic:   EpisodicHandler   = None
-        self.semantic:   SemanticHandler   = None
-        self.entity:     EntityHandler     = None
-        self.forgetting: ForgettingHandler = None
-        self.conflict:   ConflictHandler   = None
+    @property
+    def conn(self):
+        return getattr(self._local, 'conn', None)
+
+    @conn.setter
+    def conn(self, value):
+        self._local.conn = value
+
+    @property
+    def cursor(self):
+        return getattr(self._local, 'cursor', None)
+
+    @cursor.setter
+    def cursor(self, value):
+        self._local.cursor = value
+
+    @property
+    def short_term(self):
+        return getattr(self._local, 'short_term', None)
+
+    @short_term.setter
+    def short_term(self, value):
+        self._local.short_term = value
+
+    @property
+    def episodic(self):
+        return getattr(self._local, 'episodic', None)
+
+    @episodic.setter
+    def episodic(self, value):
+        self._local.episodic = value
+
+    @property
+    def semantic(self):
+        return getattr(self._local, 'semantic', None)
+
+    @semantic.setter
+    def semantic(self, value):
+        self._local.semantic = value
+
+    @property
+    def entity(self):
+        return getattr(self._local, 'entity', None)
+
+    @entity.setter
+    def entity(self, value):
+        self._local.entity = value
+
+    @property
+    def forgetting(self):
+        return getattr(self._local, 'forgetting', None)
+
+    @forgetting.setter
+    def forgetting(self, value):
+        self._local.forgetting = value
+
+    @property
+    def conflict(self):
+        return getattr(self._local, 'conflict', None)
+
+    @conflict.setter
+    def conflict(self, value):
+        self._local.conflict = value
 
     # ── 连接管理 ──────────────────────────────
 
@@ -622,6 +678,8 @@ class MemoryService:
     def close(self):
         if self.cursor: self.cursor.close()
         if self.conn:   self.conn.close()
+        self._local.conn = None
+        self._local.cursor = None
 
     def __enter__(self):
         self.connect()

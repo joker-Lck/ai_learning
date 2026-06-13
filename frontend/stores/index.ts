@@ -35,13 +35,24 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
+    const oldUser = localStorage.getItem('user_info');
+    let username = '';
+    try { username = oldUser ? JSON.parse(oldUser).username : ''; } catch {}
     localStorage.removeItem('auth_token');
     localStorage.removeItem('is_guest');
+    localStorage.removeItem('user_info');
+    localStorage.removeItem('session_start');
+    if (username) {
+      localStorage.removeItem(`activity_logs_${username}`);
+      localStorage.removeItem(`generated_resources_${username}`);
+      localStorage.removeItem(`profile_${username}`);
+    }
     set({ user: null, token: null, isLoggedIn: false, isGuest: false });
   },
 
   setGuest: () => {
     localStorage.setItem('is_guest', 'true');
+    localStorage.setItem('user_info', JSON.stringify({ id: 0, username: '游客', role: 'guest' }));
     set({
       user: { id: 0, username: '游客', role: 'guest' },
       token: null,

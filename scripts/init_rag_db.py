@@ -42,7 +42,7 @@ def init_rag_database():
             document_data JSON COMMENT '文档完整数据（JSON格式）',
             embedding JSON COMMENT '文档向量（Embedding）',
             embedding_model VARCHAR(100) DEFAULT 'spark-embedding' COMMENT '向量模型名称',
-            uploaded_by VARCHAR(100) DEFAULT 'teacher' COMMENT '上传者',
+            uploaded_by INT COMMENT '上传者用户ID',
             upload_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
             usage_count INT DEFAULT 0 COMMENT '使用次数',
             is_public TINYINT(1) DEFAULT 1 COMMENT '是否公开',

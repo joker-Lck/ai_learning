@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
@@ -20,12 +20,21 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [guestPrompt, setGuestPrompt] = useState(false);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regEmail, setRegEmail] = useState('');
+
+  useEffect(() => {
+    if (sessionStorage.getItem('guest_prompt') === '1') {
+      sessionStorage.removeItem('guest_prompt');
+      setGuestPrompt(true);
+      setIsLogin(false);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +122,18 @@ export default function LoginPage() {
               <h1 className="text-3xl font-bold text-white mb-3">多模态 AI 教学智能体</h1>
               <p className="text-lg text-white/35">6 大智能体协同，个性化学习体验</p>
             </div>
+
+            {/* 游客模式提示 */}
+            {guestPrompt && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-5 px-4 py-3 rounded-lg border border-amber-400/20 bg-amber-400/5 flex items-center gap-3"
+              >
+                <span className="text-amber-400 text-sm">!</span>
+                <p className="text-sm text-amber-300/80">该功能需要注册账号后才能使用，请先注册或登录</p>
+              </motion.div>
+            )}
 
             {/* 切换标签 */}
             <div className="flex bg-white/[0.03] rounded-lg p-1 mb-6 border border-white/[0.05]">

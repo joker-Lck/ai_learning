@@ -13,7 +13,7 @@ class DocumentParser:
     """文档解析器 - 将各种文件格式转换为统一的 JSON 格式"""
     
     @staticmethod
-    def parse_to_json(file, subject="通用", uploaded_by="teacher"):
+    def parse_to_json(file, subject="通用", uploaded_by=None):
         """
         将上传的文件解析为统一的 JSON 格式
         
