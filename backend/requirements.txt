@@ -18,6 +18,7 @@ python-docx==1.2.0
 PyPDF2==3.0.1
 pdfplumber==0.11.9
 openpyxl==3.1.5
+PyMuPDF==1.25.3
 
 # 数据 & 向量
 numpy==2.4.4

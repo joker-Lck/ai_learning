@@ -7,7 +7,7 @@ import base64
 import io
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
-from core.logger import info, error
+from core.logger import info, error, warning
 from data.db_operations import profile_db
 from services.qa_service import qa_service
 
@@ -543,6 +543,26 @@ class StudentDataImportMixin:
         from services.document_analysis_service import document_analysis_service
         return document_analysis_service._parse_file(filename, content)
 
+    def _pdf_to_image(self, content: bytes) -> Optional[str]:
+        """将 PDF 第一页转为 base64 图片（用于扫描版 PDF 的 OCR）"""
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(stream=content, filetype="pdf")
+            if doc.page_count == 0:
+                return None
+            # 只取第一页
+            page = doc[0]
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x 放大提高识别率
+            img_bytes = pix.tobytes("jpeg")
+            doc.close()
+            return base64.b64encode(img_bytes).decode('utf-8')
+        except ImportError:
+            warning("PyMuPDF 未安装，无法处理扫描版 PDF。请运行: pip install PyMuPDF")
+            return None
+        except Exception as e:
+            error(f"PDF 转图片失败: {e}")
+            return None
+
     def import_courses_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
         """从文件中 AI 识别课程表"""
         try:
@@ -594,10 +614,11 @@ class StudentDataImportMixin:
 只输出JSON数组或NOT_SCHEDULE，不要其他文字。"""
                 system_prompt = None
 
+            from services.spark_client import spark_client
+            
             if is_image:
                 # 使用 OCR 提取文字，再用 AI 解析
                 image_b64 = _compress_image(content)
-                from services.spark_client import spark_client
                 
                 # 1. 先用 OCR 提取文字
                 ocr_text = spark_client.ocr_image(image_b64)
@@ -615,10 +636,33 @@ class StudentDataImportMixin:
                     )
             else:
                 text = self._parse_upload_file(filename, content)
+                # 检查解析结果
+                if text and text.startswith("[") and "需要安装" in text:
+                    # 依赖缺失，返回明确的安装提示
+                    return {"success": False, "message": text}
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
-                from services.spark_client import spark_client
-                response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
+                    # 解析失败，尝试作为图片处理（可能是扫描版 PDF）
+                    if ext == 'pdf':
+                        info("PDF 文本提取失败，尝试 OCR 识别扫描版 PDF")
+                        # 将 PDF 转为图片再 OCR
+                        image_b64 = self._pdf_to_image(content)
+                        if image_b64:
+                            ocr_text = spark_client.ocr_image(image_b64)
+                            if ocr_text and len(ocr_text) > 10:
+                                info(f"扫描版 PDF OCR 成功: {len(ocr_text)} 字符")
+                                response = spark_client.simple(f"{prompt}\n\nOCR提取内容:\n{ocr_text[:8000]}", max_tokens=4000)
+                            else:
+                                # OCR 也失败，使用图片理解
+                                response = spark_client.chat_with_image(
+                                    prompt, image_b64, max_tokens=4000,
+                                    system_prompt=system_prompt,
+                                )
+                        else:
+                            return {"success": False, "message": "PDF 解析失败，请确保文件未损坏，或尝试将课表截图后上传"}
+                    else:
+                        return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
+                else:
+                    response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
 
             info(f"AI 识别课程表原始响应 (前300字): {response[:300]}")
             
@@ -725,10 +769,29 @@ class StudentDataImportMixin:
                     response = spark_client.chat_with_image(prompt, image_b64)
             else:
                 text = self._parse_upload_file(filename, content)
+                # 检查解析结果
+                if text and text.startswith("[") and "需要安装" in text:
+                    return {"success": False, "message": text}
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
-                from services.spark_client import spark_client
-                response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
+                    # 解析失败，尝试作为图片处理（可能是扫描版 PDF）
+                    if ext == 'pdf':
+                        info("PDF 文本提取失败，尝试 OCR 识别扫描版 PDF")
+                        from services.spark_client import spark_client
+                        image_b64 = self._pdf_to_image(content)
+                        if image_b64:
+                            ocr_text = spark_client.ocr_image(image_b64)
+                            if ocr_text and len(ocr_text) > 10:
+                                info(f"扫描版 PDF OCR 成功: {len(ocr_text)} 字符")
+                                response = spark_client.simple(f"{prompt}\n\nOCR提取内容:\n{ocr_text[:8000]}", max_tokens=4000)
+                            else:
+                                response = spark_client.chat_with_image(prompt, image_b64)
+                        else:
+                            return {"success": False, "message": "PDF 解析失败，请确保文件未损坏，或尝试将成绩单截图后上传"}
+                    else:
+                        return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
+                else:
+                    from services.spark_client import spark_client
+                    response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             
             info(f"AI 识别成绩原始响应 (前300字): {response[:300]}")
             
@@ -809,10 +872,29 @@ class StudentDataImportMixin:
                     response = spark_client.chat_with_image(prompt, image_b64, max_tokens=4000)
             else:
                 text = self._parse_upload_file(filename, content)
+                # 检查解析结果
+                if text and text.startswith("[") and "需要安装" in text:
+                    return {"success": False, "message": text}
                 if not text or text.startswith("["):
-                    return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
-                from services.spark_client import spark_client
-                response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
+                    # 解析失败，尝试作为图片处理（可能是扫描版 PDF）
+                    if ext == 'pdf':
+                        info("PDF 文本提取失败，尝试 OCR 识别扫描版 PDF")
+                        from services.spark_client import spark_client
+                        image_b64 = self._pdf_to_image(content)
+                        if image_b64:
+                            ocr_text = spark_client.ocr_image(image_b64)
+                            if ocr_text and len(ocr_text) > 10:
+                                info(f"扫描版 PDF OCR 成功: {len(ocr_text)} 字符")
+                                response = spark_client.simple(f"{prompt}\n\nOCR提取内容:\n{ocr_text[:8000]}", max_tokens=4000)
+                            else:
+                                response = spark_client.chat_with_image(prompt, image_b64, max_tokens=4000)
+                        else:
+                            return {"success": False, "message": "PDF 解析失败，请确保文件未损坏，或尝试将错题截图后上传"}
+                    else:
+                        return {"success": False, "message": "文件解析失败，请上传 txt/pdf/doc/docx/ppt/pptx/xls/xlsx/csv/jpg/png 等格式"}
+                else:
+                    from services.spark_client import spark_client
+                    response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
             
             info(f"AI 识别错题原始响应 (前300字): {response[:300]}")
             

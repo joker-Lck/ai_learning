@@ -317,14 +317,24 @@ export default function DashboardContent() {
               6 大智能体协同工作，7 种资源类型一键生成，构建专属你的沉浸式学习体验
             </p>
 
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center gap-4">
               <motion.button
                 onClick={() => scrollToSection(1)}
-                className="px-12 py-4 bg-purple-500 text-white rounded-lg text-lg font-medium hover:bg-purple-400 transition-colors"
+                className="px-8 py-4 bg-purple-500 text-white rounded-lg text-lg font-medium hover:bg-purple-400 transition-colors flex items-center gap-2"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                开始探索
+                <GraduationCap className="w-5 h-5" />
+                学习看板
+              </motion.button>
+              <motion.button
+                onClick={() => scrollToSection(2)}
+                className="px-8 py-4 bg-white/[0.06] border border-white/[0.1] text-white rounded-lg text-lg font-medium hover:bg-white/[0.1] transition-colors flex items-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Brain className="w-5 h-5" />
+                功能选择
               </motion.button>
             </div>
           </motion.div>
