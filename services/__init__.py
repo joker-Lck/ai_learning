@@ -18,3 +18,4 @@ from services.resource_agent import ResourceAgent
 from services.path_agent import PathAgent
 from services.tutor_agent import TutorAgent
 from services.assessment_agent import AssessmentAgent
+from services.advanced_retrieval_service import AdvancedRetrievalService, retrieval_service

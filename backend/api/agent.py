@@ -1198,3 +1198,332 @@ async def record_session_time(
     except Exception as e:
         error(f"记录会话时长失败: {str(e)}")
         return {"success": False}
+
+
+# ==================== 高级检索 API ====================
+
+
+@router.post("/advanced-search", response_model=BaseResponse)
+async def advanced_search(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(get_current_user),
+):
+    """
+    高级检索 — 支持 6 种现代检索策略
+
+    输入格式:
+    {
+        "query": "检索内容",
+        "subject": "学科（可选）",
+        "strategy": "auto|hyde|multi_query|rag_fusion|contextual|graph|hybrid|ensemble",
+        "limit": 5
+    }
+
+    策略说明:
+    - auto: 自动选择（短查询用 HyDE，长查询用 RAG-Fusion）
+    - hyde: 假设性文档嵌入（2023）
+    - multi_query: 多查询检索（2023）
+    - rag_fusion: RAG-Fusion + RRF 排序（2023，推荐）
+    - contextual: 上下文精排（2024）
+    - graph: 图谱增强检索（2024）
+    - hybrid: HyDE + RAG-Fusion 组合
+    - ensemble: 全方法集成（最全面）
+    """
+    try:
+        user_id = user["id"]
+        query = input_data.get("query", "")
+        if not query:
+            return BaseResponse(success=False, message="查询内容不能为空", data=None)
+
+        subject = input_data.get("subject")
+        strategy = input_data.get("strategy", "auto")
+        limit = input_data.get("limit", 5)
+
+        info(f"用户 {user_id} 高级检索: query={query[:50]}, strategy={strategy}")
+
+        from services.advanced_retrieval_service import retrieval_service
+        results = retrieval_service.smart_search(
+            user_id=user_id,
+            query=query,
+            subject=subject,
+            limit=limit,
+            strategy=strategy,
+        )
+
+        return BaseResponse(
+            success=True,
+            message=f"检索完成，返回 {len(results)} 条结果",
+            data={
+                "results": results,
+                "strategy_used": strategy,
+                "count": len(results),
+            },
+        )
+
+    except Exception as e:
+        error(f"高级检索失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/contextual-upload", response_model=BaseResponse)
+async def contextual_upload(
+    files: List[UploadFile] = File(...),
+    subject: str = Form(""),
+    user: dict = Depends(get_current_user),
+):
+    """
+    上下文分块上传到 RAG 知识库
+    参考 Anthropic Contextual Retrieval (2024)
+    为每个段落添加上下文前缀后再嵌入，显著提升检索精度
+    """
+    ALLOWED = {'.txt', '.md', '.pdf', '.doc', '.docx', '.ppt', '.pptx'}
+    MAX_SIZE = 20 * 1024 * 1024
+
+    try:
+        user_id = user["id"]
+        from services.advanced_retrieval_service import retrieval_service
+        from services.document_analysis_service import document_analysis_service
+
+        results = []
+        for f in files:
+            ext = '.' + f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+            if ext not in ALLOWED:
+                results.append({"filename": f.filename, "success": False, "message": f"不支持格式 {ext}"})
+                continue
+
+            content = await f.read()
+            if len(content) > MAX_SIZE:
+                results.append({"filename": f.filename, "success": False, "message": "文件超过 20MB"})
+                continue
+
+            text = document_analysis_service._parse_file(f.filename, content)
+            if not text or text.startswith("["):
+                results.append({"filename": f.filename, "success": False, "message": "文件解析失败"})
+                continue
+
+            # AI 提取知识点
+            kp_prompt = f"从以下文本中提取5-15个关键知识点名称，用JSON数组返回（只输出JSON数组）:\n{text[:4000]}"
+            try:
+                from services.spark_client import spark_client
+                from core.json_utils import safe_parse_json
+                kp_resp = spark_client.simple(kp_prompt, max_tokens=500)
+                kp_list = safe_parse_json(kp_resp)
+                if not isinstance(kp_list, list):
+                    kp_list = []
+            except Exception:
+                kp_list = []
+
+            title = f.filename.rsplit('.', 1)[0]
+            doc_id = retrieval_service.add_contextual_document(
+                title=title,
+                subject=subject or "综合",
+                content_text=text,
+                file_path=f.filename,
+                file_type=ext.lstrip('.'),
+                knowledge_points=kp_list,
+                uploaded_by=user_id,
+            )
+
+            if doc_id:
+                results.append({"filename": f.filename, "success": True, "doc_id": doc_id,
+                                "knowledge_points": len(kp_list), "method": "contextual_chunking"})
+            else:
+                results.append({"filename": f.filename, "success": False, "message": "写入失败"})
+
+        success_count = sum(1 for r in results if r.get("success"))
+        return BaseResponse(
+            success=success_count > 0,
+            message=f"上下文分块入库 {success_count}/{len(results)} 个文件",
+            data={"results": results},
+        )
+
+    except Exception as e:
+        error(f"上下文上传失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 单独检索方法 API ====================
+
+
+@router.post("/hyde-search", response_model=BaseResponse)
+async def hyde_search(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(get_current_user),
+):
+    """
+    HyDE 检索 — 假设性文档嵌入（Gao et al., 2023）
+    LLM 生成假设答案，用答案向量检索
+
+    输入格式:
+    {
+        "query": "检索内容",
+        "subject": "学科（可选）",
+        "model": "simple|standard|advanced",
+        "limit": 5
+    }
+    """
+    try:
+        user_id = user["id"]
+        query = input_data.get("query", "")
+        if not query:
+            return BaseResponse(success=False, message="查询内容不能为空", data=None)
+
+        subject = input_data.get("subject")
+        model = input_data.get("model", "simple")
+        limit = input_data.get("limit", 5)
+
+        info(f"用户 {user_id} HyDE检索: query={query[:50]}")
+
+        from services.advanced_retrieval_service import retrieval_service
+        results = retrieval_service.hyde_search(
+            query=query, subject=subject, limit=limit, model=model
+        )
+
+        return BaseResponse(
+            success=True,
+            message=f"HyDE检索完成，返回 {len(results)} 条结果",
+            data={"results": results, "method": "hyde", "count": len(results)},
+        )
+
+    except Exception as e:
+        error(f"HyDE检索失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/multi-query-search", response_model=BaseResponse)
+async def multi_query_search(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Multi-Query 检索 — 多查询检索（LangChain, 2023）
+    LLM 生成多个查询变体，分别检索合并
+
+    输入格式:
+    {
+        "query": "检索内容",
+        "subject": "学科（可选）",
+        "num_variants": 3,
+        "limit": 5
+    }
+    """
+    try:
+        user_id = user["id"]
+        query = input_data.get("query", "")
+        if not query:
+            return BaseResponse(success=False, message="查询内容不能为空", data=None)
+
+        subject = input_data.get("subject")
+        num_variants = input_data.get("num_variants", 3)
+        limit = input_data.get("limit", 5)
+
+        info(f"用户 {user_id} Multi-Query检索: query={query[:50]}")
+
+        from services.advanced_retrieval_service import retrieval_service
+        results = retrieval_service.multi_query_search(
+            query=query, subject=subject, limit=limit, num_variants=num_variants
+        )
+
+        return BaseResponse(
+            success=True,
+            message=f"Multi-Query检索完成，返回 {len(results)} 条结果",
+            data={"results": results, "method": "multi_query", "count": len(results)},
+        )
+
+    except Exception as e:
+        error(f"Multi-Query检索失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/rag-fusion-search", response_model=BaseResponse)
+async def rag_fusion_search(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(get_current_user),
+):
+    """
+    RAG-Fusion 检索 — 查询融合 + RRF 排序（Raudaschl, 2023）
+    多查询 + 倒数排名融合排序
+
+    输入格式:
+    {
+        "query": "检索内容",
+        "subject": "学科（可选）",
+        "num_variants": 4,
+        "rrf_k": 60,
+        "limit": 5
+    }
+    """
+    try:
+        user_id = user["id"]
+        query = input_data.get("query", "")
+        if not query:
+            return BaseResponse(success=False, message="查询内容不能为空", data=None)
+
+        subject = input_data.get("subject")
+        num_variants = input_data.get("num_variants", 4)
+        rrf_k = input_data.get("rrf_k", 60)
+        limit = input_data.get("limit", 5)
+
+        info(f"用户 {user_id} RAG-Fusion检索: query={query[:50]}")
+
+        from services.advanced_retrieval_service import retrieval_service
+        results = retrieval_service.rag_fusion_search(
+            query=query, subject=subject, limit=limit,
+            num_variants=num_variants, rrf_k=rrf_k
+        )
+
+        return BaseResponse(
+            success=True,
+            message=f"RAG-Fusion检索完成，返回 {len(results)} 条结果",
+            data={"results": results, "method": "rag_fusion", "count": len(results)},
+        )
+
+    except Exception as e:
+        error(f"RAG-Fusion检索失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/graph-search", response_model=BaseResponse)
+async def graph_search(
+    input_data: Dict[str, Any] = Body(...),
+    user: dict = Depends(get_current_user),
+):
+    """
+    图谱增强检索 — Graph-Enhanced RAG（Microsoft GraphRAG, 2024）
+    实体识别 → 图谱遍历 → 查询扩展 → 融合检索
+
+    输入格式:
+    {
+        "query": "检索内容",
+        "subject": "学科（可选）",
+        "graph_depth": 2,
+        "limit": 5
+    }
+    """
+    try:
+        user_id = user["id"]
+        query = input_data.get("query", "")
+        if not query:
+            return BaseResponse(success=False, message="查询内容不能为空", data=None)
+
+        subject = input_data.get("subject")
+        graph_depth = input_data.get("graph_depth", 2)
+        limit = input_data.get("limit", 5)
+
+        info(f"用户 {user_id} 图谱增强检索: query={query[:50]}")
+
+        from services.advanced_retrieval_service import retrieval_service
+        results = retrieval_service.graph_enhanced_search(
+            user_id=user_id, query=query, subject=subject,
+            limit=limit, graph_depth=graph_depth
+        )
+
+        return BaseResponse(
+            success=True,
+            message=f"图谱增强检索完成，返回 {len(results)} 条结果",
+            data={"results": results, "method": "graph_enhanced", "count": len(results)},
+        )
+
+    except Exception as e:
+        error(f"图谱增强检索失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

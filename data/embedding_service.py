@@ -23,7 +23,8 @@ class EmbeddingService:
         if self._client is None:
             api_key = os.getenv('SPARK_API_KEY', '')
             api_secret = os.getenv('SPARK_API_SECRET', '')
-            base_url = os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
+            # Embedding 使用独立的 endpoint
+            base_url = os.getenv('SPARK_EMBEDDING_URL', os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1'))
             if not api_key:
                 raise RuntimeError(
                     "SPARK_API_KEY 未配置，请在 .env 文件中设置。"

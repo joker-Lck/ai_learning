@@ -119,8 +119,8 @@ class TutorAgent:
     # ==========================================
 
     def _retrieve_memories(self, ms, user_id: int, question: str, subject: str) -> Dict:
-        """检索相关记忆"""
-        memories = {'semantic': [], 'episodic': [], 'entity': []}
+        """检索相关记忆（集成高级检索）"""
+        memories = {'semantic': [], 'episodic': [], 'entity': [], 'rag_docs': []}
         try:
             memories['semantic'] = ms.search_semantic(user_id, question, limit=5)
             memories['episodic'] = ms.search_episodic(user_id, question, limit=3)
@@ -129,6 +129,17 @@ class TutorAgent:
                 subject_facts = ms.get_facts_by_subject(user_id, subject)
                 if subject_facts:
                     memories['semantic'].extend(subject_facts[:3])
+
+            # 高级 RAG 检索（Graph-Enhanced）
+            try:
+                from services.advanced_retrieval_service import retrieval_service
+                rag_results = retrieval_service.graph_enhanced_search(
+                    user_id=user_id, query=question, subject=subject, limit=3
+                )
+                if rag_results:
+                    memories['rag_docs'] = rag_results
+            except Exception as e:
+                debug(f"高级 RAG 检索降级: {e}")
         except Exception as e:
             warning(f"检索记忆失败: {str(e)}")
         return memories
@@ -155,7 +166,7 @@ class TutorAgent:
     def _build_enhanced_context(self, question: str, subject: str,
                                 relevant_memories: Dict, user_context: Dict,
                                 conversation_history: List) -> str:
-        """构建增强上下文"""
+        """构建增强上下文（集成 RAG 知识文档）"""
         parts = []
         if user_context.get('known_concepts'):
             parts.append(f"用户已掌握: {', '.join(user_context['known_concepts'][:5])}")
@@ -169,6 +180,19 @@ class TutorAgent:
             eps = [f"- {e.get('title', '对话')}: {e.get('summary', '')[:100]}" for e in relevant_memories['episodic'][:2]]
             if eps:
                 parts.append("历史对话:\n" + "\n".join(eps))
+
+        # 注入 RAG 知识文档
+        rag_docs = relevant_memories.get('rag_docs', [])
+        if rag_docs:
+            doc_parts = []
+            for doc in rag_docs[:2]:
+                title = doc.get('title', '未知文档')
+                content = doc.get('content_text', '')[:300]
+                method = doc.get('retrieval_method', '')
+                doc_parts.append(f"- [{title}]({method}): {content}")
+            if doc_parts:
+                parts.append("知识库参考:\n" + "\n".join(doc_parts))
+
         if conversation_history:
             recent = conversation_history[-3:]
             history = [f"{'用户' if m['role'] == 'user' else '助手'}: {m['content'][:100]}" for m in recent]

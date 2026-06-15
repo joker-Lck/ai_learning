@@ -21,6 +21,7 @@
 - [API接口](#api接口)
 - [创新亮点](#创新亮点)
 - [核心算法：混合检索系统（KNN + ANN）](#核心算法混合检索系统knn--ann)
+  - [高级检索方法（2023-2026 新型算法）](#7-高级检索方法2023-2026-新型算法)
 - [性能指标](#性能指标)
 - [常见问题](#常见问题)
 
@@ -1196,7 +1197,45 @@ RRF_score(d) = Σ 1/(k + rank_i(d))
 
 ---
 
-### 7. 防幻觉 RAG 交叉验证
+### 7. 高级检索方法（2023-2026 新型算法）
+
+**源文件**: `services/advanced_retrieval_service.py` → `AdvancedRetrievalService` 类
+
+系统在基础混合检索之上，实现了 5 种 2023-2026 年前沿检索方法：
+
+| 方法 | 来源 | 核心思想 | 适用场景 |
+|------|------|----------|----------|
+| **HyDE** | Gao et al., 2023 | LLM 生成假设答案，用答案向量检索 | 短查询、概念性问题 |
+| **Multi-Query** | LangChain, 2023 | LLM 生成多个查询变体，分别检索合并 | 提高召回率 |
+| **RAG-Fusion + RRF** | Raudaschl, 2023 | 多查询 + 倒数排名融合排序 | 默认推荐策略 |
+| **Contextual Retrieval** | Anthropic, 2024 | 给每个 chunk 添加上下文前缀再嵌入 | 文档入库时 |
+| **Graph-Enhanced RAG** | Microsoft GraphRAG, 2024 | 利用实体图谱扩展查询 | 有图谱数据时 |
+
+#### 统一检索入口
+
+```python
+from services.advanced_retrieval_service import retrieval_service
+
+# 智能路由：自动选择最佳策略
+results = retrieval_service.smart_search(
+    user_id=1, query="梯度下降原理", subject="机器学习",
+    limit=5, strategy="auto"  # 可选: hyde/multi_query/rag_fusion/contextual/graph/hybrid/ensemble
+)
+```
+
+#### 策略说明
+
+- **auto**: 自动选择（短查询用 HyDE，长查询用 RAG-Fusion）
+- **hybrid**: HyDE + RAG-Fusion 组合，RRF 融合
+- **ensemble**: 全部 5 种方法取并集，RRF 融合（最全面）
+
+#### 智能辅导集成
+
+智能辅导模块自动使用图谱增强检索（Graph-Enhanced RAG），从用户知识图谱中提取关联实体扩展查询，实现个性化知识推荐。
+
+---
+
+### 8. 防幻觉 RAG 交叉验证
 
 **源文件**: `services/content_safety_service.py` → `AntiHallucinationService` 类（第195-344行）
 
