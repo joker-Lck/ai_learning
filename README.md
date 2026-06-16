@@ -1496,6 +1496,19 @@ def search_similar_questions(self, question_text, limit=5):
 | 防抖/节流 | useDebounce/useThrottledCallback hooks |
 | 异常处理 | 全局异常处理器，统一错误格式 |
 
+### 前端企业级
+
+| 特性 | 说明 |
+|------|------|
+| 安全头 | X-Content-Type-Options / X-Frame-Options / HSTS / CSP |
+| CSP | Content-Security-Policy 限制脚本/样式/连接来源 |
+| API重试 | 5xx/网络错误自动重试2次，指数退避 |
+| 超时分级 | 普通30s / 文件上传60s / AI生成120s / 流式180s |
+| XSS防护 | rehype-sanitize 过滤 Markdown 恶意HTML |
+| 元数据 | viewport / Open Graph / keywords / robots |
+| 环境分层 | .env.development / .env.production 独立配置 |
+| Docker | standalone 输出，多阶段构建 |
+
 ---
 
 ## 项目结构
@@ -1536,12 +1549,14 @@ def search_similar_questions(self, question_text, limit=5):
 │   ├── components/
 │   │   ├── shared/
 │   │   │   ├── ErrorBoundary.tsx    # 错误边界
-│   │   │   └── MarkdownRenderer.tsx # Markdown渲染
+│   │   │   └── MarkdownRenderer.tsx # Markdown渲染（XSS防护）
 │   │   └── modules/                 # 6大功能模块
 │   ├── lib/
-│   │   ├── api.ts       # API客户端
+│   │   ├── api.ts       # API客户端（重试+超时）
 │   │   └── hooks.ts     # 防抖/节流hooks
-│   └── stores/index.ts  # Zustand状态管理
+│   ├── middleware.ts     # 边缘层安全头
+│   ├── .env.development  # 开发环境配置
+│   └── stores/index.ts   # Zustand状态管理
 │
 ├── scripts/             # 初始化脚本
 ├── resources/           # RAG知识库文件
