@@ -1,6 +1,7 @@
 """
 内容安全与防幻觉服务
 提供敏感词过滤、事实核查、学术规范性检查等功能
+使用AC自动机算法加速多模式匹配
 """
 
 import re
@@ -10,15 +11,81 @@ from datetime import datetime
 from core.logger import info, error, warning
 
 
-class ContentSafetyService:
-    """内容安全服务 - 过滤敏感和违规内容"""
+class AhoCorasick:
+    """AC自动机 - 用于高效的多模式字符串匹配"""
     
     def __init__(self):
-        # 敏感词库(示例,实际应使用更完整的词库)
+        self.goto = [{}]
+        self.fail = [0]
+        self.output = [[]]
+        self.state_count = 1
+    
+    def add_pattern(self, pattern: str, pattern_id: int):
+        """添加模式串"""
+        state = 0
+        for char in pattern:
+            if char not in self.goto[state]:
+                self.goto[state][char] = self.state_count
+                self.goto.append({})
+                self.fail.append(0)
+                self.output.append([])
+                self.state_count += 1
+            state = self.goto[state][char]
+        self.output[state].append((pattern_id, pattern))
+    
+    def build(self):
+        """构建失败指针"""
+        from collections import deque
+        queue = deque()
+        
+        for char, state in self.goto[0].items():
+            self.fail[state] = 0
+            queue.append(state)
+        
+        while queue:
+            r = queue.popleft()
+            for char, s in self.goto[r].items():
+                queue.append(s)
+                state = self.fail[r]
+                while state != 0 and char not in self.goto[state]:
+                    state = self.fail[state]
+                self.fail[s] = self.goto[state].get(char, 0)
+                if self.fail[s] == s:
+                    self.fail[s] = 0
+                self.output[s] = self.output[s] + self.output[self.fail[s]]
+    
+    def search(self, text: str) -> List[Tuple[int, str, int]]:
+        """搜索文本中的所有模式匹配
+        
+        返回: [(pattern_id, pattern, position), ...]
+        """
+        results = []
+        state = 0
+        
+        for i, char in enumerate(text):
+            while state != 0 and char not in self.goto[state]:
+                state = self.fail[state]
+            state = self.goto[state].get(char, 0)
+            
+            for pattern_id, pattern in self.output[state]:
+                results.append((pattern_id, pattern, i - len(pattern) + 1))
+        
+        return results
+
+
+class ContentSafetyService:
+    """内容安全服务 - 过滤敏感和违规内容（使用AC自动机加速）"""
+    
+    def __init__(self):
         self.sensitive_words = self._load_sensitive_words()
-        # 学术不规范模式
         self.academic_irregular_patterns = self._load_academic_patterns()
-        info("内容安全服务初始化完成")
+        
+        self._ac_automaton = AhoCorasick()
+        for idx, word in enumerate(self.sensitive_words):
+            self._ac_automaton.add_pattern(word, idx)
+        self._ac_automaton.build()
+        
+        info("内容安全服务初始化完成（AC自动机加速）")
     
     def check_content_safety(self, content: str) -> Dict:
         """
@@ -221,11 +288,9 @@ class ContentSafetyService:
         ]
     
     def _detect_sensitive_words(self, content: str) -> List[str]:
-        """检测敏感词"""
-        hits = []
-        for word in self.sensitive_words:
-            if word in content:
-                hits.append(word)
+        """检测敏感词 - 使用AC自动机"""
+        matches = self._ac_automaton.search(content)
+        hits = list(set(pattern for _, pattern, _ in matches))
         return hits
     
     def _detect_policy_violations(self, content: str) -> List[Dict]:

@@ -6,13 +6,58 @@ from mysql.connector import pooling
 import json
 import time
 import threading
+from collections import OrderedDict
 from .config import get_rag_db_config
 from datetime import datetime
 import os
 import numpy as np
 
-# 查询缓存
-_query_cache = {}
+
+class LRUCache:
+    """LRU缓存 - 基于OrderedDict实现，自动淘汰最久未使用的条目"""
+    
+    def __init__(self, max_size: int = 200, ttl: int = 600):
+        self._cache = OrderedDict()
+        self._max_size = max_size
+        self._ttl = ttl
+        self._lock = threading.Lock()
+    
+    def get(self, key: str):
+        """获取缓存值，过期或不存在返回None"""
+        with self._lock:
+            if key in self._cache:
+                value, timestamp = self._cache[key]
+                if time.time() - timestamp < self._ttl:
+                    self._cache.move_to_end(key)
+                    return value
+                else:
+                    del self._cache[key]
+            return None
+    
+    def set(self, key: str, value):
+        """设置缓存值"""
+        with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+            elif len(self._cache) >= self._max_size:
+                self._cache.popitem(last=False)
+            self._cache[key] = (value, time.time())
+    
+    def clear(self, prefix: str = None):
+        """清空缓存，可选按前缀过滤"""
+        with self._lock:
+            if prefix:
+                keys_to_delete = [k for k in self._cache.keys() if k.startswith(prefix)]
+                for key in keys_to_delete:
+                    del self._cache[key]
+            else:
+                self._cache.clear()
+    
+    def __len__(self):
+        return len(self._cache)
+
+
+_query_cache = LRUCache(max_size=200, ttl=600)
 _CACHE_TTL = 600
 
 def _get_cache_key(sql, params):
@@ -21,26 +66,15 @@ def _get_cache_key(sql, params):
 
 def _get_cached_result(cache_key):
     """获取缓存结果"""
-    if cache_key in _query_cache:
-        result, timestamp = _query_cache[cache_key]
-        if time.time() - timestamp < _CACHE_TTL:
-            return result
-        else:
-            del _query_cache[cache_key]
-    return None
+    return _query_cache.get(cache_key)
 
 def _set_cache_result(cache_key, result):
     """设置缓存结果"""
-    _query_cache[cache_key] = (result, time.time())
-    if len(_query_cache) > 200:
-        oldest_key = min(_query_cache.keys(), key=lambda k: _query_cache[k][1])
-        del _query_cache[oldest_key]
+    _query_cache.set(cache_key, result)
 
 def _clear_search_cache():
     """清空搜索缓存"""
-    keys_to_delete = [k for k in _query_cache.keys() if k.startswith('rag:')]
-    for key in keys_to_delete:
-        del _query_cache[key]
+    _query_cache.clear(prefix='rag:')
 
 
 # ═══════════════════════════════════════════
@@ -715,39 +749,69 @@ class RAGKnowledgeBase:
         self.close()
 
     def _brute_force_vector_search(self, query_embedding, limit=5):
-        """原有暴力搜索（FAISS 不可用时的回退方案）"""
+        """暴力搜索（FAISS 不可用时的回退方案）- 使用numpy向量化加速"""
         try:
-            from .embedding_service import embedding_service
-
             self.connect()
             sql = """SELECT id, title, subject, document_data
                     FROM knowledge_documents
                     WHERE document_data->>'$.embedding' IS NOT NULL
-                    LIMIT 100"""
+                    LIMIT 200"""
             self.cursor.execute(sql)
             docs = self.cursor.fetchall()
 
-            results = []
+            if not docs:
+                return []
+
+            doc_ids = []
+            doc_titles = []
+            doc_subjects = []
+            doc_texts = []
+            doc_datas = []
+            embeddings_list = []
+
             for doc in docs:
                 doc_data = doc.get('document_data')
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
-
                 doc_embedding = doc_data.get('embedding')
                 if doc_embedding:
-                    similarity = embedding_service.cosine_similarity(query_embedding, doc_embedding)
+                    doc_ids.append(doc['id'])
+                    doc_titles.append(doc['title'])
+                    doc_subjects.append(doc['subject'])
                     raw_text = doc_data.get('content', {}).get('raw_text', '')
-                    results.append({
-                        'id': doc['id'],
-                        'title': doc['title'],
-                        'subject': doc['subject'],
-                        'content_text': raw_text[:1000],
-                        'similarity': float(similarity),
-                        'document_data': doc_data
-                    })
+                    doc_texts.append(raw_text[:1000])
+                    doc_datas.append(doc_data)
+                    embeddings_list.append(doc_embedding)
 
-            results.sort(key=lambda x: x['similarity'], reverse=True)
-            return results[:limit]
+            if not embeddings_list:
+                return []
+
+            import numpy as np
+            query_vec = np.array(query_embedding, dtype='float32')
+            doc_matrix = np.array(embeddings_list, dtype='float32')
+
+            query_norm = np.linalg.norm(query_vec)
+            doc_norms = np.linalg.norm(doc_matrix, axis=1)
+
+            if query_norm == 0:
+                return []
+
+            similarities = np.dot(doc_matrix, query_vec) / (doc_norms * query_norm)
+
+            top_indices = np.argsort(similarities)[::-1][:limit]
+
+            results = []
+            for idx in top_indices:
+                results.append({
+                    'id': doc_ids[idx],
+                    'title': doc_titles[idx],
+                    'subject': doc_subjects[idx],
+                    'content_text': doc_texts[idx],
+                    'similarity': float(similarities[idx]),
+                    'document_data': doc_datas[idx]
+                })
+
+            return results
 
         except Exception as e:
             error(f"暴力向量检索失败: {str(e)}")

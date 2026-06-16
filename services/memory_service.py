@@ -705,10 +705,29 @@ class MemoryService:
         self.forgetting.log_access(user_id, 'episodic', mid, 'write')
         return mid
 
-    def search_episodic(self, user_id, query, limit=5):
+    def search_episodic(self, user_id, query, limit=5, use_vector=True):
         results = self.episodic.search(user_id, query, limit)
         for r in results:
             self.forgetting.update_access('episodic', r['id'], user_id)
+        
+        if use_vector and not results:
+            try:
+                from data.embedding_service import embedding_service
+                from data.rag_knowledge_base import rag_kb
+                query_embedding = embedding_service.get_embedding(query)
+                if query_embedding:
+                    vector_results = rag_kb.search_documents_by_vector(query_embedding, limit=limit)
+                    if vector_results:
+                        results = [{
+                            'id': vr.get('id'),
+                            'title': vr.get('title', ''),
+                            'summary': vr.get('content_text', '')[:200],
+                            'source': 'vector',
+                            'similarity': vr.get('similarity', 0)
+                        } for vr in vector_results]
+            except Exception as e:
+                debug(f"向量检索降级: {e}")
+        
         return results
 
     def get_recent_episodes(self, user_id, limit=10):

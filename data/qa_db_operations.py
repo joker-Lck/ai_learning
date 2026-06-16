@@ -220,23 +220,43 @@ class QADatabase:
         finally:
             self.close()
     
-    def search_similar_questions(self, question_text, limit=5):
-        """搜索相似问题"""
+    def search_similar_questions(self, question_text, limit=5, use_vector=True):
+        """搜索相似问题 - 支持向量语义检索"""
         try:
-            # 检查缓存
             cache_key = _get_cache_key("search_qa", question_text[:50])
             cached = _get_cached_result(cache_key)
             if cached:
                 return cached
             
+            if use_vector:
+                try:
+                    from data.embedding_service import embedding_service
+                    from data.rag_knowledge_base import rag_kb
+                    
+                    query_embedding = embedding_service.get_embedding(question_text)
+                    if query_embedding:
+                        vector_results = rag_kb.search_documents_by_vector(query_embedding, limit=limit)
+                        if vector_results:
+                            qa_results = []
+                            for vr in vector_results:
+                                qa_results.append({
+                                    'id': vr.get('id'),
+                                    'question_text': vr.get('title', ''),
+                                    'ai_response': vr.get('content_text', ''),
+                                    'similarity': vr.get('similarity', 0),
+                                    'source': 'vector'
+                                })
+                            _set_cache_result(cache_key, qa_results)
+                            return qa_results
+                except Exception as e:
+                    warning(f"向量检索降级为关键词检索: {e}")
+            
             self.connect()
-            # 提取关键词（最多 3 个）
             keywords = [kw for kw in question_text.split() if len(kw) > 1][:3]
             
             if not keywords:
                 return []
             
-            # 查询必要字段
             like_conditions = []
             params = []
             for kw in keywords:
@@ -257,12 +277,10 @@ class QADatabase:
             if not results:
                 return []
             
-            # 解析必要字段
             question_words = set(w.lower() for w in question_text.split() if len(w) > 1)
             enriched_results = []
             
             for result in results:
-                # 计算相似度
                 answer_words = set(w.lower() for w in (result['question_text'] + ' ' + result['ai_response']).split() if len(w) > 1)
                 common_words = len(question_words & answer_words)
                 total_words = len(question_words | answer_words)
@@ -272,14 +290,13 @@ class QADatabase:
                     'id': result['id'],
                     'question_text': result['question_text'],
                     'ai_response': result['ai_response'],
-                    'similarity': similarity
+                    'similarity': similarity,
+                    'source': 'keyword'
                 })
             
-            # 按相似度排序
             enriched_results.sort(key=lambda x: x['similarity'], reverse=True)
             final_results = enriched_results[:limit]
             
-            # 缓存结果
             if final_results:
                 _set_cache_result(cache_key, final_results)
             
