@@ -588,7 +588,7 @@ export function useDashboard() {
 
   // ── 文件导入处理器（只返回数据，不自动保存）──
   const handleImportCourses = async (file: File) => {
-    const res = await api.importCoursesFromFile(file);
+    const res: any = await api.importCoursesFromFile(file);
     if (res.success && Array.isArray(res.data)) {
       // 标准化字段，确保和手动添加格式一致
       return (res.data as any[]).map((c: any) => ({
@@ -605,7 +605,7 @@ export function useDashboard() {
   };
 
   const handleImportGrades = async (file: File) => {
-    const res = await api.importGradesFromFile(file);
+    const res: any = await api.importGradesFromFile(file);
     if (res.success && Array.isArray(res.data)) {
       return (res.data as any[]).map((g: any) => ({
         semester: currentSemester,
@@ -620,7 +620,7 @@ export function useDashboard() {
   };
 
   const handleImportErrors = async (file: File) => {
-    const res = await api.importErrorsFromFile(file);
+    const res: any = await api.importErrorsFromFile(file);
     if (res.success && Array.isArray(res.data)) {
       return (res.data as any[]).map((e: any) => ({
         subject: String(e.subject || '').trim(),

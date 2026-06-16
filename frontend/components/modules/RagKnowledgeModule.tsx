@@ -46,7 +46,7 @@ export default function RagKnowledgeModule() {
   const loadDocs = async () => {
     setLoadingDocs(true);
     try {
-      const res = await api.getRagDocuments();
+      const res: any = await api.getRagDocuments();
       if (res.success) setDocs(res.data?.documents || []);
     } catch { /* ignore */ }
     setLoadingDocs(false);
@@ -70,7 +70,7 @@ export default function RagKnowledgeModule() {
     setUploading(true);
     setResults(null);
     try {
-      const res = await api.uploadToRag(files, subject);
+      const res: any = await api.uploadToRag(files, subject);
       if (res.success) {
         setResults(res.data?.results || []);
         setFiles([]);
