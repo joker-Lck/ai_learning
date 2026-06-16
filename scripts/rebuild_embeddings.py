@@ -3,12 +3,12 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
+import time
 from data.rag_knowledge_base import rag_kb
 from data.embedding_service import embedding_service
 from data.rag_knowledge_base import vector_index
 
-def rebuild_embeddings():
-    """为所有文档重新生成embedding并重建FAISS索引"""
+def rebuild_all():
     docs = rag_kb.get_all_documents(limit=1000)
     print(f'Found {len(docs)} documents')
 
@@ -24,7 +24,14 @@ def rebuild_embeddings():
         if isinstance(doc_data, str):
             doc_data = json.loads(doc_data)
 
-        # 提取文本内容
+        # 跳过已有embedding的
+        existing_emb = doc_data.get('embedding')
+        if existing_emb and len(existing_emb) > 0:
+            doc_ids.append(doc_id)
+            embeddings.append(existing_emb)
+            success += 1
+            continue
+
         content = doc_data.get('content', {})
         if isinstance(content, dict):
             text = content.get('raw_text', '')[:4000]
@@ -32,15 +39,18 @@ def rebuild_embeddings():
             text = str(content)[:4000]
 
         if not text or len(text) < 10:
-            print(f'  Skip {doc_id}: {title} (no text)')
             failed += 1
             continue
 
-        # 生成embedding
-        print(f'  Processing {doc_id}: {title[:30]}...')
-        emb = embedding_service.get_embedding(text)
+        # 重试3次
+        emb = None
+        for attempt in range(3):
+            emb = embedding_service.get_embedding(text)
+            if emb:
+                break
+            time.sleep(1)
+
         if emb:
-            # 更新document_data中的embedding
             doc_data['embedding'] = emb
             try:
                 rag_kb.connect()
@@ -48,26 +58,24 @@ def rebuild_embeddings():
                 rag_kb.cursor.execute(update_sql, (json.dumps(doc_data, ensure_ascii=False), doc_id))
                 rag_kb.conn.commit()
                 rag_kb.close()
-
                 doc_ids.append(doc_id)
                 embeddings.append(emb)
                 success += 1
-                print(f'    OK (dim={len(emb)})')
+                print(f'  OK: {doc_id} - {title[:30]}')
             except Exception as e:
-                print(f'    DB Error: {e}')
+                print(f'  DB Error: {doc_id} - {e}')
                 failed += 1
         else:
-            print(f'    Failed to generate embedding')
+            print(f'  FAIL: {doc_id} - {title[:30]}')
             failed += 1
 
-    # 重建FAISS索引
     if embeddings:
         print(f'\nRebuilding FAISS index with {len(embeddings)} vectors...')
         vector_index.rebuild(doc_ids, embeddings)
         vector_index.save()
-        print(f'FAISS index rebuilt: {vector_index.total_vectors} vectors')
+        print(f'FAISS index: {vector_index.total_vectors} vectors')
 
-    print(f'\nDone: {success} success, {failed} failed')
+    print(f'\nResult: {success} success, {failed} failed')
 
 if __name__ == '__main__':
-    rebuild_embeddings()
+    rebuild_all()
