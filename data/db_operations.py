@@ -26,8 +26,9 @@ class Database:
             pool_name = f"pool_{config.get('database', 'default')}"
             self.conn_pool = pooling.MySQLConnectionPool(
                 pool_name=pool_name,
-                pool_size=5,
+                pool_size=10,
                 pool_reset_session=True,
+                connection_timeout=10,
                 **config
             )
         except Exception as e:

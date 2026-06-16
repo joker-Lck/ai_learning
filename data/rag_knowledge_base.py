@@ -284,8 +284,9 @@ class RAGKnowledgeBase:
             config['use_pure'] = True
             self.conn_pool = pooling.MySQLConnectionPool(
                 pool_name="rag_pool",
-                pool_size=5,
+                pool_size=10,
                 pool_reset_session=True,
+                connection_timeout=10,
                 **config
             )
         except Exception as e:
