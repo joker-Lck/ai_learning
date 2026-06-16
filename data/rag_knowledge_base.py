@@ -193,13 +193,13 @@ class VectorIndexManager:
             os.makedirs(_INDEX_DIR, exist_ok=True)
             try:
                 self._faiss.write_index(self._index, _INDEX_PATH)
-            except Exception:
-                pass
+            except Exception as e:
+                warning(f"FAISS索引持久化失败: {e}")
             try:
                 with open(_IDS_PATH, 'w', encoding='utf-8') as f:
                     json.dump(self._doc_ids, f)
-            except Exception:
-                pass
+            except Exception as e:
+                warning(f"文档ID映射持久化失败: {e}")
             self._dirty = False
 
     def load(self) -> bool:

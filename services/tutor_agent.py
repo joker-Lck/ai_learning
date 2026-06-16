@@ -10,7 +10,7 @@ import json
 import re
 from typing import Dict, List, Optional
 from datetime import datetime
-from core.logger import info, error, warning
+from core.logger import info, error, warning, debug
 from services.qa_service import qa_service
 
 
@@ -261,7 +261,13 @@ class TutorAgent:
                 semantic_memories = ms.search_semantic(user_id, subject or '', limit=20)
                 for mem in semantic_memories:
                     if mem.get('access_count', 0) > 0 and mem.get('last_accessed_at'):
-                        days = (datetime.now() - mem['last_accessed_at']).days
+                        last_accessed = mem['last_accessed_at']
+                        if isinstance(last_accessed, str):
+                            try:
+                                last_accessed = datetime.strptime(last_accessed, '%Y-%m-%d %H:%M:%S')
+                            except ValueError:
+                                continue
+                        days = (datetime.now() - last_accessed).days
                         if days > 7:
                             recommendations.append({'type': 'review', 'name': f"{mem['subject']} - {mem['predicate']}",
                                                     'reason': f"已{days}天未复习，建议巩固", 'priority': 0.7})

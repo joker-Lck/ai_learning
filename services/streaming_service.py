@@ -9,6 +9,11 @@ from typing import Dict, List, Optional, AsyncGenerator
 from datetime import datetime
 from core.logger import info, error
 
+# 可配置的延迟常量（秒）
+STREAM_DELAY_SHORT = 0.1    # 短延迟（步骤间）
+STREAM_DELAY_MEDIUM = 0.3   # 中延迟（进度更新）
+STREAM_DELAY_LONG = 0.5     # 长延迟（模拟生成）
+
 
 class ProgressTracker:
     """进度追踪器 - 管理任务生成进度"""
@@ -167,7 +172,7 @@ class SSEStreamGenerator:
                 "step": "initializing"
             })
             
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(STREAM_DELAY_MEDIUM)
             
             # Step 2: 分析需求
             tracker.update_progress(task_id, 20, "analyzing_requirements", "分析学习需求...")
@@ -179,7 +184,7 @@ class SSEStreamGenerator:
                 "step": "analyzing_requirements"
             })
             
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(STREAM_DELAY_MEDIUM)
             
             # Step 3: 检索知识库
             tracker.update_progress(task_id, 40, "retrieving_knowledge", "检索相关知识...")
@@ -191,7 +196,7 @@ class SSEStreamGenerator:
                 "step": "retrieving_knowledge"
             })
             
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(STREAM_DELAY_MEDIUM)
             
             # Step 4: 生成内容
             tracker.update_progress(task_id, 70, "generating_content", "生成内容...")
@@ -203,8 +208,7 @@ class SSEStreamGenerator:
                 "step": "generating_content"
             })
             
-            # 模拟内容生成(实际应调用AI API)
-            await asyncio.sleep(1)
+            await asyncio.sleep(STREAM_DELAY_LONG)
             
             # Step 5: 安全检查
             tracker.update_progress(task_id, 90, "safety_check", "内容安全检查...")
@@ -216,7 +220,7 @@ class SSEStreamGenerator:
                 "step": "safety_check"
             })
             
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(STREAM_DELAY_SHORT)
             
             # Step 6: 完成
             result = {
@@ -260,7 +264,7 @@ class SSEStreamGenerator:
                 "index": i,
                 "content": chunk
             })
-            await asyncio.sleep(0.1)  # 模拟流式输出延迟
+            await asyncio.sleep(STREAM_DELAY_SHORT)
         
         yield self._format_sse({
             "type": "done",

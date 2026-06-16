@@ -325,8 +325,8 @@ class SparkClient:
                     error(f"解析消息失败: {e}")
                     ws.close()
             
-            def on_error(ws, error):
-                error(f"WebSocket 错误: {error}")
+            def on_error(ws, err):
+                error(f"WebSocket 错误: {err}")
             
             def on_close(ws, close_status_code, close_msg):
                 pass

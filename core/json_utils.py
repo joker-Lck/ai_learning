@@ -7,6 +7,11 @@ import json
 import re
 from typing import Any, Optional
 
+# 预编译正则表达式以提升性能
+_CODE_FENCE_RE = re.compile(r'```(?:json)?\s*\n(.*?)\n\s*```', re.DOTALL)
+_JSON_OBJECT_RE = re.compile(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', re.DOTALL)
+_JSON_ARRAY_RE = re.compile(r'\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', re.DOTALL)
+
 
 def safe_parse_json(text: str) -> Optional[Any]:
     """
@@ -27,6 +32,12 @@ def safe_parse_json(text: str) -> Optional[Any]:
         return None
 
     text = text.strip()
+
+    # 快速路径：如果文本以 { 或 [ 开头，直接尝试解析
+    if text and text[0] in ('{', '['):
+        result = _try_loads(text)
+        if result is not None:
+            return result
 
     # 1. 尝试直接解析
     result = _try_loads(text)
@@ -70,7 +81,7 @@ def _try_loads(text: str) -> Optional[Any]:
 
 def _strip_code_fences(text: str) -> str:
     """去掉 ```json ... ``` 或 ``` ... ``` 包裹"""
-    match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
+    match = _CODE_FENCE_RE.search(text)
     if match:
         return match.group(1).strip()
     return text

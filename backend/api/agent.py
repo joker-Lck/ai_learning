@@ -618,12 +618,12 @@ async def list_resources(
             if row.get("content_data"):
                 try:
                     row["content_data"] = json.loads(row["content_data"])
-                except:
+                except (json.JSONDecodeError, TypeError, ValueError):
                     pass
             if row.get("tags"):
                 try:
                     row["tags"] = json.loads(row["tags"])
-                except:
+                except (json.JSONDecodeError, TypeError, ValueError):
                     pass
             if row.get("created_at"):
                 row["created_at"] = str(row["created_at"])
@@ -1159,7 +1159,7 @@ async def get_activity_logs(
             if row.get("metadata"):
                 try:
                     row["metadata"] = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"]
-                except:
+                except (json.JSONDecodeError, TypeError, ValueError):
                     pass
             if row.get("created_at"):
                 row["created_at"] = str(row["created_at"])
