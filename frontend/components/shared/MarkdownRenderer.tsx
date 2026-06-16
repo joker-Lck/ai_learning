@@ -1,12 +1,13 @@
 /**
- * Markdown 渲染器 — react-markdown + 代码高亮 + 图片/视频内联
+ * Markdown 渲染器 — react-markdown + 代码高亮 + XSS防护
  * 优化：使用React.memo减少不必要的重渲染
- * 已有 .markdown-body CSS 样式在 globals.css 中
+ * 安全：rehype-sanitize 防止 XSS 注入
  */
 'use client';
 import React, { useState, memo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
@@ -141,6 +142,7 @@ export default memo(function MarkdownRenderer({ content, className = '' }: Markd
     <div className={`markdown-body ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeSanitize]}
         components={{
           // 代码块
           code({ node, className, children, ...props }) {
