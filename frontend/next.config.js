@@ -1,9 +1,12 @@
 /** @type {import('next').NextConfig} */
+const isProd = process.env.NODE_ENV === 'production';
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig = {
   reactStrictMode: true,
 
-  // Docker standalone 输出
-  output: 'standalone',
+  // Docker standalone 输出（仅生产环境）
+  ...(isProd ? { output: 'standalone' } : {}),
 
   // API 代理配置
   async rewrites() {
@@ -12,12 +15,13 @@ const nextConfig = {
       { source: '/api/:path*', destination: `${backendUrl}/api/:path*` },
       { source: '/ws/:path*', destination: `${backendUrl}/ws/:path*` },
       { source: '/exports/:path*', destination: `${backendUrl}/exports/:path*` },
+      // 静默处理国产浏览器注入的请求
+      { source: '/hybridaction/:path*', destination: `${backendUrl}/api/health` },
     ];
   },
 
   // 安全头 + CSP
   async headers() {
-    const isDev = process.env.NODE_ENV === 'development';
     const backendOrigin = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:8000';
 
     const cspDirectives = [
@@ -62,11 +66,10 @@ const nextConfig = {
 
   // 实验性功能
   experimental: {
-    optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],
   },
 
-  // Webpack 配置优化
+  // Webpack 配置优化（仅非 Turbopack 模式生效）
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {
       config.optimization.splitChunks = {
