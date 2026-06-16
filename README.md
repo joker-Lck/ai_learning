@@ -1446,50 +1446,109 @@ def search_similar_questions(self, question_text, limit=5):
 
 ---
 
+## 企业级特性
+
+### 安全
+
+| 特性 | 说明 |
+|------|------|
+| JWT 认证 | HS256 签名，access + refresh token 分离 |
+| 速率限制 | 全局 120次/分钟，登录 10次/分钟，注册 5次/分钟 |
+| 安全头 | X-Content-Type-Options, X-Frame-Options, HSTS, CSP |
+| CORS | 环境变量配置白名单 |
+| 输入校验 | Pydantic 模型自动校验 |
+| SQL 注入防护 | 全部使用参数化查询 |
+
+### 可观测性
+
+| 特性 | 说明 |
+|------|------|
+| 结构化日志 | JSON 格式，支持日志轮转（10MB/文件，保留30天） |
+| 请求追踪 | 每个请求唯一 ID（X-Request-ID），全链路追踪 |
+| 耗时统计 | X-Response-Time 响应头，中间件自动记录 |
+| 健康检查 | `/api/health` 返回各依赖状态（MySQL/FAISS） |
+
+### 容器化
+
+| 特性 | 说明 |
+|------|------|
+| Docker | 前后端独立镜像，非 root 用户运行 |
+| docker-compose | 一键启动（后端 + 前端 + MySQL + Redis） |
+| 健康检查 | 容器级别健康检查，自动重启 |
+| 资源限制 | 内存/CPU 限制配置 |
+
+### 性能优化
+
+| 特性 | 说明 |
+|------|------|
+| GZip 压缩 | 响应体 > 500 字节自动压缩 |
+| 连接池 | MySQL 连接池（5连接），复用连接 |
+| LRU 缓存 | 线程安全的 TTL 缓存（200条/600秒） |
+| numpy 向量化 | 暴力搜索 10-100 倍加速 |
+| 前端优化 | React.memo、代码分割、CSS contain |
+
+### 代码质量
+
+| 特性 | 说明 |
+|------|------|
+| 类型注解 | 公开 API 全部有类型标注 |
+| 错误边界 | 前端 ErrorBoundary 组件隔离 |
+| 防抖/节流 | useDebounce/useThrottledCallback hooks |
+| 异常处理 | 全局异常处理器，统一错误格式 |
+
+---
+
 ## 项目结构
 
 ```
 项目根目录/
 ├── backend/              # 后端API
 │   ├── api/
-│   │   ├── agent.py     # ⭐ 多智能体API
-│   │   ├── stream.py    # ⭐ 流式输出
-│   │   ├── memory.py    # ⭐ 记忆系统API
+│   │   ├── agent.py     # 多智能体API
+│   │   ├── stream.py    # 流式输出
 │   │   └── auth.py      # 认证API
-│   └── main.py
+│   ├── main.py          # 应用入口（企业级配置）
+│   └── dependencies.py  # JWT认证、权限校验
 │
 ├── services/            # 业务逻辑
-│   ├── agent_coordinator.py  # ⭐ 协调智能体
-│   ├── profile_agent.py      # ⭐ 画像智能体
-│   ├── resource_agent.py     # ⭐ 资源智能体
-│   ├── path_agent.py         # ⭐ 路径智能体
-│   ├── tutor_agent.py        # ⭐ 辅导智能体（集成记忆增强）
-│   ├── assessment_agent.py   # ⭐ 评估智能体
-│   ├── advanced_retrieval_service.py  # ⭐ 高级检索服务（5种2023-2026新方法）
-│   ├── content_safety_service.py  # ⭐ 内容安全（AC自动机）
-│   └── streaming_service.py     # ⭐ 流式输出
+│   ├── agent_coordinator.py       # 协调智能体
+│   ├── profile_agent.py           # 画像智能体
+│   ├── resource_agent.py          # 资源智能体
+│   ├── path_agent.py              # 路径智能体
+│   ├── tutor_agent.py             # 辅导智能体（集成记忆增强）
+│   ├── assessment_agent.py        # 评估智能体
+│   ├── advanced_retrieval_service.py  # 高级检索服务（5种新方法）
+│   ├── content_safety_service.py  # 内容安全（AC自动机）
+│   └── streaming_service.py       # 流式输出
 │
 ├── data/                # 数据访问
-│   └── config.py        # ⭐ 多数据库配置
+│   ├── rag_knowledge_base.py  # RAG知识库（FAISS+LRU缓存）
+│   ├── db_operations.py       # 数据库操作
+│   ├── embedding_service.py   # 向量化服务
+│   └── config.py              # 多数据库配置
 │
 ├── core/                # 核心工具
+│   ├── logger.py        # 结构化日志（JSON+轮转）
+│   ├── json_utils.py    # 容错JSON解析
+│   └── prompts.py       # Prompt模板
+│
 ├── frontend/            # 前端应用
 │   ├── components/
-│   │   ├── DashboardContent.tsx    # ⭐ 主内容区（滑屏控制）
-│   │   ├── WorkSpaceSection.tsx    # ⭐ 首页工作台（动态数据）
-│   │   └── modules/               # 6大功能模块
-│   └── app/dashboard/page.tsx
+│   │   ├── shared/
+│   │   │   ├── ErrorBoundary.tsx    # 错误边界
+│   │   │   └── MarkdownRenderer.tsx # Markdown渲染
+│   │   └── modules/                 # 6大功能模块
+│   ├── lib/
+│   │   ├── api.ts       # API客户端
+│   │   └── hooks.ts     # 防抖/节流hooks
+│   └── stores/index.ts  # Zustand状态管理
 │
-├── scripts/                # 初始化脚本
-│   ├── init_databases_v7.2.py  # 多数据库初始化
-│   ├── init_admin.py           # 管理员初始化
-│   ├── init_rag_db.py          # RAG知识库初始化
-│   └── import_pdf_to_rag.py    # PDF导入知识库
-│
-├── resources/              # RAG知识库文件（PDF等）
-├── .env.example            # 环境变量示例
-│
-└── README.md               # 本文档
+├── scripts/             # 初始化脚本
+├── resources/           # RAG知识库文件
+├── Dockerfile           # 后端容器化
+├── docker-compose.yml   # 多服务编排
+├── .env.example         # 环境变量模板
+└── README.md
 ```
 
 ---
