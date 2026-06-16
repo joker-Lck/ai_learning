@@ -658,6 +658,20 @@ AI: 已更新您的学习偏好为"实践型"...
 - ✅ URL参数控制
 - ✅ 状态保持
 
+### 8. 2023-2026 前沿检索算法
+
+- ✅ HyDE 假设性文档嵌入（Gao et al., 2023）
+- ✅ Multi-Query 多查询检索（LangChain, 2023）
+- ✅ RAG-Fusion + RRF 查询融合（Raudaschl, 2023）
+- ✅ Contextual Retrieval 上下文检索（Anthropic, 2024）
+- ✅ Graph-Enhanced RAG 图谱增强检索（Microsoft, 2024）
+
+### 9. 全链路性能优化
+
+- ✅ 后端：numpy向量化计算、AC自动机敏感词匹配、LRU缓存
+- ✅ 前端：React.memo、代码分割、CSS contain、will-change
+- ✅ 检索：向量语义检索降级策略
+
 ---
 
 ## 核心算法：混合检索系统（KNN + ANN）
@@ -1411,6 +1425,10 @@ def search_similar_questions(self, question_text, limit=5):
 | 6 | **双模式搜索融合** | 关键词搜索（Jaccard 相似度 + MySQL JSON 查询）与向量搜索（余弦相似度 + FAISS）并存，覆盖精确匹配和语义匹配两种需求 |
 | 7 | **防幻觉 RAG 验证** | 将 AI 生成内容的关键实体在 RAG 知识库中交叉验证，计算置信度，标注不确定性来源 |
 | 8 | **线程安全设计** | `VectorIndexManager` 使用 `threading.Lock` 保护所有索引读写操作，适合 FastAPI 多线程环境 |
+| 9 | **numpy 向量化暴力搜索** | 暴力向量搜索使用 numpy 矩阵批量计算余弦相似度，速度提升 10-100 倍 |
+| 10 | **AC 自动机敏感词匹配** | 内容安全服务使用 AC 自动机算法，实现 O(n) 多模式匹配，替代逐词遍历 |
+| 11 | **LRU Cache 线程安全缓存** | 使用 `collections.OrderedDict` 实现 LRU 缓存，支持 TTL 过期和线程安全 |
+| 12 | **2023-2026 前沿检索算法** | 集成 HyDE、Multi-Query、RAG-Fusion、Contextual Retrieval、Graph-Enhanced RAG 五种现代检索方法 |
 
 ---
 
@@ -1447,7 +1465,8 @@ def search_similar_questions(self, question_text, limit=5):
 │   ├── path_agent.py         # ⭐ 路径智能体
 │   ├── tutor_agent.py        # ⭐ 辅导智能体（集成记忆增强）
 │   ├── assessment_agent.py   # ⭐ 评估智能体
-│   ├── content_safety_service.py  # ⭐ 内容安全
+│   ├── advanced_retrieval_service.py  # ⭐ 高级检索服务（5种2023-2026新方法）
+│   ├── content_safety_service.py  # ⭐ 内容安全（AC自动机）
 │   └── streaming_service.py     # ⭐ 流式输出
 │
 ├── data/                # 数据访问
