@@ -195,7 +195,7 @@ class AssessmentAgent:
                         course_list = json.loads(c["courses"])
                         for cl in course_list:
                             course_names.append(cl.get("name", ""))
-                    except:
+                    except (json.JSONDecodeError, TypeError, KeyError):
                         pass
             course_summary = f"本学期课程: {', '.join(set(course_names)) if course_names else '暂无'}"
         else:
@@ -204,7 +204,7 @@ class AssessmentAgent:
         # 错题统计
         error_summary = ""
         if error_notes:
-            mastered = sum(1 for e in error_notes if e.get("mastered"))
+            mastered = sum(1 for e in error_notes if e.get("mastery"))
             error_summary = f"""
 错题统计:
 - 总错题数: {len(error_notes)}
@@ -342,7 +342,7 @@ class AssessmentAgent:
         min_score = min(scores) if scores else 0
 
         # 错题统计
-        mastered_count = sum(1 for e in error_notes if e.get("mastered"))
+        mastered_count = sum(1 for e in error_notes if e.get("mastery"))
         error_count = len(error_notes)
         mastery_rate = mastered_count / error_count if error_count > 0 else 0
 

@@ -6,7 +6,7 @@
 import json
 from typing import Dict, List, Optional
 from datetime import datetime
-from core.logger import info, error, debug
+from core.logger import info, error, debug, warning
 from core.json_utils import safe_parse_json
 from core.prompts import ProfilePrompts
 from services.qa_service import qa_service

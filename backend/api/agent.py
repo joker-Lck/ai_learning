@@ -229,7 +229,6 @@ async def tutor_query(
 
         info(f"辅导结果 - success: {result.get('success')}, 数据大小: {len(str(result.get('data', '')))} 字符")
 
-        import json
         resp_content = {
             "success": result.get("success", False),
             "message": result.get("message", ""),
