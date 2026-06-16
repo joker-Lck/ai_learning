@@ -41,9 +41,9 @@ const CodeBlock = memo(function CodeBlock({ language, children }: { language: st
   }, [children]);
 
   return (
-    <div className="group relative my-3 rounded-xl overflow-hidden border border-white/[0.06]">
+    <div className="group relative my-3 rounded-xl overflow-hidden glass">
       {/* 语言标签 + 操作栏 */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#0d1117] border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-4 py-2 bg-[#0d1117] border-b border-glass">
         <span className="text-xs text-white/30 font-mono">{language || 'text'}</span>
         <div className="flex items-center gap-2">
           {isLong && (
@@ -96,7 +96,7 @@ function MdImage({ src, alt }: { src: string; alt?: string }) {
 
   if (error) {
     return (
-      <span className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-white/40 text-sm">
+      <span className="inline-flex items-center gap-2 px-3 py-2 rounded-lg glass text-white/40 text-sm">
         <ImageIcon className="w-4 h-4" /> 图片加载失败: {alt || src}
       </span>
     );
@@ -114,7 +114,7 @@ function MdImage({ src, alt }: { src: string; alt?: string }) {
         alt={alt || ''}
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
-        className={`max-w-full rounded-xl border border-white/[0.06] shadow-lg transition-opacity ${loaded ? 'opacity-100' : 'opacity-0 h-0'}`}
+        className={`max-w-full rounded-xl glass shadow-lg transition-opacity ${loaded ? 'opacity-100' : 'opacity-0 h-0'}`}
         style={{ maxHeight: 500, objectFit: 'contain' }}
       />
     </span>
@@ -128,7 +128,7 @@ function MdVideo({ src }: { src: string }) {
       <video
         controls
         src={src}
-        className="max-w-full rounded-xl border border-white/[0.06] shadow-lg"
+        className="max-w-full rounded-xl glass shadow-lg"
         style={{ maxHeight: 400 }}
       />
     </span>
@@ -184,7 +184,7 @@ export default memo(function MarkdownRenderer({ content, className = '' }: Markd
           // 表格 — 添加横向滚动
           table({ children, ...props }) {
             return (
-              <div className="overflow-x-auto my-3 rounded-lg border border-white/[0.06]">
+              <div className="overflow-x-auto my-3 rounded-lg glass">
                 <table {...props}>{children}</table>
               </div>
             );

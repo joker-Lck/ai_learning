@@ -24,6 +24,7 @@ PyMuPDF==1.25.3
 numpy==2.4.4
 faiss-cpu>=1.7.4
 pandas==3.0.2
+redis>=5.0.0
 
 # 可视化 & 图片
 matplotlib==3.10.8

@@ -152,3 +152,16 @@ def get_connection_string(db_type='auth'):
     config = config_func()
     
     return f"mysql+pymysql://{config['user']}:{config['password']}@{config['host']}:{config['port']}/{config['database']}?charset=utf8mb4"
+
+
+def get_redis_config():
+    """获取Redis配置"""
+    return {
+        'host': os.getenv('REDIS_HOST', 'localhost'),
+        'port': int(os.getenv('REDIS_PORT', '6379')),
+        'db': int(os.getenv('REDIS_DB', '0')),
+        'password': os.getenv('REDIS_PASSWORD', None),
+        'socket_timeout': 5,
+        'socket_connect_timeout': 5,
+        'retry_on_timeout': True,
+    }

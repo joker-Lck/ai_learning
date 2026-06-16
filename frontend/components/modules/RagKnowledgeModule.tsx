@@ -110,7 +110,7 @@ export default function RagKnowledgeModule() {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="如：机器学习、数据结构、高等数学..."
-            className="w-full max-w-sm bg-white/[0.04] border border-white/[0.06] rounded-lg px-4 py-3 text-white text-base placeholder:text-white/20 focus:outline-none focus:border-purple-500/40"
+            className="w-full max-w-sm glass-input rounded-lg px-4 py-3 text-white text-base placeholder:text-white/20 focus:outline-none"
           />
         </div>
 
@@ -124,7 +124,7 @@ export default function RagKnowledgeModule() {
             border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors
             ${dragOver
               ? 'border-emerald-400/40 bg-emerald-400/5'
-              : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'}
+              : 'glass hover:border-white/[0.12]'}
           `}
         >
           <input
@@ -148,7 +148,7 @@ export default function RagKnowledgeModule() {
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-4 space-y-2">
               {files.map((f, i) => (
                 <motion.div key={`${f.name}-${i}`} variants={fadeUp} initial="hidden" animate="visible" custom={i}
-                  className="flex items-center gap-2.5 bg-white/[0.02] rounded-lg px-3 py-2"
+                  className="flex items-center gap-2.5 glass rounded-lg px-3 py-2"
                 >
                   <FileText className="w-3.5 h-3.5 text-emerald-400/60 flex-shrink-0" />
                   <span className="text-white/70 text-xs truncate flex-1">{f.name}</span>
@@ -205,7 +205,7 @@ export default function RagKnowledgeModule() {
       </div>
 
       {/* 已有文档列表 */}
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+      <div className="glass-card p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-purple-400" />
@@ -223,7 +223,7 @@ export default function RagKnowledgeModule() {
           <div className="space-y-2 max-h-80 overflow-y-auto scrollbar-thin">
             {docs.map((doc, i) => (
               <motion.div key={doc.id} variants={fadeUp} initial="hidden" animate="visible" custom={i}
-                className="flex items-center gap-2.5 bg-white/[0.02] rounded-lg px-3 py-2.5 hover:bg-white/[0.04] transition-colors"
+                className="flex items-center gap-2.5 glass rounded-lg px-3 py-2.5 hover:glass-hover transition-colors"
               >
                 <FileText className="w-3.5 h-3.5 text-purple-400/50 flex-shrink-0" />
                 <div className="flex-1 min-w-0">

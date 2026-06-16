@@ -46,11 +46,11 @@ export default function AssessmentModule({
       <h3 className="text-3xl font-bold text-white">学习效果评估</h3>
 
       {/* Tab 切换 */}
-      <div className="flex gap-2 p-1 border-b border-white/[0.06]">
+      <div className="flex gap-2 p-1 border-b border-glass">
         <button
           onClick={() => setAssessTab('assess')}
           className={`flex-1 px-3 py-2 rounded-md font-medium text-sm transition-colors ${
-            assessTab === 'assess' ? 'bg-white/[0.06] text-white' : 'text-white/35 hover:text-white/55'
+            assessTab === 'assess' ? 'glass text-white' : 'text-white/35 hover:text-white/55'
           }`}
         >
           <span className="flex items-center justify-center gap-1.5"><BarChart3 className="w-3.5 h-3.5" /> AI 综合评估</span>
@@ -58,7 +58,7 @@ export default function AssessmentModule({
         <button
           onClick={() => setAssessTab('analyze')}
           className={`flex-1 px-3 py-2 rounded-md font-medium text-sm transition-colors ${
-            assessTab === 'analyze' ? 'bg-white/[0.06] text-white' : 'text-white/35 hover:text-white/55'
+            assessTab === 'analyze' ? 'glass text-white' : 'text-white/35 hover:text-white/55'
           }`}
         >
           <span className="flex items-center justify-center gap-1.5"><FileText className="w-3.5 h-3.5" /> 资料分析</span>

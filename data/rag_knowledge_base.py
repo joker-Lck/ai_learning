@@ -8,6 +8,7 @@ import time
 import threading
 from collections import OrderedDict
 from .config import get_rag_db_config
+from .redis_cache import cache_get, cache_set, cache_delete, cache_clear_prefix
 from datetime import datetime
 import os
 import numpy as np
@@ -93,14 +94,17 @@ class VectorIndexManager:
     - 内存驻留索引，O(log n) 近似最近邻检索
     - 自动持久化到磁盘，重启后快速加载
     - 文档变更时惰性重建
+    - 支持定期全量重建以修正漂移
     """
 
     def __init__(self):
         self._index = None
-        self._doc_ids = []        # 与 FAISS 行号对齐的文档 ID 列表
+        self._doc_ids = []
         self._dimension = 0
         self._lock = threading.Lock()
         self._dirty = False
+        self._last_rebuild = 0
+        self._rebuild_interval = 3600
         self._faiss_available = False
         try:
             import faiss as _faiss
@@ -227,6 +231,14 @@ class VectorIndexManager:
     @property
     def total_vectors(self) -> int:
         return self._index.ntotal if self._index else 0
+
+    def maybe_rebuild(self, rebuild_fn):
+        if time.time() - self._last_rebuild > self._rebuild_interval:
+            try:
+                rebuild_fn()
+                self._last_rebuild = time.time()
+            except Exception as e:
+                warning(f"定期重建FAISS索引失败: {e}")
 
     # ── 内部方法 ──────────────────────────────
 
@@ -569,9 +581,13 @@ class RAGKnowledgeBase:
             self.close()
     
     def search_documents(self, keywords, subject=None, limit=10):
-        """搜索知识文档"""
+        """搜索知识文档（优先 Redis → L1 → DB）"""
         try:
-            # 检查缓存
+            redis_key = f"search:{keywords[:50]}:{subject}:{limit}"
+            cached = cache_get("rag_search", redis_key)
+            if cached:
+                return cached
+
             cache_key = _get_cache_key("search_docs", (keywords[:50], subject, limit))
             cached = _get_cached_result(cache_key)
             if cached:
@@ -579,7 +595,6 @@ class RAGKnowledgeBase:
             
             self.connect()
             
-            # 直接搜索 title、ai_summary、knowledge_points
             if subject:
                 sql = """SELECT id, title, subject, document_data
                         FROM knowledge_documents
@@ -605,10 +620,8 @@ class RAGKnowledgeBase:
             results = self.cursor.fetchall()
             
             if not results:
-                # 回退到简单搜索
                 return self._simple_search(keywords, subject, limit)
             
-            # 解析 JSON 数据并计算相似度
             keyword_set = set(keywords.lower().split())
             enriched_results = []
             
@@ -617,12 +630,10 @@ class RAGKnowledgeBase:
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
                 
-                # 只提取必要字段
                 ai_summary = doc_data.get('analysis', {}).get('summary', '')
                 knowledge_points = doc_data.get('analysis', {}).get('knowledge_points', [])
                 raw_text = doc_data.get('content', {}).get('raw_text', '')[:1000]
                 
-                # 计算相似度
                 text = f"{result.get('title', '')} {ai_summary} {','.join(knowledge_points)}"
                 text_words = set(text.lower().split())
                 common = len(keyword_set & text_words)
@@ -640,13 +651,12 @@ class RAGKnowledgeBase:
                     'usage_count': result.get('usage_count', 0)
                 })
             
-            # 按相似度排序
             enriched_results.sort(key=lambda x: x['similarity'], reverse=True)
             final_results = enriched_results[:limit]
             
-            # 缓存结果
             if final_results:
                 _set_cache_result(cache_key, final_results)
+                cache_set("rag_search", final_results, 600, redis_key)
             
             return final_results
             
@@ -667,11 +677,11 @@ class RAGKnowledgeBase:
         返回：
         - list: 按相似度排序的文档列表
         """
-        # ── 路径 1：FAISS 检索 ──
+        vector_index.maybe_rebuild(self._build_faiss_index)
+
         if vector_index.is_ready:
             return self._faiss_search(query_embedding, limit)
 
-        # 索引未就绪 → 尝试从 DB 加载并构建
         if vector_index._faiss_available:
             try:
                 self._build_faiss_index()
@@ -680,7 +690,6 @@ class RAGKnowledgeBase:
             except Exception as e:
                 warning(f"FAISS 索引构建失败，回退暴力搜索: {e}")
 
-        # ── 路径 2：原有暴力搜索（兜底）──
         return self._brute_force_vector_search(query_embedding, limit)
 
     def _faiss_search(self, query_embedding, limit):

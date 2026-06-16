@@ -38,13 +38,13 @@ export default function PathModule({
       </div>
 
       {/* Tab 切换 */}
-      <div className="flex gap-2 p-1 border-b border-white/[0.06]">
+      <div className="flex gap-2 p-1 border-b border-glass">
         <button onClick={() => setTab('path')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'path' ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-400/20' : 'text-white/40 hover:text-white/60 hover:bg-white/[0.03]'}`}>
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'path' ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-400/20' : 'text-white/40 hover:text-white/60 hover:glass'}`}>
           <BookOpen className="w-4 h-4" /> 学习路径
         </button>
         <button onClick={() => setTab('plan')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'plan' ? 'bg-purple-500/20 text-purple-400 border border-purple-400/20' : 'text-white/40 hover:text-white/60 hover:bg-white/[0.03]'}`}>
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'plan' ? 'bg-purple-500/20 text-purple-400 border border-purple-400/20' : 'text-white/40 hover:text-white/60 hover:glass'}`}>
           <CalendarDays className="w-4 h-4" /> 学习规划
         </button>
       </div>

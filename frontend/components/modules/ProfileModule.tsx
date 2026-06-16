@@ -142,14 +142,14 @@ export default function ProfileModule(props: ProfileModuleProps) {
         )}
       </div>
 
-      <div className="flex gap-2 p-1 border-b border-white/[0.06]">
+      <div className="flex gap-2 p-1 border-b border-glass">
         {TABS.map(tab => {
           const Icon = tab.icon;
           const active = profileTab === tab.key;
           return (
             <button key={tab.key} onClick={() => setProfileTab(tab.key)}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-base font-medium transition-colors ${
-                active ? 'bg-white/[0.06] text-white' : 'text-white/35 hover:text-white/55 hover:bg-white/[0.03]'
+                active ? 'glass text-white' : 'text-white/35 hover:text-white/55 hover:glass'
               }`}>
               <Icon className="w-5 h-5" />{tab.label}
             </button>
@@ -239,18 +239,18 @@ function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
       {/* 预览弹窗 */}
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setPreview(null)}>
-          <div className="bg-[#0a1628] border border-white/[0.1] rounded-2xl w-[90vw] max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <div className="glass-dark rounded-2xl w-[90vw] max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-glass">
               <div>
                 <h3 className="text-white font-bold text-base">AI 识别结果预览</h3>
                 <p className="text-white/40 text-xs mt-0.5">共识别 {preview.length} 条，请确认后导入</p>
               </div>
-              <button onClick={() => setPreview(null)} className="p-1.5 hover:bg-white/[0.06] rounded-lg"><X className="w-4 h-4 text-white/40" /></button>
+              <button onClick={() => setPreview(null)} className="p-1.5 glass-button rounded-lg"><X className="w-4 h-4 text-white/40" /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {previewType === 'courses' && preview.map((c: any, i: number) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg">
+                <div key={i} className="flex items-center gap-3 px-3 py-2 glass rounded-lg">
                   <div className="w-1 h-8 rounded-full bg-purple-400/50" />
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{c.name}</p>
@@ -259,7 +259,7 @@ function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
                 </div>
               ))}
               {previewType === 'grades' && preview.map((g: any, i: number) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg">
+                <div key={i} className="flex items-center gap-3 px-3 py-2 glass rounded-lg">
                   <div className="w-1 h-8 rounded-full bg-emerald-400/50" />
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{g.course_name}</p>
@@ -268,7 +268,7 @@ function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
                 </div>
               ))}
               {previewType === 'errors' && preview.map((e: any, i: number) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg">
+                <div key={i} className="flex items-center gap-3 px-3 py-2 glass rounded-lg">
                   <div className="w-1 h-8 rounded-full bg-rose-400/50" />
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{e.question}</p>
@@ -278,7 +278,7 @@ function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
               ))}
             </div>
 
-            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-white/[0.06]">
+            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-glass">
               <button onClick={() => setPreview(null)} className="px-4 py-2 text-white/50 text-sm hover:text-white/80 transition-colors">取消</button>
               <button onClick={handleConfirm} disabled={saving}
                 className="px-5 py-2 bg-purple-400/20 border border-purple-400/30 text-purple-400 rounded-lg text-sm hover:bg-purple-400/30 flex items-center gap-2 disabled:opacity-50 transition-all">

@@ -168,8 +168,8 @@ function ResourcePreview({ resource, onClose }: { resource: ApiResource | null; 
   return (
     <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <motion.div className="relative w-full max-w-3xl max-h-[85vh] bg-[#111111] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col" initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+      <motion.div className="relative w-full max-w-3xl max-h-[85vh] glass-dark rounded-2xl overflow-hidden flex flex-col" initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-glass">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center"><Icon className={`w-4 h-4 ${typeInfo.color}`} /></div>
             <div className="min-w-0">
@@ -178,13 +178,13 @@ function ResourcePreview({ resource, onClose }: { resource: ApiResource | null; 
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {hasMedia && <button onClick={() => window.open(mediaUrl, '_blank')} className="p-2 rounded-lg hover:bg-white/[0.06] text-white/35 hover:text-white transition-colors"><Maximize2 className="w-4 h-4" /></button>}
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/[0.06] text-white/35 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+            {hasMedia && <button onClick={() => window.open(mediaUrl, '_blank')} className="p-2 rounded-lg glass-button text-white/35 hover:text-white"><Maximize2 className="w-4 h-4" /></button>}
+            <button onClick={onClose} className="p-2 rounded-lg glass-button text-white/35 hover:text-white"><X className="w-4 h-4" /></button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          {hasMedia && isVideo && <video controls autoPlay src={mediaUrl} className="w-full rounded-xl border border-white/[0.06] mb-4" style={{ maxHeight: 400 }} />}
-          {hasMedia && isSvg && <iframe src={mediaUrl} className="w-full rounded-xl border border-white/[0.06] mb-4 bg-[#0a0f1e]" style={{ height: 400 }} title={resource.title} />}
+          {hasMedia && isVideo && <video controls autoPlay src={mediaUrl} className="w-full rounded-xl glass mb-4" style={{ maxHeight: 400 }} />}
+          {hasMedia && isSvg && <iframe src={mediaUrl} className="w-full rounded-xl glass mb-4 bg-[#0a0f1e]" style={{ height: 400 }} title={resource.title} />}
           <MarkdownRenderer content={markdown} />
         </div>
       </motion.div>

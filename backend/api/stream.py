@@ -45,13 +45,11 @@ async def stream_generate_resource(
         profile = {"user_id": user_id}
         
         async def event_generator():
-            async for event in sse_generator.generate_resource_stream(
-                task_id=task_id,
-                resource_type=resource_type,
-                subject=subject,
-                topic=topic,
-                profile=profile
-            ):
+            source = sse_generator.generate_resource_stream(
+                task_id=task_id, resource_type=resource_type,
+                subject=subject, topic=topic, profile=profile
+            )
+            async for event in sse_generator.wrap_with_heartbeat(source):
                 yield event
         
         return StreamingResponse(
@@ -107,7 +105,6 @@ async def stream_generate_resources_real(
                     "reading": "拓展阅读"
                 }.get(rtype, rtype)
 
-                # 通知开始生成该类型
                 yield _sse({
                     "type": "progress",
                     "step": "generating",
@@ -121,11 +118,8 @@ async def stream_generate_resources_real(
                 t0 = time.time()
                 try:
                     result = resource_agent.generate_resource(
-                        resource_type=rtype,
-                        subject=subject,
-                        topic=topic,
-                        difficulty=difficulty,
-                        user_id=user_id
+                        resource_type=rtype, subject=subject, topic=topic,
+                        difficulty=difficulty, user_id=user_id
                     )
                     elapsed = round(time.time() - t0, 1)
 
@@ -134,7 +128,6 @@ async def stream_generate_resources_real(
                         title = res_data.get("title", f"{topic} - {type_label}")
                         content_data = res_data.get("content_data", res_data)
 
-                        # 自动保存到数据库
                         try:
                             from data.db_operations import resource_db
                             if resource_db.connect():
@@ -143,11 +136,9 @@ async def stream_generate_resources_real(
                                     (user_id, title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent, duration_minutes)
                                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                                 """, (
-                                    user_id,
-                                    title, rtype, subject, topic, difficulty,
+                                    user_id, title, rtype, subject, topic, difficulty,
                                     json.dumps(content_data, ensure_ascii=False),
-                                    f"user_{user_id}",
-                                    res_data.get("duration_minutes")
+                                    f"user_{user_id}", res_data.get("duration_minutes")
                                 ))
                                 resource_db.conn.commit()
                                 resource_db.close()
@@ -155,7 +146,6 @@ async def stream_generate_resources_real(
                         except Exception as save_err:
                             error(f"资源自动保存失败: {save_err}")
 
-                        # 记录活动日志
                         try:
                             from data.db_operations import assessment_db
                             if assessment_db.connect():
@@ -198,15 +188,18 @@ async def stream_generate_resources_real(
                         "elapsed_seconds": elapsed
                     })
 
-            # 全部完成
             yield _sse({
                 "type": "complete",
                 "progress": 100,
                 "message": f"✅ 全部 {total} 种资源生成完成!"
             })
 
+        async def wrapped_generator():
+            async for event in sse_generator.wrap_with_heartbeat(event_generator()):
+                yield event
+
         return StreamingResponse(
-            event_generator(),
+            wrapped_generator(),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -455,7 +448,6 @@ async def stream_tutor_query(
     async def event_generator():
         info(f"用户 {user_id} 流式辅导: {question[:50]}")
 
-        # 1. 流式生成文字解答
         prompt = f"""请回答以下学习问题，给出清晰、分步骤的解答。
 
 问题: {question}
@@ -475,7 +467,6 @@ async def stream_tutor_query(
             yield _sse({"type": "error", "message": f"文字解答生成失败: {e}"})
             return
 
-        # 2. 生成图解（并行发请求，不阻塞文字流）
         try:
             diagram = tutor_agent._generate_diagram_explanation(question, subject, cognitive_style)
             if diagram:
@@ -483,7 +474,6 @@ async def stream_tutor_query(
         except Exception as e:
             error(f"图解生成失败: {e}")
 
-        # 3. 生成示例
         try:
             example = tutor_agent._generate_example(question, subject, [])
             if example:
@@ -493,8 +483,12 @@ async def stream_tutor_query(
 
         yield _sse({"type": "complete"})
 
+    async def wrapped_generator():
+        async for event in sse_generator.wrap_with_heartbeat(event_generator()):
+            yield event
+
     return StreamingResponse(
-        event_generator(),
+        wrapped_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

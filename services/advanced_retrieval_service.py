@@ -707,6 +707,43 @@ class AdvancedRetrievalService:
             error(f"降级向量检索也失败: {e}")
         return []
 
+    def lightweight_rerank(
+        self, query: str, candidates: List[Dict], limit: int = 5
+    ) -> List[Dict]:
+        """
+        轻量级重排序：基于词项覆盖度 + 向量分数融合
+        不依赖 LLM，适合高并发场景
+
+        融合公式：
+          final_score = 0.6 * vector_score + 0.4 * term_overlap
+        """
+        if not candidates:
+            return []
+
+        query_terms = set(query.lower().split())
+        if not query_terms:
+            return candidates[:limit]
+
+        for doc in candidates:
+            title = doc.get('title', '').lower()
+            summary = ''
+            doc_data = doc.get('document_data', {})
+            if isinstance(doc_data, dict):
+                summary = doc_data.get('analysis', {}).get('summary', '').lower()
+            content = doc.get('content_text', '').lower()[:500]
+
+            doc_text = f"{title} {summary} {content}"
+            doc_terms = set(doc_text.split())
+            overlap = len(query_terms & doc_terms) / len(query_terms)
+
+            vec_score = doc.get('similarity', 0)
+            doc['term_overlap'] = overlap
+            doc['rerank_score'] = 0.6 * vec_score + 0.4 * overlap
+            doc['retrieval_method'] = doc.get('retrieval_method', 'vector') + '+rerank'
+
+        candidates.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
+        return candidates[:limit]
+
 
 # 全局单例
 retrieval_service = AdvancedRetrievalService()

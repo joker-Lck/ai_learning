@@ -307,6 +307,10 @@ export function useDashboard() {
   const [difficulty, setDifficulty] = useState('intermediate');
   const [resourceLoading, setResourceLoading] = useState(false);
   const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [resourceProgress, setResourceProgress] = useState(0);
+  const [resourceCurrentType, setResourceCurrentType] = useState('');
+  const [resourceTotal, setResourceTotal] = useState(0);
+  const [resourceDone, setResourceDone] = useState(0);
 
   // 资源生成后同步保存到 localStorage + 记录活动日志
   useEffect(() => {
@@ -445,23 +449,54 @@ export function useDashboard() {
     if (selectedTypes.length === 0) { alert('请至少选择一种资源类型'); return; }
     setResourceLoading(true);
     setResources([]);
+    setResourceProgress(0);
+    setResourceTotal(selectedTypes.length);
+    setResourceDone(0);
+    setResourceCurrentType('');
+
     try {
-      const response: any = await api.generateResources({ subject, topic, resource_types: selectedTypes, difficulty });
-      if (response?.success && response?.data?.resources) {
-        const generatedResources: ResourceItem[] = response.data.resources.map((r: any) => ({
-          type: r.type || r.resource_type,
-          title: r.title || `${topic}资源`,
-          content_data: r.content_data || r,
-          status: 'complete' as const,
-        }));
-        setResources(generatedResources);
-      } else {
-        alert(response?.message || '资源生成失败，请重试');
-      }
+      const token = localStorage.getItem('auth_token') || '';
+      const params = new URLSearchParams({ subject, topic, resource_types: selectedTypes.join(','), difficulty });
+      const es = new EventSource(`/api/stream/generate-resources-real?${params}`, { withCredentials: true });
+
+      es.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.type === 'progress') {
+            setResourceProgress(data.progress || 0);
+            setResourceCurrentType(data.message || '');
+          } else if (data.type === 'resource') {
+            setResources(prev => [...prev, {
+              type: data.resource_type,
+              title: data.title,
+              content_data: data.content_data,
+              status: 'complete' as const,
+            }]);
+            setResourceDone(prev => prev + 1);
+          } else if (data.type === 'resource_error') {
+            setResources(prev => [...prev, {
+              type: data.resource_type,
+              title: `${data.resource_type} 生成失败`,
+              content_data: { error: data.error },
+              status: 'complete' as const,
+            }]);
+            setResourceDone(prev => prev + 1);
+          } else if (data.type === 'complete') {
+            setResourceProgress(100);
+            es.close();
+            setResourceLoading(false);
+          }
+        } catch {}
+      };
+
+      es.onerror = () => {
+        es.close();
+        setResourceLoading(false);
+        alert('资源生成连接中断，请重试');
+      };
     } catch (error: any) {
-      alert('资源生成失败：' + (error.message || '网络错误'));
-    } finally {
       setResourceLoading(false);
+      alert('资源生成失败：' + (error.message || '网络错误'));
     }
   };
 
@@ -757,6 +792,7 @@ export function useDashboard() {
     // 资源
     subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
     difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
+    resourceProgress, resourceCurrentType, resourceTotal, resourceDone,
     // 路径
     learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath,
     // 辅导

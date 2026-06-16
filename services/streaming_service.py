@@ -1,6 +1,6 @@
 """
 流式输出与进度追踪服务
-提供SSE实时推送和生成进度管理
+提供SSE实时推送和生成进度管理，支持心跳保活和超时控制
 """
 
 import json
@@ -9,10 +9,11 @@ from typing import Dict, List, Optional, AsyncGenerator
 from datetime import datetime
 from core.logger import info, error
 
-# 可配置的延迟常量（秒）
-STREAM_DELAY_SHORT = 0.1    # 短延迟（步骤间）
-STREAM_DELAY_MEDIUM = 0.3   # 中延迟（进度更新）
-STREAM_DELAY_LONG = 0.5     # 长延迟（模拟生成）
+STREAM_DELAY_SHORT = 0.1
+STREAM_DELAY_MEDIUM = 0.3
+STREAM_DELAY_LONG = 0.5
+HEARTBEAT_INTERVAL = 15
+STREAM_TIMEOUT = 300
 
 
 class ProgressTracker:
@@ -140,139 +141,84 @@ class ProgressTracker:
 
 
 class SSEStreamGenerator:
-    """SSE流式生成器 - 实现Server-Sent Events"""
-    
+    """SSE流式生成器 - 支持心跳保活和超时控制"""
+
     def __init__(self):
         info("SSE流式生成器初始化完成")
-    
-    async def generate_resource_stream(self, 
-                                      task_id: str,
-                                      resource_type: str,
-                                      subject: str,
-                                      topic: str,
-                                      profile: Dict) -> AsyncGenerator[str, None]:
-        """
-        流式生成学习资源
-        
-        Yields:
-            SSE格式的数据
-        """
-        tracker = ProgressTracker()
-        
+
+    async def _heartbeat(self, stop_event: asyncio.Event) -> AsyncGenerator[str, None]:
+        while not stop_event.is_set():
+            await asyncio.sleep(HEARTBEAT_INTERVAL)
+            if not stop_event.is_set():
+                yield ": heartbeat\n\n"
+
+    async def wrap_with_heartbeat(self, source: AsyncGenerator[str, None]) -> AsyncGenerator[str, None]:
+        stop_event = asyncio.Event()
+        heartbeat_gen = self._heartbeat(stop_event)
         try:
-            # Step 1: 创建任务
-            tracker.create_task(task_id, f"generate_{resource_type}", 
+            async with asyncio.timeout(STREAM_TIMEOUT):
+                async for chunk in source:
+                    yield chunk
+        except TimeoutError:
+            yield self._format_sse({"type": "error", "error": "生成超时，请重试"})
+        except asyncio.CancelledError:
+            pass
+        finally:
+            stop_event.set()
+
+    async def generate_resource_stream(self,
+                                       task_id: str,
+                                       resource_type: str,
+                                       subject: str,
+                                       topic: str,
+                                       profile: Dict) -> AsyncGenerator[str, None]:
+        tracker = ProgressTracker()
+        try:
+            tracker.create_task(task_id, f"generate_{resource_type}",
                               profile.get("user_id", 0), total_steps=5)
-            
-            yield self._format_sse({
-                "type": "progress",
-                "task_id": task_id,
-                "progress": 0,
-                "message": "开始生成资源...",
-                "step": "initializing"
-            })
-            
+            yield self._format_sse({"type": "progress", "task_id": task_id, "progress": 0,
+                                    "message": "开始生成资源...", "step": "initializing"})
             await asyncio.sleep(STREAM_DELAY_MEDIUM)
-            
-            # Step 2: 分析需求
+
             tracker.update_progress(task_id, 20, "analyzing_requirements", "分析学习需求...")
-            yield self._format_sse({
-                "type": "progress",
-                "task_id": task_id,
-                "progress": 20,
-                "message": "分析学习需求...",
-                "step": "analyzing_requirements"
-            })
-            
+            yield self._format_sse({"type": "progress", "task_id": task_id, "progress": 20,
+                                    "message": "分析学习需求...", "step": "analyzing_requirements"})
             await asyncio.sleep(STREAM_DELAY_MEDIUM)
-            
-            # Step 3: 检索知识库
+
             tracker.update_progress(task_id, 40, "retrieving_knowledge", "检索相关知识...")
-            yield self._format_sse({
-                "type": "progress",
-                "task_id": task_id,
-                "progress": 40,
-                "message": "检索相关知识...",
-                "step": "retrieving_knowledge"
-            })
-            
+            yield self._format_sse({"type": "progress", "task_id": task_id, "progress": 40,
+                                    "message": "检索相关知识...", "step": "retrieving_knowledge"})
             await asyncio.sleep(STREAM_DELAY_MEDIUM)
-            
-            # Step 4: 生成内容
+
             tracker.update_progress(task_id, 70, "generating_content", "生成内容...")
-            yield self._format_sse({
-                "type": "progress",
-                "task_id": task_id,
-                "progress": 70,
-                "message": "生成内容...",
-                "step": "generating_content"
-            })
-            
+            yield self._format_sse({"type": "progress", "task_id": task_id, "progress": 70,
+                                    "message": "生成内容...", "step": "generating_content"})
             await asyncio.sleep(STREAM_DELAY_LONG)
-            
-            # Step 5: 安全检查
+
             tracker.update_progress(task_id, 90, "safety_check", "内容安全检查...")
-            yield self._format_sse({
-                "type": "progress",
-                "task_id": task_id,
-                "progress": 90,
-                "message": "内容安全检查...",
-                "step": "safety_check"
-            })
-            
+            yield self._format_sse({"type": "progress", "task_id": task_id, "progress": 90,
+                                    "message": "内容安全检查...", "step": "safety_check"})
             await asyncio.sleep(STREAM_DELAY_SHORT)
-            
-            # Step 6: 完成
+
             result = {
-                "resource_type": resource_type,
-                "subject": subject,
-                "topic": topic,
+                "resource_type": resource_type, "subject": subject, "topic": topic,
                 "title": f"{topic}的{resource_type}",
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            
             tracker.complete_task(task_id, result)
-            yield self._format_sse({
-                "type": "complete",
-                "task_id": task_id,
-                "progress": 100,
-                "message": "生成完成!",
-                "result": result
-            })
-            
+            yield self._format_sse({"type": "complete", "task_id": task_id, "progress": 100,
+                                    "message": "生成完成!", "result": result})
         except Exception as e:
             tracker.fail_task(task_id, str(e))
-            yield self._format_sse({
-                "type": "error",
-                "task_id": task_id,
-                "error": str(e)
-            })
-    
+            yield self._format_sse({"type": "error", "task_id": task_id, "error": str(e)})
+
     async def generate_text_stream(self, text_chunks: List[str]) -> AsyncGenerator[str, None]:
-        """
-        流式输出文本
-        
-        Args:
-            text_chunks: 文本块列表
-            
-        Yields:
-            SSE格式的文本块
-        """
         for i, chunk in enumerate(text_chunks):
-            yield self._format_sse({
-                "type": "chunk",
-                "index": i,
-                "content": chunk
-            })
+            yield self._format_sse({"type": "chunk", "index": i, "content": chunk})
             await asyncio.sleep(STREAM_DELAY_SHORT)
-        
-        yield self._format_sse({
-            "type": "done",
-            "message": "输出完成"
-        })
-    
+        yield self._format_sse({"type": "done", "message": "输出完成"})
+
     def _format_sse(self, data: Dict) -> str:
-        """格式化SSE数据"""
         return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 

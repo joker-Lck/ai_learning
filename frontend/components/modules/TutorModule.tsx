@@ -32,7 +32,7 @@ export default function TutorModule({
               <div className={`max-w-[85%] px-5 py-4 rounded-xl ${
                 msg.role === 'user'
                   ? 'bg-purple-500 text-white'
-                  : 'bg-white/[0.04] text-white/80 border border-white/[0.06]'
+                  : 'glass text-white/80'
               }`}>
               <div className="flex items-start gap-3">
                 {msg.role === 'assistant' && (
@@ -50,13 +50,13 @@ export default function TutorModule({
                   )}
                   {/* 旧格式 diagram 兼容 */}
                   {msg.diagram && typeof msg.diagram === 'string' && (
-                    <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
+                    <div className="mt-2 p-3 glass rounded-lg text-sm">
                       <div className="text-purple-400 font-medium mb-1">📊 图解说明</div>
                       <MarkdownRenderer content={msg.diagram} />
                     </div>
                   )}
                   {msg.example && (
-                    <div className="mt-2 p-3 bg-white/[0.04] rounded-lg text-sm border border-white/[0.06]">
+                    <div className="mt-2 p-3 glass rounded-lg text-sm">
                       <div className="text-amber-400 font-medium mb-1">💡 示例</div>
                       {typeof msg.example === 'string' ? (
                         <MarkdownRenderer content={msg.example} />
@@ -73,7 +73,7 @@ export default function TutorModule({
         {/* 流式输出中 */}
         {tutorLoading && streamingContent && (
           <div className="mb-4 flex justify-start">
-            <div className="max-w-[85%] px-5 py-4 rounded-xl bg-white/[0.04] text-white/80 border border-white/[0.06]">
+            <div className="max-w-[85%] px-5 py-4 rounded-xl glass text-white/80">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <Lightbulb className="w-4 h-4 text-white" />
@@ -95,11 +95,11 @@ export default function TutorModule({
         )}
       </div>
 
-      <div className="space-y-4 pt-4 border-t border-white/[0.06]">
+      <div className="space-y-4 pt-4 border-t border-glass">
         <div>
           <label className="block text-base font-medium text-white/60 mb-2">学科</label>
           <input type="text" value={tutorSubject} onChange={(e) => setTutorSubject(e.target.value)}
-            className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none" />
+            className="w-full px-4 py-3 glass-input text-white placeholder:text-white/20 rounded-lg text-base focus:outline-none" />
         </div>
         <div className="flex gap-3">
           <input
@@ -108,7 +108,7 @@ export default function TutorModule({
             onChange={(e) => setQuestion(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAskTutor()}
             placeholder="输入你的问题..."
-            className="flex-1 px-5 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none"
+            className="flex-1 px-5 py-3 glass-input text-white placeholder:text-white/20 rounded-lg text-base focus:outline-none"
             disabled={tutorLoading}
           />
           <button

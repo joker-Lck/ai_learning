@@ -71,26 +71,77 @@ h1, h2, h3, h4, h5, h6 {
 /* ==================== 工具类 ==================== */
 
 @layer utilities {
-  /* 扁平卡片 */
+  /* 玻璃拟态 - 基础 */
   .glass {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
   }
 
   .glass-dark {
-    background: #111111;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
   }
 
   .glass-card {
-    background: #111111;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.75rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
   }
 
   .glass-card-hover:hover {
-    background: #161616;
-    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  /* 玻璃拟态 - 输入框 */
+  .glass-input {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 2px rgba(102, 67, 255, 0.2);
+  }
+
+  /* 玻璃拟态 - 按钮 */
+  .glass-button {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .glass-button:active {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* 玻璃拟态 - 强调 */
+  .glass-accent {
+    background: rgba(102, 67, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(102, 67, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(102, 67, 255, 0.15);
   }
 
   /* 渐变文字 */
@@ -119,12 +170,13 @@ h1, h2, h3, h4, h5, h6 {
 
   /* 卡片悬停效果 */
   .card-hover {
-    transition: background 0.2s, border-color 0.2s;
+    transition: all 0.2s ease;
   }
 
   .card-hover:hover {
-    background: #161616;
-    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
   }
 
   /* 按钮涟漪效果 */

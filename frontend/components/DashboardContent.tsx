@@ -199,6 +199,10 @@ export default function DashboardContent() {
             resources={d.resources}
             handleGenerateResources={d.handleGenerateResources}
             getTypeName={d.getTypeName}
+            resourceProgress={d.resourceProgress}
+            resourceCurrentType={d.resourceCurrentType}
+            resourceTotal={d.resourceTotal}
+            resourceDone={d.resourceDone}
           />
         );
       case 'path':
@@ -329,7 +333,7 @@ export default function DashboardContent() {
               </motion.button>
               <motion.button
                 onClick={() => scrollToSection(2)}
-                className="px-8 py-4 bg-white/[0.06] border border-white/[0.1] text-white rounded-lg text-lg font-medium hover:bg-white/[0.1] transition-colors flex items-center gap-2"
+                className="px-8 py-4 glass-button text-white rounded-lg text-lg font-medium flex items-center gap-2"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -448,7 +452,7 @@ export default function DashboardContent() {
                         d.setActiveModule(mod.id as ModuleType);
                         setTimeout(() => scrollToSection(2), 100);
                       })}
-                      className="group p-10 rounded-2xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.05] hover:border-purple-500/20 transition-all text-left"
+                      className="group p-10 rounded-2xl glass-card glass-card-hover text-left"
                     >
                       <div className="w-16 h-16 rounded-xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:bg-purple-500/20 transition-colors">
                         <Icon className="w-8 h-8 text-purple-400" />

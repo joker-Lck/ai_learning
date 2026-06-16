@@ -96,6 +96,22 @@ const config: Config = {
         'glow-blue': '0 0 20px rgba(0, 212, 255, 0.3)',
         'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
         'card-hover': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.36)',
+        'glass-inset': 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)',
+      },
+      backdropBlur: {
+        'glass': '20px',
+      },
+      backgroundColor: {
+        'glass': 'rgba(255, 255, 255, 0.05)',
+        'glass-hover': 'rgba(255, 255, 255, 0.08)',
+        'glass-active': 'rgba(255, 255, 255, 0.12)',
+        'glass-dark': 'rgba(0, 0, 0, 0.2)',
+      },
+      borderColor: {
+        'glass': 'rgba(255, 255, 255, 0.1)',
+        'glass-light': 'rgba(255, 255, 255, 0.15)',
+        'glass-strong': 'rgba(255, 255, 255, 0.2)',
       },
     },
   },

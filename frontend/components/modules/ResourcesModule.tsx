@@ -22,6 +22,10 @@ interface ResourcesModuleProps {
   resources: ResourceItem[];
   handleGenerateResources: () => void;
   getTypeName: (type: string) => string;
+  resourceProgress: number;
+  resourceCurrentType: string;
+  resourceTotal: number;
+  resourceDone: number;
 }
 
 /** 将 content_data 转为可读 Markdown */
@@ -167,7 +171,7 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
   const isImage = resource.type === 'animation' || generationType === 'tti_image';
 
   return (
-    <div className="border-b border-white/[0.06] py-5">
+    <div className="border-b border-glass py-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Icon className={`w-5 h-5 ${typeInfo.color} flex-shrink-0`} />
@@ -185,14 +189,14 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="p-1.5 rounded-md hover:bg-white/[0.06] text-white/35 hover:text-white transition-colors"
+            className="p-1.5 rounded-md glass-button text-white/35 hover:text-white"
           >
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
           {hasMedia && (
             <button
               onClick={() => window.open(mediaUrl, '_blank')}
-              className="p-1.5 rounded-md hover:bg-white/[0.06] text-white/35 hover:text-white transition-colors"
+              className="p-1.5 rounded-md glass-button text-white/35 hover:text-white"
               title="全屏打开"
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -227,14 +231,14 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
       </div>
       {/* 内容 */}
       {expanded && (
-        <div className="px-3 pb-3 border-t border-white/[0.04] pt-3">
+        <div className="px-3 pb-3 border-t border-glass pt-3">
           {/* AI 生成的视频 */}
           {hasMedia && isVideo && (
             <video
               controls
               autoPlay
               src={mediaUrl}
-              className="w-full rounded-xl border border-white/[0.06] shadow-lg mb-3"
+              className="w-full rounded-xl glass shadow-lg mb-3"
               style={{ maxHeight: 450 }}
             />
           )}
@@ -242,7 +246,7 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
           {hasMedia && isSvgAnim && (
             <iframe
               src={mediaUrl}
-              className="w-full rounded-xl border border-white/[0.06] shadow-lg mb-3 bg-[#0a0f1e]"
+              className="w-full rounded-xl glass shadow-lg mb-3 bg-[#0a0f1e]"
               style={{ height: 400 }}
               title={resource.title}
             />
@@ -262,6 +266,7 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
 export default function ResourcesModule({
   subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
   difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
+  resourceProgress, resourceCurrentType, resourceTotal, resourceDone,
 }: ResourcesModuleProps) {
   return (
     <div className="space-y-8">
@@ -272,12 +277,12 @@ export default function ResourcesModule({
           <div>
             <label className="block text-base font-medium text-white/60 mb-2">学科</label>
             <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none" />
+              className="w-full px-4 py-3 glass-input text-white placeholder:text-white/20 rounded-lg text-base focus:outline-none" />
           </div>
           <div>
             <label className="block text-base font-medium text-white/60 mb-2">主题</label>
             <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)}
-              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none" />
+              className="w-full px-4 py-3 glass-input text-white placeholder:text-white/20 rounded-lg text-base focus:outline-none" />
           </div>
         </div>
 
@@ -299,7 +304,7 @@ export default function ResourcesModule({
                 className={`px-4 py-2.5 rounded-lg border transition-all text-base ${
                   selectedTypes.includes(type.id)
                     ? 'border-purple-400/30 bg-purple-400/10 text-purple-400'
-                    : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:border-white/[0.12] hover:text-white/60'
+                    : 'glass-button text-white/40 hover:text-white/60'
                 }`}
               >
                 {type.label}
@@ -311,7 +316,7 @@ export default function ResourcesModule({
         <div>
           <label className="block text-base font-medium text-white/60 mb-2">难度级别</label>
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
-            className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white rounded-lg text-base focus:border-purple-500/30 focus:outline-none [&>option]:bg-[#0f0f0f] [&>option]:text-white">
+            className="w-full px-4 py-3 glass-input text-white rounded-lg text-base focus:outline-none [&>option]:bg-[#0f0f0f] [&>option]:text-white">
             <option value="beginner">初级</option>
             <option value="intermediate">中级</option>
             <option value="advanced">高级</option>
@@ -324,11 +329,49 @@ export default function ResourcesModule({
           className="w-full py-3.5 bg-purple-500 text-white rounded-lg hover:bg-purple-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold text-base transition-colors"
         >
           {resourceLoading ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> 生成中...</>
+            <><Loader2 className="w-5 h-5 animate-spin" /> 生成中... {resourceDone}/{resourceTotal}
+</>
           ) : (
             <><Brain className="w-5 h-5" /> 开始生成资源</>
           )}
         </button>
+
+        {resourceLoading && (
+          <div className="space-y-3 mt-4">
+            <div className="flex items-center justify-between text-sm text-white/50">
+              <span>{resourceCurrentType || '准备中...'}</span>
+              <span>{resourceProgress}%</span>
+            </div>
+            <div className="w-full h-2 glass rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${resourceProgress}%` }}
+              />
+            </div>
+            {resourceTotal > 0 && (
+              <div className="flex gap-2 mt-2">
+                {Array.from({ length: resourceTotal }).map((_, i) => (
+                  <div key={i} className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${
+                    i < resourceDone ? 'bg-emerald-500' : i === resourceDone ? 'bg-purple-500 animate-pulse' : 'glass'
+                  }`} />
+                ))}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              {Array.from({ length: resourceTotal - resourceDone }).map((_, i) => (
+                <div key={i} className="glass-card p-4 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 glass rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 glass rounded w-3/4" />
+                      <div className="h-3 glass rounded w-1/2" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {resources.length > 0 && (
