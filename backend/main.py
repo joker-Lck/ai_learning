@@ -4,12 +4,14 @@ FastAPI 应用入口
 """
 import sys
 import os
+import uuid
 
 # 将项目根目录添加到 Python 路径, 以便复用现有 services/data/core 模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -66,6 +68,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# GZip 压缩 — 响应体 > 500 字节时自动压缩
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 # CORS 配置 - 允许 Next.js 前端跨域访问
 app.add_middleware(
     CORSMiddleware,
@@ -79,6 +84,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# 请求 ID 中间件 — 为每个请求生成唯一 ID，方便追踪
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 # 注册路由 - 只保留核心功能
 # 核心功能 - 多智能体系统
