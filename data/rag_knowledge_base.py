@@ -81,7 +81,8 @@ def _clear_search_cache():
 # FAISS 向量索引管理器
 # ═══════════════════════════════════════════
 
-_INDEX_DIR = os.path.join(os.path.dirname(__file__), 'faiss_index')
+# FAISS不支持中文路径，使用用户目录下的.faiss_index
+_INDEX_DIR = os.path.join(os.path.expanduser('~'), '.faiss_index')
 _INDEX_PATH = os.path.join(_INDEX_DIR, 'knowledge.index')
 _IDS_PATH = os.path.join(_INDEX_DIR, 'doc_ids.json')
 
