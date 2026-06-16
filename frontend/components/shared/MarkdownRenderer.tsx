@@ -1,9 +1,10 @@
 /**
  * Markdown 渲染器 — react-markdown + 代码高亮 + 图片/视频内联
+ * 优化：使用React.memo减少不必要的重渲染
  * 已有 .markdown-body CSS 样式在 globals.css 中
  */
 'use client';
-import React, { useState } from 'react';
+import React, { useState, memo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -26,17 +27,17 @@ function isVideoUrl(url: string): boolean {
 }
 
 /** 代码块组件 — 语法高亮 + 复制按钮 + 折叠 */
-function CodeBlock({ language, children }: { language: string; children: string }) {
+const CodeBlock = memo(function CodeBlock({ language, children }: { language: string; children: string }) {
   const [copied, setCopied] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const lineCount = children.split('\n').length;
   const isLong = lineCount > 20;
 
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(children);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
+  }, [children]);
 
   return (
     <div className="group relative my-3 rounded-xl overflow-hidden border border-white/[0.06]">
@@ -87,9 +88,7 @@ function CodeBlock({ language, children }: { language: string; children: string 
       )}
     </div>
   );
-}
-
-/** 图片组件 — 带加载状态 + 错误回退 */
+});
 function MdImage({ src, alt }: { src: string; alt?: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -135,7 +134,7 @@ function MdVideo({ src }: { src: string }) {
   );
 }
 
-export default function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
+export default memo(function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
   if (!content) return null;
 
   return (
@@ -194,4 +193,4 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
       </ReactMarkdown>
     </div>
   );
-}
+});
