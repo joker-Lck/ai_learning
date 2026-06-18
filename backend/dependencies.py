@@ -75,12 +75,18 @@ def decode_token(token: str) -> dict:
 async def get_current_user(request: Request, authorization: Optional[str] = Header(None)) -> dict:
     """获取当前认证用户
 
-    支持两种认证方式:
+    支持三种认证方式:
     1. Bearer Token: Authorization: Bearer <token>
-    2. 无 Token 时返回游客用户
+    2. Query 参数: ?token=<token> (用于 SSE/EventSource)
+    3. 无 Token 时返回游客用户
     """
+    token = None
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]
+    elif request.query_params.get("token"):
+        token = request.query_params.get("token")
+
+    if token:
         payload = decode_token(token)
 
         # 拒绝 refresh token 用于接口访问

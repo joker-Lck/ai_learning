@@ -457,6 +457,7 @@ export function useDashboard() {
     try {
       const token = localStorage.getItem('auth_token') || '';
       const params = new URLSearchParams({ subject, topic, resource_types: selectedTypes.join(','), difficulty });
+      if (token) params.set('token', token);
       const es = new EventSource(`/api/stream/generate-resources-real?${params}`, { withCredentials: true });
 
       es.onmessage = (ev) => {

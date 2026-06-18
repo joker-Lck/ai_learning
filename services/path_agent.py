@@ -73,13 +73,15 @@ class PathAgent:
         """格式化步骤数据，确保符合前端期望"""
         formatted = []
         for i, step in enumerate(steps):
+            resource_type = step.get("resource_type", "")
             formatted.append({
                 "step_number": step.get("step_id", i + 1),
                 "title": step.get("title", f"步骤 {i + 1}"),
                 "description": step.get("description", step.get("learning_objective", "")),
                 "estimated_time": f"{step.get('estimated_time', 30)}分钟",
                 "prerequisites": step.get("prerequisites", []),
-                "resource_type": step.get("resource_type", ""),
+                "resources": [resource_type] if resource_type else [],
+                "resource_type": resource_type,
                 "resource_id": step.get("resource_id")
             })
         return formatted
@@ -93,48 +95,49 @@ class PathAgent:
         preferred_resources = profile.get("preferred_resources", ["document"])
         
         # 构建资源描述
-        resources_desc = []
-        for res in resources[:10]:  # 限制数量
-            resources_desc.append({
-                "id": res.get("id"),
-                "type": res.get("type"),
-                "title": res.get("title"),
-                "duration": res.get("duration_minutes")
-            })
+        resources_desc = ""
+        if resources:
+            res_list = []
+            for res in resources[:10]:
+                res_list.append(f"- ID:{res.get('id')}, 类型:{res.get('type')}, 标题:{res.get('title')}, 时长:{res.get('duration_minutes', '未知')}分钟")
+            resources_desc = "\n可用资源:\n" + "\n".join(res_list)
         
-        prompt = f"""请基于学生画像和学习目标,规划一个个性化的学习路径。
+        prompt = f"""你是一个专业的学习规划师。请为学生规划一个个性化的学习路径。
+
+学习目标: {learning_goal or '掌握相关知识'}
 
 学生特征:
 - 认知风格: {cognitive_style}
 - 薄弱点: {', '.join(weak_points[:3]) if weak_points else '无'}
 - 资源偏好: {', '.join(preferred_resources[:3])}
-- 学习目标: {learning_goal}
+{resources_desc}
 
-可用资源:
-{json.dumps(resources_desc, ensure_ascii=False, indent=2)}
-
-要求:
-1. 将资源组织成有序的学习步骤
-2. 考虑前置知识依赖关系
-3. 针对薄弱点安排更多练习
-4. 适合{cognitive_style}型学习者的学习顺序
-5. 每个步骤标注预计学习时间
-6. 总时长控制在合理范围(2-8小时)
-
-输出JSON格式:
+请严格按照以下JSON格式输出，不要输出其他内容:
+```json
 {{
-    "path_name": "路径名称",
-    "description": "路径描述",
+    "path_name": "给路径起一个具体的名称",
+    "description": "用一句话描述这个学习路径",
     "steps": [
         {{
             "step_id": 1,
-            "title": "步骤标题",
-            "resource_id": 资源ID,
-            "resource_type": "资源类型",
+            "title": "步骤标题（具体的学习内容）",
+            "resource_id": null,
+            "resource_type": "document",
             "estimated_time": 30,
             "prerequisites": [],
             "next_steps": [2],
-            "description": "步骤说明",
+            "description": "详细说明这一步要学什么、怎么学",
+            "learning_objective": "完成这一步后能掌握什么"
+        }},
+        {{
+            "step_id": 2,
+            "title": "步骤标题",
+            "resource_id": null,
+            "resource_type": "quiz",
+            "estimated_time": 20,
+            "prerequisites": [1],
+            "next_steps": [3],
+            "description": "详细说明",
             "learning_objective": "学习目标"
         }}
     ],
@@ -143,16 +146,32 @@ class PathAgent:
     "difficulty_progression": "easy_to_hard",
     "adaptation_notes": "适配说明"
 }}
+```
+
+要求:
+1. 生成4-8个具体的学习步骤
+2. 每个步骤必须有明确的title、description和learning_objective
+3. 考虑知识依赖关系，prerequisites引用之前的step_id
+4. estimated_time单位是分钟，每个步骤20-60分钟
+5. resource_type可以从 document/quiz/mindmap/video/code 中选择
+6. 总时长控制在2-6小时
 """
         
         try:
-            response = qa_service.call_ai(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2500)
+            info(f"AI学习路径原始响应: {response[:500] if response else '空'}")
             path_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
             if not path_data or not isinstance(path_data, dict):
                 warning(f"AI 返回的学习路径数据无效，使用降级方案")
-                return self._fallback_path(resources)
+                return self._fallback_path(resources, learning_goal)
+
+            # 验证steps存在且非空
+            steps = path_data.get("steps", [])
+            if not steps or not isinstance(steps, list):
+                warning(f"AI 返回的步骤数据无效，使用降级方案")
+                return self._fallback_path(resources, learning_goal)
 
             # 添加元数据
             path_data["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -164,37 +183,70 @@ class PathAgent:
 
         except Exception as e:
             error(f"AI生成学习路径失败: {str(e)}")
-            # 降级方案:简单线性路径
-            return self._fallback_path(resources)
+            return self._fallback_path(resources, learning_goal)
     
-    def _fallback_path(self, resources: List) -> Dict:
-        """降级方案:简单的线性路径"""
+    def _fallback_path(self, resources: List, learning_goal: str = "") -> Dict:
+        """降级方案:根据学习目标生成有意义的步骤"""
         steps = []
         total_time = 0
         
-        for i, res in enumerate(resources[:8]):
-            step = {
-                "step_id": i + 1,
-                "title": res.get("title", f"步骤{i+1}"),
-                "resource_id": res.get("id"),
-                "resource_type": res.get("type"),
-                "estimated_time": res.get("duration_minutes", 20),
-                "prerequisites": [i] if i > 0 else [],
-                "next_steps": [i + 2] if i < len(resources) - 1 else [],
-                "description": f"学习{res.get('title')}",
-                "learning_objective": "掌握相关知识"
-            }
-            steps.append(step)
-            total_time += step["estimated_time"]
+        if resources:
+            # 有资源时，按资源生成步骤
+            for i, res in enumerate(resources[:8]):
+                step = {
+                    "step_id": i + 1,
+                    "title": res.get("title", f"步骤{i+1}"),
+                    "resource_id": res.get("id"),
+                    "resource_type": res.get("type", "document"),
+                    "estimated_time": res.get("duration_minutes", 30),
+                    "prerequisites": [i] if i > 0 else [],
+                    "next_steps": [i + 2] if i < len(resources) - 1 else [],
+                    "description": f"学习并理解{res.get('title', '相关内容')}",
+                    "learning_objective": f"掌握{res.get('title', '相关知识')}的核心概念"
+                }
+                steps.append(step)
+                total_time += step["estimated_time"]
+        else:
+            # 无资源时，根据学习目标生成通用步骤
+            goal = learning_goal or "相关知识"
+            default_steps = [
+                {"title": f"了解{goal}的基础概念", "type": "document", "time": 30,
+                 "desc": "阅读基础资料，了解核心概念和术语", "obj": f"理解{goal}的基本定义和原理"},
+                {"title": f"学习{goal}的核心知识点", "type": "document", "time": 45,
+                 "desc": "深入学习关键知识点，做好笔记", "obj": f"掌握{goal}的核心理论和方法"},
+                {"title": f"观看{goal}的讲解视频", "type": "video", "time": 30,
+                 "desc": "通过视频直观理解抽象概念", "obj": "通过可视化方式加深理解"},
+                {"title": f"完成{goal}的练习题", "type": "quiz", "time": 30,
+                 "desc": "做配套练习题，检验学习效果", "obj": "通过练习巩固所学知识"},
+                {"title": f"绘制{goal}的思维导图", "type": "mindmap", "time": 25,
+                 "desc": "梳理知识点之间的关系，形成知识体系", "obj": "建立完整的知识框架"},
+                {"title": f"总结复习{goal}", "type": "document", "time": 20,
+                 "desc": "回顾学习内容，查漏补缺", "obj": "巩固学习成果，发现薄弱环节"}
+            ]
+            
+            for i, s in enumerate(default_steps):
+                step = {
+                    "step_id": i + 1,
+                    "title": s["title"],
+                    "resource_id": None,
+                    "resource_type": s["type"],
+                    "estimated_time": s["time"],
+                    "prerequisites": [i] if i > 0 else [],
+                    "next_steps": [i + 2] if i < len(default_steps) - 1 else [],
+                    "description": s["desc"],
+                    "learning_objective": s["obj"]
+                }
+                steps.append(step)
+                total_time += s["time"]
         
         return {
-            "path_name": "基础学习路径",
-            "description": "按顺序学习所有资源",
+            "path_name": f"{learning_goal or '基础'}学习路径",
+            "description": f"针对「{learning_goal or '相关知识'}」的系统学习路径",
             "steps": steps,
             "total_steps": len(steps),
-            "estimated_hours": round(total_time / 60, 2),
-            "difficulty_progression": "linear",
-            "adaptation_notes": "使用默认线性路径",
+            "estimated_hours": round(total_time / 60, 1),
+            "difficulty_progression": "easy_to_hard",
+            "adaptation_notes": "基于学习目标生成的基础学习路径",
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "status": "active",
             "current_step": 1,

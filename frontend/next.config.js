@@ -10,13 +10,14 @@ const nextConfig = {
 
   // API 代理配置
   async rewrites() {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const backendOrigin = apiUrl.replace(/\/api\/?$/, '');
     return [
-      { source: '/api/:path*', destination: `${backendUrl}/api/:path*` },
-      { source: '/ws/:path*', destination: `${backendUrl}/ws/:path*` },
-      { source: '/exports/:path*', destination: `${backendUrl}/exports/:path*` },
+      { source: '/api/:path*', destination: `${backendOrigin}/api/:path*` },
+      { source: '/ws/:path*', destination: `${backendOrigin}/ws/:path*` },
+      { source: '/exports/:path*', destination: `${backendOrigin}/exports/:path*` },
       // 静默处理国产浏览器注入的请求
-      { source: '/hybridaction/:path*', destination: `${backendUrl}/api/health` },
+      { source: '/hybridaction/:path*', destination: `${backendOrigin}/api/health` },
     ];
   },
 

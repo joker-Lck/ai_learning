@@ -44,7 +44,7 @@ function contentToMarkdown(data: any, type: string): string {
   // 文档 - 章节
   if (data.sections && Array.isArray(data.sections)) {
     for (const sec of data.sections) {
-      if (sec.title) parts.push(`### ${sec.title}`);
+      if (sec.title || sec.heading) parts.push(`### ${sec.title || sec.heading}`);
       if (sec.content) parts.push(sec.content);
       if (sec.items && Array.isArray(sec.items)) {
         parts.push(sec.items.map((item: string) => `- ${item}`).join('\n'));
@@ -71,8 +71,10 @@ function contentToMarkdown(data: any, type: string): string {
       const q = data.questions[i];
       parts.push(`**${i + 1}. ${q.question || q.title || ''}**`);
       if (q.options && Array.isArray(q.options)) {
-        q.options.forEach((opt: string, j: number) => {
-          parts.push(`${String.fromCharCode(65 + j)}. ${opt}`);
+        q.options.forEach((opt: any, j: number) => {
+          const optText = typeof opt === 'string' ? opt : (opt.text || opt.label || JSON.stringify(opt));
+          const optLabel = opt.label || String.fromCharCode(65 + j);
+          parts.push(`${optLabel}. ${optText}`);
         });
       }
       if (q.answer) parts.push(`> 答案: ${q.answer}`);
@@ -128,6 +130,16 @@ function contentToMarkdown(data: any, type: string): string {
   // 通用 script 字段
   if (data.script && !data.scenes && !data.frames) {
     parts.push(data.script);
+  }
+
+  // 关键点
+  if (data.key_points && Array.isArray(data.key_points) && data.key_points.length > 0) {
+    parts.push(`### 关键点\n${data.key_points.map((p: string) => `- ${p}`).join('\n')}`);
+  }
+
+  // 参考资料
+  if (data.references && Array.isArray(data.references) && data.references.length > 0) {
+    parts.push(`### 参考资料\n${data.references.map((r: string) => `- ${r}`).join('\n')}`);
   }
 
   // 阅读材料
