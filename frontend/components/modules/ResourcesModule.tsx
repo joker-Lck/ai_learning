@@ -163,6 +163,7 @@ const TYPE_ICONS: Record<string, { icon: typeof FileText; color: string }> = {
   quiz: { icon: FileCode, color: 'text-amber-400' },
   video: { icon: Video, color: 'text-purple-400' },
   animation: { icon: Sparkles, color: 'text-pink-400' },
+  code_case: { icon: Code, color: 'text-blue-400' },
   code: { icon: Code, color: 'text-blue-400' },
   reading: { icon: BookOpen, color: 'text-orange-400' },
 };
@@ -307,7 +308,7 @@ export default function ResourcesModule({
               { id: 'quiz', label: ' 题库', icon: FileCode },
               { id: 'video', label: '🎥 视频', icon: Video },
               { id: 'animation', label: '✨ 动画', icon: Sparkles },
-              { id: 'code', label: '💻 代码', icon: Code },
+              { id: 'code_case', label: '💻 代码', icon: Code },
               { id: 'reading', label: '📖 阅读', icon: BookOpen },
             ].map(type => (
               <button

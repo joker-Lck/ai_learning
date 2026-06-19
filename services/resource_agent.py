@@ -242,12 +242,21 @@ class ResourceAgent:
 """
         
         try:
-            response = qa_service.call_ai(prompt, max_tokens=2000)
+            response = qa_service.call_mimo(prompt, max_tokens=2000)
             doc_data = safe_parse_json(response)
 
             # 如果解析失败，返回 None
-            if not doc_data or not isinstance(doc_data, dict):
-                warning(f"AI 返回的文档数据无效")
+            if not doc_data:
+                warning(f"AI 返回的文档数据无法解析")
+                return None
+            
+            # 如果返回的是数组，取第一个元素
+            if isinstance(doc_data, list) and len(doc_data) > 0:
+                info(f"AI 返回了数组格式，取第一个元素")
+                doc_data = doc_data[0] if isinstance(doc_data[0], dict) else {"title": f"{topic}讲解文档", "sections": doc_data}
+            
+            if not isinstance(doc_data, dict):
+                warning(f"AI 返回的文档数据类型无效: {type(doc_data)}")
                 return None
 
             # 添加引用标注
@@ -319,12 +328,21 @@ class ResourceAgent:
 """
 
         try:
-            response = qa_service.call_ai(prompt, max_tokens=2000)
+            response = qa_service.call_mimo(prompt, max_tokens=2000)
             mindmap_data = safe_parse_json(response)
 
             # 如果解析失败，返回 None
-            if not mindmap_data or not isinstance(mindmap_data, dict):
-                warning(f"AI 返回的思维导图数据无效")
+            if not mindmap_data:
+                warning(f"AI 返回的思维导图数据无法解析")
+                return None
+            
+            # 如果返回的是数组，取第一个元素
+            if isinstance(mindmap_data, list) and len(mindmap_data) > 0:
+                info(f"AI 返回了数组格式，取第一个元素")
+                mindmap_data = mindmap_data[0] if isinstance(mindmap_data[0], dict) else {"topic": topic, "children": mindmap_data}
+            
+            if not isinstance(mindmap_data, dict):
+                warning(f"AI 返回的思维导图数据类型无效: {type(mindmap_data)}")
                 return None
 
             # 生成 SVG 思维导图
@@ -502,12 +520,28 @@ function downloadSVG() {{
 """
 
         try:
-            response = qa_service.call_ai(prompt, max_tokens=2500)
+            response = qa_service.call_mimo(prompt, max_tokens=2000)
+            info(f"AI 返回的题库原始响应 (前500字): {response[:500] if response else 'None'}")
             quiz_data = safe_parse_json(response)
+            info(f"解析后的题库数据类型: {type(quiz_data)}, 内容: {str(quiz_data)[:300] if quiz_data else 'None'}")
 
             # 如果解析失败，使用降级方案
-            if not quiz_data or not isinstance(quiz_data, dict):
-                warning(f"AI 返回的题库数据无效，使用降级方案")
+            if not quiz_data:
+                warning(f"AI 返回的题库数据无法解析，使用降级方案")
+                return self._fallback_quiz(subject, topic, difficulty)
+            
+            # 如果返回的是数组，转换为对象格式
+            if isinstance(quiz_data, list):
+                info(f"AI 返回了数组格式，转换为对象格式")
+                quiz_data = {
+                    "title": f"{topic}练习题",
+                    "questions": quiz_data,
+                    "total_questions": len(quiz_data),
+                    "estimated_time": 20
+                }
+            
+            if not isinstance(quiz_data, dict):
+                warning(f"AI 返回的题库数据类型无效: {type(quiz_data)}，使用降级方案")
                 return self._fallback_quiz(subject, topic, difficulty)
 
             return {
@@ -703,12 +737,21 @@ function downloadSVG() {{
 """
         
         try:
-            response = qa_service.call_ai(prompt, max_tokens=2500)
+            response = qa_service.call_mimo(prompt, max_tokens=2000)
             code_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
-            if not code_data or not isinstance(code_data, dict):
-                warning(f"AI 返回的代码案例数据无效，使用降级方案")
+            if not code_data:
+                warning(f"AI 返回的代码案例数据无法解析，使用降级方案")
+                return self._fallback_code(subject, topic, difficulty)
+            
+            # 如果返回的是数组，取第一个元素
+            if isinstance(code_data, list) and len(code_data) > 0:
+                info(f"AI 返回了数组格式，取第一个元素")
+                code_data = code_data[0] if isinstance(code_data[0], dict) else {"title": f"{topic}代码案例", "code": code_data}
+            
+            if not isinstance(code_data, dict):
+                warning(f"AI 返回的代码案例数据类型无效: {type(code_data)}，使用降级方案")
                 return self._fallback_code(subject, topic, difficulty)
 
             return {
@@ -756,12 +799,21 @@ function downloadSVG() {{
 """
         
         try:
-            response = qa_service.call_ai(prompt, max_tokens=1800)
+            response = qa_service.call_mimo(prompt, max_tokens=1500)
             reading_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
-            if not reading_data or not isinstance(reading_data, dict):
-                warning(f"AI 返回的阅读材料数据无效，使用降级方案")
+            if not reading_data:
+                warning(f"AI 返回的阅读材料数据无法解析，使用降级方案")
+                return self._fallback_reading(subject, topic, difficulty)
+            
+            # 如果返回的是数组，取第一个元素
+            if isinstance(reading_data, list) and len(reading_data) > 0:
+                info(f"AI 返回了数组格式，取第一个元素")
+                reading_data = reading_data[0] if isinstance(reading_data[0], dict) else {"title": f"{topic}阅读材料", "content": str(reading_data)}
+            
+            if not isinstance(reading_data, dict):
+                warning(f"AI 返回的阅读材料数据类型无效: {type(reading_data)}，使用降级方案")
                 return self._fallback_reading(subject, topic, difficulty)
 
             # 添加引用

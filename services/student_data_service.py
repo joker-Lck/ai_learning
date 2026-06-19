@@ -634,6 +634,14 @@ class StudentDataImportMixin:
                         prompt, image_b64, max_tokens=4000,
                         system_prompt=system_prompt,
                     )
+                    
+                    # 检查图片理解是否成功
+                    if not response or not response.strip():
+                        warning("图片理解返回空结果，可能是 API 凭证或配额问题")
+                        return {
+                            "success": False,
+                            "message": "图片识别失败：AI 图片理解服务暂时不可用。请尝试以下方案：\n1. 将课程表截图后重新上传\n2. 使用「手动添加」按钮逐条录入课程\n3. 联系管理员检查 API 配额"
+                        }
             else:
                 text = self._parse_upload_file(filename, content)
                 # 检查解析结果
@@ -657,6 +665,14 @@ class StudentDataImportMixin:
                                     prompt, image_b64, max_tokens=4000,
                                     system_prompt=system_prompt,
                                 )
+                                
+                                # 检查图片理解是否成功
+                                if not response or not response.strip():
+                                    warning("PDF 图片理解返回空结果，可能是 API 凭证或配额问题")
+                                    return {
+                                        "success": False,
+                                        "message": "PDF 识别失败：AI 图片理解服务暂时不可用。请尝试以下方案：\n1. 将课表截图后以图片形式上传\n2. 使用「手动添加」按钮逐条录入课程\n3. 联系管理员检查 API 配额"
+                                    }
                         else:
                             return {"success": False, "message": "PDF 解析失败，请确保文件未损坏，或尝试将课表截图后上传"}
                     else:

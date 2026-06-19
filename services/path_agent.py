@@ -163,8 +163,21 @@ class PathAgent:
             path_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
-            if not path_data or not isinstance(path_data, dict):
-                warning(f"AI 返回的学习路径数据无效，使用降级方案")
+            if not path_data:
+                warning(f"AI 返回的学习路径数据无法解析，使用降级方案")
+                return self._fallback_path(resources, learning_goal)
+            
+            # 如果返回的是数组，转换为对象格式
+            if isinstance(path_data, list):
+                info(f"AI 返回了数组格式，转换为对象格式")
+                path_data = {
+                    "title": learning_goal or "学习路径",
+                    "steps": path_data,
+                    "total_time": sum(step.get("estimated_time", 30) for step in path_data if isinstance(step, dict))
+                }
+            
+            if not isinstance(path_data, dict):
+                warning(f"AI 返回的学习路径数据类型无效: {type(path_data)}，使用降级方案")
                 return self._fallback_path(resources, learning_goal)
 
             # 验证steps存在且非空

@@ -58,7 +58,8 @@ async def stream_generate_resource(
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
+                "X-Accel-Buffering": "no",
+                "Content-Encoding": "identity",
             }
         )
         
@@ -97,6 +98,40 @@ async def stream_generate_resources_real(
         def _sse(data: dict) -> str:
             return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
+        def _do_generate(rtype, subject, topic, difficulty, user_id):
+            return resource_agent.generate_resource(
+                resource_type=rtype, subject=subject, topic=topic,
+                difficulty=difficulty, user_id=user_id
+            )
+
+        def _save_resource(user_id, title, rtype, subject, topic, difficulty, content_data, duration_minutes):
+            from data.db_operations import resource_db
+            if resource_db.connect():
+                resource_db.cursor.execute("""
+                    INSERT INTO learning_resources
+                    (user_id, title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent, duration_minutes)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    user_id, title, rtype, subject, topic, difficulty,
+                    json.dumps(content_data, ensure_ascii=False),
+                    f"user_{user_id}", duration_minutes
+                ))
+                resource_db.conn.commit()
+                resource_db.close()
+
+        def _log_activity(user_id, rtype, subject, topic, title):
+            from data.db_operations import assessment_db
+            if assessment_db.connect():
+                assessment_db.cursor.execute("""
+                    INSERT INTO learning_activities (user_id, activity_type, metadata)
+                    VALUES (%s, %s, %s)
+                """, (
+                    user_id, 'resource_generate',
+                    json.dumps({"resource_type": rtype, "subject": subject, "topic": topic, "title": title}, ensure_ascii=False)
+                ))
+                assessment_db.conn.commit()
+                assessment_db.close()
+
         async def event_generator():
             for idx, rtype in enumerate(types_list):
                 type_label = {
@@ -117,9 +152,8 @@ async def stream_generate_resources_real(
 
                 t0 = time.time()
                 try:
-                    result = resource_agent.generate_resource(
-                        resource_type=rtype, subject=subject, topic=topic,
-                        difficulty=difficulty, user_id=user_id
+                    result = await asyncio.to_thread(
+                        _do_generate, rtype, subject, topic, difficulty, user_id
                     )
                     elapsed = round(time.time() - t0, 1)
 
@@ -129,35 +163,18 @@ async def stream_generate_resources_real(
                         content_data = res_data.get("content_data", res_data)
 
                         try:
-                            from data.db_operations import resource_db
-                            if resource_db.connect():
-                                resource_db.cursor.execute("""
-                                    INSERT INTO learning_resources
-                                    (user_id, title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent, duration_minutes)
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (
-                                    user_id, title, rtype, subject, topic, difficulty,
-                                    json.dumps(content_data, ensure_ascii=False),
-                                    f"user_{user_id}", res_data.get("duration_minutes")
-                                ))
-                                resource_db.conn.commit()
-                                resource_db.close()
-                                info(f"资源自动保存成功: {title}")
+                            await asyncio.to_thread(
+                                _save_resource, user_id, title, rtype, subject, topic,
+                                difficulty, content_data, res_data.get("duration_minutes")
+                            )
+                            info(f"资源自动保存成功: {title}")
                         except Exception as save_err:
                             error(f"资源自动保存失败: {save_err}")
 
                         try:
-                            from data.db_operations import assessment_db
-                            if assessment_db.connect():
-                                assessment_db.cursor.execute("""
-                                    INSERT INTO learning_activities (user_id, activity_type, metadata)
-                                    VALUES (%s, %s, %s)
-                                """, (
-                                    user_id, 'resource_generate',
-                                    json.dumps({"resource_type": rtype, "subject": subject, "topic": topic, "title": title}, ensure_ascii=False)
-                                ))
-                                assessment_db.conn.commit()
-                                assessment_db.close()
+                            await asyncio.to_thread(
+                                _log_activity, user_id, rtype, subject, topic, title
+                            )
                         except Exception as log_err:
                             error(f"活动日志记录失败: {log_err}")
 
@@ -204,7 +221,8 @@ async def stream_generate_resources_real(
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
+                "X-Accel-Buffering": "no",
+                "Content-Encoding": "identity",
             }
         )
 
@@ -494,5 +512,6 @@ async def stream_tutor_query(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "Content-Encoding": "identity",
         },
     )

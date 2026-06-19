@@ -181,8 +181,17 @@ class ProfileAgent:
             profile_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
-            if not profile_data or not isinstance(profile_data, dict):
-                warning(f"AI 返回的画像数据无效，使用降级方案")
+            if not profile_data:
+                warning(f"AI 返回的画像数据无法解析，使用降级方案")
+                return self._fallback_extract(basic_info, existing_profile)
+            
+            # 如果返回的是数组，取第一个元素
+            if isinstance(profile_data, list) and len(profile_data) > 0:
+                info(f"AI 返回了数组格式，取第一个元素")
+                profile_data = profile_data[0] if isinstance(profile_data[0], dict) else {"learning_style": "balanced"}
+            
+            if not isinstance(profile_data, dict):
+                warning(f"AI 返回的画像数据类型无效: {type(profile_data)}，使用降级方案")
                 return self._fallback_extract(basic_info, existing_profile)
 
             # 合并到现有画像

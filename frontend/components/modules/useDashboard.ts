@@ -441,7 +441,16 @@ export function useDashboard() {
 
   // ── 资源生成处理 ──
   const getTypeName = (type: string) => {
-    const names: Record<string, string> = { mindmap: '思维导图', quiz: '练习题', document: '讲解文档' };
+    const names: Record<string, string> = { 
+      mindmap: '思维导图', 
+      quiz: '练习题', 
+      document: '讲解文档',
+      video: '视频脚本',
+      animation: '动画脚本',
+      code_case: '代码案例',
+      code: '代码案例',
+      reading: '拓展阅读'
+    };
     return names[type] || type;
   };
 
@@ -458,7 +467,9 @@ export function useDashboard() {
       const token = localStorage.getItem('auth_token') || '';
       const params = new URLSearchParams({ subject, topic, resource_types: selectedTypes.join(','), difficulty });
       if (token) params.set('token', token);
-      const es = new EventSource(`/api/stream/generate-resources-real?${params}`, { withCredentials: true });
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const sseUrl = baseUrl ? `${baseUrl}/stream/generate-resources-real?${params}` : `/api/stream/generate-resources-real?${params}`;
+      const es = new EventSource(sseUrl, { withCredentials: true });
 
       es.onmessage = (ev) => {
         try {

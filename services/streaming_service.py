@@ -154,7 +154,6 @@ class SSEStreamGenerator:
 
     async def wrap_with_heartbeat(self, source: AsyncGenerator[str, None]) -> AsyncGenerator[str, None]:
         stop_event = asyncio.Event()
-        heartbeat_gen = self._heartbeat(stop_event)
         try:
             async with asyncio.timeout(STREAM_TIMEOUT):
                 async for chunk in source:

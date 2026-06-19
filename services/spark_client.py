@@ -227,9 +227,11 @@ class SparkClient:
             images = [image_b64] if isinstance(image_b64, str) else image_b64
             info(f"讯飞图片理解: prompt={prompt[:50]}..., 图片数量={len(images)}")
             
-            app_id = os.getenv("SPARK_APPID", "")
-            api_key = os.getenv("SPARK_API_KEY", "")
-            api_secret = os.getenv("SPARK_API_SECRET", "")
+            app_id = os.getenv("SPARK_IMAGE_APPID") or os.getenv("SPARK_APPID", "")
+            api_key = os.getenv("SPARK_IMAGE_API_KEY") or os.getenv("SPARK_API_KEY", "")
+            api_secret = os.getenv("SPARK_IMAGE_API_SECRET") or os.getenv("SPARK_API_SECRET", "")
+            
+            info(f"讯飞图片理解凭证: APPID={app_id[:8]}..., APIKey={api_key[:8]}..., APISecret={api_secret[:8]}...")
             
             if not app_id or not api_key or not api_secret:
                 error("讯飞图片理解 API 配置不完整（需要 APPID/APIKey/APISecret）")
@@ -310,7 +312,11 @@ class SparkClient:
                 try:
                     data = json.loads(message)
                     if data.get("header", {}).get("code") != 0:
-                        error(f"讯飞图片理解错误: {data.get('header', {}).get('message', '未知错误')}")
+                        error_code = data.get("header", {}).get("code", "")
+                        error_msg = data.get("header", {}).get("message", "未知错误")
+                        error(f"讯飞图片理解错误: code={error_code}, message={error_msg}")
+                        if "AppIdNoAuthError" in str(error_msg):
+                            error(f"APPID 无权限访问图片理解服务，请检查：1. 讯飞控制台是否开通图片理解服务 2. API 配额是否充足")
                         ws.close()
                         return
                     
@@ -356,8 +362,8 @@ class SparkClient:
             warning("websocket-client 未安装，降级到 HTTP API")
             return self._chat_with_image_http(prompt, image_b64, model, max_tokens, temperature, system_prompt)
         except Exception as e:
-            error(f"讯飞图片理解失败: {e}")
-            return self._chat_with_image_http(prompt, image_b64, model, max_tokens, temperature, system_prompt)
+            error(f"图片理解失败: {e}")
+            return self._chat_with_image_mimo(prompt, image_b64, max_tokens, system_prompt)
 
     def _chat_with_image_http(
         self,
@@ -368,42 +374,8 @@ class SparkClient:
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
     ) -> str:
-        """HTTP 降级方案 — 使用 OpenAI 兼容接口"""
-        try:
-            images = [image_b64] if isinstance(image_b64, str) else image_b64
-            messages: List[Dict] = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            content_parts: List[Dict] = [{"type": "text", "text": prompt}]
-            for img in images:
-                content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}})
-            messages.append({"role": "user", "content": content_parts})
-            
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-            )
-            msg = response.choices[0].message
-            content = msg.content or ""
-            if not content and hasattr(msg, 'reasoning_content') and msg.reasoning_content:
-                reasoning = msg.reasoning_content
-                import re
-                json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', reasoning, re.DOTALL)
-                if json_matches:
-                    content = json_matches[-1]
-                else:
-                    json_match = re.search(r'\{[\s\S]*\}|\[[\s\S]*\]', reasoning)
-                    if json_match:
-                        content = json_match.group(0)
-                    else:
-                        lines = [line.strip() for line in reasoning.strip().split('\n') if line.strip()]
-                        content = lines[-1] if lines else ""
-            return content
-        except Exception as e:
-            error(f"HTTP 降级调用失败: {e}")
-            return f"错误: {e}"
+        """HTTP 降级方案 — 使用 MiMo 图片理解"""
+        return self._chat_with_image_mimo(prompt, image_b64 if isinstance(image_b64, str) else image_b64[0], max_tokens, system_prompt)
 
     def chat_stream(
         self,
@@ -675,6 +647,7 @@ class SparkClient:
             
             result = resp.json()
             code = result.get("header", {}).get("code", -1)
+            message = result.get("header", {}).get("message", "")
             
             if code == 0:
                 # 提取识别结果
@@ -690,12 +663,15 @@ class SparkClient:
                 if text:
                     info(f"OCR识别成功: {len(text)} 字符")
                     return text
+                else:
+                    warning("OCR识别返回空结果")
+                    return None
             
-            warning(f"OCR识别返回: {result}")
+            warning(f"OCR识别失败 (code={code}): {message}")
             return None
             
         except Exception as e:
-            error(f"OCR识别失败: {e}")
+            error(f"OCR识别异常: {e}")
             return None
 
     def ocr_image(self, image_b64: str, ocr_type: str = "auto") -> Optional[str]:
@@ -719,6 +695,55 @@ class SparkClient:
             if result:
                 return result
             return self.ocr_handwriting(image_b64)
+
+    # ── MiMo 图片理解 (临时替代讯飞) ──────────────────────
+    def _chat_with_image_mimo(
+        self,
+        prompt: str,
+        image_b64: str,
+        max_tokens: int = 4096,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        """使用 MiMo-V2.5 进行图片理解"""
+        try:
+            api_key = os.getenv("MIMO_API_KEY", "")
+            base_url = os.getenv("MIMO_BASE_URL", "https://api.mimo.ai/v1")
+            model = os.getenv("MIMO_MODEL", "MiMo-V2.5")
+            
+            if not api_key:
+                error("MiMo API Key 未配置")
+                return ""
+            
+            client = OpenAI(api_key=api_key, base_url=base_url)
+            
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            # 构建带图片的消息
+            image_url = f"data:image/jpeg;base64,{image_b64}" if not image_b64.startswith("data:") else image_b64
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": image_url}},
+                ],
+            })
+            
+            info(f"MiMo 图片理解: model={model}, prompt={prompt[:50]}...")
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+            )
+            
+            result = response.choices[0].message.content or ""
+            info(f"MiMo 图片理解成功: {len(result)} 字符")
+            return result
+            
+        except Exception as e:
+            error(f"MiMo 图片理解失败: {e}")
+            return ""
 
     # ── 讯飞语音合成 (TTS) ──────────────────────────────
     def text_to_speech(self, text: str, voice: str = "xiaoyan") -> Optional[bytes]:
