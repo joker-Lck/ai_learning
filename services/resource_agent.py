@@ -242,7 +242,7 @@ class ResourceAgent:
 """
         
         try:
-            response = qa_service.call_mimo(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             doc_data = safe_parse_json(response)
 
             # 如果解析失败，返回 None
@@ -328,7 +328,7 @@ class ResourceAgent:
 """
 
         try:
-            response = qa_service.call_mimo(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             mindmap_data = safe_parse_json(response)
 
             # 如果解析失败，返回 None
@@ -520,7 +520,7 @@ function downloadSVG() {{
 """
 
         try:
-            response = qa_service.call_mimo(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             info(f"AI 返回的题库原始响应 (前500字): {response[:500] if response else 'None'}")
             quiz_data = safe_parse_json(response)
             info(f"解析后的题库数据类型: {type(quiz_data)}, 内容: {str(quiz_data)[:300] if quiz_data else 'None'}")
@@ -737,7 +737,7 @@ function downloadSVG() {{
 """
         
         try:
-            response = qa_service.call_mimo(prompt, max_tokens=2000)
+            response = qa_service.call_ai(prompt, max_tokens=2000)
             code_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
@@ -799,7 +799,7 @@ function downloadSVG() {{
 """
         
         try:
-            response = qa_service.call_mimo(prompt, max_tokens=1500)
+            response = qa_service.call_ai(prompt, max_tokens=1500)
             reading_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
