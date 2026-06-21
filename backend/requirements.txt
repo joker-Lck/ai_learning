@@ -16,7 +16,6 @@ requests>=2.31.0
 python-pptx==1.0.2
 python-docx==1.2.0
 PyPDF2==3.0.1
-pdfplumber==0.11.9
 openpyxl==3.1.5
 PyMuPDF==1.25.3
 
@@ -26,6 +25,5 @@ faiss-cpu>=1.7.4
 pandas==3.0.2
 redis>=5.0.0
 
-# 可视化 & 图片
-matplotlib==3.10.8
+# 图片处理
 Pillow==12.2.0

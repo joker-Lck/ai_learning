@@ -5,6 +5,9 @@ const isDev = process.env.NODE_ENV === 'development';
 const nextConfig = {
   reactStrictMode: true,
 
+  // SWC 压缩（比 Terser 更快）
+  swcMinify: true,
+
   // Docker standalone 输出（仅生产环境）
   ...(isProd ? { output: 'standalone' } : {}),
 
@@ -67,7 +70,17 @@ const nextConfig = {
 
   // 实验性功能
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      'recharts',
+      'react-markdown',
+      'react-syntax-highlighter',
+      'katex',
+      'react-hot-toast',
+    ],
+    // 服务端组件外部包优化
+    serverComponentsExternalPackages: ['sharp'],
   },
 
   // Webpack 配置优化（仅非 Turbopack 模式生效）
@@ -85,6 +98,25 @@ const nextConfig = {
             test: /[\\/]node_modules[\\/]/,
             priority: -10,
             reuseExistingChunk: true,
+          },
+          // 大型库单独分包
+          framerMotion: {
+            test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+            name: 'framer-motion',
+            chunks: 'all',
+            priority: 10,
+          },
+          recharts: {
+            test: /[\\/]node_modules[\\/]recharts[\\/]/,
+            name: 'recharts',
+            chunks: 'all',
+            priority: 10,
+          },
+          mermaid: {
+            test: /[\\/]node_modules[\\/]mermaid[\\/]/,
+            name: 'mermaid',
+            chunks: 'async',
+            priority: 10,
           },
           default: {
             minChunks: 2,

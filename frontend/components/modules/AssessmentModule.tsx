@@ -4,6 +4,7 @@ import {
   BarChart3, FileText, Loader2, Award, TrendingUp, CheckCircle, AlertCircle,
   Lightbulb, Sparkles, Upload, X,
 } from 'lucide-react';
+import { memo } from 'react';
 import type { AssessmentResult } from './types';
 
 interface AssessmentModuleProps {
@@ -33,7 +34,7 @@ interface AssessmentModuleProps {
   handleAnalyze: () => void;
 }
 
-export default function AssessmentModule({
+export default memo(function AssessmentModule({
   assessLoading, assessment, assessTab, setAssessTab, handleAssess,
   analysisFiles, setAnalysisFiles, analysisDragOver, setAnalysisDragOver,
   analyzing, analysisResult, analysisFileInputRef,
@@ -568,4 +569,4 @@ export default function AssessmentModule({
       )}
     </div>
   );
-}
+});

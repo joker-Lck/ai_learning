@@ -1,6 +1,7 @@
 'use client';
 
 import { Send, Lightbulb, Loader2 } from 'lucide-react';
+import { memo } from 'react';
 import dynamic from 'next/dynamic';
 import type { TutorMessage } from './types';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
@@ -18,7 +19,7 @@ interface TutorModuleProps {
   streamingContent?: string;
 }
 
-export default function TutorModule({
+export default memo(function TutorModule({
   question, setQuestion, tutorSubject, setTutorSubject,
   tutorLoading, tutorMessages, handleAskTutor, streamingContent,
 }: TutorModuleProps) {
@@ -123,4 +124,4 @@ export default function TutorModule({
       </div>
     </div>
   );
-}
+});

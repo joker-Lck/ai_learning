@@ -4,7 +4,7 @@ import {
   Brain, FileText, GitBranch, FileCode, Video, Sparkles, Code, BookOpen,
   Loader2, CheckCircle, ChevronDown, ChevronUp, Maximize2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import api from '@/lib/api';
 import type { ResourceItem } from './types';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
@@ -276,7 +276,7 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
   );
 }
 
-export default function ResourcesModule({
+export default memo(function ResourcesModule({
   subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
   difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
   resourceProgress, resourceCurrentType, resourceTotal, resourceDone,
@@ -397,4 +397,4 @@ export default function ResourcesModule({
       )}
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, memo } from 'react';
 import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
@@ -122,7 +122,7 @@ const PROFILE_DISPLAY = [
 
 // ==================== 主组件 ====================
 
-export default function ProfileModule(props: ProfileModuleProps) {
+export default memo(function ProfileModule(props: ProfileModuleProps) {
   const { profileTab, setProfileTab, currentSemester, setCurrentSemester, semesters, profileData } = props;
 
   return (
@@ -172,7 +172,7 @@ export default function ProfileModule(props: ProfileModuleProps) {
       </div>
     </div>
   );
-}
+});
 
 // ==================== 文件导入按钮 ====================
 
@@ -572,7 +572,7 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
       {courses.length === 0 ? (
         <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
           <CalendarDays className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p>暂无课程，点击"手动添加"或"上传课表"开始</p>
+          <p>暂无课程，点击「手动添加」或「上传课表」开始</p>
         </div>
       ) : (
         <div className="border border-white/[0.06] rounded-lg overflow-hidden overflow-x-auto bg-white/[0.02]">
@@ -745,7 +745,7 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfi
 
       {grades.length === 0 ? (
         <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
-          <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>暂无成绩，点击"录入"或"上传成绩"开始</p>
+          <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>暂无成绩，点击「录入」或「上传成绩」开始</p>
         </div>
       ) : (
         <div className="space-y-3">

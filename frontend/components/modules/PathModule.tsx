@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Route, Loader2, Clock, Zap, CalendarDays, BookOpen } from 'lucide-react';
 import type { LearningPath, StudyPlan } from './types';
 
@@ -18,7 +18,7 @@ interface PathModuleProps {
 
 type PathTab = 'path' | 'plan';
 
-export default function PathModule({
+export default memo(function PathModule({
   learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath,
   studyPlans, planLoading, handleGeneratePlan,
 }: PathModuleProps) {
@@ -54,7 +54,7 @@ export default function PathModule({
       {tab === 'plan' && <PlanTabContent plans={studyPlans} loading={planLoading} onGenerate={handleGeneratePlan} />}
     </div>
   );
-}
+});
 
 // ==================== 学习路径 Tab ====================
 

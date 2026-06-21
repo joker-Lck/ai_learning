@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
@@ -126,7 +126,7 @@ export function useDashboard() {
   }, [activeModule]);
 
   // 切换学期时加载数据
-  const loadSemesterData = (semester: string) => {
+  const loadSemesterData = useCallback((semester: string) => {
     setCurrentSemester(semester);
     const username = getUsername();
     
@@ -161,7 +161,7 @@ export function useDashboard() {
     }).catch(() => {
       // API 不可用，使用 localStorage 数据
     }).finally(() => setGradeLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     if (isGuest) return;
@@ -171,7 +171,7 @@ export function useDashboard() {
   }, [activeModule, currentSemester]);
 
   // 保存课程表（乐观更新：先更新 UI 再保存后端）
-  const handleSaveCourses = async (semester: string, courseList: CourseItem[]) => {
+  const handleSaveCourses = useCallback(async (semester: string, courseList: CourseItem[]) => {
     setCourses(courseList);
     if (!semesters.includes(semester)) setSemesters(prev => [semester, ...prev]);
     setCourseLoading(true);
@@ -186,10 +186,10 @@ export function useDashboard() {
     } catch (e) {
       console.error('课程表保存异常:', e);
     } finally { setCourseLoading(false); }
-  };
+  }, [semesters]);
 
   // 保存成绩（乐观更新）
-  const handleSaveGrades = async (semester: string, gradeList: GradeItem[]) => {
+  const handleSaveGrades = useCallback(async (semester: string, gradeList: GradeItem[]) => {
     setGrades(gradeList);
     setGradeLoading(true);
     
@@ -203,7 +203,7 @@ export function useDashboard() {
     } catch (e) {
       console.error('成绩保存异常:', e);
     } finally { setGradeLoading(false); }
-  };
+  }, []);
 
   // 错题操作
   const loadErrorNotes = async (subject?: string) => {
@@ -786,7 +786,7 @@ export function useDashboard() {
     return { success: true, data: updatedProfile };
   };
 
-  return {
+  return useMemo(() => ({
     user, isGuest, activeModule, setActiveModule,
     // 画像
     currentStep, dimensionChats, profileLoading, profileData,
@@ -817,5 +817,29 @@ export function useDashboard() {
     analysisSubject, setAnalysisSubject, analysisTopic, setAnalysisTopic,
     analysisDifficulty, setAnalysisDifficulty,
     addAnalysisFiles, removeAnalysisFile, formatFileSize, getFileIcon, handleAnalyze,
-  };
+  }), [
+    user, isGuest, activeModule, setActiveModule,
+    currentStep, dimensionChats, profileLoading, profileData,
+    currentDimension, currentChat, updateCurrentChat,
+    handleSendMessage, buildFinalProfile, goToPreviousStep, goToNextStep,
+    handleUpdateProfileField,
+    profileTab, setProfileTab, currentSemester, setCurrentSemester, semesters,
+    courses, courseLoading, handleSaveCourses,
+    grades, gradeLoading, handleSaveGrades,
+    errorNotes, errorLoading, handleAddErrorNote, handleToggleMastery, handleDeleteErrorNote,
+    handleImportCourses, handleImportGrades, handleImportErrors,
+    handleConfirmImportCourses, handleConfirmImportGrades, handleConfirmImportErrors,
+    studyPlans, planLoading, handleGeneratePlan,
+    subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
+    difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
+    resourceProgress, resourceCurrentType, resourceTotal, resourceDone,
+    learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath,
+    question, setQuestion, tutorSubject, setTutorSubject, tutorLoading, tutorMessages, handleAskTutor, streamingContent,
+    assessLoading, assessment, assessTab, setAssessTab, handleAssess,
+    analysisFiles, setAnalysisFiles, analysisDragOver, setAnalysisDragOver,
+    analyzing, analysisResult, analysisFileInputRef,
+    analysisSubject, setAnalysisSubject, analysisTopic, setAnalysisTopic,
+    analysisDifficulty, setAnalysisDifficulty,
+    addAnalysisFiles, removeAnalysisFile, formatFileSize, getFileIcon, handleAnalyze,
+  ]);
 }

@@ -151,7 +151,7 @@ export default memo(function MarkdownRenderer({ content, className = '' }: Markd
             const isBlock = codeString.includes('\n') || !!match;
 
             if (isBlock) {
-              return <CodeBlock language={match?.[1] || ''} children={codeString} />;
+              return <CodeBlock language={match?.[1] || ''}>{codeString}</CodeBlock>;
             }
             // 行内代码
             return (

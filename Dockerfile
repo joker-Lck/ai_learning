@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+# 多阶段构建 - 构建阶段
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
@@ -9,7 +10,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Python 依赖
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# 多阶段构建 - 运行阶段
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 从构建阶段复制依赖
+COPY --from=builder /install /usr/local
 
 # 应用代码
 COPY . .
@@ -24,4 +33,5 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# 优化：使用 uvloop 提升性能
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--loop", "uvloop", "--http", "httptools"]

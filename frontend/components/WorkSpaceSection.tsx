@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Route, Lightbulb, TrendingUp,
@@ -524,7 +524,7 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
    主组件
    ═══════════════════════════════════════════ */
 
-export default function WorkSpaceSection({ onNavigateModule }: WorkSpaceSectionProps) {
+export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSectionProps) {
   const [previewResource, setPreviewResource] = useState<ApiResource | null>(null);
   const [resources, setResources] = useState<ApiResource[]>([]);
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -653,4 +653,4 @@ export default function WorkSpaceSection({ onNavigateModule }: WorkSpaceSectionP
       </AnimatePresence>
     </div>
   );
-}
+});
