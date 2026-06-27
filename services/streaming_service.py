@@ -28,8 +28,9 @@ class ProgressTracker:
                    total_steps: int = 100) -> Dict:
         """创建新任务"""
         # 定期清理过期任务
-        if len(self.tasks) > 100:
+        if len(self.tasks) > 50:
             self.cleanup_old_tasks()
+            self.force_cleanup()
 
         task_data = {
             "task_id": task_id,
@@ -122,7 +123,7 @@ class ProgressTracker:
         return user_tasks[:limit]
     
     def cleanup_old_tasks(self, max_age_hours: int = 24):
-        """清理过期任务"""
+        """清理过期任务（更积极的清理策略）"""
         from datetime import timedelta
         
         cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
@@ -138,6 +139,21 @@ class ProgressTracker:
         
         if tasks_to_remove:
             info(f"清理了 {len(tasks_to_remove)} 个过期任务")
+    
+    def force_cleanup(self, max_size: int = 50):
+        """强制清理：当任务数超过阈值时保留最新任务"""
+        if len(self.tasks) <= max_size:
+            return
+        sorted_tasks = sorted(
+            self.tasks.items(),
+            key=lambda x: x[1].get("updated_at") or x[1]["created_at"],
+            reverse=True,
+        )
+        to_keep = dict(sorted_tasks[:max_size])
+        removed = len(self.tasks) - len(to_keep)
+        self.tasks = to_keep
+        if removed > 0:
+            info(f"强制清理了 {removed} 个旧任务，保留 {max_size} 个")
 
 
 class SSEStreamGenerator:

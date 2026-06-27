@@ -25,6 +25,11 @@ from backend.api.auth import router as auth_router
 from backend.api.agent import router as agent_router
 from backend.api.stream import router as stream_router
 
+from backend.exceptions import (
+    AppException, DatabaseError, AIServiceError,
+    ResourceGenerationError, ValidationError,
+    AuthenticationError, AuthorizationError, RateLimitError,
+)
 from core.logger import (
     info, error as log_error, warning,
     set_request_context, clear_request_context,
@@ -139,6 +144,23 @@ async def validation_handler(request: Request, exc):
     return JSONResponse(
         status_code=422,
         content={"success": False, "error": "请求参数校验失败", "detail": str(exc)},
+    )
+
+
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    """统一处理自定义业务异常"""
+    request_id = getattr(request.state, "request_id", "unknown")
+    log_fn = log_error if exc.status_code >= 500 else warning
+    log_fn(f"业务异常[{request_id}]: [{exc.code}] {exc.message}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": exc.message,
+            "code": exc.code,
+            "request_id": request_id,
+        },
     )
 
 

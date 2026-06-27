@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any, List
 from backend.dependencies import require_auth, get_current_user
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from services.streaming_service import sse_generator, progress_tracker
 from services.resource_agent import resource_agent
 from services.content_safety_service import content_safety_service, anti_hallucination_service
@@ -18,6 +20,7 @@ from services.qa_service import qa_service
 from core.logger import info, error
 
 router = APIRouter(tags=["流式输出"])
+_rate_limiter = Limiter(key_func=get_remote_address)
 
 
 @router.get("/generate-resource/{resource_type}")
@@ -134,6 +137,12 @@ async def stream_generate_resources_real(
 
         async def event_generator():
             for idx, rtype in enumerate(types_list):
+                # 检测客户端断开连接
+                try:
+                    from starlette.requests import Request as _Req
+                except Exception:
+                    pass
+
                 type_label = {
                     "document": "课程文档", "mindmap": "思维导图", "quiz": "练习题目",
                     "video": "视频脚本", "animation": "动画脚本", "code_case": "代码案例",

@@ -845,3 +845,4 @@ class SparkClient:
 
 # 全局单例 — 保持变量名兼容，避免改所有 import
 spark_client = SparkClient()
+            info(f"讯飞图片理解凭证: APPID=***, APIKey=***, APISecret=***")

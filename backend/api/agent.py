@@ -8,6 +8,16 @@ from fastapi.responses import JSONResponse
 from typing import Dict, List, Optional, Any
 from backend.schemas.models import BaseResponse
 from backend.dependencies import require_auth, get_current_user
+from backend.schemas.request_models import (
+    BuildProfileRequest, GenerateResourcesRequest, PlanPathRequest,
+    TutorQueryRequest, AssessRequest, ComprehensivePlanRequest,
+    UpdatePathProgressRequest, ExportResourceRequest, SaveResourceRequest,
+    AdvancedSearchRequest, RecordSessionRequest,
+)
+from backend.exceptions import (
+    ValidationError, DatabaseError, AIServiceError, ResourceGenerationError,
+)
+from data.dao import get_resource_dao, get_activity_dao
 from services.agent_coordinator import agent_coordinator
 from services.profile_agent import ProfileAgent
 from services.path_agent import PathAgent
@@ -94,7 +104,7 @@ async def update_profile_field(
 
 @router.post("/generate-resources", response_model=BaseResponse)
 async def generate_learning_resources(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: GenerateResourcesRequest,
     user: dict = Depends(get_current_user)  # 允许guest用户
 ):
     """
@@ -110,44 +120,38 @@ async def generate_learning_resources(
     """
     try:
         user_id = user["id"]
-        info(f"用户 {user_id} 请求生成学习资源: {input_data.get('topic')}")
+        info(f"用户 {user_id} 请求生成学习资源: {input_data.topic}")
         
         # 获取学生画像
         profile_result = profile_agent.get_or_build_profile(user_id)
-        input_data["profile"] = profile_result.get("profile", {})
+        payload = input_data.model_dump()
+        payload["profile"] = profile_result.get("profile", {})
         
         result = agent_coordinator.execute_task(
             task_type="generate_resources",
             user_id=user_id,
-            input_data=input_data
+            input_data=payload
         )
 
         # 自动保存生成的资源到数据库
         if result.get("success") and result.get("data"):
-            try:
-                resources_data = result["data"].get("resources", [])
-                from data.db_operations import resource_db
-                if resource_db.connect():
-                    for res in resources_data:
-                        resource_db.cursor.execute("""
-                            INSERT INTO learning_resources
-                            (user_id, title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                        """, (
-                            user_id,
-                            res.get("title", ""),
-                            res.get("type", res.get("resource_type", "document")),
-                            input_data.get("subject", ""),
-                            input_data.get("topic", ""),
-                            input_data.get("difficulty", "intermediate"),
-                            json.dumps(res.get("content_data", res), ensure_ascii=False),
-                            f"user_{user_id}"
-                        ))
-                    resource_db.conn.commit()
-                    resource_db.close()
-                    info(f"非流式资源自动保存成功: {len(resources_data)} 条")
-            except Exception as save_err:
-                error(f"非流式资源自动保存失败: {save_err}")
+            resources_data = result["data"].get("resources", [])
+            dao = get_resource_dao()
+            saved = 0
+            for res in resources_data:
+                rid = dao.save(
+                    user_id=user_id,
+                    title=res.get("title", ""),
+                    resource_type=res.get("type", res.get("resource_type", "document")),
+                    subject=input_data.subject,
+                    topic=input_data.topic,
+                    difficulty=input_data.difficulty,
+                    content_data=res.get("content_data", res),
+                )
+                if rid:
+                    saved += 1
+            if saved:
+                info(f"非流式资源自动保存成功: {saved} 条")
 
         return BaseResponse(
             success=result["success"],
@@ -201,8 +205,8 @@ async def plan_learning_path(
 
 @router.post("/tutor")
 async def tutor_query(
-    input_data: Dict[str, Any] = Body(...),
-    user: dict = Depends(get_current_user)  # 允许guest用户
+    input_data: TutorQueryRequest,
+    user: dict = Depends(get_current_user)
 ):
     """
     智能辅导答疑 - 多模态解答（记忆增强版）
@@ -217,15 +221,15 @@ async def tutor_query(
     """
     try:
         user_id = user["id"]
-        info(f"用户 {user_id} 请求智能辅导, 问题: {input_data.get('question', '')[:50]}")
+        info(f"用户 {user_id} 请求智能辅导, 问题: {input_data.question[:50]}")
 
         # 验证必填字段
-        if not input_data.get("question"):
+        if not input_data.question:
             return JSONResponse(content={"success": False, "message": "问题内容不能为空", "data": None})
 
         # 使用辅导服务（已集成记忆增强）
         from services.tutor_agent import tutor_agent
-        result = tutor_agent.answer_query(user_id, input_data)
+        result = tutor_agent.answer_query(user_id, input_data.model_dump())
 
         info(f"辅导结果 - success: {result.get('success')}, 数据大小: {len(str(result.get('data', '')))} 字符")
 
@@ -249,8 +253,8 @@ async def tutor_query(
                     assessment_db.cursor.execute(
                         "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (%s, %s, %s)",
                         (user_id, 'tutor_query', json.dumps({
-                            "question": input_data.get("question", "")[:100],
-                            "subject": input_data.get("subject", "")
+                            "question": input_data.question[:100],
+                            "subject": input_data.subject
                         }, ensure_ascii=False))
                     )
                     assessment_db.conn.commit()
@@ -1086,44 +1090,12 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         user_id = user["id"]
         stats = {}
 
-        from data.db_operations import resource_db, assessment_db
-
-        # 资源数量
-        if resource_db.connect():
-            resource_db.cursor.execute(
-                "SELECT COUNT(*) as cnt FROM learning_resources WHERE user_id = %s OR (user_id IS NULL AND generated_by_agent = %s)",
-                (user_id, f"user_{user_id}")
-            )
-            stats["resource_count"] = resource_db.cursor.fetchone()["cnt"]
-            resource_db.close()
-        else:
-            stats["resource_count"] = 0
-
-        # 活动统计
-        if assessment_db.connect():
-            assessment_db.cursor.execute(
-                "SELECT COUNT(*) as cnt FROM learning_activities WHERE user_id = %s",
-                (user_id,)
-            )
-            stats["activity_count"] = assessment_db.cursor.fetchone()["cnt"]
-
-            assessment_db.cursor.execute(
-                "SELECT COUNT(DISTINCT DATE(created_at)) as days FROM learning_activities WHERE user_id = %s AND activity_type IN ('login', 'resource_generate', 'tutor_query', 'assessment')",
-                (user_id,)
-            )
-            stats["login_days"] = assessment_db.cursor.fetchone()["days"]
-
-            assessment_db.cursor.execute(
-                "SELECT COALESCE(SUM(duration_seconds), 0) as total FROM learning_activities WHERE user_id = %s AND activity_type = 'session'",
-                (user_id,)
-            )
-            stats["total_study_seconds"] = assessment_db.cursor.fetchone()["total"]
-
-            assessment_db.close()
-        else:
-            stats["activity_count"] = 0
-            stats["login_days"] = 0
-            stats["total_study_seconds"] = 0
+        res_dao = get_resource_dao()
+        act_dao = get_activity_dao()
+        stats["resource_count"] = res_dao.count_by_user(user_id)
+        stats["activity_count"] = act_dao.count_by_user(user_id)
+        stats["login_days"] = act_dao.get_login_days(user_id)
+        stats["total_study_seconds"] = act_dao.get_total_study_seconds(user_id)
 
         return {"success": True, "data": stats}
 
@@ -1140,30 +1112,8 @@ async def get_activity_logs(
     """获取用户最近活动日志"""
     try:
         user_id = user["id"]
-        from data.db_operations import assessment_db
-
-        if not assessment_db.connect():
-            return BaseResponse(success=False, message="数据库连接失败", data=None)
-
-        assessment_db.cursor.execute("""
-            SELECT id, activity_type, metadata, created_at
-            FROM learning_activities
-            WHERE user_id = %s
-            ORDER BY created_at DESC
-            LIMIT %s
-        """, (user_id, limit))
-
-        rows = assessment_db.cursor.fetchall()
-        for row in rows:
-            if row.get("metadata"):
-                try:
-                    row["metadata"] = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"]
-                except (json.JSONDecodeError, TypeError, ValueError):
-                    pass
-            if row.get("created_at"):
-                row["created_at"] = str(row["created_at"])
-
-        assessment_db.close()
+        act_dao = get_activity_dao()
+        rows = act_dao.get_recent(user_id, limit)
 
         return BaseResponse(success=True, data={"logs": rows})
 
@@ -1184,14 +1134,8 @@ async def record_session_time(
         if seconds < 10:
             return {"success": True, "message": "ignored"}
 
-        from data.db_operations import assessment_db
-        if assessment_db.connect():
-            assessment_db.cursor.execute(
-                "INSERT INTO learning_activities (user_id, activity_type, metadata, duration_seconds) VALUES (%s, %s, %s, %s)",
-                (user_id, 'session', json.dumps({"action": "页面浏览"}, ensure_ascii=False), seconds)
-            )
-            assessment_db.conn.commit()
-            assessment_db.close()
+        act_dao = get_activity_dao()
+        act_dao.record(user_id, 'session', {"action": "页面浏览"}, seconds)
 
         return {"success": True}
     except Exception as e:

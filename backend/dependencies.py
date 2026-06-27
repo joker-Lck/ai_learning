@@ -13,16 +13,12 @@ from data.data_manager import CacheManager
 
 # ── JWT 配置 ──
 _jwt_env = os.getenv("JWT_SECRET")
-if _jwt_env:
-    JWT_SECRET = _jwt_env
-else:
-    JWT_SECRET = secrets.token_urlsafe(48)
-    import warnings
-    warnings.warn(
-        "JWT_SECRET 未设置，已生成随机密钥（重启后所有 Token 失效）。"
-        "请在 .env 中配置 JWT_SECRET。",
-        stacklevel=2,
+_jwt_env = os.getenv("JWT_SECRET")
+if not _jwt_env or _jwt_env == "your_random_secret_key_here_at_least_32_chars":
+    raise RuntimeError(
+        "JWT_SECRET 未配置或使用了默认值，请在 .env 中设置一个随机密钥（至少32字符）。"
     )
+JWT_SECRET = _jwt_env
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
