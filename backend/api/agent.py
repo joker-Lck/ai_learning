@@ -1152,25 +1152,28 @@ async def advanced_search(
     user: dict = Depends(get_current_user),
 ):
     """
-    高级检索 — 支持 6 种现代检索策略
+    高级检索 — 支持 11 种检索策略
 
     输入格式:
     {
         "query": "检索内容",
         "subject": "学科（可选）",
-        "strategy": "auto|hyde|multi_query|rag_fusion|contextual|graph|hybrid|ensemble",
+        "strategy": "auto|knn|ann|hybrid|hyde|multi_query|rag_fusion|contextual|graph|hybrid_advl|ensemble",
         "limit": 5
     }
 
-    策略说明:
+    策略路由:
     - auto: 自动选择（短查询用 HyDE，长查询用 RAG-Fusion）
+    - knn: KNN 关键词检索（MySQL FULLTEXT INDEX 精确匹配）
+    - ann: ANN 向量检索（FAISS 语义匹配）
+    - hybrid: KNN + ANN + RRF 混合检索（基座策略）
     - hyde: 假设性文档嵌入（2023）
     - multi_query: 多查询检索（2023）
     - rag_fusion: RAG-Fusion + RRF 排序（2023，推荐）
     - contextual: 上下文精排（2024）
     - graph: 图谱增强检索（2024）
-    - hybrid: HyDE + RAG-Fusion 组合
-    - ensemble: 全方法集成（最全面）
+    - hybrid_advl: HyDE + RAG-Fusion + 基座混合（三路 RRF）
+    - ensemble: 全方法集成（6路取并集，最全面）
     """
     try:
         user_id = user["id"]

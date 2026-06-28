@@ -70,10 +70,11 @@ class AdvancedRetrievalService:
         model: str = "simple",
     ) -> List[Dict]:
         """
-        HyDE 检索：LLM 生成假设答案 → 向量化 → 检索
+        HyDE 检索：LLM 生成假设答案 → 向量化 → ANN 检索
 
         流程：
           query → LLM生成假设文档 → embedding → FAISS检索
+          （HyDE 的核心是用假设文档的向量替代原始查询向量）
 
         参数：
           query: 用户查询
@@ -87,13 +88,13 @@ class AdvancedRetrievalService:
         try:
             hypothetical_doc = self._generate_hypothetical_document(query, subject, model)
             if not hypothetical_doc:
-                warning("HyDE: 假设文档生成失败，降级为普通检索")
-                return self._fallback_vector_search(query, limit)
+                warning("HyDE: 假设文档生成失败，降级为混合检索")
+                return self._base_hybrid_search(query, subject, limit)
 
             doc_embedding = self.embedding_service.get_embedding(hypothetical_doc)
             if not doc_embedding:
-                warning("HyDE: 假设文档向量化失败，降级为普通检索")
-                return self._fallback_vector_search(query, limit)
+                warning("HyDE: 假设文档向量化失败，降级为混合检索")
+                return self._base_hybrid_search(query, subject, limit)
 
             results = self.rag_kb.search_documents_by_vector(doc_embedding, limit=limit)
             for r in results:
@@ -102,7 +103,7 @@ class AdvancedRetrievalService:
 
         except Exception as e:
             error(f"HyDE 检索失败: {e}")
-            return self._fallback_vector_search(query, limit)
+            return self._base_hybrid_search(query, subject, limit)
 
     def _generate_hypothetical_document(
         self, query: str, subject: str = None, model: str = "simple"
@@ -137,10 +138,10 @@ class AdvancedRetrievalService:
         num_variants: int = 3,
     ) -> List[Dict]:
         """
-        多查询检索：LLM 生成多个查询变体 → 分别检索 → 合并去重
+        多查询检索：LLM 生成多个查询变体 → 混合检索(KNN+ANN) → 合并去重
 
         流程：
-          query → LLM生成N个变体 → 每个变体检索 → 去重合并
+          query → LLM生成N个变体 → 每个变体hybrid检索(KNN+ANN+RRF) → 去重合并
 
         参数：
           query: 原始查询
@@ -156,16 +157,18 @@ class AdvancedRetrievalService:
             all_results = []
             for q in all_queries:
                 q_embedding = self.embedding_service.get_embedding(q)
-                if q_embedding:
-                    hits = self.rag_kb.search_documents_by_vector(q_embedding, limit=limit)
-                    for h in hits:
-                        doc_id = h.get('id')
-                        if doc_id not in seen_ids:
-                            seen_ids.add(doc_id)
-                            h['matched_query'] = q
-                            all_results.append(h)
+                hits = self.rag_kb.hybrid_search(
+                    query=q, query_embedding=q_embedding,
+                    subject=subject, limit=limit,
+                )
+                for h in hits:
+                    doc_id = h.get('id')
+                    if doc_id not in seen_ids:
+                        seen_ids.add(doc_id)
+                        h['matched_query'] = q
+                        all_results.append(h)
 
-            all_results.sort(key=lambda x: x.get('similarity', 0), reverse=True)
+            all_results.sort(key=lambda x: x.get('rrf_score', x.get('similarity', 0)), reverse=True)
             for r in all_results[:limit]:
                 r['retrieval_method'] = 'multi_query'
             return all_results[:limit]
@@ -202,10 +205,10 @@ class AdvancedRetrievalService:
         rrf_k: int = 60,
     ) -> List[Dict]:
         """
-        RAG-Fusion：多查询 + Reciprocal Rank Fusion 排序
+        RAG-Fusion：多查询 + 混合基座检索(KNN+ANN) + RRF 融合排序
 
         流程：
-          query → LLM生成N个变体 → 每个变体检索 → RRF融合排序
+          query → LLM生成N个变体 → 每个变体hybrid检索(KNN+ANN) → RRF融合排序
 
         RRF 公式：
           score(d) = Σ 1/(k + rank_i(d))
@@ -225,8 +228,11 @@ class AdvancedRetrievalService:
             ranked_lists = []
             for q in all_queries:
                 q_embedding = self.embedding_service.get_embedding(q)
-                if q_embedding:
-                    hits = self.rag_kb.search_documents_by_vector(q_embedding, limit=limit * 3)
+                hits = self.rag_kb.hybrid_search(
+                    query=q, query_embedding=q_embedding,
+                    subject=subject, limit=limit * 3,
+                )
+                if hits:
                     ranked_lists.append(hits)
 
             if not ranked_lists:
@@ -267,19 +273,19 @@ class AdvancedRetrievalService:
         limit: int = 5,
     ) -> List[Dict]:
         """
-        上下文检索：先粗粒度召回，再用 LLM 对候选文档做上下文相关性评分
+        上下文检索：混合检索(KNN+ANN)粗召回 → LLM 上下文精排
 
         流程：
-          query → 向量粗召回(top 20) → LLM上下文评分 → 精排返回
+          query → KNN+ANN混合粗召回(top 20) → LLM上下文评分 → 精排返回
 
         参考：Anthropic Contextual Retrieval (2024)
         """
         try:
             query_embedding = self.embedding_service.get_embedding(query)
-            if not query_embedding:
-                return self._fallback_vector_search(query, limit)
-
-            candidates = self.rag_kb.search_documents_by_vector(query_embedding, limit=20)
+            candidates = self.rag_kb.hybrid_search(
+                query=query, query_embedding=query_embedding,
+                subject=subject, limit=20,
+            )
             if not candidates:
                 return []
 
@@ -362,11 +368,11 @@ class AdvancedRetrievalService:
         graph_depth: int = 2,
     ) -> List[Dict]:
         """
-        图谱增强检索：实体识别 → 图谱遍历 → 查询扩展 → 融合检索
+        图谱增强检索：实体识别 → 图谱遍历 → 查询扩展 → 混合检索(KNN+ANN)
 
         流程：
           query → LLM提取实体 → 图谱1-2跳遍历 → 扩展查询
-          → 向量检索 + 图谱上下文 → 融合排序
+          → KNN+ANN混合检索 → 融合排序
 
         参考：Microsoft GraphRAG (2024) 简化版
         """
@@ -376,10 +382,10 @@ class AdvancedRetrievalService:
             expanded_query = self._expand_query_with_graph(query, graph_context)
 
             expanded_embedding = self.embedding_service.get_embedding(expanded_query)
-            if expanded_embedding:
-                results = self.rag_kb.search_documents_by_vector(expanded_embedding, limit=limit * 2)
-            else:
-                results = self._fallback_vector_search(query, limit * 2)
+            results = self.rag_kb.hybrid_search(
+                query=expanded_query, query_embedding=expanded_embedding,
+                subject=subject, limit=limit * 2,
+            )
 
             if subject:
                 results = [r for r in results if r.get('subject') == subject] + \
@@ -577,7 +583,26 @@ class AdvancedRetrievalService:
         return result[:100]
 
     # ══════════════════════════════════════════
-    # 7. 统一入口 — 智能路由
+    # 7. 混合基座检索 — KNN + ANN + RRF
+    # ══════════════════════════════════════════
+
+    def _base_hybrid_search(
+        self, query: str, subject: str = None, limit: int = 5
+    ) -> List[Dict]:
+        """
+        基座检索：KNN 全文检索 + ANN 向量检索 → RRF 融合
+        所有高级策略的底层检索方法
+        """
+        query_embedding = self.embedding_service.get_embedding(query)
+        return self.rag_kb.hybrid_search(
+            query=query,
+            query_embedding=query_embedding,
+            subject=subject,
+            limit=limit,
+        )
+
+    # ══════════════════════════════════════════
+    # 8. 统一入口 — 策略路由
     # ══════════════════════════════════════════
 
     def smart_search(
@@ -591,20 +616,35 @@ class AdvancedRetrievalService:
         """
         智能检索入口：根据策略选择最佳检索方法
 
-        参数：
-          strategy:
-            - "auto"         — 自动选择（默认）
-            - "hyde"         — 假设性文档嵌入
-            - "multi_query"  — 多查询检索
-            - "rag_fusion"   — RAG-Fusion（推荐）
-            - "contextual"   — 上下文精排
-            - "graph"        — 图谱增强
-            - "hybrid"       — HyDE + RAG-Fusion 组合
-            - "ensemble"     — 全方法集成（取并集）
+        策略路由：
+          strategy        说明
+          ─────────────────────────────────────────
+          "auto"          自动选择（默认）
+                          短查询(<15字) → HyDE
+                          长查询 → RAG-Fusion
+          "knn"           KNN 关键词检索（MySQL FULLTEXT）
+          "ann"           ANN 向量检索（FAISS）
+          "hybrid"        KNN + ANN + RRF 混合（基座）
+          "hyde"          假设性文档嵌入（2023）
+          "multi_query"   多查询检索（2023）
+          "rag_fusion"    RAG-Fusion + RRF（2023，推荐）
+          "contextual"    上下文精排（2024）
+          "graph"         图谱增强检索（2024）
+          "hybrid_advl"   HyDE + RAG-Fusion + 基座混合
+          "ensemble"      全方法集成（最全面）
         """
         strategy = strategy.lower()
 
-        if strategy == "hyde":
+        if strategy == "knn":
+            return self.rag_kb.search_documents_by_fulltext(query, subject, limit)
+        elif strategy == "ann":
+            embedding = self.embedding_service.get_embedding(query)
+            if embedding:
+                return self.rag_kb.search_documents_by_vector(embedding, limit)
+            return []
+        elif strategy == "hybrid":
+            return self._base_hybrid_search(query, subject, limit)
+        elif strategy == "hyde":
             return self.hyde_search(query, subject, limit)
         elif strategy == "multi_query":
             return self.multi_query_search(query, subject, limit)
@@ -614,8 +654,8 @@ class AdvancedRetrievalService:
             return self.contextual_search(query, subject, limit)
         elif strategy == "graph":
             return self.graph_enhanced_search(user_id, query, subject, limit)
-        elif strategy == "hybrid":
-            return self._hybrid_search(user_id, query, subject, limit)
+        elif strategy == "hybrid_advl":
+            return self._hybrid_advanced_search(user_id, query, subject, limit)
         elif strategy == "ensemble":
             return self._ensemble_search(user_id, query, subject, limit)
         else:
@@ -624,38 +664,49 @@ class AdvancedRetrievalService:
     def _auto_search(
         self, user_id: int, query: str, subject: str, limit: int
     ) -> List[Dict]:
-        """自动策略：短查询用 HyDE，长查询用 RAG-Fusion"""
+        """
+        自动策略路由：
+
+        查询特征 → 策略选择：
+          < 15 字（短查询/概念性） → HyDE（生成假设答案扩展语义）
+          ≥ 15 字（长查询/具体性） → RAG-Fusion + 基座混合
+        """
         if len(query) < 15:
             return self.hyde_search(query, subject, limit)
         else:
             return self.rag_fusion_search(query, subject, limit)
 
-    def _hybrid_search(
+    def _hybrid_advanced_search(
         self, user_id: int, query: str, subject: str, limit: int
     ) -> List[Dict]:
-        """HyDE + RAG-Fusion 组合"""
-        hyde_results = self.hyde_search(query, subject, limit=limit * 2)
-        fusion_results = self.rag_fusion_search(query, subject, limit=limit * 2)
-
+        """HyDE + RAG-Fusion + 基座KNN+ANN 三路 RRF 融合"""
         rrf_k = 60
         scores = {}
         data_map = {}
 
-        for rank, doc in enumerate(hyde_results):
-            doc_id = doc.get('id')
-            scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
-            data_map[doc_id] = doc
+        methods = [
+            ('base_hybrid', lambda: self._base_hybrid_search(query, subject, limit * 2)),
+            ('hyde', lambda: self.hyde_search(query, subject, limit * 2)),
+            ('rag_fusion', lambda: self.rag_fusion_search(query, subject, limit * 2)),
+        ]
 
-        for rank, doc in enumerate(fusion_results):
-            doc_id = doc.get('id')
-            scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
-            data_map[doc_id] = doc
+        for method_name, method_fn in methods:
+            try:
+                results = method_fn()
+                for rank, doc in enumerate(results):
+                    doc_id = doc.get('id')
+                    if doc_id is None:
+                        continue
+                    scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
+                    data_map[doc_id] = doc
+            except Exception as e:
+                warning(f"Hybrid_Advl 中 {method_name} 失败: {e}")
 
         sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
         results = []
         for doc_id in sorted_ids[:limit]:
             doc = data_map[doc_id]
-            doc['retrieval_method'] = 'hybrid'
+            doc['retrieval_method'] = 'hybrid_advl'
             doc['hybrid_score'] = scores[doc_id]
             results.append(doc)
         return results
@@ -663,12 +714,18 @@ class AdvancedRetrievalService:
     def _ensemble_search(
         self, user_id: int, query: str, subject: str, limit: int
     ) -> List[Dict]:
-        """全方法集成：5种方法取并集，RRF 融合"""
+        """
+        全方法集成：7 种方法取并集，RRF 融合
+
+        包含：KNN+ANN基座、HyDE、Multi-Query、RAG-Fusion、
+             Contextual、Graph-Enhanced
+        """
         rrf_k = 60
         scores = {}
         data_map = {}
 
         methods = [
+            ('base_hybrid', lambda: self._base_hybrid_search(query, subject, limit * 2)),
             ('hyde', lambda: self.hyde_search(query, subject, limit * 2)),
             ('multi_query', lambda: self.multi_query_search(query, subject, limit * 2)),
             ('rag_fusion', lambda: self.rag_fusion_search(query, subject, limit * 2)),
@@ -681,6 +738,8 @@ class AdvancedRetrievalService:
                 results = method_fn()
                 for rank, doc in enumerate(results):
                     doc_id = doc.get('id')
+                    if doc_id is None:
+                        continue
                     scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
                     data_map[doc_id] = doc
             except Exception as e:

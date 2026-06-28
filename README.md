@@ -574,6 +574,25 @@ AI: 已更新您的学习偏好为"实践型"...
 
 ---
 
+### 6. 知识库模块
+
+**功能**: 文档上传 + KNN+ANN+RRF 混合检索
+
+**使用流程**:
+1. 点击侧边栏"知识库"
+2. 拖拽或选择文件上传（支持 TXT/MD/PDF/DOC/PPT，单文件最大 20MB）
+3. 可选填写学科标签
+4. AI 自动解析文档、提取知识点、生成摘要
+5. 文档入库后通过混合检索引擎检索
+
+**检索能力**:
+- **KNN 关键词路径**：MySQL FULLTEXT INDEX 精确匹配专业术语
+- **ANN 向量路径**：FAISS 语义匹配相近表达
+- **RRF 融合排序**：两条路径结果统一排序
+- **高级策略**：HyDE / Multi-Query / RAG-Fusion / Contextual / Graph-Enhanced
+
+---
+
 ## API接口
 
 ### 学习智能体API（核心）
@@ -692,7 +711,10 @@ AI: 已更新您的学习偏好为"实践型"...
 ```
 用户查询
    │
-   ├─ 语义路径 ──→ Embedding(768维) ──→ FAISS ANN 检索 ──→ Top-K 结果
+   ├─ KNN 关键词路径 ──→ MySQL FULLTEXT INDEX ──→ MATCH...AGAINST ──→ Top-K 结果
+   │                        (专业术语精确匹配)
+   │
+   ├─ ANN 向量路径 ──→ Embedding(768维) ──→ FAISS ANN 检索 ──→ Top-K 结果
    │                                           │
    │                                    三级回退策略
    │                                    ┌──────┴──────┐
@@ -705,21 +727,25 @@ AI: 已更新您的学习偏好为"实践型"...
    │                                    │
    │                                    │  FAISS 不可用
    │                                    ▼
-   │                              暴力 KNN 回退
-   │                              (cosine_similarity)
+   │                              暴力余弦回退
+   │                              (numpy 向量化)
    │
-   └─ 关键词路径 ──→ Jaccard 相似度 + MySQL JSON_SEARCH
-                              │
-                              ▼
-                     关键词语义匹配结果
-                              │
-                              ▼
-                   ┌──── 结果融合 & 排序 ────┐
-                   │   RRF 倒数排序融合      │
-                   │   去重 + Top-K 截断     │
-                   └──────────┬─────────────┘
-                              ▼
-                        最终检索结果
+   └───────────────┬───────────────────────┘
+                   │
+                   ▼
+        ┌──── RRF 融合排序 ────┐
+        │  RRF(d)=Σ1/(k+rank)  │
+        │  去重 + Top-K 截断   │
+        └──────────┬───────────┘
+                   │
+                   ▼
+             混合检索结果（基座）
+                   │
+   ┌───────────────┼───────────────────────┐
+   │               │                       │
+   ▼               ▼                       ▼
+ HyDE          RAG-Fusion              Graph-Enhanced
+ Multi-Query   Contextual              策略路由(smart_search)
 ```
 
 ---
@@ -1190,14 +1216,15 @@ def _set_cache_result(cache_key, result):
 
 ---
 
-### 6. 双模式搜索融合（语义 + 关键词）
+### 6. 双模式搜索融合（KNN + ANN + RRF）
 
-系统同时运行**语义路径**和**关键词路径**，在 `search_documents` 方法中融合排序：
+系统采用**三路混合检索引擎**，融合向量语义检索（ANN）与关键词精确匹配（KNN），配合 RRF 融合排序：
 
 | 检索路径 | 算法 | 优势 | 适用场景 | 源文件 |
 |---------|------|------|---------|--------|
-| **语义路径** | FAISS `IndexFlatIP` / 暴力余弦KNN | 理解语义，模糊匹配 | "什么是机器学习？" | `rag_knowledge_base.py:422-527` |
-| **关键词路径** | Jaccard + MySQL `LIKE` | 精确匹配，速度快 | "数据结构 第三章" | `rag_knowledge_base.py:348-420` |
+| **KNN 关键词路径** | MySQL `FULLTEXT INDEX` + `MATCH...AGAINST` | 精确匹配专业术语、公式、代码 | "梯度下降" | `rag_knowledge_base.py` |
+| **ANN 向量路径** | FAISS `IndexFlatIP`（归一化内积=余弦相似度） | 理解语义相近表达 | "什么是机器学习？" | `rag_knowledge_base.py` |
+| **RRF 融合** | Reciprocal Rank Fusion | 兼顾精确与语义 | 所有查询 | `rag_knowledge_base.py` |
 
 **融合策略**: RRF（Reciprocal Rank Fusion）倒数排序融合，公式为：
 
@@ -1207,7 +1234,7 @@ RRF_score(d) = Σ 1/(k + rank_i(d))
 其中 k=60（常数），rank_i(d) 为文档 d 在第 i 条路径中的排名
 ```
 
-兼顾语义相关性和关键词精确度，避免单一路径的盲区。
+KNN 结果 + ANN 结果 → RRF 统一排序 → Top-N 返回。兼顾语义相关性和关键词精确度，避免单一路径的盲区。
 
 ---
 
@@ -1215,17 +1242,17 @@ RRF_score(d) = Σ 1/(k + rank_i(d))
 
 **源文件**: `services/advanced_retrieval_service.py` → `AdvancedRetrievalService` 类
 
-系统在基础混合检索之上，实现了 5 种 2023-2026 年前沿检索方法：
+系统在 KNN+ANN+RRF 混合基座之上，实现了 5 种 2023-2026 年前沿检索方法，所有高级策略均以混合检索为底层基座：
 
 | 方法 | 来源 | 核心思想 | 适用场景 |
 |------|------|----------|----------|
-| **HyDE** | Gao et al., 2023 | LLM 生成假设答案，用答案向量检索 | 短查询、概念性问题 |
-| **Multi-Query** | LangChain, 2023 | LLM 生成多个查询变体，分别检索合并 | 提高召回率 |
-| **RAG-Fusion + RRF** | Raudaschl, 2023 | 多查询 + 倒数排名融合排序 | 默认推荐策略 |
-| **Contextual Retrieval** | Anthropic, 2024 | 给每个 chunk 添加上下文前缀再嵌入 | 文档入库时 |
-| **Graph-Enhanced RAG** | Microsoft GraphRAG, 2024 | 利用实体图谱扩展查询 | 有图谱数据时 |
+| **HyDE** | Gao et al., 2023 | LLM 生成假设答案，用答案向量做 ANN 检索 | 短查询、概念性问题 |
+| **Multi-Query** | LangChain, 2023 | LLM 生成多个查询变体，每个变体走混合检索(KNN+ANN)，合并去重 | 提高召回率 |
+| **RAG-Fusion + RRF** | Raudaschl, 2023 | 多查询 + 混合检索 + 倒数排名融合排序 | 默认推荐策略 |
+| **Contextual Retrieval** | Anthropic, 2024 | 混合检索粗召回 → LLM 上下文相关性精排 | 高精度场景 |
+| **Graph-Enhanced RAG** | Microsoft GraphRAG, 2024 | 实体图谱扩展查询 → 混合检索 | 有图谱数据时 |
 
-#### 统一检索入口
+#### 策略路由（11 种）
 
 ```python
 from services.advanced_retrieval_service import retrieval_service
@@ -1233,15 +1260,23 @@ from services.advanced_retrieval_service import retrieval_service
 # 智能路由：自动选择最佳策略
 results = retrieval_service.smart_search(
     user_id=1, query="梯度下降原理", subject="机器学习",
-    limit=5, strategy="auto"  # 可选: hyde/multi_query/rag_fusion/contextual/graph/hybrid/ensemble
+    limit=5, strategy="auto"
 )
 ```
 
-#### 策略说明
-
-- **auto**: 自动选择（短查询用 HyDE，长查询用 RAG-Fusion）
-- **hybrid**: HyDE + RAG-Fusion 组合，RRF 融合
-- **ensemble**: 全部 5 种方法取并集，RRF 融合（最全面）
+| 策略 | 说明 | 适用场景 |
+|------|------|----------|
+| `auto` | 自动选择（短查询用 HyDE，长查询用 RAG-Fusion） | 默认 |
+| `knn` | KNN 关键词检索（MySQL FULLTEXT INDEX 精确匹配） | 专业术语、公式 |
+| `ann` | ANN 向量检索（FAISS 语义匹配） | 模糊语义查询 |
+| `hybrid` | KNN + ANN + RRF 混合（基座策略） | 通用推荐 |
+| `hyde` | 假设性文档嵌入（2023） | 短查询、概念性问题 |
+| `multi_query` | 多查询检索（2023） | 提高召回率 |
+| `rag_fusion` | RAG-Fusion + RRF（2023） | 通用推荐 |
+| `contextual` | 上下文精排（2024） | 高精度场景 |
+| `graph` | 图谱增强检索（2024） | 有图谱数据时 |
+| `hybrid_advl` | 基座 + HyDE + RAG-Fusion 三路 RRF | 平衡速度与精度 |
+| `ensemble` | 全部 6 种方法取并集，RRF 融合 | 最全面 |
 
 #### 智能辅导集成
 
@@ -1422,13 +1457,14 @@ def search_similar_questions(self, question_text, limit=5):
 | 3 | **增量索引更新** | 新文档入库时增量添加到 FAISS 索引，避免全量重建；删除时才触发重建（因为 FAISS 不支持原生删除） |
 | 4 | **惰性索引构建** | 首次向量检索时才从数据库加载所有 embedding 构建 FAISS 索引，启动时不阻塞 |
 | 5 | **多层缓存机制** | 查询结果带 TTL 缓存（RAG 缓存 600 秒，QA 缓存 300 秒），LRU 淘汰策略（上限 200/100 条） |
-| 6 | **双模式搜索融合** | 关键词搜索（Jaccard 相似度 + MySQL JSON 查询）与向量搜索（余弦相似度 + FAISS）并存，覆盖精确匹配和语义匹配两种需求 |
+| 6 | **三路混合检索引擎** | KNN 关键词检索（MySQL FULLTEXT）+ ANN 向量检索（FAISS）+ RRF 融合排序，兼顾精确匹配和语义匹配 |
 | 7 | **防幻觉 RAG 验证** | 将 AI 生成内容的关键实体在 RAG 知识库中交叉验证，计算置信度，标注不确定性来源 |
 | 8 | **线程安全设计** | `VectorIndexManager` 使用 `threading.Lock` 保护所有索引读写操作，适合 FastAPI 多线程环境 |
 | 9 | **numpy 向量化暴力搜索** | 暴力向量搜索使用 numpy 矩阵批量计算余弦相似度，速度提升 10-100 倍 |
 | 10 | **AC 自动机敏感词匹配** | 内容安全服务使用 AC 自动机算法，实现 O(n) 多模式匹配，替代逐词遍历 |
 | 11 | **LRU Cache 线程安全缓存** | 使用 `collections.OrderedDict` 实现 LRU 缓存，支持 TTL 过期和线程安全 |
-| 12 | **2023-2026 前沿检索算法** | 集成 HyDE、Multi-Query、RAG-Fusion、Contextual Retrieval、Graph-Enhanced RAG 五种现代检索方法 |
+| 12 | **2023-2026 前沿检索算法** | 集成 HyDE、Multi-Query、RAG-Fusion、Contextual Retrieval、Graph-Enhanced RAG 五种现代检索方法，均以 KNN+ANN+RRF 混合检索为基座 |
+| 13 | **11 种策略路由** | smart_search 统一入口支持 11 种检索策略，按查询特征自动路由到最佳方法 |
 
 ---
 

@@ -47,8 +47,8 @@ def init_rag_database():
             usage_count INT DEFAULT 0 COMMENT '使用次数',
             is_public TINYINT(1) DEFAULT 1 COMMENT '是否公开',
             
-            -- 全文索引（用于语义检索，基于 JSON 提取的文本）
-            FULLTEXT INDEX ft_title (title),
+            -- 全文索引（ngram parser 支持中文分词）
+            FULLTEXT INDEX ft_title (title) WITH PARSER ngram,
             
             -- 普通索引
             INDEX idx_subject (subject),

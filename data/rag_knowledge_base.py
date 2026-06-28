@@ -8,7 +8,6 @@ import time
 import threading
 from collections import OrderedDict
 from .config import get_rag_db_config
-from .redis_cache import cache_get, cache_set, cache_delete, cache_clear_prefix
 from datetime import datetime
 import os
 import numpy as np
@@ -60,18 +59,6 @@ class LRUCache:
 
 _query_cache = LRUCache(max_size=200, ttl=600)
 _CACHE_TTL = 600
-
-def _get_cache_key(sql, params):
-    """生成缓存键"""
-    return f"rag:{sql}:{str(params)}"
-
-def _get_cached_result(cache_key):
-    """获取缓存结果"""
-    return _query_cache.get(cache_key)
-
-def _set_cache_result(cache_key, result):
-    """设置缓存结果"""
-    _query_cache.set(cache_key, result)
 
 def _clear_search_cache():
     """清空搜索缓存"""
@@ -581,92 +568,6 @@ class RAGKnowledgeBase:
         finally:
             self.close()
     
-    def search_documents(self, keywords, subject=None, limit=10):
-        """搜索知识文档（优先 Redis → L1 → DB）"""
-        try:
-            redis_key = f"search:{keywords[:50]}:{subject}:{limit}"
-            cached = cache_get("rag_search", redis_key)
-            if cached:
-                return cached
-
-            cache_key = _get_cache_key("search_docs", (keywords[:50], subject, limit))
-            cached = _get_cached_result(cache_key)
-            if cached:
-                return cached
-            
-            self.connect()
-            
-            if subject:
-                sql = """SELECT id, title, subject, document_data
-                        FROM knowledge_documents
-                        WHERE subject = %s
-                          AND (title LIKE %s 
-                               OR JSON_EXTRACT(document_data, '$.analysis.summary') LIKE %s
-                               OR JSON_SEARCH(document_data, 'one', %s, NULL, '$.analysis.knowledge_points[*]') IS NOT NULL)
-                        ORDER BY usage_count DESC, upload_time DESC
-                        LIMIT %s"""
-                search_term = f"%{keywords}%"
-                self.cursor.execute(sql, (subject, search_term, search_term, keywords, limit))
-            else:
-                sql = """SELECT id, title, subject, document_data
-                        FROM knowledge_documents
-                        WHERE title LIKE %s 
-                           OR JSON_EXTRACT(document_data, '$.analysis.summary') LIKE %s
-                           OR JSON_SEARCH(document_data, 'one', %s, NULL, '$.analysis.knowledge_points[*]') IS NOT NULL
-                        ORDER BY usage_count DESC, upload_time DESC
-                        LIMIT %s"""
-                search_term = f"%{keywords}%"
-                self.cursor.execute(sql, (search_term, search_term, keywords, limit))
-            
-            results = self.cursor.fetchall()
-            
-            if not results:
-                return self._simple_search(keywords, subject, limit)
-            
-            keyword_set = set(keywords.lower().split())
-            enriched_results = []
-            
-            for result in results:
-                doc_data = result.get('document_data')
-                if isinstance(doc_data, str):
-                    doc_data = json.loads(doc_data)
-                
-                ai_summary = doc_data.get('analysis', {}).get('summary', '')
-                knowledge_points = doc_data.get('analysis', {}).get('knowledge_points', [])
-                raw_text = doc_data.get('content', {}).get('raw_text', '')[:1000]
-                
-                text = f"{result.get('title', '')} {ai_summary} {','.join(knowledge_points)}"
-                text_words = set(text.lower().split())
-                common = len(keyword_set & text_words)
-                total = len(keyword_set | text_words)
-                similarity = common / total if total > 0 else 0
-                
-                enriched_results.append({
-                    'id': result['id'],
-                    'title': result['title'],
-                    'subject': result['subject'],
-                    'content_text': raw_text,
-                    'ai_summary': ai_summary,
-                    'knowledge_points': knowledge_points,
-                    'similarity': similarity,
-                    'usage_count': result.get('usage_count', 0)
-                })
-            
-            enriched_results.sort(key=lambda x: x['similarity'], reverse=True)
-            final_results = enriched_results[:limit]
-            
-            if final_results:
-                _set_cache_result(cache_key, final_results)
-                cache_set("rag_search", final_results, 600, redis_key)
-            
-            return final_results
-            
-        except Exception as e:
-            error(f"搜索文档失败：{str(e)}")
-            return self._simple_search(keywords, subject, limit)
-        finally:
-            self.close()
-    
     def search_documents_by_vector(self, query_embedding, limit=5):
         """
         基于向量相似度检索文档（优先 FAISS，回退暴力搜索）
@@ -830,6 +731,178 @@ class RAGKnowledgeBase:
         finally:
             self.close()
     
+    def search_documents_by_fulltext(self, keywords, subject=None, limit=10):
+        """
+        KNN 关键词检索：FULLTEXT 标题匹配 + JSON LIKE 补充
+
+        1. MATCH(title) AGAINST — FULLTEXT 精确匹配（高权重）
+        2. JSON_EXTRACT LIKE — 摘要/知识点模糊匹配（补充覆盖）
+        3. 去重合并，FULLTEXT 命中的排前面
+        """
+        try:
+            self.connect()
+
+            seen_ids = set()
+            enriched = []
+
+            # ── 路径 1: FULLTEXT 标题匹配 ──
+            ft_results = self._fulltext_title_search(keywords, subject, limit)
+            for doc in ft_results:
+                seen_ids.add(doc['id'])
+                enriched.append(doc)
+
+            # ── 路径 2: JSON LIKE 补充（摘要 + 知识点）──
+            like_results = self._json_like_search(keywords, subject, limit)
+            for doc in like_results:
+                if doc['id'] not in seen_ids:
+                    seen_ids.add(doc['id'])
+                    doc['similarity'] = doc.get('similarity', 0) * 0.5
+                    enriched.append(doc)
+
+            if not enriched:
+                return self._simple_search(keywords, subject, limit)
+
+            enriched.sort(key=lambda x: x.get('similarity', 0), reverse=True)
+            return enriched[:limit]
+
+        except Exception as e:
+            warning(f"FULLTEXT 检索失败，降级 LIKE: {e}")
+            return self._simple_search(keywords, subject, limit)
+        finally:
+            self.close()
+
+    def _fulltext_title_search(self, keywords, subject, limit):
+        """FULLTEXT MATCH(title) AGAINST 检索"""
+        try:
+            if subject:
+                sql = """SELECT id, title, subject, document_data,
+                            MATCH(title) AGAINST(%s IN BOOLEAN MODE) AS ft_score
+                         FROM knowledge_documents
+                         WHERE subject = %s
+                           AND MATCH(title) AGAINST(%s IN BOOLEAN MODE)
+                         ORDER BY ft_score DESC
+                         LIMIT %s"""
+                self.cursor.execute(sql, (keywords, subject, keywords, limit))
+            else:
+                sql = """SELECT id, title, subject, document_data,
+                            MATCH(title) AGAINST(%s IN BOOLEAN MODE) AS ft_score
+                         FROM knowledge_documents
+                         WHERE MATCH(title) AGAINST(%s IN BOOLEAN MODE)
+                         ORDER BY ft_score DESC
+                         LIMIT %s"""
+                self.cursor.execute(sql, (keywords, keywords, limit))
+
+            results = []
+            for row in self.cursor.fetchall():
+                doc_data = row.get('document_data')
+                if isinstance(doc_data, str):
+                    doc_data = json.loads(doc_data)
+                raw_text = doc_data.get('content', {}).get('raw_text', '')
+                results.append({
+                    'id': row['id'],
+                    'title': row['title'],
+                    'subject': row['subject'],
+                    'content_text': raw_text[:1000],
+                    'similarity': float(row.get('ft_score', 0)),
+                    'document_data': doc_data,
+                    'retrieval_method': 'knn_fulltext',
+                })
+            return results
+        except Exception as e:
+            warning(f"FULLTEXT 标题检索失败: {e}")
+            return []
+
+    def _json_like_search(self, keywords, subject, limit):
+        """JSON 字段 LIKE 检索（摘要 + 知识点）"""
+        try:
+            search_term = f"%{keywords}%"
+            if subject:
+                sql = """SELECT id, title, subject, document_data
+                         FROM knowledge_documents
+                         WHERE subject = %s
+                           AND (JSON_EXTRACT(document_data, '$.analysis.summary') LIKE %s
+                                OR JSON_SEARCH(document_data, 'one', %s, NULL, '$.analysis.knowledge_points[*]') IS NOT NULL)
+                         ORDER BY usage_count DESC
+                         LIMIT %s"""
+                self.cursor.execute(sql, (subject, search_term, keywords, limit))
+            else:
+                sql = """SELECT id, title, subject, document_data
+                         FROM knowledge_documents
+                         WHERE JSON_EXTRACT(document_data, '$.analysis.summary') LIKE %s
+                            OR JSON_SEARCH(document_data, 'one', %s, NULL, '$.analysis.knowledge_points[*]') IS NOT NULL
+                         ORDER BY usage_count DESC
+                         LIMIT %s"""
+                self.cursor.execute(sql, (search_term, keywords, limit))
+
+            results = []
+            for row in self.cursor.fetchall():
+                doc_data = row.get('document_data')
+                if isinstance(doc_data, str):
+                    doc_data = json.loads(doc_data)
+                raw_text = doc_data.get('content', {}).get('raw_text', '')
+                results.append({
+                    'id': row['id'],
+                    'title': row['title'],
+                    'subject': row['subject'],
+                    'content_text': raw_text[:1000],
+                    'similarity': 0.3,
+                    'document_data': doc_data,
+                    'retrieval_method': 'knn_json_like',
+                })
+            return results
+        except Exception as e:
+            warning(f"JSON LIKE 检索失败: {e}")
+            return []
+
+    def hybrid_search(self, query, query_embedding=None, subject=None,
+                      limit=5, rrf_k=60):
+        """
+        混合检索：KNN 关键词 + ANN 向量 → RRF 融合排序
+
+        RRF 公式: RRF_score(d) = Σ 1/(k + rank_i(d)),  k=60
+
+        参数：
+          query: 关键词查询文本
+          query_embedding: 查询向量（可选，为 None 时跳过 ANN）
+          subject: 学科过滤
+          limit: 返回数量
+          rrf_k: RRF 平滑常数
+        """
+        rrf_scores = {}
+        data_map = {}
+
+        # ── KNN 关键词路径 ──
+        knn_results = self.search_documents_by_fulltext(query, subject, limit=limit * 3)
+        for rank, doc in enumerate(knn_results):
+            doc_id = doc.get('id')
+            if doc_id is None:
+                continue
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
+            data_map[doc_id] = doc
+
+        # ── ANN 向量路径 ──
+        if query_embedding:
+            ann_results = self.search_documents_by_vector(query_embedding, limit=limit * 3)
+            for rank, doc in enumerate(ann_results):
+                doc_id = doc.get('id')
+                if doc_id is None:
+                    continue
+                rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
+                if doc_id not in data_map:
+                    data_map[doc_id] = doc
+
+        if not rrf_scores:
+            return []
+
+        sorted_ids = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
+        results = []
+        for doc_id in sorted_ids[:limit]:
+            doc = data_map[doc_id]
+            doc['rrf_score'] = rrf_scores[doc_id]
+            doc['retrieval_method'] = 'hybrid_knn_ann'
+            results.append(doc)
+        return results
+
     def _simple_search(self, keywords, subject=None, limit=10):
         """简单的 LIKE 搜索（回退方案）"""
         try:

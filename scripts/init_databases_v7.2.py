@@ -526,7 +526,7 @@ def init_rag_database():
                 upload_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
                 usage_count INT DEFAULT 0 COMMENT '使用次数',
                 is_public TINYINT(1) DEFAULT 1 COMMENT '是否公开',
-                FULLTEXT INDEX ft_title (title),
+                FULLTEXT INDEX ft_title (title) WITH PARSER ngram,
                 INDEX idx_subject (subject),
                 INDEX idx_upload_time (upload_time),
                 INDEX idx_uploaded_by (uploaded_by),

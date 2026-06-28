@@ -93,12 +93,8 @@ export default function RagKnowledgeModule() {
             <Database className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-3xl font-bold text-white">上传到知识库</h3>
-            <p className="text-base text-white/35">上传学习资料，系统自动解析并存入 RAG 知识库</p>
-          </div>
-          <div>
             <h3 className="text-white font-semibold text-base">上传到知识库</h3>
-            <p className="text-white/35 text-xs">上传学习资料，系统自动解析并存入 RAG 知识库</p>
+            <p className="text-white/35 text-xs">上传学习资料，系统自动解析并存入 RAG 知识库（KNN+ANN+RRF 混合检索）</p>
           </div>
         </div>
 
