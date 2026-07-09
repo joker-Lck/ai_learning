@@ -58,6 +58,20 @@ data/faiss_index/
 uploads/*
 !uploads/.gitkeep
 
+# Portable dependencies (build.py downloads)
+downloads/
+mysql_portable/
+node_portable/
+mysql/
+
+# Build outputs
+*.exe
+*.msi
+*.zip
+
+# Mimocode
+.mimocode/
+
 # Temp
 *.tmp
 *.bak
