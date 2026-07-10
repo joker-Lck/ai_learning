@@ -445,11 +445,13 @@ graph TD
         try:
             from data.db_operations import profile_db
             with profile_db:
-                sql = "SELECT profile_data FROM student_profiles WHERE user_id = %s ORDER BY version DESC LIMIT 1"
+                sql = "SELECT profile_data FROM student_profiles WHERE user_id = ? ORDER BY version DESC LIMIT 1"
                 profile_db.cursor.execute(sql, (user_id,))
                 result = profile_db.cursor.fetchone()
-                if result and result.get("profile_data"):
-                    return json.loads(result["profile_data"])
+                if result:
+                    row = dict(result)
+                    if row.get("profile_data"):
+                        return json.loads(row["profile_data"])
                 return None
         except Exception as e:
             error(f"获取用户画像失败: {str(e)}")
@@ -461,7 +463,7 @@ graph TD
             from data.db_operations import assessment_db
             with assessment_db:
                 sql = """INSERT INTO learning_activities (user_id, activity_type, metadata, duration_seconds)
-                         VALUES (%s, %s, %s, %s)"""
+                         VALUES (?, ?, ?, ?)"""
                 assessment_db.cursor.execute(sql, (
                     user_id, "tutor_query",
                     json.dumps({"question": question,

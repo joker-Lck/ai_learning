@@ -8,7 +8,6 @@ slowapi==0.1.9
 
 # AI & 数据库
 openai==2.38.0
-mysql-connector-python==9.7.0
 python-dotenv==1.2.2
 requests>=2.31.0
 

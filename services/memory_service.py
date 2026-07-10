@@ -14,13 +14,13 @@
 """
 
 import json
+import sqlite3
 import numpy as np
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import threading
-import mysql.connector
-from data.config import get_memory_db_config
+from data.config import get_memory_db_path
 from core.logger import info, error, warning
 
 
@@ -57,14 +57,15 @@ class MemoryDB:
 
     def _fetchone(self, sql: str, params: tuple = None) -> Optional[Dict]:
         self._execute(sql, params)
-        return self.cursor.fetchone()
+        row = self.cursor.fetchone()
+        return dict(row) if row else None
 
     def _fetchall(self, sql: str, params: tuple = None) -> List[Dict]:
         self._execute(sql, params)
-        return self.cursor.fetchall()
+        return [dict(row) for row in self.cursor.fetchall()]
 
     def _count(self, table: str, user_id: int, extra: str = "") -> int:
-        sql = f"SELECT COUNT(*) as cnt FROM {table} WHERE user_id = %s {extra}"
+        sql = f"SELECT COUNT(*) as cnt FROM {table} WHERE user_id = ? {extra}"
         return self._fetchone(sql, (user_id,))['cnt']
 
     def _last_id(self) -> int:
@@ -89,10 +90,10 @@ class ShortTermHandler(MemoryDB):
         sql = """
             INSERT INTO short_term_memory
             (user_id, session_id, role, content, token_count, context_window_position)
-            VALUES (%s, %s, %s, %s, %s,
+            VALUES (?, ?, ?, ?, ?,
                 (SELECT COALESCE(MAX(t.context_window_position), 0) + 1
                  FROM (SELECT context_window_position FROM short_term_memory
-                       WHERE user_id = %s AND session_id = %s) t))
+                       WHERE user_id = ? AND session_id = ?) t))
         """
         self._execute_commit(sql, (user_id, session_id, role, content, token_count, user_id, session_id))
         memory_id = self._last_id()
@@ -104,7 +105,7 @@ class ShortTermHandler(MemoryDB):
         max_tokens = max_tokens or self.MAX_CONTEXT_TOKENS
         rows = self._fetchall(
             "SELECT role, content, token_count, created_at "
-            "FROM short_term_memory WHERE user_id = %s AND session_id = %s "
+            "FROM short_term_memory WHERE user_id = ? AND session_id = ? "
             "ORDER BY context_window_position DESC",
             (user_id, session_id)
         )
@@ -115,7 +116,7 @@ class ShortTermHandler(MemoryDB):
             context.insert(0, {
                 'role': row['role'],
                 'content': row['content'],
-                'created_at': row['created_at'].isoformat() if row['created_at'] else None,
+                'created_at': row['created_at'],
             })
             total += row['token_count']
         return context
@@ -123,13 +124,11 @@ class ShortTermHandler(MemoryDB):
     def _cleanup(self, user_id: int, session_id: str):
         sql = """
             DELETE FROM short_term_memory
-            WHERE user_id = %s AND session_id = %s
+            WHERE user_id = ? AND session_id = ?
             AND id NOT IN (
-                SELECT id FROM (
-                    SELECT id FROM short_term_memory
-                    WHERE user_id = %s AND session_id = %s
-                    ORDER BY context_window_position DESC LIMIT %s
-                ) t
+                SELECT id FROM short_term_memory
+                WHERE user_id = ? AND session_id = ?
+                ORDER BY context_window_position DESC LIMIT ?
             )
         """
         try:
@@ -154,7 +153,7 @@ class EpisodicHandler(MemoryDB):
         sql = """
             INSERT INTO episodic_memory
             (user_id, episode_type, title, summary, context, content, emotions, importance)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
         self._execute_commit(sql, (
             user_id, episode_type, title, summary,
@@ -171,16 +170,16 @@ class EpisodicHandler(MemoryDB):
             "SELECT id, episode_type, title, summary, context, content, "
             "importance, access_count, created_at "
             "FROM episodic_memory "
-            "WHERE user_id = %s AND (title LIKE %s OR summary LIKE %s OR content LIKE %s) "
-            "ORDER BY importance DESC, created_at DESC LIMIT %s",
+            "WHERE user_id = ? AND (title LIKE ? OR summary LIKE ? OR content LIKE ?) "
+            "ORDER BY importance DESC, created_at DESC LIMIT ?",
             (user_id, term, term, term, limit)
         )
 
     def recent(self, user_id: int, limit: int = 10) -> List[Dict]:
         return self._fetchall(
             "SELECT id, episode_type, title, summary, importance, created_at "
-            "FROM episodic_memory WHERE user_id = %s "
-            "ORDER BY created_at DESC LIMIT %s",
+            "FROM episodic_memory WHERE user_id = ? "
+            "ORDER BY created_at DESC LIMIT ?",
             (user_id, limit)
         )
 
@@ -203,10 +202,10 @@ class SemanticHandler(MemoryDB):
         sql = """
             INSERT INTO semantic_memory
             (user_id, fact_type, subject, predicate, object, confidence, source)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                object = VALUES(object), confidence = VALUES(confidence),
-                source = VALUES(source), access_count = access_count + 1,
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, subject, predicate) DO UPDATE SET
+                object = excluded.object, confidence = excluded.confidence,
+                source = excluded.source, access_count = access_count + 1,
                 updated_at = CURRENT_TIMESTAMP
         """
         self._execute_commit(sql, (user_id, fact_type, subject, predicate, object_val, confidence, source))
@@ -219,24 +218,24 @@ class SemanticHandler(MemoryDB):
 
     def search(self, user_id: int, query: str, fact_type: str = None,
                limit: int = 10) -> List[Dict]:
-        conditions = ["user_id = %s", "(subject LIKE %s OR predicate LIKE %s OR object LIKE %s)"]
+        conditions = ["user_id = ?", "(subject LIKE ? OR predicate LIKE ? OR object LIKE ?)"]
         params: list = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
         if fact_type:
-            conditions.append("fact_type = %s")
+            conditions.append("fact_type = ?")
             params.append(fact_type)
         params.append(limit)
         return self._fetchall(
             f"SELECT id, fact_type, subject, predicate, object, confidence, "
             f"source, is_verified, access_count, created_at "
             f"FROM semantic_memory WHERE {' AND '.join(conditions)} "
-            f"ORDER BY confidence DESC, access_count DESC LIMIT %s",
+            f"ORDER BY confidence DESC, access_count DESC LIMIT ?",
             tuple(params)
         )
 
     def get_by_subject(self, user_id: int, subject: str) -> List[Dict]:
         return self._fetchall(
             "SELECT id, fact_type, subject, predicate, object, confidence, created_at "
-            "FROM semantic_memory WHERE user_id = %s AND subject = %s "
+            "FROM semantic_memory WHERE user_id = ? AND subject = ? "
             "ORDER BY confidence DESC",
             (user_id, subject)
         )
@@ -245,7 +244,7 @@ class SemanticHandler(MemoryDB):
                          predicate: str, object_val: str) -> Optional[Dict]:
         return self._fetchone(
             "SELECT id, object, confidence FROM semantic_memory "
-            "WHERE user_id = %s AND subject = %s AND predicate = %s AND object != %s "
+            "WHERE user_id = ? AND subject = ? AND predicate = ? AND object != ? "
             "ORDER BY confidence DESC LIMIT 1",
             (user_id, subject, predicate, object_val)
         )
@@ -256,7 +255,7 @@ class SemanticHandler(MemoryDB):
             self._execute_commit(
                 "INSERT INTO memory_conflicts "
                 "(user_id, conflict_type, old_memory_type, old_memory_id, new_memory_type, new_memory_id) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 (user_id, conflict_type, old_type, old_id, new_type, new_id)
             )
         except Exception as e:
@@ -276,52 +275,87 @@ class EntityHandler(MemoryDB):
     def add(self, user_id: int, entity_type: str, entity_name: str,
             attributes: Dict = None, description: str = "",
             entity_alias: str = "", importance: float = 0.5) -> int:
-        sql = """
-            INSERT INTO entity_memory
-            (user_id, entity_type, entity_name, entity_alias, attributes, description, importance)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                entity_alias = COALESCE(VALUES(entity_alias), entity_alias),
-                attributes = JSON_MERGE_PATCH(attributes, VALUES(attributes)),
-                description = COALESCE(NULLIF(VALUES(description), ''), description),
-                importance = GREATEST(importance, VALUES(importance)),
-                access_count = access_count + 1, updated_at = CURRENT_TIMESTAMP
-        """
-        self._execute_commit(sql, (
-            user_id, entity_type, entity_name, entity_alias,
-            json.dumps(attributes, ensure_ascii=False) if attributes else None,
-            description, importance
-        ))
-        return self._last_id()
+        # 先查询已有记录，用于应用层 JSON 合并
+        existing = self._fetchone(
+            "SELECT id, attributes, importance FROM entity_memory "
+            "WHERE user_id = ? AND entity_name = ?",
+            (user_id, entity_name)
+        )
+        if existing:
+            # 应用层合并 attributes
+            old_attrs = {}
+            if existing['attributes']:
+                old_attrs = json.loads(existing['attributes']) if isinstance(existing['attributes'], str) else existing['attributes']
+            if attributes:
+                old_attrs.update(attributes)
+            merged_attrs = json.dumps(old_attrs, ensure_ascii=False) if old_attrs else None
+            new_importance = max(existing['importance'], importance)
+            sql = """
+                UPDATE entity_memory SET
+                    entity_alias = COALESCE(?, entity_alias),
+                    attributes = ?,
+                    description = COALESCE(NULLIF(?, ''), description),
+                    importance = ?,
+                    access_count = access_count + 1,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """
+            self._execute_commit(sql, (entity_alias or None, merged_attrs, description, new_importance, existing['id']))
+            return existing['id']
+        else:
+            sql = """
+                INSERT INTO entity_memory
+                (user_id, entity_type, entity_name, entity_alias, attributes, description, importance)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """
+            self._execute_commit(sql, (
+                user_id, entity_type, entity_name, entity_alias,
+                json.dumps(attributes, ensure_ascii=False) if attributes else None,
+                description, importance
+            ))
+            return self._last_id()
 
     def add_relation(self, user_id: int, source_id: int, target_id: int,
                      relation_type: str, label: str = "",
                      weight: float = 1.0, context: str = "") -> int:
-        sql = """
-            INSERT INTO entity_relations
-            (user_id, source_entity_id, target_entity_id, relation_type, relation_label, weight, context)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                weight = GREATEST(weight, VALUES(weight)),
-                context = COALESCE(NULLIF(VALUES(context), ''), context),
-                updated_at = CURRENT_TIMESTAMP
-        """
-        self._execute_commit(sql, (user_id, source_id, target_id, relation_type, label, weight, context))
-        return self._last_id()
+        existing = self._fetchone(
+            "SELECT id, weight FROM entity_relations "
+            "WHERE user_id = ? AND source_entity_id = ? AND target_entity_id = ? AND relation_type = ?",
+            (user_id, source_id, target_id, relation_type)
+        )
+        if existing:
+            new_weight = max(existing['weight'], weight)
+            sql = """
+                UPDATE entity_relations SET
+                    weight = ?,
+                    context = COALESCE(NULLIF(?, ''), context),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """
+            self._execute_commit(sql, (new_weight, context or None, existing['id']))
+            return existing['id']
+        else:
+            sql = """
+                INSERT INTO entity_relations
+                (user_id, source_entity_id, target_entity_id, relation_type, relation_label, weight, context)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """
+            self._execute_commit(sql, (user_id, source_id, target_id, relation_type, label, weight, context))
+            return self._last_id()
 
     def search(self, user_id: int, query: str, entity_type: str = None,
                limit: int = 10) -> List[Dict]:
-        conditions = ["user_id = %s", "(entity_name LIKE %s OR entity_alias LIKE %s OR description LIKE %s)"]
+        conditions = ["user_id = ?", "(entity_name LIKE ? OR entity_alias LIKE ? OR description LIKE ?)"]
         params: list = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
         if entity_type:
-            conditions.append("entity_type = %s")
+            conditions.append("entity_type = ?")
             params.append(entity_type)
         params.append(limit)
         rows = self._fetchall(
             f"SELECT id, entity_type, entity_name, entity_alias, attributes, "
             f"description, importance, access_count, created_at "
             f"FROM entity_memory WHERE {' AND '.join(conditions)} "
-            f"ORDER BY importance DESC, access_count DESC LIMIT %s",
+            f"ORDER BY importance DESC, access_count DESC LIMIT ?",
             tuple(params)
         )
         for row in rows:
@@ -336,7 +370,7 @@ class EntityHandler(MemoryDB):
             rows = self._fetchall(
                 "SELECT er.*, em.entity_name as target_name, em.entity_type as target_type "
                 "FROM entity_relations er JOIN entity_memory em ON er.target_entity_id = em.id "
-                "WHERE er.source_entity_id = %s AND er.user_id = %s",
+                "WHERE er.source_entity_id = ? AND er.user_id = ?",
                 (entity_id, user_id)
             )
             for r in rows:
@@ -346,7 +380,7 @@ class EntityHandler(MemoryDB):
             rows = self._fetchall(
                 "SELECT er.*, em.entity_name as source_name, em.entity_type as source_type "
                 "FROM entity_relations er JOIN entity_memory em ON er.source_entity_id = em.id "
-                "WHERE er.target_entity_id = %s AND er.user_id = %s",
+                "WHERE er.target_entity_id = ? AND er.user_id = ?",
                 (entity_id, user_id)
             )
             for r in rows:
@@ -362,7 +396,7 @@ class EntityHandler(MemoryDB):
                 continue
             visited.add(eid)
             entity = self._fetchone(
-                "SELECT * FROM entity_memory WHERE id = %s AND user_id = %s",
+                "SELECT * FROM entity_memory WHERE id = ? AND user_id = ?",
                 (eid, user_id)
             )
             if not entity:
@@ -408,7 +442,7 @@ class ForgettingHandler(MemoryDB):
             self._execute_commit(
                 "INSERT INTO memory_metadata "
                 "(memory_type, memory_id, user_id, importance, decay_rate, last_accessed_at) "
-                "VALUES (%s, %s, %s, %s, %s, NOW())",
+                "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
                 (memory_type, memory_id, user_id, importance, decay_rate)
             )
         except Exception as e:
@@ -418,13 +452,13 @@ class ForgettingHandler(MemoryDB):
         try:
             table = self._table_for(memory_type)
             self._execute(
-                f"UPDATE {table} SET access_count = access_count + 1, last_accessed_at = NOW() WHERE id = %s",
+                f"UPDATE {table} SET access_count = access_count + 1, last_accessed_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (memory_id,)
             )
             self._execute(
                 "UPDATE memory_metadata SET access_count = access_count + 1, "
-                "last_accessed_at = NOW(), importance = LEAST(1.0, importance + %s) "
-                "WHERE memory_type = %s AND memory_id = %s AND user_id = %s",
+                "last_accessed_at = CURRENT_TIMESTAMP, importance = MIN(1.0, importance + ?) "
+                "WHERE memory_type = ? AND memory_id = ? AND user_id = ?",
                 (self.REINFORCE_BOOST * 0.1, memory_type, memory_id, user_id)
             )
             self.conn.commit()
@@ -436,7 +470,7 @@ class ForgettingHandler(MemoryDB):
         try:
             self._execute_commit(
                 "INSERT INTO memory_access_log (user_id, memory_type, memory_id, access_type) "
-                "VALUES (%s, %s, %s, %s)",
+                "VALUES (?, ?, ?, ?)",
                 (user_id, memory_type, memory_id, access_type)
             )
         except Exception as e:
@@ -445,25 +479,28 @@ class ForgettingHandler(MemoryDB):
     def apply_curve(self, user_id: int = None) -> Dict[str, int]:
         """应用遗忘曲线，返回 {forgotten, reinforced}"""
         try:
-            sql = "SELECT id, memory_type, memory_id, user_id, importance, decay_rate, last_accessed_at, access_count FROM memory_metadata WHERE is_forgotten = FALSE"
+            sql = "SELECT id, memory_type, memory_id, user_id, importance, decay_rate, last_accessed_at, access_count FROM memory_metadata WHERE is_forgotten = 0"
             params = []
             if user_id:
-                sql += " AND user_id = %s"
+                sql += " AND user_id = ?"
                 params.append(user_id)
             memories = self._fetchall(sql, tuple(params) if params else None)
 
             forgotten = reinforced = 0
             for mem in memories:
-                days = (datetime.now() - mem['last_accessed_at']).total_seconds() / 86400 if mem['last_accessed_at'] else 30
-                stability = max(1, mem['access_count'] * 2)
+                last_accessed = mem['last_accessed_at']
+                if isinstance(last_accessed, str):
+                    last_accessed = datetime.fromisoformat(last_accessed)
+                days = (datetime.now() - last_accessed).total_seconds() / 86400 if last_accessed else 30
+                stability = max(1, (mem['access_count'] or 0) * 2)
                 retention = float(np.exp(-days / stability))
-                new_imp = mem['importance'] * retention
+                new_imp = (mem['importance'] or 0) * retention
 
                 if new_imp < self.FORGET_THRESHOLD:
-                    self._execute("UPDATE memory_metadata SET is_forgotten = TRUE, forgotten_at = NOW(), importance = %s WHERE id = %s", (new_imp, mem['id']))
+                    self._execute("UPDATE memory_metadata SET is_forgotten = 1, forgotten_at = CURRENT_TIMESTAMP, importance = ? WHERE id = ?", (new_imp, mem['id']))
                     forgotten += 1
                 else:
-                    self._execute("UPDATE memory_metadata SET importance = %s WHERE id = %s", (new_imp, mem['id']))
+                    self._execute("UPDATE memory_metadata SET importance = ? WHERE id = ?", (new_imp, mem['id']))
                     reinforced += 1
 
             self.conn.commit()
@@ -479,33 +516,33 @@ class ForgettingHandler(MemoryDB):
         boost = boost or self.REINFORCE_BOOST
         try:
             self._execute_commit(
-                "UPDATE memory_metadata SET importance = LEAST(1.0, importance + %s), "
+                "UPDATE memory_metadata SET importance = MIN(1.0, importance + ?), "
                 "reinforcement_count = reinforcement_count + 1, "
-                "access_count = access_count + 1, last_accessed_at = NOW() "
-                "WHERE memory_type = %s AND memory_id = %s AND user_id = %s",
+                "access_count = access_count + 1, last_accessed_at = CURRENT_TIMESTAMP "
+                "WHERE memory_type = ? AND memory_id = ? AND user_id = ?",
                 (boost, memory_type, memory_id, user_id)
             )
         except Exception as e:
             warning(f"强化记忆失败: {e}")
 
     def forgotten_count(self, user_id: int) -> int:
-        return self._count('memory_metadata', user_id, "AND is_forgotten = TRUE")
+        return self._count('memory_metadata', user_id, "AND is_forgotten = 1")
 
     def cleanup(self, user_id: int = None, days: int = 30) -> int:
         """清理超过 N 天的遗忘记忆"""
         try:
-            sql = "SELECT memory_type, memory_id FROM memory_metadata WHERE is_forgotten = TRUE AND forgotten_at < DATE_SUB(NOW(), INTERVAL %s DAY)"
+            sql = "SELECT memory_type, memory_id FROM memory_metadata WHERE is_forgotten = 1 AND forgotten_at < datetime('now', '-' || ? || ' days')"
             params: list = [days]
             if user_id:
-                sql += " AND user_id = %s"
+                sql += " AND user_id = ?"
                 params.append(user_id)
             to_clean = self._fetchall(sql, tuple(params))
 
             deleted = 0
             for mem in to_clean:
                 table = self._table_for(mem['memory_type'])
-                self._execute(f"DELETE FROM {table} WHERE id = %s", (mem['memory_id'],))
-                self._execute("DELETE FROM memory_metadata WHERE memory_type = %s AND memory_id = %s",
+                self._execute(f"DELETE FROM {table} WHERE id = ?", (mem['memory_id'],))
+                self._execute("DELETE FROM memory_metadata WHERE memory_type = ? AND memory_id = ?",
                               (mem['memory_type'], mem['memory_id']))
                 deleted += 1
             self.conn.commit()
@@ -532,17 +569,17 @@ class ConflictHandler(MemoryDB):
             "FROM memory_conflicts mc "
             "LEFT JOIN semantic_memory om ON mc.old_memory_id = om.id AND mc.old_memory_type = 'semantic' "
             "LEFT JOIN semantic_memory nm ON mc.new_memory_id = nm.id AND mc.new_memory_type = 'semantic' "
-            "WHERE mc.user_id = %s AND mc.resolved = FALSE ORDER BY mc.created_at DESC",
+            "WHERE mc.user_id = ? AND mc.resolved = 0 ORDER BY mc.created_at DESC",
             (user_id,)
         )
 
     def pending_count(self, user_id: int) -> int:
-        return self._count('memory_conflicts', user_id, "AND resolved = FALSE")
+        return self._count('memory_conflicts', user_id, "AND resolved = 0")
 
     def resolve(self, conflict_id: int, strategy: str, user_id: int) -> bool:
         try:
             conflict = self._fetchone(
-                "SELECT * FROM memory_conflicts WHERE id = %s AND user_id = %s",
+                "SELECT * FROM memory_conflicts WHERE id = ? AND user_id = ?",
                 (conflict_id, user_id)
             )
             if not conflict:
@@ -561,8 +598,8 @@ class ConflictHandler(MemoryDB):
                 result = {'action': 'merged'}
 
             self._execute_commit(
-                "UPDATE memory_conflicts SET resolved = TRUE, resolved_at = NOW(), "
-                "resolution_strategy = %s, resolution_result = %s WHERE id = %s",
+                "UPDATE memory_conflicts SET resolved = 1, resolved_at = CURRENT_TIMESTAMP, "
+                "resolution_strategy = ?, resolution_result = ? WHERE id = ?",
                 (strategy, json.dumps(result), conflict_id)
             )
             return True
@@ -573,13 +610,13 @@ class ConflictHandler(MemoryDB):
 
     def _delete_memory(self, memory_type: str, memory_id: int):
         table = self._table_for(memory_type)
-        self._execute(f"DELETE FROM {table} WHERE id = %s", (memory_id,))
-        self._execute("DELETE FROM memory_metadata WHERE memory_type = %s AND memory_id = %s",
+        self._execute(f"DELETE FROM {table} WHERE id = ?", (memory_id,))
+        self._execute("DELETE FROM memory_metadata WHERE memory_type = ? AND memory_id = ?",
                       (memory_type, memory_id))
 
     def _verify(self, memory_type: str, memory_id: int):
         if memory_type == 'semantic':
-            self._execute("UPDATE semantic_memory SET is_verified = TRUE WHERE id = %s", (memory_id,))
+            self._execute("UPDATE semantic_memory SET is_verified = 1 WHERE id = ?", (memory_id,))
 
 
 # ==========================================
@@ -596,7 +633,7 @@ class MemoryService:
     """
 
     def __init__(self):
-        self._config = get_memory_db_config()
+        self._db_path = get_memory_db_path()
         self._local = threading.local()
 
     @property
@@ -666,8 +703,9 @@ class MemoryService:
     # ── 连接管理 ──────────────────────────────
 
     def connect(self):
-        self.conn   = mysql.connector.connect(**self._config, use_pure=True)
-        self.cursor = self.conn.cursor(dictionary=True)
+        self.conn = sqlite3.connect(self._db_path)
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
         self.short_term = ShortTermHandler(self.conn, self.cursor)
         self.episodic   = EpisodicHandler(self.conn, self.cursor)
         self.semantic   = SemanticHandler(self.conn, self.cursor)
@@ -726,7 +764,7 @@ class MemoryService:
                             'similarity': vr.get('similarity', 0)
                         } for vr in vector_results]
             except Exception as e:
-                debug(f"向量检索降级: {e}")
+                warning(f"向量检索降级: {e}")
         
         return results
 

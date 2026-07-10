@@ -251,7 +251,7 @@ async def tutor_query(
                 from data.db_operations import assessment_db
                 if assessment_db.connect():
                     assessment_db.cursor.execute(
-                        "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (%s, %s, %s)",
+                        "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (?, ?, ?)",
                         (user_id, 'tutor_query', json.dumps({
                             "question": input_data.question[:100],
                             "subject": input_data.subject
@@ -351,7 +351,7 @@ async def assess_learning(
                     if result.get("data") and result["data"].get("assessment"):
                         grade = result["data"]["assessment"].get("grade", "")
                     assessment_db.cursor.execute(
-                        "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (%s, %s, %s)",
+                        "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (?, ?, ?)",
                         (user_id, 'assessment', json.dumps({
                             "assessment_type": input_data.get("assessment_type", "comprehensive"),
                             "grade": grade
@@ -543,7 +543,7 @@ async def save_resource(
         sql = """
             INSERT INTO learning_resources 
             (user_id, title, resource_type, subject, topic, difficulty_level, content_data, tags, generated_by_agent)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         resource_db.cursor.execute(sql, (
             user_id,
@@ -591,15 +591,15 @@ async def list_resources(
         if not resource_db.connect():
             return BaseResponse(success=False, message="数据库连接失败", data=None)
         
-        conditions = ["(user_id = %s OR (user_id IS NULL AND generated_by_agent = %s))"]
+        conditions = ["(user_id = ? OR (user_id IS NULL AND generated_by_agent = ?))"]
         params = [user_id, f"user_{user_id}"]
         
         if resource_type:
-            conditions.append("resource_type = %s")
+            conditions.append("resource_type = ?")
             params.append(resource_type)
         
         if subject:
-            conditions.append("subject LIKE %s")
+            conditions.append("subject LIKE ?")
             params.append(f"%{subject}%")
         
         where = " AND ".join(conditions)
@@ -609,7 +609,7 @@ async def list_resources(
             FROM learning_resources 
             WHERE {where}
             ORDER BY created_at DESC
-            LIMIT %s OFFSET %s
+            LIMIT ? OFFSET ?
         """
         params.extend([limit, offset])
         
@@ -664,14 +664,14 @@ async def delete_resource(
             return BaseResponse(success=False, message="数据库连接失败", data=None)
         
         # 验证资源属于当前用户
-        sql = "SELECT id FROM learning_resources WHERE id = %s AND (user_id = %s OR (user_id IS NULL AND generated_by_agent = %s))"
+        sql = "SELECT id FROM learning_resources WHERE id = ? AND (user_id = ? OR (user_id IS NULL AND generated_by_agent = ?))"
         resource_db.cursor.execute(sql, (resource_id, user_id, f"user_{user_id}"))
         if not resource_db.cursor.fetchone():
             resource_db.close()
             return BaseResponse(success=False, message="资源不存在或无权限删除", data=None)
         
         # 删除资源
-        delete_sql = "DELETE FROM learning_resources WHERE id = %s"
+        delete_sql = "DELETE FROM learning_resources WHERE id = ?"
         resource_db.cursor.execute(delete_sql, (resource_id,))
         resource_db.conn.commit()
         resource_db.close()

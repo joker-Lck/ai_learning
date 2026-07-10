@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -151,7 +151,7 @@ export default function LoginPage() {
             </div>
 
             {/* 表单 */}
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               {isLogin ? (
                 <motion.form
                   key="login"

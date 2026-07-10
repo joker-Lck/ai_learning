@@ -181,18 +181,18 @@ async def health_check():
     """详细健康检查，包含依赖状态"""
     checks = {"api": "ok"}
 
-    # MySQL 检查
+    # SQLite 检查
     try:
         from data.db_operations import profile_db
         if profile_db.connect():
             profile_db.cursor.execute("SELECT 1")
             profile_db.cursor.fetchone()
             profile_db.close()
-            checks["mysql"] = "ok"
+            checks["sqlite"] = "ok"
         else:
-            checks["mysql"] = "error"
+            checks["sqlite"] = "error"
     except Exception:
-        checks["mysql"] = "error"
+        checks["sqlite"] = "error"
 
     # FAISS 检查
     try:

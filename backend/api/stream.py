@@ -113,7 +113,7 @@ async def stream_generate_resources_real(
                 resource_db.cursor.execute("""
                     INSERT INTO learning_resources
                     (user_id, title, resource_type, subject, topic, difficulty_level, content_data, generated_by_agent, duration_minutes)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     user_id, title, rtype, subject, topic, difficulty,
                     json.dumps(content_data, ensure_ascii=False),
@@ -127,7 +127,7 @@ async def stream_generate_resources_real(
             if assessment_db.connect():
                 assessment_db.cursor.execute("""
                     INSERT INTO learning_activities (user_id, activity_type, metadata)
-                    VALUES (%s, %s, %s)
+                    VALUES (?, ?, ?)
                 """, (
                     user_id, 'resource_generate',
                     json.dumps({"resource_type": rtype, "subject": subject, "topic": topic, "title": title}, ensure_ascii=False)

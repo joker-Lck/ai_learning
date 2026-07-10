@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Brain, Route, Lightbulb, TrendingUp,
+  Brain, Router, Lightbulb, TrendingUp,
   UserCheck, Database, Bell,
   FileText, Video, BarChart3,
   ArrowRight, Clock, Zap, Users, ChevronRight,
@@ -293,16 +293,16 @@ function Header({ profile, stats }: { profile: ProfileData | null; stats: Dashbo
   );
 }
 
-function StatCards({ profile, resourceCount }: { profile: ProfileData | null; resourceCount: number }) {
+function StatCards({ profile, resourceCount, onNavigateModule }: { profile: ProfileData | null; resourceCount: number; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const historyCount = profile?.learning_history?.length || 0;
   const weakCount = profile?.weak_points?.length || 0;
   const interestCount = profile?.interest_areas?.length || 0;
 
   const stats = [
-    { label: '学习记录', value: String(historyCount), icon: Clock, color: 'text-purple-400' },
-    { label: '兴趣领域', value: String(interestCount), icon: Target, color: 'text-cyan-400' },
-    { label: '生成资源', value: String(resourceCount), icon: Sparkles, color: 'text-amber-400' },
-    { label: '薄弱待补', value: String(weakCount), icon: Zap, color: 'text-emerald-400' },
+    { label: '学习记录', value: String(historyCount), icon: Clock, color: 'text-purple-400', hoverBorder: 'hover:border-purple-500/20', moduleId: 'profile' as ModuleType },
+    { label: '兴趣领域', value: String(interestCount), icon: Target, color: 'text-cyan-400', hoverBorder: 'hover:border-cyan-500/20', moduleId: 'profile' as ModuleType },
+    { label: '生成资源', value: String(resourceCount), icon: Sparkles, color: 'text-amber-400', hoverBorder: 'hover:border-amber-500/20', moduleId: 'resources' as ModuleType },
+    { label: '薄弱待补', value: String(weakCount), icon: Zap, color: 'text-emerald-400', hoverBorder: 'hover:border-emerald-500/20', moduleId: 'assessment' as ModuleType },
   ];
 
   return (
@@ -310,7 +310,14 @@ function StatCards({ profile, resourceCount }: { profile: ProfileData | null; re
       {stats.map((stat, i) => {
         const Icon = stat.icon;
         return (
-          <motion.div key={stat.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.35 }} className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-white/[0.08] transition-colors">
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06, duration: 0.35 }}
+            onClick={stat.moduleId ? () => onNavigateModule(stat.moduleId!) : undefined}
+            className={`p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-white/[0.08] transition-colors ${stat.moduleId ? `cursor-pointer ${stat.hoverBorder}` : ''}`}
+          >
             <Icon className={`w-5 h-5 ${stat.color} mb-3`} />
             <div className="text-2xl font-bold text-white">{stat.value}</div>
             <div className="text-xs text-white/30 mt-1">{stat.label}</div>
@@ -468,7 +475,7 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
   const typeConfig: Record<string, { icon: typeof UserCheck; color: string; label: string; moduleId: ModuleType }> = {
     resource:          { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '资源生成', moduleId: 'resources' },
     resource_generate: { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '资源生成', moduleId: 'resources' },
-    path:              { icon: Route, color: 'bg-emerald-500/15 text-emerald-400', label: '学习路径', moduleId: 'path' },
+    path:              { icon: Router, color: 'bg-emerald-500/15 text-emerald-400', label: '学习路径', moduleId: 'path' },
     assess:            { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '效果评估', moduleId: 'assessment' },
     assessment:        { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '效果评估', moduleId: 'assessment' },
     tutor:             { icon: Lightbulb, color: 'bg-pink-500/15 text-pink-400', label: '智能辅导', moduleId: 'tutor' },
@@ -631,7 +638,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
       <main className="flex-1 overflow-y-auto h-screen" data-workspace-scroll>
         <div className="px-8 pt-7 pb-12 max-w-[1200px] mx-auto">
           <Header profile={profile} stats={stats} />
-          <StatCards profile={profile} resourceCount={resources.length} />
+          <StatCards profile={profile} resourceCount={resources.length} onNavigateModule={onNavigateModule} />
 
           <div className="flex gap-6">
             <div className="flex-[7] min-w-0">

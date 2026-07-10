@@ -279,12 +279,14 @@ class ProfileAgent:
         try:
             from data.db_operations import profile_db
             with profile_db:
-                sql = "SELECT profile_data FROM student_profiles WHERE user_id = %s ORDER BY version DESC LIMIT 1"
+                sql = "SELECT profile_data FROM student_profiles WHERE user_id = ? ORDER BY version DESC LIMIT 1"
                 profile_db.cursor.execute(sql, (user_id,))
                 result = profile_db.cursor.fetchone()
 
-                if result and result.get("profile_data"):
-                    return json.loads(result["profile_data"])
+                if result:
+                    row = dict(result)
+                    if row.get("profile_data"):
+                        return json.loads(row["profile_data"])
                 return None
 
         except Exception as e:
@@ -298,17 +300,18 @@ class ProfileAgent:
             from data.db_operations import profile_db
             with profile_db:
                 # 检查是否已有画像
-                sql_check = "SELECT id, version FROM student_profiles WHERE user_id = %s ORDER BY version DESC LIMIT 1"
+                sql_check = "SELECT id, version FROM student_profiles WHERE user_id = ? ORDER BY version DESC LIMIT 1"
                 profile_db.cursor.execute(sql_check, (user_id,))
                 existing = profile_db.cursor.fetchone()
 
                 if existing:
+                    existing = dict(existing)
                     # 更新现有画像,版本号+1
                     new_version = existing["version"] + 1
                     sql_update = """
                         UPDATE student_profiles
-                        SET profile_data = %s, conversation_log = %s, version = %s, updated_at = NOW()
-                        WHERE id = %s
+                        SET profile_data = ?, conversation_log = ?, version = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
                     """
                     profile_db.cursor.execute(sql_update, (
                         json.dumps(profile_data, ensure_ascii=False),
@@ -321,7 +324,7 @@ class ProfileAgent:
                     # 创建新画像
                     sql_insert = """
                         INSERT INTO student_profiles (user_id, profile_data, conversation_log, version)
-                        VALUES (%s, %s, %s, 1)
+                        VALUES (?, ?, ?, 1)
                     """
                     profile_db.cursor.execute(sql_insert, (
                         user_id,
@@ -349,20 +352,21 @@ class ProfileAgent:
         try:
             from data.db_operations import profile_db
             with profile_db:
-                sql = "SELECT id, profile_data, conversation_log, version FROM student_profiles WHERE user_id = %s ORDER BY version DESC LIMIT 1"
+                sql = "SELECT id, profile_data, conversation_log, version FROM student_profiles WHERE user_id = ? ORDER BY version DESC LIMIT 1"
                 profile_db.cursor.execute(sql, (user_id,))
                 row = profile_db.cursor.fetchone()
 
                 if not row:
                     return {"success": False, "message": "暂无画像数据，请先构建画像"}
 
+                row = dict(row)
                 profile = json.loads(row["profile_data"]) if isinstance(row["profile_data"], str) else row["profile_data"]
                 old_value = profile.get(field)
                 profile[field] = value
                 profile["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 new_version = row["version"] + 1
-                sql_update = """UPDATE student_profiles SET profile_data=%s, version=%s, updated_at=NOW() WHERE id=%s"""
+                sql_update = "UPDATE student_profiles SET profile_data=?, version=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"
                 profile_db.cursor.execute(sql_update, (
                     json.dumps(profile, ensure_ascii=False), new_version, row["id"]
                 ))

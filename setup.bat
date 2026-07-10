@@ -71,7 +71,7 @@ if not exist "%ROOT%.env" (
         echo [WARN] .env created from .env.example
         echo        Please edit .env and set:
         echo        - KIMI_API_KEY (required)
-        echo        - AUTH_DB_PASSWORD (MySQL password)
+        echo        - KIMI_API_KEY is the main required config
         echo.
         notepad "%ROOT%.env"
         echo Press any key after editing .env...
@@ -85,25 +85,24 @@ if not exist "%ROOT%.env" (
     echo [OK] .env exists
 )
 
-:: 6. Check MySQL
-echo [6/7] Checking MySQL connection...
-"%ROOT%.venv\Scripts\python.exe" -c "from dotenv import load_dotenv; import os; load_dotenv(); import mysql.connector; mysql.connector.connect(host=os.getenv('AUTH_DB_HOST','localhost'),port=int(os.getenv('AUTH_DB_PORT',3306)),user=os.getenv('AUTH_DB_USER','root'),password=os.getenv('AUTH_DB_PASSWORD',''),connect_timeout=3)" >nul 2>&1
+:: 6. Check SQLite
+echo [6/7] Checking SQLite database...
+"%ROOT%.venv\Scripts\python.exe" -c "import sqlite3; conn=sqlite3.connect('data/learning.db'); conn.execute('SELECT 1'); conn.close()" >nul 2>&1
 if errorlevel 1 (
-    echo [WARN] MySQL connection failed
-    echo        Please ensure MySQL is running and .env password is correct
+    echo [WARN] SQLite database not accessible
     echo        Run: .venv\Scripts\python.exe scripts\init_databases_v7.2.py
     pause
 ) else (
-    echo [OK] MySQL connected
-    
-    :: 7. Initialize databases
-    echo [7/7] Initializing databases...
-    "%ROOT%.venv\Scripts\python.exe" scripts\init_databases_v7.2.py
-    if errorlevel 1 (
-        echo [WARN] Database initialization had issues (may already exist)
-    ) else (
-        echo [OK] Databases initialized
-    )
+    echo [OK] SQLite database accessible
+)
+
+:: 7. Initialize databases
+echo [7/7] Initializing databases...
+"%ROOT%.venv\Scripts\python.exe" scripts\init_databases_v7.2.py
+if errorlevel 1 (
+    echo [WARN] Database initialization had issues (may already exist)
+) else (
+    echo [OK] Databases initialized
 )
 
 :: Install frontend dependencies
@@ -125,7 +124,7 @@ echo   Setup Complete!
 echo ========================================
 echo.
 echo   Next steps:
-echo   1. Edit .env if needed (KIMI_API_KEY, MySQL password)
+echo   1. Edit .env if needed (KIMI_API_KEY)
 echo   2. Run 启动.bat to start the system
 echo   3. Open http://localhost:3000
 echo.

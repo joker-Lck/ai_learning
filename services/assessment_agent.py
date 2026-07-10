@@ -108,40 +108,42 @@ class AssessmentAgent:
             with profile_db:
                 # 获取成绩数据（所有学期）
                 profile_db.cursor.execute(
-                    "SELECT * FROM student_grades WHERE user_id = %s ORDER BY created_at DESC",
+                    "SELECT * FROM student_grades WHERE user_id = ? ORDER BY created_at DESC",
                     (user_id,)
                 )
-                result["grades"] = profile_db.cursor.fetchall() or []
+                result["grades"] = [dict(row) for row in profile_db.cursor.fetchall()] or []
 
                 # 获取课程数据（所有学期）
                 profile_db.cursor.execute(
-                    "SELECT * FROM course_schedules WHERE user_id = %s",
+                    "SELECT * FROM course_schedules WHERE user_id = ?",
                     (user_id,)
                 )
-                result["courses"] = profile_db.cursor.fetchall() or []
+                result["courses"] = [dict(row) for row in profile_db.cursor.fetchall()] or []
 
                 # 获取错题数据
                 profile_db.cursor.execute(
-                    "SELECT * FROM error_notes WHERE user_id = %s ORDER BY created_at DESC",
+                    "SELECT * FROM error_notes WHERE user_id = ? ORDER BY created_at DESC",
                     (user_id,)
                 )
-                result["error_notes"] = profile_db.cursor.fetchall() or []
+                result["error_notes"] = [dict(row) for row in profile_db.cursor.fetchall()] or []
 
                 # 获取学习计划
                 profile_db.cursor.execute(
-                    "SELECT * FROM study_plans WHERE user_id = %s ORDER BY created_at DESC",
+                    "SELECT * FROM study_plans WHERE user_id = ? ORDER BY created_at DESC",
                     (user_id,)
                 )
-                result["study_plans"] = profile_db.cursor.fetchall() or []
+                result["study_plans"] = [dict(row) for row in profile_db.cursor.fetchall()] or []
 
                 # 获取学生画像
                 profile_db.cursor.execute(
-                    "SELECT profile_data FROM student_profiles WHERE user_id = %s ORDER BY version DESC LIMIT 1",
+                    "SELECT profile_data FROM student_profiles WHERE user_id = ? ORDER BY version DESC LIMIT 1",
                     (user_id,)
                 )
                 profile_row = profile_db.cursor.fetchone()
-                if profile_row and profile_row.get("profile_data"):
-                    result["profile"] = json.loads(profile_row["profile_data"])
+                if profile_row:
+                    profile_row = dict(profile_row)
+                    if profile_row.get("profile_data"):
+                        result["profile"] = json.loads(profile_row["profile_data"])
 
             info(f"收集学生数据完成: 成绩{len(result['grades'])}条, 课程{len(result['courses'])}条, "
                  f"错题{len(result['error_notes'])}条, 计划{len(result['study_plans'])}条")
@@ -514,7 +516,7 @@ class AssessmentAgent:
                 sql = """
                     INSERT INTO learning_assessments
                     (user_id, assessment_type, assessment_data, period_start, period_end, overall_score)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """
                 assessment_db.cursor.execute(sql, (
                     user_id,
@@ -540,12 +542,14 @@ class AssessmentAgent:
         try:
             from data.db_operations import profile_db
             with profile_db:
-                sql = "SELECT profile_data FROM student_profiles WHERE user_id = %s ORDER BY version DESC LIMIT 1"
+                sql = "SELECT profile_data FROM student_profiles WHERE user_id = ? ORDER BY version DESC LIMIT 1"
                 profile_db.cursor.execute(sql, (user_id,))
                 result = profile_db.cursor.fetchone()
 
-                if result and result.get("profile_data"):
-                    return json.loads(result["profile_data"])
+                if result:
+                    row = dict(result)
+                    if row.get("profile_data"):
+                        return json.loads(row["profile_data"])
                 return None
 
         except Exception as e:

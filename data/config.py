@@ -1,167 +1,131 @@
-"""
-数据库配置模块 - 统一管理所有数据库连接配置
-使用环境变量管理敏感配置
-多数据库架构: 每个核心功能配备独立数据库
+﻿"""
+数据库配置模块 - SQLite 版本
+9个独立 .db 文件，与原 MySQL 架构一一对应
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # 加载 .env 文件
 load_dotenv()
 
+# 数据库文件存放目录
+DB_DIR = Path(os.getenv("SQLITE_DB_DIR", "data/databases"))
+
+
+def _db_path(name: str) -> str:
+    """返回 .db 文件的绝对路径"""
+    DB_DIR.mkdir(parents=True, exist_ok=True)
+    return str(DB_DIR / f"{name}.db")
+
+
+def get_auth_db_path() -> str:
+    return _db_path("ai_auth")
+
+
+def get_profile_db_path() -> str:
+    return _db_path("ai_profiles")
+
+
+def get_resources_db_path() -> str:
+    return _db_path("ai_resources")
+
+
+def get_paths_db_path() -> str:
+    return _db_path("ai_paths")
+
+
+def get_tutor_db_path() -> str:
+    return _db_path("ai_tutor")
+
+
+def get_assessments_db_path() -> str:
+    return _db_path("ai_assessments")
+
+
+def get_agents_db_path() -> str:
+    return _db_path("ai_agents")
+
+
+def get_rag_db_path() -> str:
+    return _db_path("ai_rag_knowledge")
+
+
+def get_memory_db_path() -> str:
+    return _db_path("ai_memory")
+
+
+# ==================== 向后兼容函数 ====================
 
 def get_auth_db_config():
     """获取认证数据库配置"""
-    return {
-        'host': os.getenv('AUTH_DB_HOST', 'localhost'),
-        'port': int(os.getenv('AUTH_DB_PORT', '3306')),
-        'user': os.getenv('AUTH_DB_USER', 'root'),
-        'password': os.getenv('AUTH_DB_PASSWORD', ''),
-        'database': os.getenv('AUTH_DB_NAME', 'ai_auth'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_auth_db_path()}
 
 
 def get_profile_db_config():
     """获取学生画像数据库配置"""
-    return {
-        'host': os.getenv('PROFILE_DB_HOST', 'localhost'),
-        'port': int(os.getenv('PROFILE_DB_PORT', '3306')),
-        'user': os.getenv('PROFILE_DB_USER', 'root'),
-        'password': os.getenv('PROFILE_DB_PASSWORD', ''),
-        'database': os.getenv('PROFILE_DB_NAME', 'ai_profiles'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_profile_db_path()}
 
 
 def get_resources_db_config():
     """获取学习资源数据库配置"""
-    return {
-        'host': os.getenv('RESOURCES_DB_HOST', 'localhost'),
-        'port': int(os.getenv('RESOURCES_DB_PORT', '3306')),
-        'user': os.getenv('RESOURCES_DB_USER', 'root'),
-        'password': os.getenv('RESOURCES_DB_PASSWORD', ''),
-        'database': os.getenv('RESOURCES_DB_NAME', 'ai_resources'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_resources_db_path()}
 
 
 def get_paths_db_config():
     """获取学习路径数据库配置"""
-    return {
-        'host': os.getenv('PATHS_DB_HOST', 'localhost'),
-        'port': int(os.getenv('PATHS_DB_PORT', '3306')),
-        'user': os.getenv('PATHS_DB_USER', 'root'),
-        'password': os.getenv('PATHS_DB_PASSWORD', ''),
-        'database': os.getenv('PATHS_DB_NAME', 'ai_paths'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_paths_db_path()}
 
 
 def get_tutor_db_config():
     """获取智能辅导数据库配置"""
-    return {
-        'host': os.getenv('TUTOR_DB_HOST', 'localhost'),
-        'port': int(os.getenv('TUTOR_DB_PORT', '3306')),
-        'user': os.getenv('TUTOR_DB_USER', 'root'),
-        'password': os.getenv('TUTOR_DB_PASSWORD', ''),
-        'database': os.getenv('TUTOR_DB_NAME', 'ai_tutor'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_tutor_db_path()}
 
 
 def get_assessments_db_config():
     """获取学习评估数据库配置"""
-    return {
-        'host': os.getenv('ASSESSMENTS_DB_HOST', 'localhost'),
-        'port': int(os.getenv('ASSESSMENTS_DB_PORT', '3306')),
-        'user': os.getenv('ASSESSMENTS_DB_USER', 'root'),
-        'password': os.getenv('ASSESSMENTS_DB_PASSWORD', ''),
-        'database': os.getenv('ASSESSMENTS_DB_NAME', 'ai_assessments'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_assessments_db_path()}
 
 
 def get_agents_db_config():
     """获取智能体协作数据库配置"""
-    return {
-        'host': os.getenv('AGENTS_DB_HOST', 'localhost'),
-        'port': int(os.getenv('AGENTS_DB_PORT', '3306')),
-        'user': os.getenv('AGENTS_DB_USER', 'root'),
-        'password': os.getenv('AGENTS_DB_PASSWORD', ''),
-        'database': os.getenv('AGENTS_DB_NAME', 'ai_agents'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_agents_db_path()}
 
 
 def get_rag_db_config():
     """获取RAG知识库配置"""
-    return {
-        'host': os.getenv('RAG_DB_HOST', 'localhost'),
-        'port': int(os.getenv('RAG_DB_PORT', '3306')),
-        'user': os.getenv('RAG_DB_USER', 'root'),
-        'password': os.getenv('RAG_DB_PASSWORD', ''),
-        'database': os.getenv('RAG_DB_NAME', 'ai_rag_knowledge'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_rag_db_path()}
 
 
 def get_memory_db_config():
     """获取记忆系统配置"""
-    return {
-        'host': os.getenv('MEMORY_DB_HOST', 'localhost'),
-        'port': int(os.getenv('MEMORY_DB_PORT', '3306')),
-        'user': os.getenv('MEMORY_DB_USER', 'root'),
-        'password': os.getenv('MEMORY_DB_PASSWORD', ''),
-        'database': os.getenv('MEMORY_DB_NAME', 'ai_memory'),
-        'charset': 'utf8mb4'
-    }
+    return {"database": get_memory_db_path()}
 
-
-# ==================== 向后兼容函数 ====================
 
 def get_db_config():
     """获取默认数据库配置（向后兼容，返回auth数据库配置）"""
     return get_auth_db_config()
 
+
 def get_qa_db_config():
     """获取QA数据库配置（向后兼容，返回tutor数据库配置）"""
     return get_tutor_db_config()
+
 
 def get_accounts_db_config():
     """获取账号数据库配置（向后兼容，返回auth数据库配置）"""
     return get_auth_db_config()
 
 
-def get_connection_string(db_type='auth'):
-    """获取数据库连接字符串"""
-    config_funcs = {
-        'auth': get_auth_db_config,
-        'profile': get_profile_db_config,
-        'resources': get_resources_db_config,
-        'paths': get_paths_db_config,
-        'tutor': get_tutor_db_config,
-        'assessments': get_assessments_db_config,
-        'agents': get_agents_db_config,
-        'rag': get_rag_db_config,
-        'memory': get_memory_db_config,
-    }
-    
-    config_func = config_funcs.get(db_type, get_auth_db_config)
-    config = config_func()
-    
-    return f"mysql+pymysql://{config['user']}:{config['password']}@{config['host']}:{config['port']}/{config['database']}?charset=utf8mb4"
-
-
 def get_redis_config():
     """获取Redis配置"""
     return {
-        'host': os.getenv('REDIS_HOST', 'localhost'),
-        'port': int(os.getenv('REDIS_PORT', '6379')),
-        'db': int(os.getenv('REDIS_DB', '0')),
-        'password': os.getenv('REDIS_PASSWORD', None),
-        'socket_timeout': 5,
-        'socket_connect_timeout': 5,
-        'retry_on_timeout': True,
+        "host": os.getenv("REDIS_HOST", "localhost"),
+        "port": int(os.getenv("REDIS_PORT", "6379")),
+        "db": int(os.getenv("REDIS_DB", "0")),
+        "password": os.getenv("REDIS_PASSWORD", None),
+        "socket_timeout": 5,
+        "socket_connect_timeout": 5,
+        "retry_on_timeout": True,
     }

@@ -60,9 +60,7 @@ uploads/*
 
 # Portable dependencies (build.py downloads)
 downloads/
-mysql_portable/
 node_portable/
-mysql/
 
 # Build outputs
 *.exe

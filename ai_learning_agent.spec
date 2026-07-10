@@ -50,8 +50,7 @@ hiddenimports = [
     'fastapi.middleware.gzip',
 
     # 数据库
-    'mysql.connector',
-    'mysql.connector.pooling',
+    'sqlite3',
 
     # AI
     'openai',

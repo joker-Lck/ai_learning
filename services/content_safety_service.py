@@ -4,6 +4,7 @@
 使用AC自动机算法加速多模式匹配
 """
 
+import os
 import re
 import json
 from typing import Dict, List, Optional, Tuple
@@ -200,21 +201,7 @@ class ContentSafetyService:
         return result
     
     def _load_sensitive_words(self) -> List[str]:
-        """加载敏感词库（优先从外部配置文件加载）"""
-        config_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "config", "sensitive_words.json"
-        )
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    words = json.load(f)
-                    if isinstance(words, list) and words:
-                        info(f"从外部配置加载了 {len(words)} 个敏感词")
-                        return words
-            except Exception as e:
-                warning(f"加载敏感词配置失败，使用内置词库: {e}")
-        # 内置默认词库
+        """加载敏感词库 — 覆盖 8 大类常见违规内容"""
         return [
             # ── 政治敏感 ──
             "台独", "藏独", "疆独", "港独", "分裂国家",

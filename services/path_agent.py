@@ -274,7 +274,7 @@ class PathAgent:
                 sql = """
                     INSERT INTO learning_paths
                     (user_id, path_name, description, path_data, current_step, total_steps, estimated_hours)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """
                 path_db.cursor.execute(sql, (
                     user_id,
@@ -303,16 +303,17 @@ class PathAgent:
             with path_db:
                 # 获取当前路径（验证所有权）
                 if user_id is not None:
-                    sql = "SELECT path_data, total_steps FROM learning_paths WHERE id = %s AND user_id = %s"
+                    sql = "SELECT path_data, total_steps FROM learning_paths WHERE id = ? AND user_id = ?"
                     path_db.cursor.execute(sql, (path_id, user_id))
                 else:
-                    sql = "SELECT path_data, total_steps FROM learning_paths WHERE id = %s"
+                    sql = "SELECT path_data, total_steps FROM learning_paths WHERE id = ?"
                     path_db.cursor.execute(sql, (path_id,))
                 result = path_db.cursor.fetchone()
 
                 if not result:
                     return {"success": False, "message": "路径不存在"}
 
+                result = dict(result)
                 path_data = json.loads(result["path_data"])
                 total_steps = result["total_steps"]
 
@@ -329,8 +330,8 @@ class PathAgent:
                 # 更新数据库
                 sql_update = """
                     UPDATE learning_paths
-                    SET path_data = %s, current_step = %s, completed_steps = %s, status = %s
-                    WHERE id = %s
+                    SET path_data = ?, current_step = ?, completed_steps = ?, status = ?
+                    WHERE id = ?
                 """
                 path_db.cursor.execute(sql_update, (
                     json.dumps(path_data, ensure_ascii=False),

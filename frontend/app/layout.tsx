@@ -1,3 +1,6 @@
+﻿// Polyfill for older browsers
+import '../polyfill';
+
 import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
 

@@ -14,14 +14,10 @@ BASE_DIR = Path(__file__).parent
 DIST_DIR = BASE_DIR / "dist" / "AI学习智能体"
 BUILD_DIR = BASE_DIR / "build"
 NODE_PORTABLE_DIR = BASE_DIR / "node_portable"
-MYSQL_PORTABLE_DIR = BASE_DIR / "mysql_portable"
 
 # 便携版下载链接
 NODE_VERSION = "v18.20.4"
 NODE_URL = f"https://nodejs.org/dist/{NODE_VERSION}/node-{NODE_VERSION}-win-x64.zip"
-# MySQL 8.0 - 尝试多个版本
-MYSQL_VERSIONS = ["8.0.40", "8.0.39", "8.0.38", "8.0.37", "8.0.36"]
-MYSQL_URLS = [f"https://cdn.mysql.com/Downloads/MySQL-8.0/mysql-{v}-winx64.zip" for v in MYSQL_VERSIONS]
 
 
 def log(msg, level="INFO"):
@@ -92,48 +88,6 @@ def setup_node_portable():
         shutil.rmtree(str(extract_dir))
 
     log("便携 Node.js 配置完成", "OK")
-    return True
-
-
-def setup_mysql_portable():
-    """下载并配置便携 MySQL"""
-    log("配置便携 MySQL...")
-
-    zip_file = BASE_DIR / "downloads" / "mysql-winx64.zip"
-    zip_file.parent.mkdir(exist_ok=True)
-
-    # 尝试多个版本
-    downloaded = False
-    for url in MYSQL_URLS:
-        log(f"尝试: {url}")
-        if download_file(url, zip_file):
-            downloaded = True
-            break
-
-    if not downloaded:
-        log("MySQL 下载失败，请手动下载 MySQL ZIP 包", "ERROR")
-        log("下载地址: https://dev.mysql.com/downloads/mysql/8.0.html", "INFO")
-        log("下载后将 ZIP 文件放到 downloads/ 目录并重命名为 mysql-winx64.zip", "INFO")
-        return False
-
-    # 解压
-    extract_dir = MYSQL_PORTABLE_DIR / "temp"
-    if not extract_zip(zip_file, extract_dir):
-        return False
-
-    # 移动文件
-    extracted_dirs = list(extract_dir.iterdir())
-    if extracted_dirs:
-        src = extracted_dirs[0]
-        for item in src.iterdir():
-            dest = MYSQL_PORTABLE_DIR / item.name
-            if item.is_dir():
-                shutil.copytree(str(item), str(dest), dirs_exist_ok=True)
-            else:
-                shutil.copy2(str(item), str(dest))
-        shutil.rmtree(str(extract_dir))
-
-    log("便携 MySQL 配置完成", "OK")
     return True
 
 
@@ -227,18 +181,6 @@ def assemble_dist():
         shutil.copytree(str(NODE_PORTABLE_DIR), str(node_dest))
         log("便携 Node.js 复制完成", "OK")
 
-    # 复制便携 MySQL
-    mysql_dest = DIST_DIR / "mysql"
-    if MYSQL_PORTABLE_DIR.exists():
-        if mysql_dest.exists():
-            shutil.rmtree(str(mysql_dest))
-        shutil.copytree(str(MYSQL_PORTABLE_DIR), str(mysql_dest))
-        # 复制 my.ini
-        myini_src = BASE_DIR / "mysql" / "my.ini"
-        if myini_src.exists():
-            shutil.copy2(str(myini_src), str(mysql_dest / "my.ini"))
-        log("便携 MySQL 复制完成", "OK")
-
     # 复制数据文件
     for dirname in ["data", "exports", "config", "scripts"]:
         src = BASE_DIR / dirname
@@ -247,6 +189,10 @@ def assemble_dist():
             if dest.exists():
                 shutil.rmtree(str(dest))
             shutil.copytree(str(src), str(dest))
+
+    # 确保 SQLite 数据库目录存在
+    sqlite_dir = DIST_DIR / "data" / "databases"
+    sqlite_dir.mkdir(parents=True, exist_ok=True)
 
     # 复制 .env.example
     env_example = BASE_DIR / ".env.example"
@@ -265,7 +211,7 @@ def main():
     print()
 
     # 检查依赖
-    log("[1/5] 检查构建依赖...")
+    log("[1/4] 检查构建依赖...")
     try:
         import PyInstaller
         log(f"PyInstaller {PyInstaller.__version__}", "OK")
@@ -274,19 +220,16 @@ def main():
         subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"], check=True)
 
     # 构建前端
-    log("[2/5] 构建前端...")
+    log("[2/4] 构建前端...")
     if not build_frontend():
         log("前端构建失败，但将继续打包", "WARN")
 
     # 下载便携依赖
-    log("[3/5] 准备便携 Node.js...")
+    log("[3/4] 准备便携 Node.js...")
     setup_node_portable()
 
-    log("[4/5] 准备便携 MySQL...")
-    setup_mysql_portable()
-
     # PyInstaller 打包
-    log("[5/5] PyInstaller 打包...")
+    log("[4/4] PyInstaller 打包...")
     if not run_pyinstaller():
         log("PyInstaller 打包失败", "ERROR")
         return

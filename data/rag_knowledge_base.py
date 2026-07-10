@@ -1,13 +1,12 @@
 from core.logger import info, error, warning
 """RAG 知识库管理模块（JSON 格式存储）"""
 
-import mysql.connector
-from mysql.connector import pooling
+import sqlite3
 import json
 import time
 import threading
 from collections import OrderedDict
-from .config import get_rag_db_config
+from .config import get_rag_db_path
 from datetime import datetime
 import os
 import numpy as np
@@ -259,39 +258,66 @@ vector_index = VectorIndexManager()
 
 class RAGKnowledgeBase:
     def __init__(self):
-        self.conn_pool = None
         self.conn = None
         self.cursor = None
-        self._init_pool()
+        self.db_path = get_rag_db_path()
+        self._init_fts()
     
-    def _init_pool(self):
-        """初始化连接池"""
+    def _init_fts(self):
+        """初始化 FTS5 虚拟表（如果表已存在）"""
         try:
-            config = get_rag_db_config()
-            config['use_pure'] = True
-            self.conn_pool = pooling.MySQLConnectionPool(
-                pool_name="rag_pool",
-                pool_size=10,
-                pool_reset_session=True,
-                connection_timeout=10,
-                **config
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='knowledge_documents'"
             )
+            if cursor.fetchone() is None:
+                conn.close()
+                return
+            conn.execute("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_documents_fts
+                USING fts5(title, subject, content='knowledge_documents', content_rowid='id')
+            """)
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS knowledge_documents_ai
+                AFTER INSERT ON knowledge_documents BEGIN
+                    INSERT INTO knowledge_documents_fts(rowid, title, subject)
+                    VALUES (new.id, new.title, new.subject);
+                END
+            """)
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS knowledge_documents_ad
+                AFTER DELETE ON knowledge_documents BEGIN
+                    INSERT INTO knowledge_documents_fts(knowledge_documents_fts, rowid, title, subject)
+                    VALUES('delete', old.id, old.title, old.subject);
+                END
+            """)
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS knowledge_documents_au
+                AFTER UPDATE ON knowledge_documents BEGIN
+                    INSERT INTO knowledge_documents_fts(knowledge_documents_fts, rowid, title, subject)
+                    VALUES('delete', old.id, old.title, old.subject);
+                    INSERT INTO knowledge_documents_fts(rowid, title, subject)
+                    VALUES (new.id, new.title, new.subject);
+                END
+            """)
+            conn.commit()
+            conn.close()
         except Exception as e:
-            error(f"RAG 连接池初始化失败：{str(e)}")
+            warning(f"FTS5 初始化失败：{str(e)}")
     
     def _get_connection(self):
-        """从连接池获取连接"""
-        if self.conn_pool:
-            return self.conn_pool.get_connection()
-        config = get_rag_db_config()
-        config['use_pure'] = True
-        return mysql.connector.connect(**config)
+        """获取 SQLite 连接"""
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
     
     def connect(self):
         """连接数据库"""
         try:
             self.conn = self._get_connection()
-            self.cursor = self.conn.cursor(dictionary=True)
+            self.cursor = self.conn.cursor()
             return True
         except Exception as e:
             self.conn = None
@@ -301,11 +327,7 @@ class RAGKnowledgeBase:
     def _ensure_connected(self):
         """确保数据库已连接，返回 True/False"""
         if self.cursor is not None and self.conn is not None:
-            try:
-                self.conn.ping(reconnect=False)
-                return True
-            except Exception:
-                pass
+            return True
         return self.connect()
     
     def close(self):
@@ -382,7 +404,7 @@ class RAGKnowledgeBase:
             if has_embedding_col:
                 sql = """INSERT INTO knowledge_documents
                         (title, subject, file_path, file_type, file_size, document_data, embedding, uploaded_by, upload_time)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
                 params = (
                     title, subject, file_path, file_type, file_size,
                     json.dumps(document_data, ensure_ascii=False),
@@ -392,7 +414,7 @@ class RAGKnowledgeBase:
             else:
                 sql = """INSERT INTO knowledge_documents
                         (title, subject, file_path, file_type, file_size, document_data, uploaded_by, upload_time)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
                 params = (
                     title, subject, file_path, file_type, file_size,
                     json.dumps(document_data, ensure_ascii=False),
@@ -434,9 +456,7 @@ class RAGKnowledgeBase:
                 points = [p.strip() for p in str(knowledge_points_str).split(',') if p.strip()]
             
             for point in points:
-                sql = """INSERT INTO knowledge_points (doc_id, point_name) 
-                        VALUES (%s, %s)
-                        ON DUPLICATE KEY UPDATE point_name = point_name"""
+                sql = "INSERT OR IGNORE INTO knowledge_points (doc_id, point_name) VALUES (?, ?)"
                 self.cursor.execute(sql, (doc_id, point))
             
             self.conn.commit()
@@ -477,9 +497,9 @@ class RAGKnowledgeBase:
         try:
             self.connect()
             sql = """SELECT * FROM knowledge_documents 
-                    WHERE subject = %s 
+                    WHERE subject = ? 
                     ORDER BY upload_time DESC 
-                    LIMIT %s"""
+                    LIMIT ?"""
             self.cursor.execute(sql, (subject, limit))
             results = self.cursor.fetchall()
             
@@ -506,7 +526,7 @@ class RAGKnowledgeBase:
             self.connect()
             sql = """SELECT * FROM knowledge_documents
                     ORDER BY upload_time DESC
-                    LIMIT %s OFFSET %s"""
+                    LIMIT ? OFFSET ?"""
             self.cursor.execute(sql, (limit, offset))
             results = self.cursor.fetchall()
             
@@ -543,9 +563,9 @@ class RAGKnowledgeBase:
         try:
             self.connect()
             sql = """SELECT * FROM knowledge_documents
-                    WHERE uploaded_by = %s
+                    WHERE uploaded_by = ?
                     ORDER BY upload_time DESC
-                    LIMIT %s OFFSET %s"""
+                    LIMIT ? OFFSET ?"""
             self.cursor.execute(sql, (int(user_id), limit, offset))
             results = self.cursor.fetchall()
             
@@ -605,7 +625,7 @@ class RAGKnowledgeBase:
             score_map = {h['id']: h['score'] for h in hits}
 
             self.connect()
-            placeholders = ','.join(['%s'] * len(doc_ids))
+            placeholders = ','.join(['?'] * len(doc_ids))
             sql = f"""SELECT id, title, subject, document_data
                       FROM knowledge_documents WHERE id IN ({placeholders})"""
             self.cursor.execute(sql, doc_ids)
@@ -772,28 +792,34 @@ class RAGKnowledgeBase:
             self.close()
 
     def _fulltext_title_search(self, keywords, subject, limit):
-        """FULLTEXT MATCH(title) AGAINST 检索"""
+        """FTS5 全文检索"""
         try:
+            # FTS5 查询：用双引号包裹关键词作为字面量
+            fts_query = " ".join(f'"{kw}"' for kw in keywords.split() if len(kw) > 1)
+            if not fts_query:
+                return []
+            
             if subject:
-                sql = """SELECT id, title, subject, document_data,
-                            MATCH(title) AGAINST(%s IN BOOLEAN MODE) AS ft_score
-                         FROM knowledge_documents
-                         WHERE subject = %s
-                           AND MATCH(title) AGAINST(%s IN BOOLEAN MODE)
-                         ORDER BY ft_score DESC
-                         LIMIT %s"""
-                self.cursor.execute(sql, (keywords, subject, keywords, limit))
+                sql = """SELECT kd.id, kd.title, kd.subject, kd.document_data, rank
+                         FROM knowledge_documents_fts fts
+                         JOIN knowledge_documents kd ON fts.rowid = kd.id
+                         WHERE knowledge_documents_fts MATCH ?
+                           AND kd.subject = ?
+                         ORDER BY rank
+                         LIMIT ?"""
+                self.cursor.execute(sql, (fts_query, subject, limit))
             else:
-                sql = """SELECT id, title, subject, document_data,
-                            MATCH(title) AGAINST(%s IN BOOLEAN MODE) AS ft_score
-                         FROM knowledge_documents
-                         WHERE MATCH(title) AGAINST(%s IN BOOLEAN MODE)
-                         ORDER BY ft_score DESC
-                         LIMIT %s"""
-                self.cursor.execute(sql, (keywords, keywords, limit))
+                sql = """SELECT kd.id, kd.title, kd.subject, kd.document_data, rank
+                         FROM knowledge_documents_fts fts
+                         JOIN knowledge_documents kd ON fts.rowid = kd.id
+                         WHERE knowledge_documents_fts MATCH ?
+                         ORDER BY rank
+                         LIMIT ?"""
+                self.cursor.execute(sql, (fts_query, limit))
 
             results = []
             for row in self.cursor.fetchall():
+                row = dict(row)
                 doc_data = row.get('document_data')
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
@@ -803,13 +829,13 @@ class RAGKnowledgeBase:
                     'title': row['title'],
                     'subject': row['subject'],
                     'content_text': raw_text[:1000],
-                    'similarity': float(row.get('ft_score', 0)),
+                    'similarity': float(row.get('rank', 0)) * -1,  # rank 是负数，越小越好
                     'document_data': doc_data,
-                    'retrieval_method': 'knn_fulltext',
+                    'retrieval_method': 'fts5',
                 })
             return results
         except Exception as e:
-            warning(f"FULLTEXT 标题检索失败: {e}")
+            warning(f"FTS5 标题检索失败: {e}")
             return []
 
     def _json_like_search(self, keywords, subject, limit):
@@ -819,20 +845,20 @@ class RAGKnowledgeBase:
             if subject:
                 sql = """SELECT id, title, subject, document_data
                          FROM knowledge_documents
-                         WHERE subject = %s
-                           AND (JSON_EXTRACT(document_data, '$.analysis.summary') LIKE %s
-                                OR JSON_SEARCH(document_data, 'one', %s, NULL, '$.analysis.knowledge_points[*]') IS NOT NULL)
+                         WHERE subject = ?
+                           AND (json_extract(document_data, '$.analysis.summary') LIKE ?
+                                OR document_data LIKE ?)
                          ORDER BY usage_count DESC
-                         LIMIT %s"""
-                self.cursor.execute(sql, (subject, search_term, keywords, limit))
+                         LIMIT ?"""
+                self.cursor.execute(sql, (subject, search_term, search_term, limit))
             else:
                 sql = """SELECT id, title, subject, document_data
                          FROM knowledge_documents
-                         WHERE JSON_EXTRACT(document_data, '$.analysis.summary') LIKE %s
-                            OR JSON_SEARCH(document_data, 'one', %s, NULL, '$.analysis.knowledge_points[*]') IS NOT NULL
+                         WHERE json_extract(document_data, '$.analysis.summary') LIKE ?
+                            OR document_data LIKE ?
                          ORDER BY usage_count DESC
-                         LIMIT %s"""
-                self.cursor.execute(sql, (search_term, keywords, limit))
+                         LIMIT ?"""
+                self.cursor.execute(sql, (search_term, search_term, limit))
 
             results = []
             for row in self.cursor.fetchall():
@@ -911,7 +937,7 @@ class RAGKnowledgeBase:
             conditions = []
             params = []
             for kw in keyword_list[:3]:  # 最多 3 个关键词
-                conditions.append("(title LIKE %s OR JSON_EXTRACT(document_data, '$.content.raw_text') LIKE %s)")
+                conditions.append("(title LIKE ? OR json_extract(document_data, '$.content.raw_text') LIKE ?)")
                 params.extend([kw, kw])
             
             where_sql = " AND ".join(conditions)
@@ -919,14 +945,14 @@ class RAGKnowledgeBase:
             if subject:
                 sql = f"""SELECT id, title, subject, document_data, 0.5 as relevance
                          FROM knowledge_documents
-                         WHERE subject = %s AND ({where_sql})
-                         LIMIT %s"""
+                         WHERE subject = ? AND ({where_sql})
+                         LIMIT ?"""
                 params = [subject] + params + [limit]
             else:
                 sql = f"""SELECT id, title, subject, document_data, 0.5 as relevance
                          FROM knowledge_documents
                          WHERE {where_sql}
-                         LIMIT %s"""
+                         LIMIT ?"""
                 params = params + [limit]
             
             self.cursor.execute(sql, params)
@@ -952,7 +978,7 @@ class RAGKnowledgeBase:
         """根据 ID 获取文档详情（解析 JSON 数据）"""
         try:
             self.connect()
-            sql = "SELECT * FROM knowledge_documents WHERE id = %s"
+            sql = "SELECT * FROM knowledge_documents WHERE id = ?"
             self.cursor.execute(sql, (doc_id,))
             record = self.cursor.fetchone()
             
@@ -976,7 +1002,7 @@ class RAGKnowledgeBase:
         """更新文档使用次数"""
         try:
             self.connect()
-            sql = "UPDATE knowledge_documents SET usage_count = usage_count + 1 WHERE id = %s"
+            sql = "UPDATE knowledge_documents SET usage_count = usage_count + 1 WHERE id = ?"
             self.cursor.execute(sql, (doc_id,))
             self.conn.commit()
             return True
@@ -991,11 +1017,11 @@ class RAGKnowledgeBase:
         try:
             self.connect()
             # 先删除关联的知识点
-            sql = "DELETE FROM knowledge_points WHERE doc_id = %s"
+            sql = "DELETE FROM knowledge_points WHERE doc_id = ?"
             self.cursor.execute(sql, (doc_id,))
 
             # 删除文档
-            sql = "DELETE FROM knowledge_documents WHERE id = %s"
+            sql = "DELETE FROM knowledge_documents WHERE id = ?"
             self.cursor.execute(sql, (doc_id,))
             self.conn.commit()
 
@@ -1021,7 +1047,7 @@ class RAGKnowledgeBase:
         """获取文档的所有知识点"""
         try:
             self.connect()
-            sql = "SELECT point_name FROM knowledge_points WHERE doc_id = %s"
+            sql = "SELECT point_name FROM knowledge_points WHERE doc_id = ?"
             self.cursor.execute(sql, (doc_id,))
             return self.cursor.fetchall()
         except Exception as e:
@@ -1037,9 +1063,9 @@ class RAGKnowledgeBase:
             sql = """SELECT kd.*, kp.point_name
                     FROM knowledge_documents kd
                     JOIN knowledge_points kp ON kd.id = kp.doc_id
-                    WHERE kp.point_name LIKE %s
+                    WHERE kp.point_name LIKE ?
                     ORDER BY kd.upload_time DESC
-                    LIMIT %s"""
+                    LIMIT ?"""
             self.cursor.execute(sql, (f"%{point_name}%", limit))
             return self.cursor.fetchall()
         except Exception as e:

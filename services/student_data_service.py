@@ -48,8 +48,8 @@ class StudentDataService:
             # UPSERT
             sql = """
                 INSERT INTO course_schedules (user_id, semester, courses)
-                VALUES (%s, %s, %s)
-                ON DUPLICATE KEY UPDATE courses = VALUES(courses), updated_at = NOW()
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id, semester) DO UPDATE SET courses = excluded.courses, updated_at = CURRENT_TIMESTAMP
             """
             profile_db.cursor.execute(sql, (user_id, semester, json.dumps(courses, ensure_ascii=False)))
             profile_db.conn.commit()
@@ -65,10 +65,11 @@ class StudentDataService:
         """获取指定学期课程表"""
         try:
             profile_db.connect()
-            sql = "SELECT * FROM course_schedules WHERE user_id = %s AND semester = %s"
+            sql = "SELECT * FROM course_schedules WHERE user_id = ? AND semester = ?"
             profile_db.cursor.execute(sql, (user_id, semester))
             row = profile_db.cursor.fetchone()
             if row:
+                row = dict(row)
                 row['courses'] = json.loads(row['courses']) if isinstance(row['courses'], str) else row['courses']
                 return {"success": True, "data": row}
             return {"success": True, "data": None}
@@ -82,10 +83,10 @@ class StudentDataService:
         """列出用户所有学期"""
         try:
             profile_db.connect()
-            sql = "SELECT DISTINCT semester FROM course_schedules WHERE user_id = %s ORDER BY semester DESC"
+            sql = "SELECT DISTINCT semester FROM course_schedules WHERE user_id = ? ORDER BY semester DESC"
             profile_db.cursor.execute(sql, (user_id,))
             rows = profile_db.cursor.fetchall()
-            semesters = [r['semester'] for r in rows]
+            semesters = [dict(r)['semester'] for r in rows]
             return {"success": True, "data": semesters}
         except Exception as e:
             error(f"获取学期列表失败: {e}")
@@ -101,12 +102,12 @@ class StudentDataService:
             profile_db.connect()
             # 删除该学期旧数据
             profile_db.cursor.execute(
-                "DELETE FROM student_grades WHERE user_id = %s AND semester = %s",
+                "DELETE FROM student_grades WHERE user_id = ? AND semester = ?",
                 (user_id, semester)
             )
             # 批量插入
             sql = """INSERT INTO student_grades (user_id, semester, course_name, score, credits, grade_type)
-                     VALUES (%s, %s, %s, %s, %s, %s)"""
+                     VALUES (?, ?, ?, ?, ?, ?)"""
             for g in grades:
                 profile_db.cursor.execute(sql, (
                     user_id, semester, g['course_name'],
@@ -126,18 +127,13 @@ class StudentDataService:
         try:
             profile_db.connect()
             if semester:
-                sql = "SELECT * FROM student_grades WHERE user_id = %s AND semester = %s ORDER BY created_at DESC"
+                sql = "SELECT * FROM student_grades WHERE user_id = ? AND semester = ? ORDER BY created_at DESC"
                 profile_db.cursor.execute(sql, (user_id, semester))
             else:
-                sql = "SELECT * FROM student_grades WHERE user_id = %s ORDER BY semester DESC, created_at DESC"
+                sql = "SELECT * FROM student_grades WHERE user_id = ? ORDER BY semester DESC, created_at DESC"
                 profile_db.cursor.execute(sql, (user_id,))
-            rows = profile_db.cursor.fetchall()
-            # Decimal → float
+            rows = [dict(r) for r in profile_db.cursor.fetchall()]
             for r in rows:
-                if r.get('score') is not None:
-                    r['score'] = float(r['score'])
-                if r.get('credits') is not None:
-                    r['credits'] = float(r['credits'])
                 if r.get('created_at'):
                     r['created_at'] = str(r['created_at'])
             return {"success": True, "data": rows}
@@ -154,7 +150,7 @@ class StudentDataService:
         try:
             profile_db.connect()
             sql = """INSERT INTO error_notes (user_id, subject, chapter, question, my_answer, correct_answer, error_reason, tags)
-                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
             tags_json = json.dumps(note.get('tags', []), ensure_ascii=False) if note.get('tags') else None
             profile_db.cursor.execute(sql, (
                 user_id, note['subject'], note.get('chapter'),
@@ -174,17 +170,17 @@ class StudentDataService:
         """获取错题列表"""
         try:
             profile_db.connect()
-            conditions = ["user_id = %s"]
+            conditions = ["user_id = ?"]
             params: list = [user_id]
             if subject:
-                conditions.append("subject = %s")
+                conditions.append("subject = ?")
                 params.append(subject)
             if mastery is not None:
-                conditions.append("mastery = %s")
+                conditions.append("mastery = ?")
                 params.append(mastery)
             sql = f"SELECT * FROM error_notes WHERE {' AND '.join(conditions)} ORDER BY created_at DESC LIMIT 200"
             profile_db.cursor.execute(sql, params)
-            rows = profile_db.cursor.fetchall()
+            rows = [dict(r) for r in profile_db.cursor.fetchall()]
             for r in rows:
                 if r.get('tags') and isinstance(r['tags'], str):
                     r['tags'] = json.loads(r['tags'])
@@ -201,7 +197,7 @@ class StudentDataService:
         """标记错题已掌握/未掌握"""
         try:
             profile_db.connect()
-            sql = "UPDATE error_notes SET mastery = %s WHERE id = %s AND user_id = %s"
+            sql = "UPDATE error_notes SET mastery = ? WHERE id = ? AND user_id = ?"
             profile_db.cursor.execute(sql, (mastery, note_id, user_id))
             profile_db.conn.commit()
             return {"success": True, "message": "已更新"}
@@ -215,7 +211,7 @@ class StudentDataService:
         """删除错题"""
         try:
             profile_db.connect()
-            sql = "DELETE FROM error_notes WHERE id = %s AND user_id = %s"
+            sql = "DELETE FROM error_notes WHERE id = ? AND user_id = ?"
             profile_db.cursor.execute(sql, (note_id, user_id))
             profile_db.conn.commit()
             return {"success": True, "message": "已删除"}
@@ -272,7 +268,7 @@ class StudentDataService:
             # 保存到数据库
             profile_db.connect()
             sql = """INSERT INTO study_plans (user_id, semester, plan_type, plan_data)
-                     VALUES (%s, %s, %s, %s)"""
+                     VALUES (?, ?, ?, ?)"""
             profile_db.cursor.execute(sql, (
                 user_id, semester, plan_type, json.dumps(plan_data, ensure_ascii=False)
             ))
@@ -294,14 +290,14 @@ class StudentDataService:
         """获取学习计划列表"""
         try:
             profile_db.connect()
-            conditions = ["user_id = %s", "status = %s"]
+            conditions = ["user_id = ?", "status = ?"]
             params: list = [user_id, status]
             if semester:
-                conditions.append("semester = %s")
+                conditions.append("semester = ?")
                 params.append(semester)
             sql = f"SELECT * FROM study_plans WHERE {' AND '.join(conditions)} ORDER BY created_at DESC LIMIT 20"
             profile_db.cursor.execute(sql, params)
-            rows = profile_db.cursor.fetchall()
+            rows = [dict(r) for r in profile_db.cursor.fetchall()]
             for r in rows:
                 if r.get('plan_data') and isinstance(r['plan_data'], str):
                     r['plan_data'] = json.loads(r['plan_data'])

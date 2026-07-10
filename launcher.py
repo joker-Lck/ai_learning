@@ -1,6 +1,6 @@
 """
 AI 学习智能体 - 启动器
-管理 MySQL、Node.js、FastAPI 三个子进程
+管理 Node.js、FastAPI 两个子进程（SQLite 无需独立进程）
 """
 import os
 import sys
@@ -10,7 +10,6 @@ import subprocess
 import socket
 import webbrowser
 import shutil
-import json
 from pathlib import Path
 
 # ── 路径配置 ──
@@ -20,10 +19,6 @@ if getattr(sys, 'frozen', False):
 else:
     BASE_DIR = Path(__file__).parent
 
-MYSQL_DIR = BASE_DIR / "mysql"
-MYSQL_BIN = MYSQL_DIR / "bin" / "mysqld.exe"
-MYSQL_DATA = MYSQL_DIR / "data"
-MYSQL_MYINI = MYSQL_DIR / "my.ini"
 NODE_DIR = BASE_DIR / "node"
 NODE_EXE = NODE_DIR / "node.exe"
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -31,9 +26,9 @@ FRONTEND_SERVER = FRONTEND_DIR / "server.js"
 LOGS_DIR = BASE_DIR / "logs"
 ENV_FILE = BASE_DIR / ".env"
 ENV_EXAMPLE = BASE_DIR / ".env.example"
+SQLITE_DB_DIR = BASE_DIR / "data" / "databases"
 
 # 端口配置
-MYSQL_PORT = 3306
 BACKEND_PORT = 8000
 FRONTEND_PORT = 3000
 
@@ -101,59 +96,11 @@ def setup_env():
     return False
 
 
-def init_mysql():
-    """初始化 MySQL 数据目录"""
-    if MYSQL_DATA.exists() and any(MYSQL_DATA.iterdir()):
-        log("MySQL 数据目录已存在", "OK")
-        return True
-
-    if not MYSQL_BIN.exists():
-        log(f"mysqld.exe 不存在: {MYSQL_BIN}", "ERROR")
-        return False
-
-    log("首次运行，初始化 MySQL 数据目录...")
-    MYSQL_DATA.mkdir(parents=True, exist_ok=True)
-
-    result = subprocess.run(
-        [str(MYSQL_BIN), f"--defaults-file={MYSQL_MYINI}", "--initialize-insecure"],
-        capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW
-    )
-
-    if result.returncode == 0:
-        log("MySQL 数据目录初始化完成", "OK")
-        return True
-    else:
-        log(f"MySQL 初始化失败: {result.stderr}", "ERROR")
-        return False
-
-
-def start_mysql():
-    """启动 MySQL"""
-    if check_port(MYSQL_PORT):
-        log(f"端口 {MYSQL_PORT} 已被占用，尝试释放...")
-        kill_port(MYSQL_PORT)
-        time.sleep(2)
-
-    if not MYSQL_BIN.exists():
-        log("mysqld.exe 不存在，跳过 MySQL 启动", "WARN")
-        log("请确保 MySQL 已安装并运行在端口 3306", "WARN")
-        return True
-
-    log("启动 MySQL...")
-    proc = subprocess.Popen(
-        [str(MYSQL_BIN), f"--defaults-file={MYSQL_MYINI}"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        creationflags=subprocess.CREATE_NO_WINDOW
-    )
-    processes.append(("MySQL", proc))
-
-    if wait_for_port(MYSQL_PORT, timeout=30, service_name="MySQL"):
-        log("MySQL 启动成功", "OK")
-        return True
-    else:
-        log("MySQL 启动失败", "ERROR")
-        return False
+def init_sqlite():
+    """初始化 SQLite 数据目录"""
+    SQLITE_DB_DIR.mkdir(parents=True, exist_ok=True)
+    log(f"SQLite 数据目录: {SQLITE_DB_DIR}", "OK")
+    return True
 
 
 def init_databases():
@@ -291,35 +238,28 @@ def main():
     LOGS_DIR.mkdir(exist_ok=True)
 
     # 步骤 1: 检查 .env
-    log("[1/6] 检查环境配置...")
+    log("[1/5] 检查环境配置...")
     if not setup_env():
         input("\n按回车键退出...")
         return
 
-    # 步骤 2: 初始化 MySQL
-    log("[2/6] 检查 MySQL...")
-    if not init_mysql():
-        input("\n按回车键退出...")
-        return
+    # 步骤 2: 初始化 SQLite
+    log("[2/5] 初始化 SQLite...")
+    init_sqlite()
 
-    # 步骤 3: 启动 MySQL
-    log("[3/6] 启动 MySQL...")
-    if not start_mysql():
-        log("MySQL 启动失败，但将继续尝试启动其他服务", "WARN")
-
-    # 步骤 4: 初始化数据库
-    log("[4/6] 初始化数据库...")
+    # 步骤 3: 初始化数据库
+    log("[3/5] 初始化数据库...")
     init_databases()
 
-    # 步骤 5: 启动后端
-    log("[5/6] 启动后端服务...")
+    # 步骤 4: 启动后端
+    log("[4/5] 启动后端服务...")
     if not start_backend():
         input("\n按回车键退出...")
         cleanup()
         return
 
-    # 步骤 6: 启动前端
-    log("[6/6] 启动前端服务...")
+    # 步骤 5: 启动前端
+    log("[5/5] 启动前端服务...")
     start_frontend()
 
     print()

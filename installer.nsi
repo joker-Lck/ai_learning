@@ -1,4 +1,4 @@
-﻿; AI 学习智能体 - NSIS 安装脚本
+; AI 学习智能体 - NSIS 安装脚本
 ; 需要 NSIS 3.0+ 编译
 Unicode true
 
@@ -51,8 +51,6 @@ Section "核心文件（必需）" SecCore
     ; 创建必要目录
     CreateDirectory "$INSTDIR\logs"
     CreateDirectory "$INSTDIR\exports"
-    CreateDirectory "$INSTDIR\mysql\data"
-
     ; 创建 .env 文件（从 example 复制）
     IfFileExists "$INSTDIR\.env" env_exists
     IfFileExists "$INSTDIR\.env.example" 0 env_done
@@ -106,7 +104,6 @@ FunctionEnd
 Section "Uninstall"
     ; 停止可能运行的进程
     nsExec::ExecToLog 'taskkill /F /IM "AI学习智能体.exe" /T'
-    nsExec::ExecToLog 'taskkill /F /IM "mysqld.exe" /T'
     nsExec::ExecToLog 'taskkill /F /IM "node.exe" /T'
 
     Sleep 2000
@@ -115,7 +112,6 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\_internal"
     RMDir /r "$INSTDIR\frontend"
     RMDir /r "$INSTDIR\node"
-    RMDir /r "$INSTDIR\mysql"
     RMDir /r "$INSTDIR\data"
     RMDir /r "$INSTDIR\config"
     RMDir /r "$INSTDIR\scripts"

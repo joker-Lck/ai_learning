@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useState, memo } from 'react';
-import { Route, Loader2, Clock, Zap, CalendarDays, BookOpen } from 'lucide-react';
+import { Router, Loader2, Clock, Zap, CalendarDays, BookOpen } from 'lucide-react';
 import type { LearningPath, StudyPlan } from './types';
 
 interface PathModuleProps {
@@ -29,7 +29,7 @@ export default memo(function PathModule({
       {/* 标题 */}
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-lg bg-purple-500/15 flex items-center justify-center">
-          <Route className="w-5 h-5 text-purple-400" />
+          <Router className="w-5 h-5 text-purple-400" />
         </div>
         <div>
           <h3 className="text-3xl font-bold text-white">学习路径与规划</h3>
@@ -80,7 +80,7 @@ function PathTabContent({ learningGoal, setLearningGoal, pathLoading, learningPa
           {pathLoading ? (
             <><Loader2 className="w-5 h-5 animate-spin" /> 规划中...</>
           ) : (
-            <><Route className="w-5 h-5" /> 生成学习路径</>
+            <><Router className="w-5 h-5" /> 生成学习路径</>
           )}
         </button>
       </div>
@@ -188,7 +188,7 @@ function PlanTabContent({ plans, loading, onGenerate }: { plans: StudyPlan[]; lo
       {/* 计划展示 */}
       {!display && !loading && (
         <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
-          <Route className="w-10 h-10 mx-auto mb-2 opacity-30" />
+          <Router className="w-10 h-10 mx-auto mb-2 opacity-30" />
           <p>点击上方按钮生成 AI 学习计划</p>
           <p className="text-xs mt-1">系统将根据你的课程表、成绩和薄弱点智能规划</p>
         </div>

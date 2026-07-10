@@ -848,7 +848,7 @@ function downloadSVG() {{
                     sql = """
                         INSERT INTO learning_resources
                         (user_id, title, resource_type, subject, difficulty_level, content_data, duration_minutes, generated_by_agent)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """
                     resource_db.cursor.execute(sql, (
                         user_id,

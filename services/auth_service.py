@@ -1,15 +1,12 @@
-"""
+﻿"""
 用户认证服务模块
 处理用户登录、注册、密码加密等功能
 """
 
 import bcrypt
 import hashlib
-import secrets
+import sqlite3
 from data.config import get_accounts_db_config
-import mysql.connector
-from mysql.connector import pooling
-from datetime import datetime
 
 
 class AuthService:
@@ -18,44 +15,15 @@ class AuthService:
     def __init__(self):
         """初始化认证服务"""
         self.db_config = get_accounts_db_config()
-        self._pool = self._init_pool()
-
-    def _init_pool(self):
-        """初始化连接池"""
-        try:
-            config = {
-                'host': self.db_config['host'],
-                'port': self.db_config['port'],
-                'user': self.db_config['user'],
-                'password': self.db_config['password'],
-                'database': self.db_config['database'],
-                'charset': 'utf8mb4',
-                'use_pure': True,
-                'connection_timeout': 5,
-            }
-            return pooling.MySQLConnectionPool(
-                pool_name="auth_pool",
-                pool_size=5,
-                pool_reset_session=False,
-                **config,
-            )
-        except Exception:
-            return None
+        self.db_path = self.db_config['database']
 
     def _get_connection(self):
-        """获取数据库连接（优先连接池）"""
-        if self._pool:
-            return self._pool.get_connection()
-        return mysql.connector.connect(
-            host=self.db_config['host'],
-            port=self.db_config['port'],
-            user=self.db_config['user'],
-            password=self.db_config['password'],
-            database=self.db_config['database'],
-            charset='utf8mb4',
-            use_pure=True,
-            connection_timeout=5,
-        )
+        """获取数据库连接"""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
 
     def hash_password(self, password):
         """
@@ -106,7 +74,7 @@ class AuthService:
         """检查是否需要重新哈希（旧版 SHA-256 → bcrypt）"""
         return not (stored_password.startswith('$2b$') or stored_password.startswith('$2a$'))
 
-    def register_user(self, username, password, email=None, role='student'):
+    def register_user(self, username, password, email=None, role='user'):
         """
         注册新用户
 
@@ -115,39 +83,38 @@ class AuthService:
             password: 密码
             email: 邮箱（可选）
             role: 角色（默认student）
-            
+
         Returns:
             dict: {'success': bool, 'message': str, 'user_id': int}
         """
         conn = None
         try:
-            # 检查用户名是否已存在
             conn = self._get_connection()
-            cursor = conn.cursor(dictionary=True)
-            
-            cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+            cursor = conn.cursor()
+
+            # 检查用户名是否已存在
+            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
             if cursor.fetchone():
                 return {'success': False, 'message': '用户名已存在'}
-            
+
             # 加密密码
             hashed_password = self.hash_password(password)
-            
+
             # 插入新用户
             cursor.execute(
-                """INSERT INTO users (username, password, email, role, created_at, updated_at) 
-                   VALUES (%s, %s, %s, %s, %s, %s)""",
-                (username, hashed_password, email, role, 
-                 datetime.now(), datetime.now())
+                """INSERT INTO users (username, password, email, role, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
+                (username, hashed_password, email, role)
             )
             conn.commit()
-            
+
             user_id = cursor.lastrowid
             return {
-                'success': True, 
+                'success': True,
                 'message': '注册成功',
                 'user_id': user_id
             }
-            
+
         except Exception as e:
             if conn:
                 conn.rollback()
@@ -155,33 +122,34 @@ class AuthService:
         finally:
             if conn:
                 conn.close()
-    
+
     def login_user(self, username, password):
         """
         用户登录
-        
+
         Args:
             username: 用户名
             password: 密码
-            
+
         Returns:
             dict: {'success': bool, 'message': str, 'user': dict}
         """
         conn = None
         try:
             conn = self._get_connection()
-            cursor = conn.cursor(dictionary=True)
-            
+            cursor = conn.cursor()
+
             # 查询用户
             cursor.execute(
-                "SELECT id, username, password, email, role, created_at FROM users WHERE username = %s",
+                "SELECT id, username, password, email, role, created_at FROM users WHERE username = ?",
                 (username,)
             )
-            user = cursor.fetchone()
-            
+            row = cursor.fetchone()
+            user = dict(row) if row else None
+
             if not user:
                 return {'success': False, 'message': '用户名或密码错误'}
-            
+
             # 验证密码
             if not self.verify_password(password, user['password']):
                 return {'success': False, 'message': '用户名或密码错误'}
@@ -191,7 +159,7 @@ class AuthService:
                 try:
                     new_hash = self.hash_password(password)
                     cursor.execute(
-                        "UPDATE users SET password = %s WHERE id = %s",
+                        "UPDATE users SET password = ? WHERE id = ?",
                         (new_hash, user['id'])
                     )
                     conn.commit()
@@ -205,116 +173,50 @@ class AuthService:
                 'message': '登录成功',
                 'user': user
             }
-            
+
         except Exception as e:
             return {'success': False, 'message': f'登录失败：{str(e)}'}
         finally:
             if conn:
                 conn.close()
-    
+
     def get_user_by_id(self, user_id):
         """
         根据ID获取用户信息
-        
+
         Args:
             user_id: 用户ID
-            
+
         Returns:
             dict: 用户信息（不包含密码）
         """
         conn = None
         try:
             conn = self._get_connection()
-            cursor = conn.cursor(dictionary=True)
-            
+            cursor = conn.cursor()
+
             cursor.execute(
-                "SELECT id, username, email, role, created_at FROM users WHERE id = %s",
+                "SELECT id, username, email, role, created_at FROM users WHERE id = ?",
                 (user_id,)
             )
-            return cursor.fetchone()
-            
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
         except Exception:
             return None
         finally:
             if conn:
                 conn.close()
-    
+
     def update_password(self, user_id, old_password, new_password):
         """
         修改密码
-        
+
         Args:
             user_id: 用户ID
             old_password: 旧密码
             new_password: 新密码
-            
-        Returns:
-            dict: {'success': bool, 'message': str}
-        """
-        conn = None
-        try:
-            conn = self._get_connection()
-            cursor = conn.cursor(dictionary=True)
-            
-            # 获取当前密码
-            cursor.execute("SELECT password FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
-            
-            if not user:
-                return {'success': False, 'message': '用户不存在'}
-            
-            # 验证旧密码
-            if not self.verify_password(old_password, user['password']):
-                return {'success': False, 'message': '旧密码错误'}
-            
-            # 更新密码
-            hashed_password = self.hash_password(new_password)
-            cursor.execute(
-                "UPDATE users SET password = %s, updated_at = %s WHERE id = %s",
-                (hashed_password, datetime.now(), user_id)
-            )
-            conn.commit()
-            
-            return {'success': True, 'message': '密码修改成功'}
-            
-        except Exception as e:
-            if conn:
-                conn.rollback()
-            return {'success': False, 'message': f'修改失败：{str(e)}'}
-        finally:
-            if conn:
-                conn.close()
-    
-    def get_all_users(self):
-        """
-        获取所有用户列表（管理员功能）
-        
-        Returns:
-            list: 用户列表（不包含密码）
-        """
-        conn = None
-        try:
-            conn = self._get_connection()
-            cursor = conn.cursor(dictionary=True)
-            
-            cursor.execute(
-                "SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC"
-            )
-            return cursor.fetchall()
-            
-        except Exception:
-            return []
-        finally:
-            if conn:
-                conn.close()
-    
-    def delete_user(self, user_id):
-        """
-        删除用户
-        
-        Args:
-            user_id: 用户ID
-            
+
         Returns:
             dict: {'success': bool, 'message': str}
         """
@@ -322,15 +224,83 @@ class AuthService:
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
-            
-            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+
+            # 获取当前密码
+            cursor.execute("SELECT password FROM users WHERE id = ?", (user_id,))
+            row = cursor.fetchone()
+            user = dict(row) if row else None
+
+            if not user:
+                return {'success': False, 'message': '用户不存在'}
+
+            # 验证旧密码
+            if not self.verify_password(old_password, user['password']):
+                return {'success': False, 'message': '旧密码错误'}
+
+            # 更新密码
+            hashed_password = self.hash_password(new_password)
+            cursor.execute(
+                "UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (hashed_password, user_id)
+            )
             conn.commit()
-            
+
+            return {'success': True, 'message': '密码修改成功'}
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            return {'success': False, 'message': f'修改失败：{str(e)}'}
+        finally:
+            if conn:
+                conn.close()
+
+    def get_all_users(self):
+        """
+        获取所有用户列表（管理员功能）
+
+        Returns:
+            list: 用户列表（不包含密码）
+        """
+        conn = None
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC"
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+        except Exception:
+            return []
+        finally:
+            if conn:
+                conn.close()
+
+    def delete_user(self, user_id):
+        """
+        删除用户
+
+        Args:
+            user_id: 用户ID
+
+        Returns:
+            dict: {'success': bool, 'message': str}
+        """
+        conn = None
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            conn.commit()
+
             if cursor.rowcount > 0:
                 return {'success': True, 'message': '删除成功'}
             else:
                 return {'success': False, 'message': '用户不存在'}
-            
+
         except Exception as e:
             if conn:
                 conn.rollback()

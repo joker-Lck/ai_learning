@@ -26,7 +26,7 @@ class ResourceDAO:
                     INSERT INTO learning_resources
                     (user_id, title, resource_type, subject, topic,
                      difficulty_level, content_data, generated_by_agent, duration_minutes)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     user_id, title, resource_type, subject, topic,
                     difficulty,
@@ -48,10 +48,10 @@ class ResourceDAO:
                     SELECT id, title, resource_type, subject, topic,
                            difficulty_level, content_data, created_at
                     FROM learning_resources
-                    WHERE user_id = %s OR (user_id IS NULL AND generated_by_agent = %s)
-                    ORDER BY created_at DESC LIMIT %s OFFSET %s
+                    WHERE user_id = ? OR (user_id IS NULL AND generated_by_agent = ?)
+                    ORDER BY created_at DESC LIMIT ? OFFSET ?
                 """, (user_id, f"user_{user_id}", limit, offset))
-                rows = self._db.cursor.fetchall()
+                rows = [dict(row) for row in self._db.cursor.fetchall()]
                 for row in rows:
                     if row.get("content_data") and isinstance(row["content_data"], str):
                         try:
@@ -70,10 +70,11 @@ class ResourceDAO:
         try:
             with self._db:
                 self._db.cursor.execute(
-                    "SELECT COUNT(*) as cnt FROM learning_resources WHERE user_id = %s OR (user_id IS NULL AND generated_by_agent = %s)",
+                    "SELECT COUNT(*) as cnt FROM learning_resources WHERE user_id = ? OR (user_id IS NULL AND generated_by_agent = ?)",
                     (user_id, f"user_{user_id}")
                 )
-                return self._db.cursor.fetchone()["cnt"]
+                row = self._db.cursor.fetchone()
+                return dict(row)["cnt"] if row else 0
         except Exception as e:
             error(f"统计资源数量失败: {e}")
             return 0
@@ -83,7 +84,7 @@ class ResourceDAO:
         try:
             with self._db:
                 self._db.cursor.execute(
-                    "DELETE FROM learning_resources WHERE id = %s AND user_id = %s",
+                    "DELETE FROM learning_resources WHERE id = ? AND user_id = ?",
                     (resource_id, user_id)
                 )
                 self._db.conn.commit()
@@ -106,7 +107,7 @@ class ActivityDAO:
             with self._db:
                 self._db.cursor.execute(
                     "INSERT INTO learning_activities (user_id, activity_type, metadata, duration_seconds) "
-                    "VALUES (%s, %s, %s, %s)",
+                    "VALUES (?, ?, ?, ?)",
                     (user_id, activity_type,
                      json.dumps(metadata, ensure_ascii=False) if metadata else None,
                      duration_seconds)
@@ -123,11 +124,11 @@ class ActivityDAO:
             with self._db:
                 self._db.cursor.execute(
                     "SELECT id, activity_type, metadata, created_at "
-                    "FROM learning_activities WHERE user_id = %s "
-                    "ORDER BY created_at DESC LIMIT %s",
+                    "FROM learning_activities WHERE user_id = ? "
+                    "ORDER BY created_at DESC LIMIT ?",
                     (user_id, limit)
                 )
-                rows = self._db.cursor.fetchall()
+                rows = [dict(row) for row in self._db.cursor.fetchall()]
                 for row in rows:
                     if row.get("metadata") and isinstance(row["metadata"], str):
                         try:
@@ -146,10 +147,11 @@ class ActivityDAO:
         try:
             with self._db:
                 self._db.cursor.execute(
-                    "SELECT COUNT(*) as cnt FROM learning_activities WHERE user_id = %s",
+                    "SELECT COUNT(*) as cnt FROM learning_activities WHERE user_id = ?",
                     (user_id,)
                 )
-                return self._db.cursor.fetchone()["cnt"]
+                row = self._db.cursor.fetchone()
+                return dict(row)["cnt"] if row else 0
         except Exception as e:
             return 0
 
@@ -159,11 +161,12 @@ class ActivityDAO:
             with self._db:
                 self._db.cursor.execute(
                     "SELECT COUNT(DISTINCT DATE(created_at)) as days "
-                    "FROM learning_activities WHERE user_id = %s "
+                    "FROM learning_activities WHERE user_id = ? "
                     "AND activity_type IN ('login', 'resource_generate', 'tutor_query', 'assessment')",
                     (user_id,)
                 )
-                return self._db.cursor.fetchone()["days"]
+                row = self._db.cursor.fetchone()
+                return dict(row)["days"] if row else 0
         except Exception as e:
             return 0
 
@@ -173,10 +176,11 @@ class ActivityDAO:
             with self._db:
                 self._db.cursor.execute(
                     "SELECT COALESCE(SUM(duration_seconds), 0) as total "
-                    "FROM learning_activities WHERE user_id = %s AND activity_type = 'session'",
+                    "FROM learning_activities WHERE user_id = ? AND activity_type = 'session'",
                     (user_id,)
                 )
-                return self._db.cursor.fetchone()["total"]
+                row = self._db.cursor.fetchone()
+                return dict(row)["total"] if row else 0
         except Exception as e:
             return 0
 

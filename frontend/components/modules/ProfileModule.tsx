@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, memo } from 'react';
 import {
@@ -806,7 +806,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
     setShowForm(false);
   };
 
-  const subjects = [...new Set(notes.map(n => n.subject))].filter(Boolean);
+  const subjects = Array.from(new Set(notes.map(n => n.subject))).filter(Boolean);
   const subjectFiltered = filterSubject ? notes.filter(n => n.subject === filterSubject) : notes;
 
   // 搜索过滤
