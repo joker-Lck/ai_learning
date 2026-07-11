@@ -333,8 +333,8 @@ CREATE TABLE student_profiles (
     profile_data TEXT NOT NULL,    -- JSON: 9维度画像
     conversation_log TEXT,         -- JSON: 对话历史
     version INTEGER DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
 );
 ```
 
@@ -355,7 +355,7 @@ CREATE TABLE learning_resources (
     usage_count INTEGER DEFAULT 0,
     rating REAL DEFAULT 0,
     duration_minutes INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT (datetime('now'))
 );
 ```
 
@@ -374,7 +374,7 @@ CREATE TABLE knowledge_documents (
     uploaded_by INTEGER,
     usage_count INTEGER DEFAULT 0,
     is_public INTEGER DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT (datetime('now'))
 );
 
 -- FTS5 全文检索虚拟表
