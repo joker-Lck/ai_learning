@@ -525,27 +525,36 @@ function SuggestionCard({ recommendations, onNavigateModule }: { recommendations
 
 function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const quickItems = [
-    { label: '学生画像', icon: UserCheck, color: 'bg-purple-500/10 text-purple-400', moduleId: 'profile' as ModuleType },
-    { label: '资源生成', icon: Brain, color: 'bg-cyan-500/10 text-cyan-400', moduleId: 'resources' as ModuleType },
-    { label: '学习路径', icon: Router, color: 'bg-blue-500/10 text-blue-400', moduleId: 'path' as ModuleType },
-    { label: 'AI 问答', icon: Lightbulb, color: 'bg-amber-500/10 text-amber-400', moduleId: 'tutor' as ModuleType },
-    { label: '学习评估', icon: BarChart3, color: 'bg-emerald-500/10 text-emerald-400', moduleId: 'assessment' as ModuleType },
-    { label: '知识库', icon: Database, color: 'bg-pink-500/10 text-pink-400', moduleId: 'rag' as ModuleType },
+    { label: 'AI 问答', icon: Lightbulb, color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', moduleId: 'tutor' as ModuleType, primary: true },
+    { label: '学生画像', icon: UserCheck, color: 'bg-purple-500/10 text-purple-400 border-purple-500/20', moduleId: 'profile' as ModuleType },
+    { label: '资源生成', icon: Brain, color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20', moduleId: 'resources' as ModuleType },
+    { label: '学习路径', icon: Router, color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', moduleId: 'path' as ModuleType },
+    { label: '学习评估', icon: BarChart3, color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', moduleId: 'assessment' as ModuleType },
+    { label: '知识库', icon: Database, color: 'bg-pink-500/10 text-pink-400 border-pink-500/20', moduleId: 'rag' as ModuleType },
   ];
   return (
-    <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05]">
-      <div className="flex items-center gap-2 mb-4">
-        <Zap className="w-4 h-4 text-purple-400" />
-        <h3 className="text-sm font-semibold text-white">功能模块</h3>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        {quickItems.map(item => {
+    <div className="mb-6">
+      <div className="grid grid-cols-6 gap-3">
+        {quickItems.map((item, i) => {
           const Icon = item.icon;
           return (
-            <button key={item.label} onClick={() => onNavigateModule(item.moduleId)} className="flex items-center gap-2.5 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] hover:bg-white/[0.04] transition-all">
-              <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center`}><Icon className="w-4 h-4" /></div>
-              <span className="text-xs text-white/50">{item.label}</span>
-            </button>
+            <motion.button
+              key={item.label}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.3 }}
+              onClick={() => onNavigateModule(item.moduleId)}
+              className={`flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all hover:scale-[1.03] ${
+                item.primary
+                  ? 'bg-amber-500/15 border-amber-400/30 hover:border-amber-400/50'
+                  : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.1] hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-lg ${item.color} flex items-center justify-center`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className={`text-xs font-medium ${item.primary ? 'text-amber-300' : 'text-white/50'}`}>{item.label}</span>
+            </motion.button>
           );
         })}
       </div>
@@ -717,6 +726,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
       <main className="flex-1 overflow-y-auto h-screen" data-workspace-scroll>
         <div className="px-8 pt-7 pb-8 max-w-[1200px] mx-auto">
           <Header profile={profile} stats={stats} />
+          <QuickStartCard onNavigateModule={onNavigateModule} />
           <StatCards profile={profile} resourceCount={resources.length} onNavigateModule={onNavigateModule} />
 
           <div className="flex gap-6">
@@ -727,7 +737,6 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
             <div className="flex-[3] min-w-0 space-y-5">
               <DashboardRadarChart profile={profile} />
               <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
-              <QuickStartCard onNavigateModule={onNavigateModule} />
             </div>
           </div>
         </div>
