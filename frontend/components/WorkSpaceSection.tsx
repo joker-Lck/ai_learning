@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Router, Lightbulb, TrendingUp,
@@ -10,6 +10,7 @@ import {
   Sparkles, Target, X, GitBranch, FileCode, Code, BookOpen,
   Maximize2, Loader2,
 } from 'lucide-react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import type { ModuleType, NavigationContext } from './modules/types';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import api from '@/lib/api';
@@ -64,6 +65,85 @@ interface DashboardStats {
   login_days: number;
   total_study_seconds: number;
 }
+
+/* ═══════════════════════════════════════════
+   雷达图组件
+   ═══════════════════════════════════════════ */
+
+function computeDashboardRadar(profile: ProfileData | null) {
+  const d = { value: 3, fullMark: 5 };
+  if (!profile) return [
+    { dimension: '知识基础', ...d }, { dimension: '学习目标', ...d },
+    { dimension: '记忆能力', ...d }, { dimension: '自控力', ...d },
+    { dimension: '专注度', ...d }, { dimension: '学习深度', ...d },
+  ];
+
+  // 知识基础
+  let kb = 3;
+  const weak = profile.weak_points;
+  if (Array.isArray(weak) && weak.length === 0) kb = 4;
+  if (Array.isArray(weak) && weak.length > 3) kb = 2;
+
+  // 学习目标
+  let goal = 3;
+  if (profile.learning_history && profile.learning_history.length > 5) goal = 4;
+
+  // 记忆能力
+  let mem = 3;
+  if (profile.learning_history && profile.learning_history.length > 10) mem = 4;
+
+  // 自控力
+  let sc = 3;
+  const prefs = profile.preferred_resources;
+  if (Array.isArray(prefs) && prefs.length >= 3) sc = 4;
+
+  // 专注度
+  let focus = 3;
+  if (Array.isArray(profile.interest_areas) && profile.interest_areas.length > 0) focus = 3 + Math.min(2, Math.floor(profile.interest_areas.length / 3));
+
+  // 学习深度
+  let depth = 3;
+  if (Array.isArray(profile.interest_areas) && profile.interest_areas.length > 3) depth = 4;
+
+  return [
+    { dimension: '知识基础', value: Math.min(5, kb), fullMark: 5 },
+    { dimension: '学习目标', value: Math.min(5, goal), fullMark: 5 },
+    { dimension: '记忆能力', value: Math.min(5, mem), fullMark: 5 },
+    { dimension: '自控力', value: Math.min(5, sc), fullMark: 5 },
+    { dimension: '专注度', value: Math.min(5, focus), fullMark: 5 },
+    { dimension: '学习深度', value: Math.min(5, depth), fullMark: 5 },
+  ];
+}
+
+const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { profile: ProfileData | null }) {
+  const data = useMemo(() => computeDashboardRadar(profile), [profile]);
+  return (
+    <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05] mb-5">
+      <div className="flex items-center gap-2 mb-3">
+        <BarChart3 className="w-4 h-4 text-purple-400" />
+        <h3 className="text-sm font-semibold text-white">学习能力画像</h3>
+      </div>
+      <div style={{ height: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
+            <PolarGrid stroke="rgba(255,255,255,0.06)" />
+            <PolarAngleAxis dataKey="dimension" tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 11 }} />
+            <Radar name="能力值" dataKey="value" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.15} strokeWidth={1.5} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5 mt-2">
+        {data.map(d => (
+          <div key={d.dimension} className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-white/[0.03]">
+            <div className="w-1 h-1 rounded-full bg-purple-400" />
+            <span className="text-[10px] text-white/35 flex-1 truncate">{d.dimension}</span>
+            <span className="text-[10px] font-medium text-purple-400">{d.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
 
 /* ═══════════════════════════════════════════
    资源类型映射
@@ -646,6 +726,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
               <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
             </div>
             <div className="flex-[3] min-w-0">
+              <DashboardRadarChart profile={profile} />
               <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
               <QuickStartCard onNavigateModule={onNavigateModule} />
             </div>
