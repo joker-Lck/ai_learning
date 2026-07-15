@@ -10,7 +10,7 @@
    ├── KNN 关键词路径 ──→ SQLite FTS5 ──→ Top-K 结果
    │                       (专业术语精确匹配)
    │
-   ├── ANN 向量路径 ──→ Embedding(768维) ──→ FAISS ANN ──→ Top-K 结果
+   ├── ANN 向量路径 ──→ Embedding(动态维度) ──→ FAISS ANN ──→ Top-K 结果
    │                                          │
    │                                   三级回退策略
    │                                   ┌──────────────┐
@@ -53,7 +53,7 @@
 | 索引类型 | `faiss.IndexFlatIP` | Flat Inner Product |
 | 相似度原理 | L2 归一化后内积 | 等价于余弦相似度 |
 | 搜索复杂度 | O(n·d) | 精确线性扫描 |
-| 向量维度 | 768 | MiMo Embedding (mimo-embedding) |
+| 向量维度 | 动态（50-200） | TF-IDF + SVD 本地向量化（jieba分词） |
 | 并发安全 | `threading.Lock` | 保护所有索引读写 |
 
 ### 三级回退策略
@@ -146,6 +146,6 @@ KNN 结果 + ANN 结果 → RRF 统一排序 → Top-N 返回。
 | 文件 | 核心类/函数 | 说明 |
 |------|-----------|------|
 | `data/rag_knowledge_base.py` | `VectorIndexManager`, `RAGKnowledgeBase` | FAISS 向量索引 + 混合检索 |
-| `data/embedding_service.py` | `EmbeddingService` | MiMo Embedding API（768 维） |
+| `data/embedding_service.py` | `EmbeddingService` | TF-IDF + SVD 本地向量化（jieba分词） |
 | `services/advanced_retrieval_service.py` | `AdvancedRetrievalService` | 11 种高级检索策略 |
 | `services/content_safety_service.py` | `AntiHallucinationService` | 防幻觉验证 |

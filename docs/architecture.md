@@ -90,7 +90,7 @@
 | SQLite | 3.50+ | 9 个独立数据库 |
 | FAISS | 1.7+ | 向量检索 |
 | MiMo AI | mimo-v2.5-pro | 大语言模型（文本推理、视觉理解、图片生成、语音合成） |
-| MiMo Embedding | 768 维 | 文本向量化（mimo-embedding） |
+| TF-IDF + SVD | 本地实现 | 文本向量化（jieba分词 + TF-IDF + SVD降维，维度动态计算） |
 
 ## 扩展服务
 

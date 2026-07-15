@@ -1,5 +1,20 @@
 # 版本变更日志
 
+## v7.5.1 (2026-07-16)
+
+### 变更
+- **Embedding 服务改造**：从 MiMo Embedding API 改为本地 TF-IDF + SVD 方案
+  - 移除 `sentence-transformers` 依赖，新增 `jieba`、`scikit-learn` 依赖
+  - 向量维度从固定 768 维改为动态计算（50-200 维）
+  - 启动时自动加载教育领域语料库训练模型
+  - 纯本地实现，无需外部 API 和网络下载
+- **API Key 更新**：MiMo API Key 已更新
+- **文档更新**：更新所有技术文档中的向量化说明
+
+### 新增
+- `data/corpus/education_corpus.txt` — 教育领域语料库（52条）
+- `backend/main.py` — 启动时自动训练 embedding 模型
+
 ## v7.5.0 (2026-07)
 
 ### 新增

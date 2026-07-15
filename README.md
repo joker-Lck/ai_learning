@@ -1,4 +1,4 @@
-﻿# 基于多智能体的个性化学习资源生成系统
+# 基于多智能体的个性化学习资源生成系统
 
 <p align="center">
   <b>AI-Powered Personalized Learning Resource Generation System</b><br>
@@ -83,7 +83,7 @@
 | 视觉理解 | `mimo-v2.5` | 图片识别、OCR 文字提取、图表理解、手写识别 |
 | 图片生成 | `mimo-image` | 教学示意图、知识点图解、概念可视化 |
 | 语音合成 | `mimo-tts` | 文字转语音、音频讲解生成 |
-| 文本向量化 | `mimo-embedding` | 768 维向量嵌入，驱动 RAG 语义检索 |
+| 文本向量化 | TF-IDF + SVD | 本地向量化（jieba分词），驱动 RAG 语义检索 |
 
 ### 多智能体协同架构
 
@@ -239,8 +239,8 @@
 │  │ 文本推理      │ │ 视觉理解     │ │ 图片生成      │ │ 语音合成   ││
 │  └──────────────┘ └──────────────┘ └──────────────┘ └────────────┘│
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐               │
-│  │mimo-embedding│ │ RAG 知识库    │ │ 内容安全服务  │               │
-│  │ 768维向量化   │ │ FAISS+FTS5   │ │ AC自动机      │               │
+│  │TF-IDF+SVD   │ │ RAG 知识库    │ │ 内容安全服务  │               │
+│  │ 本地向量化   │ │ FAISS+FTS5   │ │ AC自动机      │               │
 │  └──────────────┘ └──────────────┘ └──────────────┘               │
 ├────────────────────────────────────┬────────────────────────────────┤
 │                                     │                                │
@@ -545,7 +545,7 @@ MiMo 分析学生当前知识水平，规划有序的个性化学习路径。
 
 **检索能力**：
 - KNN 关键词路径：SQLite FTS5 精确匹配
-- ANN 向量路径：FAISS + mimo-embedding 语义匹配
+- ANN 向量路径：FAISS + TF-IDF+SVD 语义匹配
 - RRF 融合排序
 - 11 种高级检索策略
 
@@ -641,7 +641,7 @@ AssessmentAgent ──► 异步评估 ──► 返回用户
     ▼
 ┌──────────────────────────────────────────────────────────┐
 │  embedding_service.py  (EmbeddingService 单例)            │
-│  · get_embedding()     — 文本向量化 (768维)               │
+│  · get_embedding()     — 文本向量化 (动态维度)            │
 │  · cosine_similarity() — 余弦相似度计算                   │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -654,7 +654,7 @@ AssessmentAgent ──► 异步评估 ──► 返回用户
 | 视觉理解 | `{base_url}/chat/completions` | `mimo-v2.5` |
 | 图片生成 | `{base_url}/images/generations` | `mimo-image` |
 | 语音合成 | `{base_url}/audio/speech` | `mimo-tts` |
-| 文本向量化 | `{base_url}/embeddings` | `mimo-embedding` |
+| 文本向量化 | 本地实现 | TF-IDF + SVD（jieba分词） |
 
 ### 复杂度分层调用
 
@@ -679,7 +679,7 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
    ├── KNN 关键词路径 ──► SQLite FTS5 ──► Top-K 结果
    │   (专业术语精确匹配)
    │
-   ├── ANN 向量路径 ──► mimo-embedding(768维) ──► FAISS 检索 ──► Top-K 结果
+   ├── ANN 向量路径 ──► TF-IDF+SVD(动态维度) ──► FAISS 检索 ──► Top-K 结果
    │                                                   │
    │                                            三级回退策略
    │                                            ┌──────┴──────┐
@@ -711,7 +711,7 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 |------|------|------|---------|
 | 自动选择 | `auto` | 短查询用 HyDE，长查询用 RAG-Fusion | 默认 |
 | KNN 关键词 | `knn` | SQLite FTS5 全文索引 | 专业术语、公式 |
-| ANN 向量 | `ann` | FAISS + mimo-embedding | 模糊语义查询 |
+| ANN 向量 | `ann` | FAISS + TF-IDF+SVD | 模糊语义查询 |
 | 混合检索 | `hybrid` | KNN + ANN + RRF | 通用推荐 |
 | 假设性文档 | `hyde` | HyDE（Gao et al., 2023） | 短查询、概念性问题 |
 | 多查询 | `multi_query` | Multi-Query（LangChain, 2023） | 提高召回率 |
@@ -733,8 +733,8 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 
 | 参数 | 值 | 说明 |
 |------|------|------|
-| API | MiMo Embedding API | `https://api.xiaomimimo.com/v1/embeddings` |
-| 向量维度 | 768 | 空文本返回零向量 |
+| 实现方式 | TF-IDF + SVD | 本地实现（jieba分词 + scikit-learn） |
+| 向量维度 | 动态（50-200） | 根据语料自动计算 |
 | 文本截断 | 8000 字符 | 超长自动截断 |
 | 索引类型 | `faiss.IndexFlatIP` | L2 归一化后内积 ≡ 余弦相似度 |
 | 持久化 | `data/faiss_index/` | 二进制索引 + ID 映射 JSON |
@@ -1102,7 +1102,7 @@ cd frontend && npm install && npm run build && npm start
 │
 ├── data/                           # 数据访问层
 │   ├── rag_knowledge_base.py       # RAG 知识库（FAISS + 混合检索）
-│   ├── embedding_service.py        # MiMo Embedding 768 维向量化
+│   ├── embedding_service.py        # TF-IDF + SVD 本地向量化（jieba分词）
 │   ├── document_parser.py          # 文档解析（PDF/Word/Excel/PPT）
 │   ├── data_manager.py             # 数据管理器
 │   ├── db_operations.py            # 数据库操作

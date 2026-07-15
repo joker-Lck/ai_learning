@@ -164,7 +164,7 @@ CREATE TABLE knowledge_documents (
     file_type TEXT,
     file_size INTEGER,
     content_text TEXT,
-    embedding TEXT,                -- JSON: 768维向量
+    embedding TEXT,                -- JSON: 动态维度向量（TF-IDF+SVD）
     uploaded_by INTEGER,
     usage_count INTEGER DEFAULT 0,
     is_public INTEGER DEFAULT 1,

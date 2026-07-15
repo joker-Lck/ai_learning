@@ -46,10 +46,88 @@ ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://loc
 limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 
 
+def _load_embedding_corpus():
+    """加载语料用于训练 embedding 模型"""
+    import glob
+    import json
+    import sqlite3
+
+    corpus = []
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # 1. 教育领域语料库（优先加载）
+    edu_corpus = os.path.join(base_dir, 'data', 'corpus', 'education_corpus.txt')
+    if os.path.exists(edu_corpus):
+        try:
+            with open(edu_corpus, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if len(line) > 20:
+                        corpus.append(line)
+        except Exception:
+            pass
+
+    # 2. docs 目录
+    docs_dir = os.path.join(base_dir, 'docs')
+    for f in glob.glob(os.path.join(docs_dir, '*.md')):
+        try:
+            with open(f, 'r', encoding='utf-8') as fp:
+                text = fp.read().strip()
+                if len(text) > 50:
+                    corpus.append(text[:3000])
+        except Exception:
+            pass
+
+    # 3. README
+    readme = os.path.join(base_dir, 'README.md')
+    try:
+        with open(readme, 'r', encoding='utf-8') as f:
+            text = f.read().strip()
+            if len(text) > 50:
+                corpus.append(text[:3000])
+    except Exception:
+        pass
+
+    # 4. 知识库数据库
+    db_dir = os.path.join(base_dir, 'data', 'databases')
+    for db_file in glob.glob(os.path.join(db_dir, '*.db')):
+        try:
+            conn = sqlite3.connect(db_file)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [r[0] for r in cursor.fetchall()]
+            for table in tables:
+                try:
+                    cursor.execute(f'SELECT * FROM [{table}] LIMIT 200')
+                    for row in cursor.fetchall():
+                        for cell in row:
+                            if isinstance(cell, str) and len(cell) > 100:
+                                corpus.append(cell[:3000])
+                except Exception:
+                    pass
+            conn.close()
+        except Exception:
+            pass
+
+    return corpus
+
+
 # ── 生命周期管理 ──
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     info(f"应用启动 v{APP_VERSION}")
+
+    # 初始化 embedding 模型
+    try:
+        from data.embedding_service import embedding_service
+        corpus = _load_embedding_corpus()
+        if corpus:
+            embedding_service.fit(corpus)
+        else:
+            info("未找到语料，embedding 使用哈希回退模式")
+    except Exception as e:
+        warning(f"Embedding 模型初始化失败（不影响主功能）: {e}")
+
     yield
     info("应用关闭")
 
