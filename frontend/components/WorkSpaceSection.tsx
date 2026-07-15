@@ -39,10 +39,14 @@ interface ApiResource {
 interface ProfileData {
   major?: string;
   grade_level?: string;
+  knowledge_base?: any;
+  cognitive_style?: string;
+  learning_goals?: any;
   weak_points?: string[];
   interest_areas?: string[];
   learning_history?: any[];
   preferred_resources?: string[];
+  [key: string]: any;
 }
 
 interface Recommendation {
