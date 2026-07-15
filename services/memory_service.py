@@ -45,21 +45,21 @@ class MemoryDB:
 
     # ── 基础执行 ──────────────────────────────
 
-    def _execute(self, sql: str, params: tuple = None):
+    def _execute(self, sql: str, params: tuple | None = None):
         """执行 SQL（不提交）"""
         self.cursor.execute(sql, params or ())
 
-    def _execute_commit(self, sql: str, params: tuple = None):
+    def _execute_commit(self, sql: str, params: tuple | None = None):
         """执行 SQL 并提交"""
         self._execute(sql, params)
         self.conn.commit()
 
-    def _fetchone(self, sql: str, params: tuple = None) -> dict | None:
+    def _fetchone(self, sql: str, params: tuple | None = None) -> dict | None:
         self._execute(sql, params)
         row = self.cursor.fetchone()
         return dict(row) if row else None
 
-    def _fetchall(self, sql: str, params: tuple = None) -> list[dict]:
+    def _fetchall(self, sql: str, params: tuple | None = None) -> list[dict]:
         self._execute(sql, params)
         return [dict(row) for row in self.cursor.fetchall()]
 
@@ -100,7 +100,7 @@ class ShortTermHandler(MemoryDB):
         return memory_id
 
     def get_context(self, user_id: int, session_id: str,
-                    max_tokens: int = None) -> list[dict]:
+                    max_tokens: int | None = None) -> list[dict]:
         max_tokens = max_tokens or self.MAX_CONTEXT_TOKENS
         rows = self._fetchall(
             "SELECT role, content, token_count, created_at "
@@ -147,8 +147,8 @@ class EpisodicHandler(MemoryDB):
     """对话事件 / 学习场景"""
 
     def add(self, user_id: int, episode_type: str, title: str,
-            summary: str, content: str, context: dict = None,
-            emotions: dict = None, importance: float = 0.5) -> int:
+            summary: str, content: str, context: dict | None = None,
+            emotions: dict | None = None, importance: float = 0.5) -> int:
         sql = """
             INSERT INTO episodic_memory
             (user_id, episode_type, title, summary, context, content, emotions, importance)
@@ -215,7 +215,7 @@ class SemanticHandler(MemoryDB):
                                   'semantic', conflict['id'], 'semantic', memory_id)
         return memory_id
 
-    def search(self, user_id: int, query: str, fact_type: str = None,
+    def search(self, user_id: int, query: str, fact_type: str | None = None,
                limit: int = 10) -> list[dict]:
         conditions = ["user_id = ?", "(subject LIKE ? OR predicate LIKE ? OR object LIKE ?)"]
         params: list = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
@@ -272,7 +272,7 @@ class EntityHandler(MemoryDB):
     """实体画像存储 + 知识图谱"""
 
     def add(self, user_id: int, entity_type: str, entity_name: str,
-            attributes: dict = None, description: str = "",
+            attributes: dict | None = None, description: str = "",
             entity_alias: str = "", importance: float = 0.5) -> int:
         # 先查询已有记录，用于应用层 JSON 合并
         existing = self._fetchone(
@@ -342,7 +342,7 @@ class EntityHandler(MemoryDB):
             self._execute_commit(sql, (user_id, source_id, target_id, relation_type, label, weight, context))
             return self._last_id()
 
-    def search(self, user_id: int, query: str, entity_type: str = None,
+    def search(self, user_id: int, query: str, entity_type: str | None = None,
                limit: int = 10) -> list[dict]:
         conditions = ["user_id = ?", "(entity_name LIKE ? OR entity_alias LIKE ? OR description LIKE ?)"]
         params: list = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
@@ -475,7 +475,7 @@ class ForgettingHandler(MemoryDB):
         except Exception as e:
             warning(f"记录访问日志失败: {e}")
 
-    def apply_curve(self, user_id: int = None) -> dict[str, int]:
+    def apply_curve(self, user_id: int | None = None) -> dict[str, int]:
         """应用遗忘曲线，返回 {forgotten, reinforced}"""
         try:
             sql = "SELECT id, memory_type, memory_id, user_id, importance, decay_rate, last_accessed_at, access_count FROM memory_metadata WHERE is_forgotten = 0"
@@ -511,7 +511,7 @@ class ForgettingHandler(MemoryDB):
             return {'forgotten': 0, 'reinforced': 0}
 
     def reinforce(self, memory_type: str, memory_id: int, user_id: int,
-                  boost: float = None):
+                  boost: float | None = None):
         boost = boost or self.REINFORCE_BOOST
         try:
             self._execute_commit(
@@ -527,7 +527,7 @@ class ForgettingHandler(MemoryDB):
     def forgotten_count(self, user_id: int) -> int:
         return self._count('memory_metadata', user_id, "AND is_forgotten = 1")
 
-    def cleanup(self, user_id: int = None, days: int = 30) -> int:
+    def cleanup(self, user_id: int | None = None, days: int = 30) -> int:
         """清理超过 N 天的遗忘记忆"""
         try:
             sql = "SELECT memory_type, memory_id FROM memory_metadata WHERE is_forgotten = 1 AND forgotten_at < datetime('now', '-' || ? || ' days')"

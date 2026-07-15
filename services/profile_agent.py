@@ -32,11 +32,11 @@ class ProfileAgent:
     def build_profile(self, user_id: int, input_data: dict) -> dict:
         """
         构建学生画像
-        
+
         Args:
             user_id: 用户ID
             input_data: 输入数据,包含对话历史或基本信息
-            
+
         Returns:
             画像数据
         """
@@ -102,11 +102,11 @@ class ProfileAgent:
     def update_profile_from_learning(self, user_id: int, learning_data: dict) -> dict:
         """
         根据学习行为动态更新画像
-        
+
         Args:
             user_id: 用户ID
             learning_data: 学习行为数据
-            
+
         Returns:
             更新后的画像
         """
@@ -361,7 +361,7 @@ class ProfileAgent:
 
                 row = dict(row)
                 profile = json.loads(row["profile_data"]) if isinstance(row["profile_data"], str) else row["profile_data"]
-                old_value = profile.get(field)
+                profile.get(field)
                 profile[field] = value
                 profile["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

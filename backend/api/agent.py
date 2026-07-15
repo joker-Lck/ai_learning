@@ -37,7 +37,7 @@ async def build_student_profile(
 ):
     """
     构建学生画像 - 对话式构建≥6维度的动态画像
-    
+
     输入格式:
     {
         "conversation_log": [{"role": "user", "content": "..."}],
@@ -230,7 +230,7 @@ async def generate_learning_resources(
 ):
     """
     生成多模态学习资源 - 支持7种类型
-    
+
     输入格式:
     {
         "subject": "学科",
@@ -292,7 +292,7 @@ async def plan_learning_path(
 ):
     """
     规划个性化学习路径
-    
+
     输入格式:
     {
         "learning_goal": "学习目标",
@@ -445,7 +445,7 @@ async def assess_learning(
 ):
     """
     学习效果评估
-    
+
     输入格式:
     {
         "assessment_type": "weekly/monthly/custom",
@@ -501,7 +501,7 @@ async def comprehensive_learning_plan(
 ):
     """
     综合学习计划 - 多智能体协同
-    
+
     输入格式:
     {
         "subject": "学科",
@@ -581,12 +581,12 @@ async def export_resource_file(
 ):
     """
     导出学习资源为文件
-    
+
     输入格式:
     {
         "resource": 完整的资源数据对象
     }
-    
+
     输出格式:
     - document/quiz → Word文档 (.docx)
     - mindmap → JPG图片 (.jpg)
@@ -640,7 +640,7 @@ async def save_resource(
 ):
     """
     保存学习资源到管理库
-    
+
     输入格式:
     {
         "title": "资源标题",
@@ -662,7 +662,7 @@ async def save_resource(
             return BaseResponse(success=False, message="数据库连接失败", data=None)
 
         sql = """
-            INSERT INTO learning_resources 
+            INSERT INTO learning_resources
             (user_id, title, resource_type, subject, topic, difficulty_level, content_data, tags, generated_by_agent)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
@@ -725,9 +725,9 @@ async def list_resources(
 
         where = " AND ".join(conditions)
         sql = f"""
-            SELECT id, title, resource_type, subject, topic, difficulty_level, 
+            SELECT id, title, resource_type, subject, topic, difficulty_level,
                    content_data, tags, usage_count, rating, duration_minutes, created_at
-            FROM learning_resources 
+            FROM learning_resources
             WHERE {where}
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?

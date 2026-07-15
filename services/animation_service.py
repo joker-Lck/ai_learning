@@ -166,10 +166,10 @@ class AnimationService:
             💡 提示：动画将循环播放，点击按钮可以控制播放
         </div>
     </div>
-    
+
     <script>
         let isPaused = false;
-        
+
         function restartAnimation() {{
             var svg = document.querySelector('svg');
             if (svg) {{
@@ -180,14 +180,14 @@ class AnimationService:
             isPaused = false;
             document.getElementById('pauseBtn').textContent = '⏸️ 暂停';
         }}
-        
+
         function togglePause() {{
             var svg = document.querySelector('svg');
             if (!svg) return;
-            
+
             isPaused = !isPaused;
             var btn = document.getElementById('pauseBtn');
-            
+
             if (isPaused) {{
                 svg.pauseAnimations();
                 btn.textContent = '▶️ 继续';
@@ -196,7 +196,7 @@ class AnimationService:
                 btn.textContent = '⏸️ 暂停';
             }}
         }}
-        
+
         // 自动播放（如果启用）
         window.onload = function() {{
             {'restartAnimation();' if auto_play else ''}

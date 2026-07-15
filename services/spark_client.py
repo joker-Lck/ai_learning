@@ -275,19 +275,19 @@ class MiMoClient:
             yield f"错误: {e}"
 
     # ── 新接口：按任务复杂度调用 ──────────────────────────────
-    def simple(self, prompt: str, max_tokens: int = 1500, system_prompt: str = None) -> str:
+    def simple(self, prompt: str, max_tokens: int = 1500, system_prompt: str | None = None) -> str:
         """简单任务"""
         return self.chat(prompt, model=MODEL_SIMPLE, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def standard(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+    def standard(self, prompt: str, max_tokens: int = 2000, system_prompt: str | None = None) -> str:
         """标准任务"""
         return self.chat(prompt, model=MODEL_STANDARD, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def advanced(self, prompt: str, max_tokens: int = 3000, system_prompt: str = None) -> str:
+    def advanced(self, prompt: str, max_tokens: int = 3000, system_prompt: str | None = None) -> str:
         """高级任务"""
         return self.chat(prompt, model=MODEL_ADVANCED, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def ultra(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+    def ultra(self, prompt: str, max_tokens: int = 2000, system_prompt: str | None = None) -> str:
         """最强推理"""
         return self.chat(prompt, model=MODEL_ULTRA, max_tokens=max_tokens, system_prompt=system_prompt)
 

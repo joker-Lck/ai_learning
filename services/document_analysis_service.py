@@ -26,7 +26,7 @@ class DocumentAnalysisService:
     def __init__(self):
         info("文档资料分析服务初始化完成")
 
-    def analyze_documents(self, files: list[dict], user_context: dict = None) -> dict:
+    def analyze_documents(self, files: list[dict], user_context: dict | None = None) -> dict:
         """
         分析多个文档资料
 

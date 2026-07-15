@@ -286,7 +286,7 @@ class SelfLearningService:
 
         return applied_count
 
-    def get_learning_stats(self, user_id: int = None) -> dict:
+    def get_learning_stats(self, user_id: int | None = None) -> dict:
         """获取自学习统计"""
         try:
             from data.config import get_memory_db_path

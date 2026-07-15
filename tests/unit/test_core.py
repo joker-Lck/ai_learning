@@ -48,7 +48,7 @@ class TestEmbeddingService:
 
     def test_cosine_similarity_identical(self):
         from data.embedding_service import EmbeddingService
-        svc = EmbeddingService.__new__(EmbeddingService)
+        EmbeddingService.__new__(EmbeddingService)
         vec = [1.0, 0.0, 0.0]
         # 使用静态方法或直接计算
         import numpy as np

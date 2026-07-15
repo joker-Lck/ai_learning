@@ -45,11 +45,11 @@ class LRUCache:
                 self._cache.popitem(last=False)
             self._cache[key] = (value, time.time())
 
-    def clear(self, prefix: str = None):
+    def clear(self, prefix: str | None = None):
         """清空缓存，可选按前缀过滤"""
         with self._lock:
             if prefix:
-                keys_to_delete = [k for k in self._cache.keys() if k.startswith(prefix)]
+                keys_to_delete = [k for k in self._cache if k.startswith(prefix)]
                 for key in keys_to_delete:
                     del self._cache[key]
             else:
@@ -121,7 +121,7 @@ class VectorIndexManager:
             scores, indices = self._index.search(vec, k)
 
             results = []
-            for score, idx in zip(scores[0], indices[0]):
+            for score, idx in zip(scores[0], indices[0], strict=False):
                 if idx < 0 or idx >= len(self._doc_ids):
                     continue
                 results.append({
@@ -352,7 +352,7 @@ class RAGKnowledgeBase:
                      file_size=0, embedding=None):
         """
         添加知识文档到库中（JSON 格式存储）
-        
+
         参数：
         - title: 文档标题
         - subject: 所属学科（语文、数学、英语等）
@@ -499,9 +499,9 @@ class RAGKnowledgeBase:
         """获取指定学科的所有文档（解析 JSON 数据）"""
         try:
             self.connect()
-            sql = """SELECT * FROM knowledge_documents 
-                    WHERE subject = ? 
-                    ORDER BY upload_time DESC 
+            sql = """SELECT * FROM knowledge_documents
+                    WHERE subject = ?
+                    ORDER BY upload_time DESC
                     LIMIT ?"""
             self.cursor.execute(sql, (subject, limit))
             results = self.cursor.fetchall()
@@ -950,13 +950,13 @@ class RAGKnowledgeBase:
                          FROM knowledge_documents
                          WHERE subject = ? AND ({where_sql})
                          LIMIT ?"""
-                params = [subject] + params + [limit]
+                params = [subject, *params, limit]
             else:
                 sql = f"""SELECT id, title, subject, document_data, 0.5 as relevance
                          FROM knowledge_documents
                          WHERE {where_sql}
                          LIMIT ?"""
-                params = params + [limit]
+                params = [*params, limit]
 
             self.cursor.execute(sql, params)
             results = self.cursor.fetchall()
@@ -1090,8 +1090,8 @@ class RAGKnowledgeBase:
             total_docs = self.cursor.fetchone()['total_docs']
 
             # 各学科文档数
-            sql_subject = """SELECT subject, COUNT(*) as count 
-                            FROM knowledge_documents 
+            sql_subject = """SELECT subject, COUNT(*) as count
+                            FROM knowledge_documents
                             GROUP BY subject"""
             self.cursor.execute(sql_subject)
             subject_stats = self.cursor.fetchall()

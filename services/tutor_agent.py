@@ -275,7 +275,7 @@ class TutorAgent:
             error(f"获取知识图谱失败: {e!s}")
             return {'skills': [], 'concepts': [], 'courses': [], 'stats': {}}
 
-    def get_learning_recommendations(self, user_id: int, subject: str = None) -> list[dict]:
+    def get_learning_recommendations(self, user_id: int, subject: str | None = None) -> list[dict]:
         """基于记忆获取学习推荐"""
         recommendations = []
         try:
@@ -308,7 +308,7 @@ class TutorAgent:
             error(f"获取学习推荐失败: {e!s}")
             return []
 
-    def apply_memory_maintenance(self, user_id: int = None) -> dict:
+    def apply_memory_maintenance(self, user_id: int | None = None) -> dict:
         """应用记忆维护（遗忘曲线、清理等）"""
         try:
             from services.memory_service import memory_service

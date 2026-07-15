@@ -251,7 +251,7 @@ class QADatabase:
                      ORDER BY created_at DESC
                      LIMIT ?"""
 
-            all_params = params + [limit]
+            all_params = [*params, limit]
             self.cursor.execute(sql, all_params)
             results = [dict(row) for row in self.cursor.fetchall()]
 

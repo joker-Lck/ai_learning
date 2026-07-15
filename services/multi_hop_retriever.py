@@ -40,7 +40,7 @@ class MultiHopRetriever:
             self._qa_service = qa_service
         return self._qa_service
 
-    def retrieve(self, query: str, user_id: int = 0, max_hops: int = None,
+    def retrieve(self, query: str, user_id: int = 0, max_hops: int | None = None,
                  limit: int = 5) -> dict:
         """
         主入口：多跳推理检索
@@ -279,7 +279,7 @@ class MultiHopRetriever:
         if not evidence_chain:
             return {"confidence": 0.0, "valid": False, "pruned": []}
 
-        scores = [e.get("score", 0) for e in evidence_chain]
+        [e.get("score", 0) for e in evidence_chain]
         hop_weights = {0: 1.0, 1: 0.9, 2: 0.8, 3: 0.7, 4: 0.6, 5: 0.5}
 
         weighted_scores = []

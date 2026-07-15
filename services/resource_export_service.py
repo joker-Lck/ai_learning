@@ -100,7 +100,7 @@ class ResourceExportService:
     def _export_mindmap_to_svg(self, resource: dict) -> dict:
         """导出思维导图为 SVG"""
         content_data = resource.get("content_data", {})
-        title = resource.get("title", "思维导图")
+        resource.get("title", "思维导图")
 
         # 如果有 SVG 数据，直接导出
         if content_data.get("svg_code"):
@@ -122,7 +122,7 @@ class ResourceExportService:
     def _export_video(self, resource: dict) -> dict:
         """导出视频资源（脚本 + 图片）"""
         content_data = resource.get("content_data", {})
-        title = resource.get("title", "教学视频")
+        resource.get("title", "教学视频")
 
         # 如果有 media_url，直接导出
         media_url = content_data.get("media_url")

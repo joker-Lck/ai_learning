@@ -164,7 +164,7 @@ class UIComponents:
     def create_action_buttons(actions):
         """创建操作按钮组"""
         cols = st.columns(len(actions))
-        for col, action in zip(cols, actions):
+        for col, action in zip(cols, actions, strict=False):
             with col:
                 if st.button(action['label'], type=action.get('type', 'secondary'), use_container_width=True):
                     if 'callback' in action:

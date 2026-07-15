@@ -340,8 +340,8 @@ class AssessmentAgent:
         # 成绩统计
         scores = [g.get("score", 0) for g in grades if g.get("score")]
         avg_score = sum(scores) / len(scores) if scores else 0
-        max_score = max(scores) if scores else 0
-        min_score = min(scores) if scores else 0
+        max(scores) if scores else 0
+        min(scores) if scores else 0
 
         # 错题统计
         mastered_count = sum(1 for e in error_notes if e.get("mastery"))

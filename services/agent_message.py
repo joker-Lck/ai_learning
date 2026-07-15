@@ -102,7 +102,7 @@ class AgentMessage:
         return (time.time() - self.timestamp) > self.ttl
 
     def reply(self, sender: AgentRole, payload: dict, success: bool = True,
-              error: str = None, msg_type: MessageType = MessageType.RESPONSE) -> "AgentMessage":
+              error: str | None = None, msg_type: MessageType = MessageType.RESPONSE) -> "AgentMessage":
         """快速构造响应消息"""
         return AgentMessage(
             msg_type=msg_type,

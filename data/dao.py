@@ -17,8 +17,8 @@ class ResourceDAO:
 
     def save(self, user_id: int, title: str, resource_type: str,
              subject: str, topic: str, difficulty: str,
-             content_data: Any, duration_minutes: int = None,
-             generated_by: str = None) -> int | None:
+             content_data: Any, duration_minutes: int | None = None,
+             generated_by: str | None = None) -> int | None:
         """保存学习资源，返回资源 ID"""
         try:
             with self._db:
@@ -101,7 +101,7 @@ class ActivityDAO:
         self._db = db
 
     def record(self, user_id: int, activity_type: str,
-               metadata: dict = None, duration_seconds: int = 0) -> int | None:
+               metadata: dict | None = None, duration_seconds: int = 0) -> int | None:
         """记录一条活动日志"""
         try:
             with self._db:

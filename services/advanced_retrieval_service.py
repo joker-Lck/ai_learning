@@ -65,7 +65,7 @@ class AdvancedRetrievalService:
     def hyde_search(
         self,
         query: str,
-        subject: str = None,
+        subject: str | None = None,
         limit: int = 5,
         model: str = "simple",
     ) -> list[dict]:
@@ -106,7 +106,7 @@ class AdvancedRetrievalService:
             return self._base_hybrid_search(query, subject, limit)
 
     def _generate_hypothetical_document(
-        self, query: str, subject: str = None, model: str = "simple"
+        self, query: str, subject: str | None = None, model: str = "simple"
     ) -> str | None:
         """用 LLM 生成假设性答案文档"""
         subject_hint = f"（学科：{subject}）" if subject else ""
@@ -133,7 +133,7 @@ class AdvancedRetrievalService:
     def multi_query_search(
         self,
         query: str,
-        subject: str = None,
+        subject: str | None = None,
         limit: int = 5,
         num_variants: int = 3,
     ) -> list[dict]:
@@ -151,7 +151,7 @@ class AdvancedRetrievalService:
         """
         try:
             variants = self._generate_query_variants(query, num_variants)
-            all_queries = [query] + variants
+            all_queries = [query, *variants]
 
             seen_ids = set()
             all_results = []
@@ -199,7 +199,7 @@ class AdvancedRetrievalService:
     def rag_fusion_search(
         self,
         query: str,
-        subject: str = None,
+        subject: str | None = None,
         limit: int = 5,
         num_variants: int = 4,
         rrf_k: int = 60,
@@ -223,7 +223,7 @@ class AdvancedRetrievalService:
         """
         try:
             variants = self._generate_query_variants(query, num_variants)
-            all_queries = [query] + variants
+            all_queries = [query, *variants]
 
             ranked_lists = []
             for q in all_queries:
@@ -269,7 +269,7 @@ class AdvancedRetrievalService:
     def contextual_search(
         self,
         query: str,
-        subject: str = None,
+        subject: str | None = None,
         limit: int = 5,
     ) -> list[dict]:
         """
@@ -302,7 +302,7 @@ class AdvancedRetrievalService:
             return self._fallback_vector_search(query, limit)
 
     def _contextual_rerank(
-        self, query: str, candidates: list[dict], subject: str = None
+        self, query: str, candidates: list[dict], subject: str | None = None
     ) -> list[dict]:
         """用 LLM 对候选文档做上下文相关性评分"""
         doc_summaries = []
@@ -363,7 +363,7 @@ class AdvancedRetrievalService:
         self,
         user_id: int,
         query: str,
-        subject: str = None,
+        subject: str | None = None,
         limit: int = 5,
         graph_depth: int = 2,
     ) -> list[dict]:
@@ -475,8 +475,8 @@ class AdvancedRetrievalService:
         content_text: str,
         file_path: str = '',
         file_type: str = 'txt',
-        knowledge_points: list[str] = None,
-        uploaded_by: int = None,
+        knowledge_points: list[str] | None = None,
+        uploaded_by: int | None = None,
     ) -> int | None:
         """
         上下文分块入库：为每个段落添加上下文前缀后再嵌入
@@ -587,7 +587,7 @@ class AdvancedRetrievalService:
     # ══════════════════════════════════════════
 
     def _base_hybrid_search(
-        self, query: str, subject: str = None, limit: int = 5
+        self, query: str, subject: str | None = None, limit: int = 5
     ) -> list[dict]:
         """
         基座检索：KNN 全文检索 + ANN 向量检索 → RRF 融合
@@ -609,7 +609,7 @@ class AdvancedRetrievalService:
         self,
         user_id: int,
         query: str,
-        subject: str = None,
+        subject: str | None = None,
         limit: int = 5,
         strategy: str = "auto",
     ) -> list[dict]:

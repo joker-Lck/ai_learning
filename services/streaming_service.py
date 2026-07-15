@@ -79,7 +79,7 @@ class ProgressTracker:
 
         return task
 
-    def complete_task(self, task_id: str, result: dict = None) -> dict:
+    def complete_task(self, task_id: str, result: dict | None = None) -> dict:
         """标记任务完成"""
         if task_id not in self.tasks:
             return None

@@ -19,7 +19,7 @@ class PathAgent:
     def plan_path(self, user_id: int, input_data: dict) -> dict:
         """
         规划个性化学习路径
-        
+
         Args:
             user_id: 用户ID
             input_data: {
@@ -27,7 +27,7 @@ class PathAgent:
                 "resources": 可用资源列表,
                 "learning_goal": 学习目标
             }
-            
+
         Returns:
             学习路径数据
         """
@@ -296,7 +296,7 @@ class PathAgent:
             error(f"保存学习路径失败: {e!s}")
             raise
 
-    def update_path_progress(self, path_id: int, completed_step: int, user_id: int = None) -> dict:
+    def update_path_progress(self, path_id: int, completed_step: int, user_id: int | None = None) -> dict:
         """更新学习路径进度"""
         try:
             from data.db_operations import path_db

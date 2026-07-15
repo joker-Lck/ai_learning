@@ -17,12 +17,12 @@ class DocumentParser:
     def parse_to_json(file, subject="通用", uploaded_by=None):
         """
         将上传的文件解析为统一的 JSON 格式
-        
+
         参数：
         - file: Streamlit UploadedFile 对象
         - subject: 学科分类（语文、数学、英语等）
         - uploaded_by: 上传者
-        
+
         返回：
         - dict: 标准化的 JSON 格式数据
         """
@@ -144,10 +144,10 @@ class DocumentParser:
     def _read_image(file):
         """
         读取图片并使用 MiMo 视觉模型提取文字（OCR）
-        
+
         参数：
         - file: Streamlit UploadedFile 对象
-        
+
         返回：
         - str: 提取的文本内容
         """
@@ -165,10 +165,7 @@ class DocumentParser:
 
             # 确定 MIME 类型
             file_ext = file.name.split('.')[-1].lower()
-            if file_ext == 'png':
-                mime_type = 'image/png'
-            else:
-                mime_type = 'image/jpeg'
+            mime_type = 'image/png' if file_ext == 'png' else 'image/jpeg'
 
             # 转换为 base64
             base64_image = base64.b64encode(image_data).decode('utf-8')

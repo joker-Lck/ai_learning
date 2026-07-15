@@ -17,7 +17,7 @@ if not os.path.exists('logs'):
 # ── 请求上下文（线程安全）──
 _context = threading.local()
 
-def set_request_context(request_id: str = None, user_id: int = None):
+def set_request_context(request_id: str | None = None, user_id: int | None = None):
     """设置当前请求的上下文信息"""
     _context.request_id = request_id
     _context.user_id = user_id

@@ -59,19 +59,19 @@ class QAService:
         )
 
     # ── 新接口：按任务复杂度调用 ──────────────────────────────
-    def call_simple(self, prompt: str, max_tokens: int = 1500, system_prompt: str = None) -> str:
+    def call_simple(self, prompt: str, max_tokens: int = 1500, system_prompt: str | None = None) -> str:
         """简单任务 — Spark Lite（免费）"""
         return spark_client.simple(prompt, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def call_standard(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+    def call_standard(self, prompt: str, max_tokens: int = 2000, system_prompt: str | None = None) -> str:
         """标准任务 — Spark Pro"""
         return spark_client.standard(prompt, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def call_advanced(self, prompt: str, max_tokens: int = 3000, system_prompt: str = None) -> str:
+    def call_advanced(self, prompt: str, max_tokens: int = 3000, system_prompt: str | None = None) -> str:
         """高级任务 — Spark Max"""
         return spark_client.advanced(prompt, max_tokens=max_tokens, system_prompt=system_prompt)
 
-    def call_ultra(self, prompt: str, max_tokens: int = 2000, system_prompt: str = None) -> str:
+    def call_ultra(self, prompt: str, max_tokens: int = 2000, system_prompt: str | None = None) -> str:
         """最强推理 — Spark 4.0 Ultra"""
         return spark_client.ultra(prompt, max_tokens=max_tokens, system_prompt=system_prompt)
 

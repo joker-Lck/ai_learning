@@ -55,7 +55,7 @@ class AhoCorasick:
 
     def search(self, text: str) -> list[tuple[int, str, int]]:
         """搜索文本中的所有模式匹配
-        
+
         返回: [(pattern_id, pattern, position), ...]
         """
         results = []
@@ -89,10 +89,10 @@ class ContentSafetyService:
     def check_content_safety(self, content: str) -> dict:
         """
         检查内容安全性
-        
+
         Args:
             content: 待检查的文本内容
-            
+
         Returns:
             {
                 "is_safe": bool,
@@ -154,10 +154,10 @@ class ContentSafetyService:
     def filter_and_clean(self, content: str) -> dict:
         """
         过滤并清理内容
-        
+
         Args:
             content: 原始内容
-            
+
         Returns:
             {
                 "filtered_content": str,
@@ -404,12 +404,12 @@ class AntiHallucinationService:
                        threshold: float = 0.7) -> dict:
         """
         基于RAG知识库验证事实
-        
+
         Args:
             claim: 需要验证的陈述
             knowledge_context: 相关知识库上下文
             threshold: 可信度阈值
-            
+
         Returns:
             {
                 "is_verified": bool,
@@ -460,11 +460,11 @@ class AntiHallucinationService:
     def add_citations(self, content: str, sources: list[dict]) -> str:
         """
         为内容添加引用标注
-        
+
         Args:
             content: 原始内容
             sources: 引用来源列表
-            
+
         Returns:
             带引用的内容
         """
@@ -486,7 +486,7 @@ class AntiHallucinationService:
     def detect_uncertainty_markers(self, content: str) -> list[dict]:
         """
         检测不确定性标记,提示可能的幻觉
-        
+
         Returns:
             不确定性表述列表
         """
@@ -513,11 +513,11 @@ class AntiHallucinationService:
                       alternative_sources: list[str]) -> dict:
         """
         交叉验证 - 对比多个来源的一致性
-        
+
         Args:
             primary_answer: 主要答案
             alternative_sources: 替代来源列表
-            
+
         Returns:
             一致性分析结果
         """

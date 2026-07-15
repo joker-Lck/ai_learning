@@ -237,38 +237,38 @@ function downloadImage() {{
     </filter>
   </defs>
   <rect width="800" height="450" fill="url(#bg)" rx="12"/>
-  
+
   <!-- 标题区域 -->
   <rect x="200" y="30" width="400" height="50" rx="25" fill="url(#accent)" opacity="0.9"/>
   <text x="400" y="62" text-anchor="middle" fill="white" font-size="20" font-weight="bold" font-family="Microsoft YaHei, sans-serif">{subject} - {topic}</text>
-  
+
   <!-- 主内容区 -->
   <rect x="50" y="100" width="700" height="300" rx="12" fill="white" opacity="0.05" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
-  
+
   <!-- 核心概念 -->
   <rect x="280" y="130" width="240" height="50" rx="10" fill="url(#accent)" filter="url(#glow)"/>
   <text x="400" y="162" text-anchor="middle" fill="white" font-size="16" font-weight="bold" font-family="Microsoft YaHei, sans-serif">核心概念</text>
-  
+
   <!-- 分支1 -->
   <line x1="340" y1="180" x2="200" y2="230" stroke="#06b6d4" stroke-width="2" marker-end="url(#arrow)"/>
   <rect x="100" y="230" width="200" height="45" rx="8" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="1"/>
   <text x="200" y="258" text-anchor="middle" fill="#67e8f9" font-size="14" font-family="Microsoft YaHei, sans-serif">基础知识</text>
-  
+
   <!-- 分支2 -->
   <line x1="400" y1="180" x2="400" y2="230" stroke="#3b82f6" stroke-width="2"/>
   <rect x="300" y="230" width="200" height="45" rx="8" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="1"/>
   <text x="400" y="258" text-anchor="middle" fill="#93c5fd" font-size="14" font-family="Microsoft YaHei, sans-serif">核心原理</text>
-  
+
   <!-- 分支3 -->
   <line x1="460" y1="180" x2="600" y2="230" stroke="#f59e0b" stroke-width="2"/>
   <rect x="500" y="230" width="200" height="45" rx="8" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="1"/>
   <text x="600" y="258" text-anchor="middle" fill="#fcd34d" font-size="14" font-family="Microsoft YaHei, sans-serif">实际应用</text>
-  
+
   <!-- 底部说明 -->
   <rect x="150" y="310" width="500" height="60" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
   <text x="400" y="335" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="12" font-family="Microsoft YaHei, sans-serif">{suggestion[:50]}</text>
   <text x="400" y="355" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="10" font-family="Microsoft YaHei, sans-serif">AI 教学示意图</text>
-  
+
   <!-- 装饰元素 -->
   <circle cx="70" cy="70" r="20" fill="rgba(6,182,212,0.1)"/>
   <circle cx="730" cy="380" r="15" fill="rgba(59,130,246,0.1)"/>

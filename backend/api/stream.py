@@ -34,7 +34,7 @@ async def stream_generate_resource(
 ):
     """
     流式生成学习资源 - SSE实时推送进度
-    
+
     参数:
     - resource_type: 资源类型 (document/quiz/mindmap/video等)
     - subject: 学科
@@ -286,7 +286,7 @@ async def check_content_safety_api(
 ):
     """
     检查内容安全性
-    
+
     请求体:
     {
         "content": "待检查的文本"
@@ -329,7 +329,7 @@ async def verify_fact_api(
 ):
     """
     验证事实准确性
-    
+
     请求体:
     {
         "claim": "需要验证的陈述",
@@ -374,7 +374,7 @@ async def add_citations_api(
 ):
     """
     为内容添加引用标注
-    
+
     请求体:
     {
         "content": "原始内容",
@@ -415,7 +415,7 @@ async def cross_validate_api(
 ):
     """
     交叉验证内容一致性
-    
+
     请求体:
     {
         "primary_answer": "主要答案",

@@ -124,7 +124,7 @@ class AgentCoordinator:
                     task_type: str,
                     user_id: int,
                     input_data: dict[str, Any],
-                    session_id: str = None) -> dict[str, Any]:
+                    session_id: str | None = None) -> dict[str, Any]:
         """
         执行任务 — 通过消息总线调度智能体
 

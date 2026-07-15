@@ -48,7 +48,7 @@ class LearningDataManager:
     """学习数据管理器"""
 
     @staticmethod
-    def save_learning_data(learning_data: dict = None):
+    def save_learning_data(learning_data: dict | None = None):
         """保存学习数据到本地文件"""
         try:
             if learning_data is None:

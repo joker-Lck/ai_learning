@@ -88,7 +88,7 @@ class ResourceAgent:
     def generate_resources(self, user_id: int, input_data: dict) -> dict:
         """
         生成多模态学习资源
-        
+
         Args:
             user_id: 用户ID
             input_data: {
@@ -98,7 +98,7 @@ class ResourceAgent:
                 "resource_types": 需要的资源类型列表,
                 "difficulty": 难度级别
             }
-            
+
         Returns:
             生成的资源列表
         """
@@ -836,7 +836,7 @@ function downloadSVG() {{
             error(f"生成阅读材料失败: {e!s}")
             return self._fallback_reading(subject, topic, difficulty)
 
-    def _save_resources(self, resources: list[dict], user_id: int = None) -> list[int]:
+    def _save_resources(self, resources: list[dict], user_id: int | None = None) -> list[int]:
         """保存资源到主数据库 + RAG 知识库"""
         try:
             from data.db_operations import resource_db
@@ -874,7 +874,7 @@ function downloadSVG() {{
             error(f"保存资源失败: {e!s}")
             return []
 
-    def _save_to_rag(self, resources: list[dict], user_id: int = None) -> None:
+    def _save_to_rag(self, resources: list[dict], user_id: int | None = None) -> None:
         """将生成的资源同步写入 RAG 知识库"""
         try:
             from data.rag_knowledge_base import rag_kb

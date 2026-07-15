@@ -461,7 +461,7 @@ let currentUtterance = null;
 // 初始化
 function init() {{
   document.getElementById('sceneCount').textContent = `共 ${{scenes.length}} 个知识点 · 预计 ${{scenes.length}} 分钟`;
-  
+
   // 创建场景指示点
   const dotsContainer = document.getElementById('sceneDots');
   scenes.forEach((_, i) => {{
@@ -470,7 +470,7 @@ function init() {{
     dot.onclick = () => goToScene(i);
     dotsContainer.appendChild(dot);
   }});
-  
+
   showScene(0);
 }}
 
@@ -487,7 +487,7 @@ function showScene(index) {{
 
   setTimeout(() => {{
     document.getElementById('sceneTitle').textContent = scene.title;
-    
+
     // 显示可视化内容（HTML 或 SVG）
     const visualEl = document.getElementById('sceneVisual');
     if (scene.svg) {{
@@ -497,7 +497,7 @@ function showScene(index) {{
     }} else {{
       visualEl.innerHTML = (scene.visual_content || '').replace(/\\n/g, '<br>');
     }}
-    
+
     document.getElementById('sceneHighlight').textContent = scene.highlight || '';
     document.getElementById('narrationText').textContent = scene.narration || '';
 
@@ -523,12 +523,12 @@ function showScene(index) {{
 function speak(text) {{
   if (!speechSynth || !text) return;
   speechSynth.cancel();
-  
+
   currentUtterance = new SpeechSynthesisUtterance(text);
   currentUtterance.lang = 'zh-CN';
   currentUtterance.rate = 0.9;
   currentUtterance.pitch = 1;
-  
+
   currentUtterance.onend = () => {{
     if (isPlaying) {{
       setTimeout(() => {{
@@ -540,7 +540,7 @@ function speak(text) {{
       }}, 1000);
     }}
   }};
-  
+
   speechSynth.speak(currentUtterance);
 }}
 
@@ -605,7 +605,7 @@ function seekTo(event) {{
 function updateProgress() {{
   const percent = ((currentScene + 1) / scenes.length) * 100;
   document.getElementById('progressFill').style.width = percent + '%';
-  document.getElementById('timeDisplay').textContent = 
+  document.getElementById('timeDisplay').textContent =
     `${{currentScene + 1}}:${{String(0).padStart(2,'0')}} / ${{scenes.length}}:${{String(0).padStart(2,'0')}}`;
 }}
 
