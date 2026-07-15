@@ -14,7 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v3
         with:
-          args: "check backend/ services/ data/ core/ tests/ --select E,F,W,I --ignore E501,W291,W293,E402,F841,F401,E701,E722,E741,F821 --exclude core/ui_components.py,tests/"
+          version: "0.15.21"
+          args: "check backend/ services/ data/ core/ --select E,F,W,I --ignore E501,W291,W293,E402,F841,F401,E701,E722,E741,F821 --exclude core/ui_components.py"
 
   test:
     name: Test
@@ -43,7 +44,14 @@ jobs:
           echo "MIMO_BASE_URL=https://api.mimo.ai/v1" >> .env
 
       - name: Initialize test databases
-        run: PYTHONPATH=. python scripts/init_databases_v7.2.py
+        run: python scripts/init_databases_v7.2.py
+        env:
+          PYTHONPATH: .
 
       - name: Run tests
-        run: PYTHONPATH=. pytest tests/unit/ -v --tb=short
+        run: pytest tests/unit/ -v --tb=long
+        env:
+          PYTHONPATH: .
+          JWT_SECRET: test_secret_key_for_ci_only_32chars!!
+          MIMO_API_KEY: test_api_key
+          MIMO_BASE_URL: https://api.mimo.ai/v1
