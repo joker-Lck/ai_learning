@@ -13,6 +13,7 @@ import {
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import type { ModuleType, NavigationContext } from './modules/types';
 import { computeRadarData } from '@/lib/radar';
+import { DashboardBackground } from './shared/BackgroundEffects';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import api from '@/lib/api';
 
@@ -678,9 +679,8 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d0d1a 0%, #0a0a0a 40%, #0f0a14 100%)' }}>
-      {/* 微光网格背景 */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(102,67,255,0.3) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+    <div className="flex h-screen overflow-hidden relative" style={{ background: '#0a0a0a' }}>
+      <DashboardBackground />
       <main className="flex-1 overflow-y-auto h-screen relative z-10" data-workspace-scroll>
         <div className="px-8 pt-7 pb-8 max-w-[1200px] mx-auto">
           <Header profile={profile} stats={stats} />
