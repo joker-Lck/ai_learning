@@ -1,4 +1,4 @@
-from core.logger import error
+﻿from core.logger import error
 
 """
 文档解析与 JSON 格式转换模块
@@ -173,7 +173,7 @@ class DocumentParser:
             # 使用 MiMo 视觉模型识别图片文字
             client = OpenAI(
                 api_key=os.getenv('MIMO_API_KEY', ''),
-                base_url=os.getenv('MIMO_BASE_URL', 'https://api.mimo.ai/v1')
+                base_url=os.getenv('MIMO_BASE_URL', 'https://api.xiaomimimo.com/v1')
             )
 
             response = client.chat.completions.create(

@@ -1,4 +1,4 @@
-"""
+﻿"""
 应用配置管理 — 基于 pydantic-settings 的环境隔离配置
 支持 .env 文件 + 环境变量覆盖
 """
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # ── MiMo AI ──
     mimo_api_key: str = Field(..., alias="MIMO_API_KEY")
-    mimo_base_url: str = "https://api.mimo.ai/v1"
+    mimo_base_url: str = "https://api.xiaomimimo.com/v1"
     mimo_model: str = "mimo-v2.5-pro"
     mimo_vision_model: str = "mimo-v2.5"
     mimo_image_model: str = "mimo-image"

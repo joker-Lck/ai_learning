@@ -53,7 +53,7 @@ class MiMoClient:
             load_dotenv(override=True)
 
             api_key = os.getenv("MIMO_API_KEY", "")
-            base_url = os.getenv("MIMO_BASE_URL", "https://api.mimo.ai/v1")
+            base_url = os.getenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1")
 
             if not api_key:
                 raise RuntimeError(
@@ -307,7 +307,7 @@ class MiMoClient:
         import requests
 
         api_key = os.getenv("MIMO_API_KEY", "")
-        base_url = os.getenv("MIMO_BASE_URL", "https://api.mimo.ai/v1")
+        base_url = os.getenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1")
 
         if not api_key:
             error("MiMo 图片生成 API 配置不完整")
@@ -398,7 +398,7 @@ class MiMoClient:
         import requests
 
         api_key = os.getenv("MIMO_API_KEY", "")
-        base_url = os.getenv("MIMO_BASE_URL", "https://api.mimo.ai/v1")
+        base_url = os.getenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1")
 
         if not api_key:
             error("MiMo TTS API 配置不完整")

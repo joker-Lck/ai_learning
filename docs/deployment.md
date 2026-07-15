@@ -1,4 +1,4 @@
-# 部署指南
+﻿# 部署指南
 
 ## 方式一：本地开发
 
@@ -170,7 +170,7 @@ eas build --platform ios
 | APP_VERSION | 应用版本 | 7.2.0 |
 | ALLOWED_ORIGINS | CORS 白名单 | localhost:3000 |
 | MIMO_API_KEY | MiMo API 密钥 | 必填 |
-| MIMO_BASE_URL | MiMo API 地址 | https://api.mimo.ai/v1 |
+| MIMO_BASE_URL | MiMo API 地址 | https://api.xiaomimimo.com/v1 |
 | MIMO_MODEL | 推理模型 | mimo-v2.5-pro |
 | MIMO_VISION_MODEL | 视觉模型 | mimo-v2.5 |
 | MIMO_IMAGE_MODEL | 图片生成模型 | mimo-image |

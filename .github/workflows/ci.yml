@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
         run: |
           echo "JWT_SECRET=test_secret_key_for_ci_only_32chars!!" > .env
           echo "MIMO_API_KEY=test_api_key" >> .env
-          echo "MIMO_BASE_URL=https://api.mimo.ai/v1" >> .env
+          echo "MIMO_BASE_URL=https://api.xiaomimimo.com/v1" >> .env
       - name: Initialize test databases
         run: python scripts/init_databases_v7.2.py
         env:
@@ -49,4 +49,4 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
           JWT_SECRET: test_secret_key_for_ci_only_32chars!!
           MIMO_API_KEY: test_api_key
-          MIMO_BASE_URL: https://api.mimo.ai/v1
+          MIMO_BASE_URL: https://api.xiaomimimo.com/v1

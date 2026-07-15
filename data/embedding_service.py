@@ -1,4 +1,4 @@
-"""
+﻿"""
 向量化服务模块 - 使用 MiMo Embedding API
 支持文本向量化和相似度计算
 """
@@ -24,7 +24,7 @@ class EmbeddingService:
         """初始化 MiMo Embedding 客户端"""
         if self._client is None:
             api_key = os.getenv('MIMO_API_KEY', '')
-            base_url = os.getenv('MIMO_BASE_URL', 'https://api.mimo.ai/v1')
+            base_url = os.getenv('MIMO_BASE_URL', 'https://api.xiaomimimo.com/v1')
 
             if not api_key:
                 raise RuntimeError("MIMO_API_KEY 未配置")

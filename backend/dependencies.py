@@ -1,4 +1,4 @@
-"""
+﻿"""
 FastAPI 依赖注入 — 企业级安全配置
 JWT 认证、请求上下文注入、权限校验
 """
@@ -28,7 +28,7 @@ def get_api_config() -> dict:
     config = CacheManager.load_env_config()
     return {
         "api_key": config.get("api_key", ""),
-        "base_url": config.get("base_url", "https://api.mimo.ai/v1"),
+        "base_url": config.get("base_url", "https://api.xiaomimimo.com/v1"),
     }
 
 

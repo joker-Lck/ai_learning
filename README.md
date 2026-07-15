@@ -1,4 +1,4 @@
-# 基于多智能体的个性化学习资源生成系统
+﻿# 基于多智能体的个性化学习资源生成系统
 
 <p align="center">
   <b>AI-Powered Personalized Learning Resource Generation System</b><br>
@@ -414,7 +414,7 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001  # CORS 白名单
 
 # ===== MiMo AI 配置 =====
 MIMO_API_KEY=your_mimo_api_key_here                         # MiMo API 密钥（必需）
-MIMO_BASE_URL=https://api.mimo.ai/v1                        # API 基础地址
+MIMO_BASE_URL=https://api.xiaomimimo.com/v1                        # API 基础地址
 MIMO_MODEL=mimo-v2.5-pro                                    # 主力推理模型
 MIMO_VISION_MODEL=mimo-v2.5                                 # 视觉理解模型
 MIMO_IMAGE_MODEL=mimo-image                                 # 图片生成模型
@@ -434,8 +434,8 @@ RAG_SIMILARITY_THRESHOLD=0.8                                # RAG 相似度阈�
 | 变量 | 必需 | 默认值 | 说明 |
 |------|------|--------|------|
 | `JWT_SECRET` | ✅ | — | JWT 签名密钥，≥32 字符，启动时强制校验 |
-| `MIMO_API_KEY` | ✅ | — | MiMo API 密钥，从 [MiMo 开放平台](https://api.mimo.ai/) 获取 |
-| `MIMO_BASE_URL` | ❌ | `https://api.mimo.ai/v1` | API 基础地址 |
+| `MIMO_API_KEY` | ✅ | — | MiMo API 密钥，从 [MiMo 开放平台](https://api.xiaomimimo.com/) 获取 |
+| `MIMO_BASE_URL` | ❌ | `https://api.xiaomimimo.com/v1` | API 基础地址 |
 | `MIMO_MODEL` | ❌ | `mimo-v2.5-pro` | 文本推理模型 |
 | `MIMO_VISION_MODEL` | ❌ | `mimo-v2.5` | 视觉理解模型 |
 | `MIMO_IMAGE_MODEL` | ❌ | `mimo-image` | 图片生成模型 |
@@ -733,7 +733,7 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 
 | 参数 | 值 | 说明 |
 |------|------|------|
-| API | MiMo Embedding API | `https://api.mimo.ai/v1/embeddings` |
+| API | MiMo Embedding API | `https://api.xiaomimimo.com/v1/embeddings` |
 | 向量维度 | 768 | 空文本返回零向量 |
 | 文本截断 | 8000 字符 | 超长自动截断 |
 | 索引类型 | `faiss.IndexFlatIP` | L2 归一化后内积 ≡ 余弦相似度 |
@@ -1260,7 +1260,7 @@ cd frontend && npm install && npm run build && npm start
 
 ### Q1: 如何获取 MiMo API Key？
 
-访问 [MiMo 开放平台](https://api.mimo.ai/) 注册账号，在控制台创建 API Key，填入 `.env` 文件的 `MIMO_API_KEY` 字段。
+访问 [MiMo 开放平台](https://api.xiaomimimo.com/) 注册账号，在控制台创建 API Key，填入 `.env` 文件的 `MIMO_API_KEY` 字段。
 
 ### Q2: 系统如何体现"多智能体"？
 

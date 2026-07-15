@@ -1,4 +1,4 @@
-"""
+﻿"""
 数据管理模块
 统一管理数据持久化、缓存和数据库连接
 """
@@ -144,7 +144,7 @@ class CacheManager:
         load_dotenv()
         config = {
             'api_key': os.getenv('MIMO_API_KEY', ''),
-            'base_url': os.getenv('MIMO_BASE_URL', 'https://api.mimo.ai/v1')
+            'base_url': os.getenv('MIMO_BASE_URL', 'https://api.xiaomimimo.com/v1')
         }
         _cache.set("env_config", config, ttl=3600)
         return config

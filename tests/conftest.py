@@ -1,4 +1,4 @@
-"""Pytest 全局 fixtures"""
+﻿"""Pytest 全局 fixtures"""
 import os
 import sqlite3
 import sys
@@ -25,7 +25,7 @@ def mock_env(monkeypatch):
     """设置测试环境变量"""
     monkeypatch.setenv("JWT_SECRET", "test_secret_key_for_testing_only_32chars!")
     monkeypatch.setenv("MIMO_API_KEY", "test_api_key")
-    monkeypatch.setenv("MIMO_BASE_URL", "https://api.mimo.ai/v1")
+    monkeypatch.setenv("MIMO_BASE_URL", "https://api.xiaomimimo.com/v1")
     monkeypatch.setenv("ENVIRONMENT", "testing")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
 
