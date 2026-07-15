@@ -1,4 +1,4 @@
-﻿"""
+"""
 SQLite 多数据库架构初始化脚本
 9个独立 .db 文件，与原 MySQL 架构一一对应
 """
@@ -701,6 +701,25 @@ def init_memory_database():
             );
             CREATE INDEX IF NOT EXISTS idx_le_type ON learning_experiences(experience_type);
             CREATE INDEX IF NOT EXISTS idx_le_applied ON learning_experiences(applied);
+
+            -- 画像评定记录表
+            CREATE TABLE IF NOT EXISTS profile_evaluations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                knowledge_base REAL DEFAULT 3,
+                learning_goals REAL DEFAULT 3,
+                memory_ability REAL DEFAULT 3,
+                self_control REAL DEFAULT 3,
+                focus REAL DEFAULT 3,
+                learning_depth REAL DEFAULT 3,
+                reasoning TEXT,
+                resource_count INTEGER DEFAULT 0,
+                activity_count INTEGER DEFAULT 0,
+                evaluation_source TEXT DEFAULT 'ai',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_pe_user ON profile_evaluations(user_id);
+            CREATE INDEX IF NOT EXISTS idx_pe_created ON profile_evaluations(created_at);
         """)
 
         conn.commit()

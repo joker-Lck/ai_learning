@@ -73,16 +73,85 @@ interface DashboardStats {
 }
 
 /* ═══════════════════════════════════════════
-   雷达图组件
+   雷达图组件（支持 AI 评定 + 规则降级）
    ═══════════════════════════════════════════ */
 
 const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { profile: ProfileData | null }) {
-  const data = useMemo(() => computeRadarData(profile), [profile]);
+  const [aiScores, setAiScores] = useState<Record<string, number> | null>(null);
+  const [aiReasoning, setAiReasoning] = useState('');
+  const [evaluating, setEvaluating] = useState(false);
+
+  // 尝试从缓存读取 AI 评分
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('radar_ai_scores');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // 缓存 24 小时有效
+        if (Date.now() - parsed.ts < 86400000) {
+          setAiScores(parsed.scores);
+          setAiReasoning(parsed.reasoning || '');
+        }
+      }
+    } catch {}
+  }, []);
+
+  // AI 评定
+  const handleEvaluate = async () => {
+    setEvaluating(true);
+    try {
+      const res: any = await api.evaluateProfile();
+      if (res.success && res.data?.scores) {
+        const s = res.data.scores;
+        const scores = {
+          knowledge_base: s.knowledge_base || 3,
+          learning_goals: s.learning_goals || 3,
+          memory_ability: s.memory_ability || 3,
+          self_control: s.self_control || 3,
+          focus: s.focus || 3,
+          learning_depth: s.learning_depth || 3,
+        };
+        setAiScores(scores);
+        setAiReasoning(s.reasoning || '');
+        localStorage.setItem('radar_ai_scores', JSON.stringify({ scores, reasoning: s.reasoning, ts: Date.now() }));
+      }
+    } catch (e) {
+      console.error('AI 评定失败:', e);
+    } finally {
+      setEvaluating(false);
+    }
+  };
+
+  // 优先用 AI 评分，降级到规则评分
+  const data = useMemo(() => {
+    if (aiScores) {
+      return [
+        { dimension: '知识基础', value: aiScores.knowledge_base, fullMark: 5 },
+        { dimension: '学习目标', value: aiScores.learning_goals, fullMark: 5 },
+        { dimension: '记忆能力', value: aiScores.memory_ability, fullMark: 5 },
+        { dimension: '自控力', value: aiScores.self_control, fullMark: 5 },
+        { dimension: '专注度', value: aiScores.focus, fullMark: 5 },
+        { dimension: '学习深度', value: aiScores.learning_depth, fullMark: 5 },
+      ];
+    }
+    return computeRadarData(profile);
+  }, [aiScores, profile]);
+
   return (
     <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05] mb-5">
-      <div className="flex items-center gap-2 mb-3">
-        <BarChart3 className="w-4 h-4 text-purple-400" />
-        <h3 className="text-sm font-semibold text-white">学习能力画像</h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-purple-400" />
+          <h3 className="text-sm font-semibold text-white">学习能力画像</h3>
+          {aiScores && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">AI 评定</span>}
+        </div>
+        <button
+          onClick={handleEvaluate}
+          disabled={evaluating}
+          className="text-[10px] px-2 py-1 rounded-lg bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors disabled:opacity-50"
+        >
+          {evaluating ? '评定中...' : 'AI 评定'}
+        </button>
       </div>
       <div style={{ height: 200 }}>
         <ResponsiveContainer width="100%" height="100%">

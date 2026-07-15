@@ -102,6 +102,129 @@ async def update_profile_field(
         return BaseResponse(success=False, message=str(e))
 
 
+@router.post("/evaluate-profile", response_model=BaseResponse)
+async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
+    """AI 评定学生画像 — 基于使用数据动态评估 6 维度分数"""
+    try:
+        user_id = user["id"]
+
+        # 1. 获取当前画像
+        profile_result = profile_agent.get_or_build_profile(user_id)
+        profile = profile_result.get("profile", {}) if profile_result.get("success") else {}
+
+        # 2. 获取使用数据
+        from data.db_operations import assessment_db, resource_db
+        from services.memory_service import memory_service
+
+        # 学习资源数
+        with resource_db:
+            resource_db.cursor.execute(
+                "SELECT COUNT(*) as cnt FROM learning_resources WHERE user_id=?", (user_id,)
+            )
+            resource_count = resource_db.cursor.fetchone()["cnt"] if resource_db.cursor.rowcount else 0
+
+        # 学习活动数
+        with assessment_db:
+            assessment_db.cursor.execute(
+                "SELECT COUNT(*) as cnt FROM learning_activities WHERE user_id=?", (user_id,)
+            )
+            activity_count = assessment_db.cursor.fetchone()["cnt"] if assessment_db.cursor.rowcount else 0
+
+        # 记忆统计
+        with memory_service as ms:
+            mem_stats = ms.get_memory_stats(user_id)
+
+        # 3. 构建 AI 评定 prompt
+        prompt = f"""你是一个学习能力评估专家。请根据以下学生画像和使用数据，评估 6 个维度的分数（1-5 分）。
+
+【学生画像】
+{json.dumps(profile, ensure_ascii=False, indent=2)}
+
+【使用数据】
+- 学习资源数：{resource_count}
+- 学习活动数：{activity_count}
+- 短期记忆条数：{mem_stats.get('short_term_count', 0)}
+- 语义记忆条数：{mem_stats.get('semantic_count', 0)}
+- 情景记忆条数：{mem_stats.get('episodic_count', 0)}
+- 实体记忆条数：{mem_stats.get('entity_count', 0)}
+
+请输出 JSON 格式：
+{{
+  "knowledge_base": 分数,
+  "learning_goals": 分数,
+  "memory_ability": 分数,
+  "self_control": 分数,
+  "focus": 分数,
+  "learning_depth": 分数,
+  "reasoning": "评估理由"
+}}
+
+只输出 JSON，不要其他内容。"""
+
+        from services.qa_service import qa_service
+        ai_result = qa_service.call_simple(prompt, max_tokens=500)
+
+        # 4. 解析结果
+        scores = None
+        try:
+            import re
+            match = re.search(r'\{[^{}]*\}', ai_result)
+            if match:
+                scores = json.loads(match.group())
+        except Exception:
+            pass
+
+        if not scores:
+            scores = {
+                "knowledge_base": 3, "learning_goals": 3, "memory_ability": 3,
+                "self_control": 3, "focus": 3, "learning_depth": 3,
+                "reasoning": "AI 评定失败，使用默认分数",
+            }
+
+        # 5. 保存评定记录到数据库
+        try:
+            from data.config import get_memory_db_path
+            import sqlite3
+            conn = sqlite3.connect(get_memory_db_path())
+            conn.execute("""
+                INSERT INTO profile_evaluations
+                (user_id, knowledge_base, learning_goals, memory_ability,
+                 self_control, focus, learning_depth, reasoning,
+                 resource_count, activity_count, evaluation_source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai')
+            """, (
+                user_id,
+                scores.get("knowledge_base", 3),
+                scores.get("learning_goals", 3),
+                scores.get("memory_ability", 3),
+                scores.get("self_control", 3),
+                scores.get("focus", 3),
+                scores.get("learning_depth", 3),
+                scores.get("reasoning", ""),
+                resource_count,
+                activity_count,
+            ))
+            conn.commit()
+            conn.close()
+        except Exception as save_err:
+            warning(f"保存画像评定记录失败: {save_err}")
+
+        return BaseResponse(
+            success=True,
+            message="AI 画像评定完成",
+            data={
+                "scores": scores,
+                "resource_count": resource_count,
+                "activity_count": activity_count,
+                "memory_stats": mem_stats,
+            },
+        )
+
+    except Exception as e:
+        error(f"AI 画像评定失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/generate-resources", response_model=BaseResponse)
 async def generate_learning_resources(
     input_data: GenerateResourcesRequest,

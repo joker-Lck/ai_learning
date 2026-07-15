@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, memo, useMemo } from 'react';
+import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
@@ -12,7 +12,7 @@ import { PROFILE_DIMENSIONS } from './constants';
 import type {
   DimensionChat, ProfileData, ProfileTab, CourseItem, GradeItem, ErrorNote,
 } from './types';
-import { computeRadarData } from '@/lib/radar';
+import { computeRadarData, type RadarDimension } from '@/lib/radar';
 
 interface ProfileModuleProps {
   currentStep: number;
@@ -379,10 +379,43 @@ function SemesterSelector({ current, semesters, onChange }: { current: string; s
 
 // ==================== 雷达图数据计算 ====================
 
-// ==================== 雷达图组件 ====================
+// ==================== 雷达图组件（与工作台共享 AI 评分） ====================
+
+function getAiRadarScores(): Record<string, number> | null {
+  try {
+    const cached = localStorage.getItem('radar_ai_scores');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed.ts < 86400000) return parsed.scores;
+    }
+  } catch {}
+  return null;
+}
 
 const ProfileRadarChart = memo(function ProfileRadarChart({ profileData }: { profileData: ProfileData | null }) {
-  const radarData = useMemo(() => computeRadarData(profileData), [profileData]);
+  const [aiScores, setAiScores] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    setAiScores(getAiRadarScores());
+    // 监听 storage 变化（工作台评定后同步）
+    const handler = () => setAiScores(getAiRadarScores());
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
+
+  const radarData = useMemo(() => {
+    if (aiScores) {
+      return [
+        { dimension: '知识基础', value: aiScores.knowledge_base || 3, fullMark: 5 },
+        { dimension: '学习目标', value: aiScores.learning_goals || 3, fullMark: 5 },
+        { dimension: '记忆能力', value: aiScores.memory_ability || 3, fullMark: 5 },
+        { dimension: '自控力', value: aiScores.self_control || 3, fullMark: 5 },
+        { dimension: '专注度', value: aiScores.focus || 3, fullMark: 5 },
+        { dimension: '学习深度', value: aiScores.learning_depth || 3, fullMark: 5 },
+      ];
+    }
+    return computeRadarData(profileData);
+  }, [aiScores, profileData]);
 
   return (
     <div className="border border-white/[0.06] rounded-xl p-5 bg-white/[0.02]">

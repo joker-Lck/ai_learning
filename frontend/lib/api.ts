@@ -188,6 +188,10 @@ class ApiClient {
     return this.request('/agent/update-profile-field', { method: 'POST', body: { field, value } });
   }
 
+  async evaluateProfile() {
+    return this.request('/agent/evaluate-profile', { method: 'POST' });
+  }
+
   // ── 课程表 ──
   async saveCourseSchedule(semester: string, courses: any[]) {
     return this.request('/agent/save-course-schedule', { method: 'POST', body: { semester, courses } });
