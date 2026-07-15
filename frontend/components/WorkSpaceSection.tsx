@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import type { ModuleType, NavigationContext } from './modules/types';
+import { computeRadarData } from '@/lib/radar';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import api from '@/lib/api';
 
@@ -70,53 +71,8 @@ interface DashboardStats {
    雷达图组件
    ═══════════════════════════════════════════ */
 
-function computeDashboardRadar(profile: ProfileData | null) {
-  const d = { value: 3, fullMark: 5 };
-  if (!profile) return [
-    { dimension: '知识基础', ...d }, { dimension: '学习目标', ...d },
-    { dimension: '记忆能力', ...d }, { dimension: '自控力', ...d },
-    { dimension: '专注度', ...d }, { dimension: '学习深度', ...d },
-  ];
-
-  // 知识基础
-  let kb = 3;
-  const weak = profile.weak_points;
-  if (Array.isArray(weak) && weak.length === 0) kb = 4;
-  if (Array.isArray(weak) && weak.length > 3) kb = 2;
-
-  // 学习目标
-  let goal = 3;
-  if (profile.learning_history && profile.learning_history.length > 5) goal = 4;
-
-  // 记忆能力
-  let mem = 3;
-  if (profile.learning_history && profile.learning_history.length > 10) mem = 4;
-
-  // 自控力
-  let sc = 3;
-  const prefs = profile.preferred_resources;
-  if (Array.isArray(prefs) && prefs.length >= 3) sc = 4;
-
-  // 专注度
-  let focus = 3;
-  if (Array.isArray(profile.interest_areas) && profile.interest_areas.length > 0) focus = 3 + Math.min(2, Math.floor(profile.interest_areas.length / 3));
-
-  // 学习深度
-  let depth = 3;
-  if (Array.isArray(profile.interest_areas) && profile.interest_areas.length > 3) depth = 4;
-
-  return [
-    { dimension: '知识基础', value: Math.min(5, kb), fullMark: 5 },
-    { dimension: '学习目标', value: Math.min(5, goal), fullMark: 5 },
-    { dimension: '记忆能力', value: Math.min(5, mem), fullMark: 5 },
-    { dimension: '自控力', value: Math.min(5, sc), fullMark: 5 },
-    { dimension: '专注度', value: Math.min(5, focus), fullMark: 5 },
-    { dimension: '学习深度', value: Math.min(5, depth), fullMark: 5 },
-  ];
-}
-
 const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { profile: ProfileData | null }) {
-  const data = useMemo(() => computeDashboardRadar(profile), [profile]);
+  const data = useMemo(() => computeRadarData(profile), [profile]);
   return (
     <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05] mb-5">
       <div className="flex items-center gap-2 mb-3">
@@ -718,8 +674,10 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   }
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
-      <main className="flex-1 overflow-y-auto h-screen" data-workspace-scroll>
+    <div className="flex h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d0d1a 0%, #0a0a0a 40%, #0f0a14 100%)' }}>
+      {/* 微光网格背景 */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(102,67,255,0.3) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+      <main className="flex-1 overflow-y-auto h-screen relative z-10" data-workspace-scroll>
         <div className="px-8 pt-7 pb-8 max-w-[1200px] mx-auto">
           <Header profile={profile} stats={stats} />
           <QuickStartCard onNavigateModule={onNavigateModule} />

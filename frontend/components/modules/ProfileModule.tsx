@@ -12,6 +12,7 @@ import { PROFILE_DIMENSIONS } from './constants';
 import type {
   DimensionChat, ProfileData, ProfileTab, CourseItem, GradeItem, ErrorNote,
 } from './types';
+import { computeRadarData } from '@/lib/radar';
 
 interface ProfileModuleProps {
   currentStep: number;
@@ -377,94 +378,6 @@ function SemesterSelector({ current, semesters, onChange }: { current: string; s
 // ==================== 画像 Tab ====================
 
 // ==================== 雷达图数据计算 ====================
-
-interface RadarDimension {
-  dimension: string;
-  value: number;
-  fullMark: number;
-}
-
-function computeRadarData(profile: ProfileData | null): RadarDimension[] {
-  // 6个维度：知识基础、学习目标、记忆能力、自控力、专注度、学习深度
-  // 每个维度 1-5 分，默认取中间值
-
-  const defaults = { value: 3, fullMark: 5 };
-
-  if (!profile) {
-    return [
-      { dimension: '知识基础', ...defaults },
-      { dimension: '学习目标', ...defaults },
-      { dimension: '记忆能力', ...defaults },
-      { dimension: '自控力', ...defaults },
-      { dimension: '专注度', ...defaults },
-      { dimension: '学习深度', ...defaults },
-    ];
-  }
-
-  // 知识基础：根据 knowledge_base.level 评估
-  let knowledgeScore = 3;
-  const kb = profile.knowledge_base;
-  if (kb) {
-    if (typeof kb === 'object' && kb.level) {
-      const levelMap: Record<string, number> = { '入门': 1, '初级': 2, '基础': 2, '中级': 3, '中等': 3, '高级': 4, '精通': 5 };
-      knowledgeScore = levelMap[kb.level] || (kb.topics?.length > 5 ? 4 : kb.topics?.length > 2 ? 3 : 2);
-    } else if (typeof kb === 'string') {
-      const levelMap: Record<string, number> = { '入门': 1, '初级': 2, '基础': 2, '中级': 3, '中等': 3, '高级': 4, '精通': 5 };
-      for (const [k, v] of Object.entries(levelMap)) {
-        if (kb.includes(k)) { knowledgeScore = v; break; }
-      }
-    }
-  }
-
-  // 学习目标：有明确目标得分更高
-  let goalScore = 3;
-  const goals = profile.learning_goals;
-  if (goals) {
-    if (Array.isArray(goals) && goals.length > 0) goalScore = Math.min(5, 2 + goals.length);
-    else if (typeof goals === 'string' && goals.length > 10) goalScore = 4;
-    else if (typeof goals === 'string' && goals.length > 0) goalScore = 3;
-  }
-
-  // 记忆能力：根据学习历史和知识基础推断
-  let memoryScore = 3;
-  const history = profile.learning_history;
-  if (Array.isArray(history) && history.length > 10) memoryScore = 4;
-  else if (Array.isArray(history) && history.length > 20) memoryScore = 5;
-
-  // 自控力：根据偏好资源类型推断（有计划性偏好 → 自控力高）
-  let selfControlScore = 3;
-  const prefs = profile.preferred_resources;
-  if (Array.isArray(prefs)) {
-    if (prefs.some(p => ['计划', '规划', '定时'].some(k => p.includes(k)))) selfControlScore = 4;
-    if (prefs.length >= 3) selfControlScore = Math.min(5, selfControlScore + 1);
-  }
-
-  // 专注度：根据认知风格推断
-  let focusScore = 3;
-  const cs = profile.cognitive_style;
-  if (cs) {
-    if (cs.includes('深度') || cs.includes('专注')) focusScore = 4;
-    if (cs.includes('视觉') || cs.includes('动觉')) focusScore = 3;
-    if (cs.includes('听觉')) focusScore = 3;
-  }
-
-  // 学习深度：根据兴趣领域和薄弱环节数量推断
-  let depthScore = 3;
-  const interests = profile.interest_areas;
-  const weakPoints = profile.weak_points;
-  if (Array.isArray(interests) && interests.length > 3) depthScore = 4;
-  if (Array.isArray(weakPoints) && weakPoints.length > 3) depthScore = Math.max(2, depthScore - 1);
-  if (Array.isArray(interests) && interests.length > 6) depthScore = 5;
-
-  return [
-    { dimension: '知识基础', value: Math.max(1, Math.min(5, knowledgeScore)), fullMark: 5 },
-    { dimension: '学习目标', value: Math.max(1, Math.min(5, goalScore)), fullMark: 5 },
-    { dimension: '记忆能力', value: Math.max(1, Math.min(5, memoryScore)), fullMark: 5 },
-    { dimension: '自控力', value: Math.max(1, Math.min(5, selfControlScore)), fullMark: 5 },
-    { dimension: '专注度', value: Math.max(1, Math.min(5, focusScore)), fullMark: 5 },
-    { dimension: '学习深度', value: Math.max(1, Math.min(5, depthScore)), fullMark: 5 },
-  ];
-}
 
 // ==================== 雷达图组件 ====================
 

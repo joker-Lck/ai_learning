@@ -9,7 +9,7 @@ import {
 import { useDashboard } from './modules/useDashboard';
 import { STATS } from './modules/constants';
 import type { ModuleType, NavigationContext } from './modules/types';
-import { DashboardBackground } from './shared/BackgroundEffects';
+import { FullBackground } from './shared/BackgroundEffects';
 import ProfileModule from './modules/ProfileModule';
 import ResourcesModule from './modules/ResourcesModule';
 import PathModule from './modules/PathModule';
@@ -260,10 +260,9 @@ export default function DashboardContent() {
 
   return (
     <div className="relative h-screen overflow-hidden bg-[#0a0a0a]" data-dashboard-container>
-      <DashboardBackground />
 
       <AnimatePresence initial={false} custom={direction} mode="wait">
-        {/* Page 0: Hero */}
+        {/* Page 0: Hero — 装饰背景 */}
         {currentSection === 0 && (
           <motion.section
             key="hero"
@@ -275,6 +274,7 @@ export default function DashboardContent() {
             transition={pageTransition}
             className="absolute inset-0 flex items-center justify-center px-6"
           >
+            <FullBackground />
             <div className="max-w-3xl mx-auto text-center">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
