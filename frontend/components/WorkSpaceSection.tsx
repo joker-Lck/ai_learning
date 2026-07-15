@@ -526,11 +526,11 @@ function SuggestionCard({ recommendations, onNavigateModule }: { recommendations
 function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const quickItems = [
     { label: 'AI 问答', icon: Lightbulb, color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', moduleId: 'tutor' as ModuleType, primary: true },
-    { label: '学生画像', icon: UserCheck, color: 'bg-purple-500/10 text-purple-400 border-purple-500/20', moduleId: 'profile' as ModuleType },
     { label: '资源生成', icon: Brain, color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20', moduleId: 'resources' as ModuleType },
     { label: '学习路径', icon: Router, color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', moduleId: 'path' as ModuleType },
     { label: '学习评估', icon: BarChart3, color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', moduleId: 'assessment' as ModuleType },
-    { label: '知识库', icon: Database, color: 'bg-pink-500/10 text-pink-400 border-pink-500/20', moduleId: 'rag' as ModuleType },
+    { label: '学生画像', icon: UserCheck, color: 'bg-violet-500/10 text-violet-400 border-violet-500/20', moduleId: 'profile' as ModuleType },
+    { label: '知识库', icon: Database, color: 'bg-rose-500/10 text-rose-400 border-rose-500/20', moduleId: 'rag' as ModuleType },
   ];
   return (
     <div className="mb-6">
