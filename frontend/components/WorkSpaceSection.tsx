@@ -10,7 +10,7 @@ import {
   Sparkles, Target, X, GitBranch, FileCode, Code, BookOpen,
   Maximize2, Loader2,
 } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import type { ModuleType, NavigationContext } from './modules/types';
 import { computeRadarData } from '@/lib/radar';
 import { DashboardBackground } from './shared/BackgroundEffects';
@@ -158,6 +158,7 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
           <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
             <PolarGrid stroke="rgba(255,255,255,0.06)" />
             <PolarAngleAxis dataKey="dimension" tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 11 }} />
+            <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
             <Radar name="能力值" dataKey="value" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.15} strokeWidth={1.5} />
           </RadarChart>
         </ResponsiveContainer>
