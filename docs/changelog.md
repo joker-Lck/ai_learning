@@ -12,7 +12,7 @@
 - **文档更新**：更新所有技术文档中的向量化说明
 
 ### 新增
-- `data/corpus/education_corpus.txt` — 教育领域语料库（52条）
+- `data/corpus/education_corpus.txt` — 教育领域语料库（82条）
 - `backend/main.py` — 启动时自动训练 embedding 模型
 
 ## v7.5.0 (2026-07)
