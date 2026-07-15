@@ -23,12 +23,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: Get script directory
-set "SCRIPT_DIR=%~dp0"
-cd /d "%SCRIPT_DIR%"
+:: 切换到项目根目录
+cd /d "%~dp0.."
+set "SCRIPT_DIR=%CD%\"
 
 echo [1/3] 启动后端服务...
-start "AI学习智能体-后端" cmd /c "cd /d "%SCRIPT_DIR%" && python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000"
+start "AI学习智能体-后端" cmd /c "cd /d "%SCRIPT_DIR%" && .venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000"
 
 :: Wait for backend to start
 echo [2/3] 等待后端启动...

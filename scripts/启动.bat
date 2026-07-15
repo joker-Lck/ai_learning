@@ -2,8 +2,10 @@
 chcp 65001 >nul 2>&1
 title AI Learning Agent
 setlocal
-set "ROOT=%~dp0"
-cd /d "%ROOT%"
+
+:: 切换到项目根目录（scripts/ 的上级目录）
+cd /d "%~dp0.."
+set "ROOT=%CD%\"
 
 echo ========================================
 echo   AI Learning Agent - Starting...
@@ -12,7 +14,7 @@ echo ========================================
 :: 检查 Python 虚拟环境
 if not exist "%ROOT%.venv\Scripts\python.exe" (
     echo [ERROR] .venv not found
-    echo        Run setup.bat first to configure the environment
+    echo        Run scripts\setup.bat first to configure the environment
     pause
     exit /b 1
 )
@@ -103,7 +105,7 @@ echo ========================================
 echo.
 echo   Frontend: http://localhost:3000
 echo   Backend:  http://localhost:8000
-echo   API Docs: http://localhost:8000/api/docs
+echo   API Docs: http://localhost:8000/docs
 echo.
 
 :: 自动打开浏览器

@@ -2,8 +2,10 @@
 chcp 65001 >nul 2>&1
 title AI Learning Agent - Setup
 setlocal
-set "ROOT=%~dp0"
-cd /d "%ROOT%"
+
+:: 切换到项目根目录（scripts/ 的上级目录）
+cd /d "%~dp0.."
+set "ROOT=%CD%\"
 
 echo ========================================
 echo   AI Learning Agent - Environment Setup
@@ -14,7 +16,7 @@ echo.
 echo [1/7] Checking Python...
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python not found. Please install Python 3.8+
+    echo [ERROR] Python not found. Please install Python 3.10+
     pause
     exit /b 1
 )
@@ -42,6 +44,7 @@ echo [3/7] Installing backend dependencies...
 if errorlevel 1 (
     echo [INFO] Installing packages...
     "%ROOT%.venv\Scripts\python.exe" -m pip install -r "%ROOT%backend\requirements.txt" -q
+    "%ROOT%.venv\Scripts\python.exe" -m pip install pydantic-settings pytest pytest-asyncio pytest-cov pytest-mock httpx -q
     if errorlevel 1 (
         echo [ERROR] Failed to install dependencies
         pause
@@ -70,8 +73,8 @@ if not exist "%ROOT%.env" (
         copy "%ROOT%.env.example" "%ROOT%.env" >nul
         echo [WARN] .env created from .env.example
         echo        Please edit .env and set:
-        echo        - KIMI_API_KEY (required)
-        echo        - KIMI_API_KEY is the main required config
+        echo        - MIMO_API_KEY (required)
+        echo        - JWT_SECRET (required, 32+ chars)
         echo.
         notepad "%ROOT%.env"
         echo Press any key after editing .env...
@@ -85,19 +88,9 @@ if not exist "%ROOT%.env" (
     echo [OK] .env exists
 )
 
-:: 6. Check SQLite
-echo [6/7] Checking SQLite database...
-"%ROOT%.venv\Scripts\python.exe" -c "import sqlite3; conn=sqlite3.connect('data/learning.db'); conn.execute('SELECT 1'); conn.close()" >nul 2>&1
-if errorlevel 1 (
-    echo [WARN] SQLite database not accessible
-    echo        Run: .venv\Scripts\python.exe scripts\init_databases_v7.2.py
-    pause
-) else (
-    echo [OK] SQLite database accessible
-)
-
-:: 7. Initialize databases
-echo [7/7] Initializing databases...
+:: 6. Initialize databases
+echo [6/7] Initializing databases...
+set "PYTHONPATH=%ROOT%"
 "%ROOT%.venv\Scripts\python.exe" scripts\init_databases_v7.2.py
 if errorlevel 1 (
     echo [WARN] Database initialization had issues (may already exist)
@@ -105,9 +98,8 @@ if errorlevel 1 (
     echo [OK] Databases initialized
 )
 
-:: Install frontend dependencies
-echo.
-echo [+] Checking frontend dependencies...
+:: 7. Install frontend dependencies
+echo [7/7] Checking frontend dependencies...
 if not exist "%ROOT%frontend\node_modules" (
     echo [INFO] Installing frontend packages...
     cd /d "%ROOT%frontend"
@@ -124,8 +116,8 @@ echo   Setup Complete!
 echo ========================================
 echo.
 echo   Next steps:
-echo   1. Edit .env if needed (KIMI_API_KEY)
-echo   2. Run 启动.bat to start the system
+echo   1. Edit .env if needed (MIMO_API_KEY)
+echo   2. Run scripts\启动.bat to start the system
 echo   3. Open http://localhost:3000
 echo.
 pause
