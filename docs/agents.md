@@ -6,11 +6,11 @@
 
 | Agent | 角色 | 职责 | 模型 |
 |-------|------|------|------|
-| **ProfileAgent** | 画像师 | 9 维度对话式画像构建 | spark-x |
-| **ResourceAgent** | 讲师 | 7 种类型资源生成 | spark-x |
-| **PathAgent** | 导师 | 学习路径规划 | spark-x |
-| **TutorAgent** | 辅导员 | 多轮对话答疑 + 记忆增强 | spark-x |
-| **AssessmentAgent** | 评估师 | 多维度学习效果评估 | spark-x |
+| **ProfileAgent** | 画像师 | 9 维度对话式画像构建 | mimo-v2.5-pro |
+| **ResourceAgent** | 讲师 | 7 种类型资源生成 | mimo-v2.5-pro |
+| **PathAgent** | 导师 | 学习路径规划 | mimo-v2.5-pro |
+| **TutorAgent** | 辅导员 | 多轮对话答疑 + 记忆增强 | mimo-v2.5-pro |
+| **AssessmentAgent** | 评估师 | 多维度学习效果评估 | mimo-v2.5-pro |
 | **Coordinator** | 指挥官 | 任务分发、结果聚合 | — |
 
 ## 协作流程

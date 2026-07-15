@@ -26,7 +26,7 @@ cd frontend && npm install && cd ..
 
 # 3. 配置环境变量
 cp .env.example .env
-# 编辑 .env，填写讯飞星火 API 配置
+# 编辑 .env，填写 MiMo API 配置
 
 # 4. 初始化数据库
 python scripts/init_databases_v7.2.py
@@ -169,10 +169,11 @@ eas build --platform ios
 | DEBUG | 调试模式 | false |
 | APP_VERSION | 应用版本 | 7.2.0 |
 | ALLOWED_ORIGINS | CORS 白名单 | localhost:3000 |
-| SPARK_APPID | 讯飞 APPID | 必填 |
-| SPARK_API_KEY | 讯飞 API Key | 必填 |
-| SPARK_API_SECRET | 讯飞 API Secret | 必填 |
-| SPARK_BASE_URL | 对话 API 地址 | spark-api-open.xf-yun.com |
-| SPARK_MODEL | 对话模型 | spark-x |
+| MIMO_API_KEY | MiMo API 密钥 | 必填 |
+| MIMO_BASE_URL | MiMo API 地址 | https://api.mimo.ai/v1 |
+| MIMO_MODEL | 推理模型 | mimo-v2.5-pro |
+| MIMO_VISION_MODEL | 视觉模型 | mimo-v2.5 |
+| MIMO_IMAGE_MODEL | 图片生成模型 | mimo-image |
+| MIMO_TTS_MODEL | 语音合成模型 | mimo-tts |
 | LOG_LEVEL | 日志级别 | INFO |
 | MAX_UPLOAD_SIZE | 上传限制(MB) | 50 |

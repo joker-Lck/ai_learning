@@ -66,6 +66,30 @@ class TutorAgent:
                     input_data.get("preferred_format", "all")
                 )
 
+                # 6.5 反思验证：评估答案质量，低分触发二次检索重新生成
+                try:
+                    from services.reflector import reflector
+                    answer_text_for_reflect = answer_data.get('text_answer', {})
+                    if isinstance(answer_text_for_reflect, dict):
+                        answer_text_for_reflect = answer_text_for_reflect.get('summary', str(answer_text_for_reflect))
+                    reflection = reflector.reflect_and_improve(
+                        query=question,
+                        answer=str(answer_text_for_reflect),
+                        context=merged_context[:3000],
+                        user_id=user_id
+                    )
+                    if reflection.get("improved"):
+                        improved = reflection.get("final_answer", "")
+                        if improved and not improved.startswith("错误"):
+                            answer_data["text_answer"] = {"summary": improved, "steps": []}
+                            answer_data["reflector"] = {
+                                "improved": True,
+                                "retries": reflection.get("retries", 0),
+                                "quality_score": reflection.get("reflection", {}).get("quality_score"),
+                            }
+                except Exception as reflect_err:
+                    debug(f"反思验证跳过: {reflect_err}")
+
                 # 7. 保存问答记录
                 self._save_tutor_record(user_id, question, answer_data)
 
@@ -80,9 +104,18 @@ class TutorAgent:
                 # 9. 提取并保存长期记忆
                 self._extract_and_save_memories(ms, user_id, session_id, question, str(answer_text), subject)
 
+                # 生成交互ID（用于反馈追踪）
+                interaction_id = ""
+                try:
+                    from services.self_learning_service import self_learning_service
+                    interaction_id = self_learning_service.generate_interaction_id()
+                except Exception:
+                    pass
+
                 result = {
                     "answer": answer_data,
                     "message": "智能辅导回答生成完成",
+                    "interaction_id": interaction_id,
                     "memory_context": {
                         "relevant_memories_count": len(relevant_memories.get('semantic', [])),
                         "user_knowledge_level": user_context.get('knowledge_level', 'unknown'),

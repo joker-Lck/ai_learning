@@ -1473,3 +1473,65 @@ async def graph_search(
     except Exception as e:
         error(f"图谱增强检索失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# 自学习闭环 API
+# ==========================================
+
+@router.post("/feedback")
+async def submit_feedback(
+    request_data: Dict = Body(...),
+    user=Depends(get_current_user),
+):
+    """提交用户反馈（点赞/点踩/评分/评论）"""
+    try:
+        user_id = user["id"]
+        interaction_id = request_data.get("interaction_id", "")
+        if not interaction_id:
+            return BaseResponse(success=False, message="缺少 interaction_id", data=None)
+
+        feedback = {
+            "rating": request_data.get("rating", 3),
+            "helpful": request_data.get("helpful", True),
+            "comment": request_data.get("comment", ""),
+            "interaction_type": request_data.get("interaction_type", "tutor"),
+            "original_query": request_data.get("original_query", ""),
+            "original_answer": request_data.get("original_answer", ""),
+        }
+
+        from services.self_learning_service import self_learning_service
+        success = self_learning_service.collect_feedback(user_id, interaction_id, feedback)
+
+        return BaseResponse(
+            success=success,
+            message="反馈提交成功" if success else "反馈提交失败",
+            data={"interaction_id": interaction_id},
+        )
+    except Exception as e:
+        error(f"提交反馈失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning-stats")
+async def get_learning_stats(user=Depends(require_auth)):
+    """获取自学习统计"""
+    try:
+        from services.self_learning_service import self_learning_service
+        stats = self_learning_service.get_learning_stats(user["id"])
+        return BaseResponse(success=True, message="获取统计成功", data=stats)
+    except Exception as e:
+        error(f"获取学习统计失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/trigger-learning")
+async def trigger_learning_cycle(user=Depends(require_auth)):
+    """手动触发自学习循环"""
+    try:
+        from services.self_learning_service import self_learning_service
+        result = self_learning_service.trigger_learning_cycle()
+        return BaseResponse(success=True, message="学习循环完成", data=result)
+    except Exception as e:
+        error(f"触发学习循环失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

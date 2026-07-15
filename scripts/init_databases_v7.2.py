@@ -480,6 +480,23 @@ def init_rag_database():
         ])
         print("  [OK] 基础学科分类数据插入成功")
 
+        # 多跳推理检索：知识实体关系图
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS knowledge_entity_graph (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doc_id INTEGER,
+                subject TEXT,
+                entity_name TEXT NOT NULL,
+                entity_type TEXT,
+                related_entities TEXT,
+                embedding BLOB,
+                created_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (doc_id) REFERENCES knowledge_documents(id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_keg_entity ON knowledge_entity_graph(entity_name);
+            CREATE INDEX IF NOT EXISTS idx_keg_doc ON knowledge_entity_graph(doc_id);
+        """)
+
         conn.commit()
         print("  [OK] RAG知识库数据库初始化完成!")
     finally:
@@ -650,6 +667,41 @@ def init_memory_database():
         # 为需要 updated_at 的表添加触发器
         for table in ['episodic_memory', 'semantic_memory', 'entity_memory', 'entity_relations']:
             _add_updated_at_trigger(conn, table)
+
+        # 自学习闭环：用户反馈 + 经验表
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS user_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                interaction_id TEXT,
+                interaction_type TEXT,
+                rating INTEGER,
+                helpful INTEGER DEFAULT 0,
+                comment TEXT,
+                original_query TEXT,
+                original_answer TEXT,
+                processed INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_uf_user ON user_feedback(user_id);
+            CREATE INDEX IF NOT EXISTS idx_uf_processed ON user_feedback(processed);
+
+            CREATE TABLE IF NOT EXISTS learning_experiences (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_feedback_id INTEGER,
+                user_id INTEGER,
+                experience_type TEXT,
+                content TEXT NOT NULL,
+                confidence REAL DEFAULT 0.8,
+                augmented INTEGER DEFAULT 0,
+                applied INTEGER DEFAULT 0,
+                rag_doc_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (source_feedback_id) REFERENCES user_feedback(id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_le_type ON learning_experiences(experience_type);
+            CREATE INDEX IF NOT EXISTS idx_le_applied ON learning_experiences(applied);
+        """)
 
         conn.commit()
         print("  [OK] 记忆系统数据库初始化完成!")

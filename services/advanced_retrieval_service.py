@@ -654,12 +654,37 @@ class AdvancedRetrievalService:
             return self.contextual_search(query, subject, limit)
         elif strategy == "graph":
             return self.graph_enhanced_search(user_id, query, subject, limit)
+        elif strategy == "multi_hop":
+            return self._multi_hop_search(user_id, query, limit)
         elif strategy == "hybrid_advl":
             return self._hybrid_advanced_search(user_id, query, subject, limit)
         elif strategy == "ensemble":
             return self._ensemble_search(user_id, query, subject, limit)
         else:
             return self._auto_search(user_id, query, subject, limit)
+
+    def _multi_hop_search(self, user_id: int, query: str, limit: int) -> List[Dict]:
+        """多跳推理检索"""
+        try:
+            from services.multi_hop_retriever import multi_hop_retriever
+            result = multi_hop_retriever.retrieve(query=query, user_id=user_id, limit=limit)
+            # 转换为统一格式
+            docs = []
+            for e in result.get("evidence_chain", []):
+                docs.append({
+                    "id": e.get("doc_id"),
+                    "title": e.get("title", ""),
+                    "content": e.get("content", ""),
+                    "content_text": e.get("content", ""),
+                    "score": e.get("score", 0),
+                    "retrieval_method": "multi_hop",
+                    "hop": e.get("hop", 0),
+                    "relation": e.get("relation", ""),
+                })
+            return docs[:limit]
+        except Exception as e:
+            warning(f"Multi-Hop 检索失败: {e}")
+            return self._base_hybrid_search(query, None, limit)
 
     def _auto_search(
         self, user_id: int, query: str, subject: str, limit: int

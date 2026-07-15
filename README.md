@@ -1121,6 +1121,16 @@ cd frontend && npm install && npm run build && npm start
 
 ## 版本变更日志
 
+### v7.4.0（2026-07）
+
+**新增**：
+- 反思验证器（Reflector）：答案质量评分 + 证据链检查 + 低分自动二次检索重新生成
+- 多跳推理检索（Multi-Hop Retriever）：逻辑图构建 + 2-5跳深度推理 + 证据链验证
+- 自学习闭环（Self-Learning Loop）：反馈收集 → 经验筛选 → 数据增强 → RAG 增量更新
+- 新增 3 张数据库表：knowledge_entity_graph, user_feedback, learning_experiences
+- 新增 API 端点：POST /feedback, GET /learning-stats, POST /trigger-learning
+- 检索策略新增第12种：multi_hop（多跳推理检索）
+
 ### v7.3.0（2026-07）
 
 **新增**：
