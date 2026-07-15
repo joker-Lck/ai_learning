@@ -566,39 +566,36 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
 
   if (logs.length === 0) {
     return (
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold text-white mb-4">协同动态</h2>
-        <div className="p-6 rounded-xl bg-[#1a1a27] border border-white/[0.05] text-center">
-          <Users className="w-8 h-8 text-white/15 mx-auto mb-3" />
-          <p className="text-sm text-white/25">智能体还没有活动记录</p>
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Users className="w-4 h-4 text-purple-400" />
+          <h3 className="text-sm font-semibold text-white">协同动态</h3>
+        </div>
+        <div className="p-4 rounded-xl bg-[#1a1a27] border border-white/[0.05] text-center">
+          <Users className="w-6 h-6 text-white/15 mx-auto mb-2" />
+          <p className="text-xs text-white/25">暂无活动记录</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-purple-400" />
-          <h2 className="text-lg font-semibold text-white">协同动态</h2>
-        </div>
-        <span className="text-xs text-white/20">智能体实时协作</span>
+    <div className="mb-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Users className="w-4 h-4 text-purple-400" />
+        <h3 className="text-sm font-semibold text-white">协同动态</h3>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-        {logs.map((log, i) => {
+      <div className="space-y-2 max-h-[200px] overflow-y-auto">
+        {logs.slice(0, 5).map((log, i) => {
           const config = typeConfig[log.type] || typeConfig.profile!;
           const Icon = config.icon;
           return (
-            <motion.div key={log.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.06, duration: 0.3 }} onClick={() => onNavigateModule(config.moduleId)} className="flex-shrink-0 w-[280px] p-4 rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-white/[0.08] cursor-pointer transition-colors">
-              <div className="flex items-center gap-3 mb-2.5">
-                <div className={`w-8 h-8 rounded-lg ${config.color} flex items-center justify-center`}><Icon className="w-4 h-4" /></div>
-                <div>
-                  <div className="text-xs font-medium text-white/60">{config.label}</div>
-                  <div className="text-[10px] text-white/20">{formatTimeAgo(log.time)}</div>
-                </div>
+            <motion.div key={log.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.2 }} onClick={() => onNavigateModule(config.moduleId)} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-[#1a1a27] border border-white/[0.04] hover:border-white/[0.08] cursor-pointer transition-colors">
+              <div className={`w-7 h-7 rounded-md ${config.color} flex items-center justify-center flex-shrink-0`}><Icon className="w-3.5 h-3.5" /></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-white/50 truncate">{log.action}</p>
+                <p className="text-[10px] text-white/20">{formatTimeAgo(log.time)}</p>
               </div>
-              <p className="text-sm text-white/40 leading-relaxed">{log.action}{log.detail ? ` — ${log.detail}` : ''}</p>
             </motion.div>
           );
         })}
@@ -714,9 +711,9 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   }
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a]">
+    <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
       <main className="flex-1 overflow-y-auto h-screen" data-workspace-scroll>
-        <div className="px-8 pt-7 pb-12 max-w-[1200px] mx-auto">
+        <div className="px-8 pt-7 pb-8 max-w-[1200px] mx-auto">
           <Header profile={profile} stats={stats} />
           <StatCards profile={profile} resourceCount={resources.length} onNavigateModule={onNavigateModule} />
 
@@ -728,11 +725,10 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
             <div className="flex-[3] min-w-0">
               <DashboardRadarChart profile={profile} />
               <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
+              <CollaborationFeed logs={activityLogs} onNavigateModule={onNavigateModule} />
               <QuickStartCard onNavigateModule={onNavigateModule} />
             </div>
           </div>
-
-          <CollaborationFeed logs={activityLogs} onNavigateModule={onNavigateModule} />
         </div>
       </main>
 

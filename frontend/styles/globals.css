@@ -364,14 +364,22 @@ html {
   scroll-snap-type: y mandatory;
   overflow-y: auto;
   height: 100vh;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .snap-section {
   scroll-snap-align: start;
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+}
+
+/* 阻尼感：scroll-snap-stop 确保每次只停一个 section */
+.snap-section {
+  scroll-snap-stop: always;
 }
 
 /* ==================== 减少动画偏好 ==================== */
