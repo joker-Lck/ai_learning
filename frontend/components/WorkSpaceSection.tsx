@@ -721,7 +721,6 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
             <div className="flex-[7] min-w-0">
               <ContinueLearningList resources={resources} onPreview={setPreviewResource} onNavigateModule={onNavigateModule} />
               <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
-              <CollaborationFeed logs={activityLogs} onNavigateModule={onNavigateModule} />
             </div>
             <div className="flex-[3] min-w-0 space-y-5">
               <DashboardRadarChart profile={profile} />
