@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   push:
@@ -33,6 +33,7 @@ jobs:
           pip install openai python-dotenv requests
           pip install numpy pandas Pillow
           pip install pydantic pydantic-settings
+          pip install jieba scikit-learn
           pip install pytest pytest-asyncio pytest-cov pytest-mock httpx
       - name: Create test .env
         run: |
