@@ -62,7 +62,7 @@
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Next.js | 14.2+ | Web 前端框架（Pages Router） |
+| Next.js | 14.2+ | Web 前端框架（App Router） |
 | React | 18.3+ | UI 库 |
 | TypeScript | 5.4+ | 类型安全 |
 | Tailwind CSS | 3.4+ | 原子化 CSS |
@@ -91,6 +91,14 @@
 | FAISS | 1.7+ | 向量检索 |
 | MiMo AI | mimo-v2.5-pro | 大语言模型（文本推理、视觉理解、图片生成、语音合成） |
 | MiMo Embedding | 768 维 | 文本向量化（mimo-embedding） |
+
+## 扩展服务
+
+| 服务 | 文件 | 说明 |
+|------|------|------|
+| Reflector | `services/reflector.py` | 反思验证器：答案质量评分 + 证据链检查 + 低分自动重生成 |
+| Multi-Hop Retriever | `services/multi_hop_retriever.py` | 多跳推理检索：逻辑图 + 2-5跳探索 + 证据链验证 |
+| Self-Learning | `services/self_learning_service.py` | 自学习闭环：反馈收集 → 经验筛选 → 数据增强 → RAG更新 |
 
 ## 多数据库架构
 

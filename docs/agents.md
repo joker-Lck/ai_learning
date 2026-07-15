@@ -109,6 +109,33 @@
 - 异常处理与降级
 - 协商决策仲裁
 
+## 辅助服务
+
+### Reflector（反思验证器）
+
+集成在 TutorAgent 中，对生成的答案进行质量评估和验证：
+
+- **答案质量评分**（0-10）：准确性、完整性、相关性、逻辑性
+- **证据链检查**：关键声明是否有上下文支撑
+- **自动改进**：低分触发二次检索 + 重新生成，最多重试 2 次
+
+### Multi-Hop Retriever（多跳推理检索）
+
+作为第 12 种检索策略集成在 AdvancedRetrievalService 中：
+
+- **逻辑图构建**：从种子文档提取实体-关系三元组
+- **多跳探索**：2-5 跳深度推理，逐跳扩展证据链
+- **证据链验证**：逻辑连贯性检查 + 置信度计算 + 剪枝
+
+### Self-Learning Service（自学习闭环）
+
+通过 API 端点收集用户反馈，驱动知识库增量更新：
+
+- **反馈收集**：点赞/点踩/评分/评论
+- **经验筛选**：置信度 ≥ 0.7 且评分 ≥ 4
+- **数据增强**：基于高质量 QA 对生成变体
+- **增量更新**：自动写入 RAG 知识库
+
 ## 源文件
 
 | 文件 | 说明 |
@@ -121,3 +148,6 @@
 | `services/path_agent.py` | 路径智能体 |
 | `services/tutor_agent.py` | 辅导智能体 |
 | `services/assessment_agent.py` | 评估智能体 |
+| `services/reflector.py` | 反思验证器 |
+| `services/multi_hop_retriever.py` | 多跳推理检索 |
+| `services/self_learning_service.py` | 自学习闭环 |

@@ -114,12 +114,20 @@ Content-Type: application/json
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
-| POST | /advanced-search | 统一检索入口（11 种策略） |
+| POST | /advanced-search | 统一检索入口（12 种策略） |
 | POST | /hyde-search | HyDE 假设性文档嵌入 |
 | POST | /multi-query-search | 多查询检索 |
 | POST | /rag-fusion-search | RAG-Fusion + RRF |
 | POST | /graph-search | 图谱增强检索 |
 | POST | /contextual-upload | 上下文分块上传 |
+
+### 自学习闭环
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| POST | /feedback | 提交用户反馈（点赞/点踩/评分/评论） |
+| GET | /learning-stats | 获取自学习统计 |
+| POST | /trigger-learning | 手动触发自学习循环 |
 
 ### 工作台
 

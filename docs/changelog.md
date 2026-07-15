@@ -1,5 +1,37 @@
 # 版本变更日志
 
+## v7.4.0 (2026-07)
+
+### 新增
+- 反思验证器（Reflector）
+  - 答案质量评分（0-10分，四维度评估）
+  - 证据链完整性检查
+  - 低分自动触发二次检索重新生成（最多2次重试）
+- 多跳推理检索（Multi-Hop Retriever）
+  - 逻辑图构建（实体-关系三元组）
+  - 2-5跳深度推理探索
+  - 证据链验证与置信度计算
+  - 第12种检索策略：`multi_hop`
+- 自学习闭环（Self-Learning Loop）
+  - 用户反馈收集（点赞/点踩/评分/评论）
+  - 高质量经验筛选（评分≥4，置信度≥0.7）
+  - 数据增强（QA变体生成）
+  - RAG知识库增量更新
+- 新增API端点
+  - `POST /api/agent/feedback` — 提交反馈
+  - `GET /api/agent/learning-stats` — 自学习统计
+  - `POST /api/agent/trigger-learning` — 手动触发学习循环
+- 新增数据库表
+  - `knowledge_entity_graph`（ai_rag_knowledge.db）— 知识实体关系图
+  - `user_feedback`（ai_memory.db）— 用户反馈
+  - `learning_experiences`（ai_memory.db）— 自学习经验
+
+### 改进
+- TutorAgent 集成反思验证器，自动评估答案质量
+- 辅导回答返回 interaction_id 用于反馈追踪
+- 所有文档统一为 MiMo AI（移除讯飞星火/Spark/Kimi引用）
+- 前端框架文档修正为 Next.js 14 App Router + React 18
+
 ## v7.3.0 (2026-07)
 
 ### 新增

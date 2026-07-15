@@ -78,6 +78,34 @@ S: 稳定性 = max(1, access_count × 2)
 | **合并** | 保留多个版本，标记时间 |
 | **人工确认** | 冲突时询问用户确认 |
 
+## 自学习闭环
+
+系统支持通过用户反馈驱动知识库增量更新：
+
+### 反馈收集
+
+- 用户对辅导回答点赞/点踩/评分(1-5)/评论
+- 反馈关联 `interaction_id` 追踪原始交互
+
+### 经验筛选与增强
+
+- 筛选条件：评分 ≥ 4 且 helpful=True
+- 置信度阈值：0.7
+- 数据增强：基于高质量 QA 对生成变体
+
+### 知识库增量更新
+
+- 增强数据自动写入 RAG 知识库
+- FAISS 索引增量更新
+
+### 数据库表
+
+| 表 | 数据库 | 说明 |
+|----|--------|------|
+| `user_feedback` | ai_memory | 用户反馈记录 |
+| `learning_experiences` | ai_memory | 自学习经验 |
+| `knowledge_entity_graph` | ai_rag_knowledge | 知识实体关系图（多跳推理） |
+
 ## 源文件
 
 | 文件 | 说明 |
@@ -85,3 +113,5 @@ S: 稳定性 = max(1, access_count × 2)
 | `services/memory_service.py` | 记忆服务核心实现 |
 | `services/memory_extractor.py` | 记忆提取器 |
 | `services/tutor_agent.py` | 辅导智能体（集成记忆增强） |
+| `services/reflector.py` | 反思验证器（答案质量评分） |
+| `services/self_learning_service.py` | 自学习闭环 |
