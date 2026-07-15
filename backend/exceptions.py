@@ -25,7 +25,7 @@ class DatabaseError(AppException):
 class AIServiceError(AppException):
     """AI 服务调用异常"""
 
-    def __init__(self, message: str = "AI 服务调用失败", provider: str = "spark"):
+    def __init__(self, message: str = "AI 服务调用失败", provider: str = "mimo"):
         super().__init__(message=message, code="AI_SERVICE_ERROR", status_code=502)
         self.provider = provider
 

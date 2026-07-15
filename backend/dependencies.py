@@ -29,7 +29,7 @@ def get_api_config() -> dict:
     config = CacheManager.load_env_config()
     return {
         "api_key": config.get("api_key", ""),
-        "base_url": config.get("base_url", "https://spark-api-open.xf-yun.com/v1"),
+        "base_url": config.get("base_url", "https://api.mimo.ai/v1"),
     }
 
 
@@ -113,3 +113,76 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
     if user["role"] != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     return user
+
+
+# ── RBAC 角色权限控制 ──
+
+ROLE_HIERARCHY = {
+    "admin": 100,
+    "teacher": 50,
+    "student": 10,
+    "guest": 0,
+}
+
+ROLE_PERMISSIONS = {
+    "admin": {"*"},
+    "teacher": {
+        "profile:read", "profile:write",
+        "resource:read", "resource:write", "resource:delete",
+        "path:read", "path:write",
+        "tutor:read", "tutor:write",
+        "assessment:read", "assessment:write",
+        "rag:read", "rag:write",
+        "feedback:read", "feedback:write",
+    },
+    "student": {
+        "profile:read", "profile:write:own",
+        "resource:read", "resource:write:own",
+        "path:read", "path:write:own",
+        "tutor:read", "tutor:write",
+        "assessment:read", "assessment:write:own",
+        "rag:read",
+        "feedback:write",
+    },
+    "guest": {
+        "profile:read",
+        "resource:read",
+        "tutor:read",
+    },
+}
+
+
+def require_permission(permission: str):
+    """RBAC 权限检查装饰器"""
+    async def checker(user: dict = Depends(get_current_user)) -> dict:
+        role = user.get("role", "guest")
+        perms = ROLE_PERMISSIONS.get(role, set())
+
+        if "*" in perms:
+            return user
+        if permission in perms:
+            return user
+        # 检查通配符权限（如 "profile:write:own" 匹配 "profile:write"）
+        base_perm = ":".join(permission.split(":")[:2])
+        if base_perm in perms or f"{base_perm}:own" in perms:
+            return user
+
+        raise HTTPException(
+            status_code=403,
+            detail=f"权限不足: 需要 {permission}，当前角色 {role}"
+        )
+    return checker
+
+
+def require_role(min_role: str):
+    """要求最低角色等级"""
+    async def checker(user: dict = Depends(get_current_user)) -> dict:
+        user_level = ROLE_HIERARCHY.get(user.get("role", "guest"), 0)
+        required_level = ROLE_HIERARCHY.get(min_role, 0)
+        if user_level < required_level:
+            raise HTTPException(
+                status_code=403,
+                detail=f"权限不足: 需要 {min_role} 及以上角色"
+            )
+        return user
+    return checker

@@ -1,10 +1,118 @@
 [project]
-requires-python = ">=3.8"
+name = "ai-learning-agent"
+version = "7.4.0"
+description = "基于多智能体的个性化学习资源生成系统"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "AI Learning Team"}]
 
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
+    "PyJWT>=2.8.0",
+    "bcrypt>=4.1.0",
+    "slowapi>=0.1.9",
+    "openai>=1.12.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "numpy>=1.26.0",
+    "faiss-cpu>=1.7.4",
+    "pandas>=2.1.0",
+    "Pillow>=10.0.0",
+    "python-pptx>=0.6.23",
+    "python-docx>=1.0.0",
+    "PyPDF2>=3.0.0",
+    "openpyxl>=3.1.0",
+    "PyMuPDF>=1.23.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "structlog>=23.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "httpx>=0.25.0",
+    "ruff>=0.4.0",
+    "pre-commit>=3.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ── Ruff (linter + formatter) ──
 [tool.ruff]
-target-version = "py38"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (FastAPI Depends)
+    "SIM105", # use contextlib.suppress (less readable)
+    "N802",   # function name should be lowercase (some legacy names)
+    "N803",   # argument name should be lowercase
+    "N806",   # variable in function should be lowercase
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B", "SIM"]
+"scripts/*" = ["E", "F", "N"]
+"frontend/*" = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ── Pytest ──
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "unit: Unit tests (fast, no external deps)",
+    "integration: Integration tests (may use DB)",
+    "e2e: End-to-end tests (full stack)",
+    "slow: Slow tests",
+]
+
+# ── Coverage ──
+[tool.coverage.run]
+source = ["backend", "services", "data", "core"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/scripts/*",
+    "frontend/*",
+    "mobile/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+    "pass",
+]
+show_missing = true
+fail_under = 30
