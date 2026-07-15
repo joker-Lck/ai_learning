@@ -1,10 +1,11 @@
 'use client';
 
-import { Send, Lightbulb, Loader2 } from 'lucide-react';
-import { memo } from 'react';
+import { Send, Lightbulb, Loader2, Mic, MicOff } from 'lucide-react';
+import { memo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { TutorMessage } from './types';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+import { useVoiceInput } from '@/lib/useVoiceInput';
 
 const MermaidDiagram = dynamic(() => import('./MermaidDiagram'), { ssr: false });
 
@@ -23,6 +24,27 @@ export default memo(function TutorModule({
   question, setQuestion, tutorSubject, setTutorSubject,
   tutorLoading, tutorMessages, handleAskTutor, streamingContent,
 }: TutorModuleProps) {
+  const {
+    isListening,
+    transcript,
+    toggleListening,
+    isSupported: voiceSupported,
+  } = useVoiceInput({
+    lang: 'zh-CN',
+    onResult: (text) => {
+      setQuestion(text);
+    },
+    onError: (err) => {
+      console.error('Voice error:', err);
+    },
+  });
+
+  // 实时更新输入框（中间识别结果）
+  useEffect(() => {
+    if (isListening && transcript) {
+      setQuestion(transcript);
+    }
+  }, [transcript, isListening]);
   return (
     <div className="space-y-8">
       <h3 className="text-3xl font-bold text-white">智能辅导系统</h3>
@@ -97,18 +119,41 @@ export default memo(function TutorModule({
       </div>
 
       <div className="space-y-4 pt-4 border-t border-glass">
+        {/* 语音状态提示 */}
+        {isListening && (
+          <div className="flex items-center gap-2 text-red-400 text-sm animate-pulse">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+            正在聆听，请说话...
+          </div>
+        )}
         <div>
           <label className="block text-base font-medium text-white/60 mb-2">学科</label>
           <input type="text" value={tutorSubject} onChange={(e) => setTutorSubject(e.target.value)}
             className="w-full px-4 py-3 glass-input text-white placeholder:text-white/20 rounded-lg text-base focus:outline-none" />
         </div>
         <div className="flex gap-3">
+          {/* 语音输入按钮 */}
+          {voiceSupported && (
+            <button
+              onClick={toggleListening}
+              disabled={tutorLoading}
+              className={`px-4 py-3 rounded-lg flex items-center gap-2 text-base transition-all ${
+                isListening
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/10'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title={isListening ? '停止录音' : '语音输入'}
+            >
+              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              {isListening ? '停止' : '语音'}
+            </button>
+          )}
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAskTutor()}
-            placeholder="输入你的问题..."
+            placeholder={isListening ? '正在聆听...' : '输入你的问题...'}
             className="flex-1 px-5 py-3 glass-input text-white placeholder:text-white/20 rounded-lg text-base focus:outline-none"
             disabled={tutorLoading}
           />

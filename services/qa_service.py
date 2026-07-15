@@ -1,6 +1,6 @@
 """
 QA服务 — 供各智能体调用的 AI 文本生成
-底层委托给 spark_client（讯飞星火 OpenAI 兼容接口）
+底层委托给 spark_client（MiMo API OpenAI 兼容接口）
 """
 
 from typing import Optional, Generator
@@ -12,7 +12,7 @@ class QAService:
     """QA 服务，供各 Agent 调用"""
 
     def __init__(self):
-        info("QA服务初始化完成（讯飞星火）")
+        info("QA服务初始化完成（MiMo API）")
 
     def call_ai(
         self,
@@ -42,7 +42,7 @@ class QAService:
             return f"错误: {e}"
 
     # 向后兼容别名
-    call_kimi_api = call_ai  # 已迁移到讯飞星火，保留别名兼容
+    call_kimi_api = call_ai  # 已迁移到 MiMo API，保留别名兼容
 
     def call_ai_stream(
         self,

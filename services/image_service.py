@@ -1,6 +1,6 @@
 """
 AI 教学图片生成器
-优先使用讯飞 SparkChain 生成真实图片，降级为 SVG
+优先使用 MiMo API 生成真实图片，降级为 SVG
 """
 
 import os
@@ -62,7 +62,7 @@ class ImageService:
             return self._generate_placeholder(suggestion, topic, subject, slide_index)
 
     def _generate_with_sparkchain(self, suggestion: str, topic: str, subject: str) -> Optional[Dict]:
-        """使用讯飞 SparkChain 生成真实图片"""
+        """使用 MiMo API 生成真实图片"""
         try:
             from services.spark_client import spark_client
             

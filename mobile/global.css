@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #0a192f;
+    --color-primary-light: #112240;
+    --color-accent: #64ffda;
+    --color-surface: #1d3461;
+    --color-text-primary: #ccd6f6;
+    --color-text-secondary: #8892b0;
+    --color-text-muted: #495670;
+    --color-border: #233554;
+  }
+}

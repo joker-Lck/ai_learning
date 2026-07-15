@@ -6,6 +6,7 @@
 [![Python](https://img.shields.io/badge/Python-3.14-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-14.2+-black.svg)](https://nextjs.org/)
+[![React Native](https://img.shields.io/badge/React_Native-0.76+-61DAFB.svg)](https://reactnative.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-blue.svg)](https://www.sqlite.org/)
 
 ---
@@ -15,6 +16,8 @@
 - [系统概述](#系统概述)
 - [核心特性](#核心特性)
 - [快速开始](#快速开始)
+- [移动端 App](#移动端-app)
+- [文档导航](#文档导航)
 - [技术架构](#技术架构)
 - [数据库设计](#数据库设计)
 - [功能模块](#功能模块)
@@ -207,6 +210,63 @@ cd frontend && npm run dev
 - **前端界面**: http://localhost:3000
 - **API文档**: http://localhost:8000/docs
 - **默认账号**: admin / admin123
+
+---
+
+## 移动端 App
+
+系统同时提供 **React Native 移动端**，覆盖全部 6 大功能模块。
+
+### 技术栈
+
+| 技术 | 用途 |
+|------|------|
+| React Native 0.76+ | 跨平台移动框架 |
+| Expo 52+ | 开发工具链 |
+| NativeWind | Tailwind CSS for RN |
+| Zustand | 状态管理（与 Web 端共享逻辑） |
+| Victory Native | 数据可视化（雷达图） |
+
+### 功能模块
+
+| 模块 | 功能 |
+|------|------|
+| 工作台 | 统计卡片、最近资源、今日建议、协同动态 |
+| 智能辅导 | 聊天界面、SSE 流式输出、学科选择 |
+| 资源生成 | 7 种类型选择、难度配置、AI 生成 |
+| 学生画像 | 9 维度画像、课程表、成绩、错题 |
+| 学习路径 | 路径可视化、进度跟踪 |
+| 效果评估 | 多维度评分、改进建议 |
+
+### 启动方式
+
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+使用 Expo Go 扫码在真机测试，或使用模拟器运行。
+
+---
+
+## 文档导航
+
+完整文档请访问 [`docs/`](docs/) 目录：
+
+| 文档 | 说明 |
+|------|------|
+| [文档中心](docs/README.md) | 文档导航首页 |
+| [系统架构](docs/architecture.md) | 整体架构、技术选型 |
+| [API 接口参考](docs/api-reference.md) | 完整 API 端点列表 |
+| [数据库设计](docs/database.md) | 9 个数据库、30+ 张表 |
+| [多智能体系统](docs/agents.md) | 6 个智能体、协作流程 |
+| [检索算法详解](docs/retrieval.md) | 混合检索、11 种策略 |
+| [记忆系统](docs/memory-system.md) | 四层记忆、遗忘机制 |
+| [安全机制](docs/security.md) | JWT、限流、防幻觉 |
+| [部署指南](docs/deployment.md) | Docker、打包、App 构建 |
+| [移动端开发](docs/mobile-app.md) | React Native 开发指南 |
+| [版本变更日志](docs/changelog.md) | 版本变更记录 |
 
 ---
 
@@ -905,7 +965,7 @@ makensis installer.nsi
 │   ├── json_utils.py         # 容错JSON解析
 │   └── prompts.py            # Prompt模板
 │
-├── frontend/                 # 前端应用
+├── frontend/                 # Web 前端应用
 │   ├── components/
 │   │   ├── shared/           # 共享组件
 │   │   └── modules/          # 6大功能模块
@@ -914,6 +974,33 @@ makensis installer.nsi
 │   │   └── hooks.ts          # 防抖/节流hooks
 │   ├── middleware.ts          # 安全头
 │   └── stores/index.ts       # Zustand状态管理
+│
+├── mobile/                   # 移动端 App（React Native + Expo）
+│   ├── app/
+│   │   ├── (auth)/           # 登录/注册页面
+│   │   └── (tabs)/           # Tab导航页面
+│   ├── components/
+│   │   ├── ui/               # 基础UI组件
+│   │   ├── chat/             # 聊天组件
+│   │   └── dashboard/        # 工作台组件
+│   ├── lib/api.ts            # API客户端（移动端适配）
+│   ├── stores/               # Zustand状态管理
+│   ├── hooks/                # 自定义Hooks
+│   ├── constants/            # 常量配置
+│   └── app.json              # Expo配置
+│
+├── docs/                     # 项目文档
+│   ├── README.md             # 文档导航
+│   ├── architecture.md       # 系统架构设计
+│   ├── api-reference.md      # API接口参考
+│   ├── database.md           # 数据库设计
+│   ├── agents.md             # 多智能体系统
+│   ├── retrieval.md          # 检索算法详解
+│   ├── memory-system.md      # 记忆系统设计
+│   ├── security.md           # 安全机制
+│   ├── deployment.md         # 部署指南
+│   ├── mobile-app.md         # 移动端开发指南
+│   └── changelog.md          # 版本变更日志
 │
 ├── scripts/                  # 初始化脚本
 ├── config/                   # 配置文件

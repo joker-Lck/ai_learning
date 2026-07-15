@@ -141,8 +141,8 @@ class CacheManager:
         from dotenv import load_dotenv
         load_dotenv()
         config = {
-            'api_key': os.getenv('SPARK_API_KEY', ''),
-            'base_url': os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
+            'api_key': os.getenv('MIMO_API_KEY', ''),
+            'base_url': os.getenv('MIMO_BASE_URL', 'https://api.mimo.ai/v1')
         }
         _cache.set("env_config", config, ttl=3600)
         return config

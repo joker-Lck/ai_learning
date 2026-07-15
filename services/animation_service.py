@@ -1,5 +1,5 @@
+"""动画生成服务模块 — 使用 MiMo API 生成 SVG + CSS 教学动画"""
 from core.logger import info, error, warning
-"""动画生成服务模块 — 使用讯飞星火生成 SVG + CSS 教学动画"""
 
 import json
 import os

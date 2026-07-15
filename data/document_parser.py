@@ -139,7 +139,7 @@ class DocumentParser:
     @staticmethod
     def _read_image(file):
         """
-        读取图片并使用讯飞星火视觉模型提取文字（OCR）
+        读取图片并使用 MiMo 视觉模型提取文字（OCR）
         
         参数：
         - file: Streamlit UploadedFile 对象
@@ -168,14 +168,14 @@ class DocumentParser:
             # 转换为 base64
             base64_image = base64.b64encode(image_data).decode('utf-8')
             
-            # 使用讯飞星火视觉模型识别图片文字
+            # 使用 MiMo 视觉模型识别图片文字
             client = OpenAI(
-                api_key=os.getenv('SPARK_API_KEY', ''),
-                base_url=os.getenv('SPARK_BASE_URL', 'https://spark-api-open.xf-yun.com/v1')
+                api_key=os.getenv('MIMO_API_KEY', ''),
+                base_url=os.getenv('MIMO_BASE_URL', 'https://api.mimo.ai/v1')
             )
 
             response = client.chat.completions.create(
-                model='general',  # 星火 Lite 视觉理解
+                model=os.getenv('MIMO_VISION_MODEL', 'mimo-v2.5'),  # MiMo 视觉理解
                 messages=[
                     {
                         "role": "user",

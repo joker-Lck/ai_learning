@@ -21,7 +21,16 @@ frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/.env.local
+frontend/.env.development
+frontend/.env.production
 frontend/tsconfig.tsbuildinfo
+
+# Mobile (React Native / Expo)
+mobile/node_modules/
+mobile/.expo/
+mobile/web-dist/
+mobile/android/.gradle/
+mobile/.env
 
 # IDE
 .vscode/
@@ -73,3 +82,10 @@ node_portable/
 # Temp
 *.tmp
 *.bak
+session-*.md
+_distill_tmp*.py
+_patch_*.py
+
+# Virtual environments (additional)
+.venv/
+venv/
