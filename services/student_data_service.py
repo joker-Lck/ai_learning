@@ -404,9 +404,10 @@ class StudentDataService:
             'custom': f'自定义学习计划（目标: {custom_goal}）'
         }
 
+        req_section = f"## ⭐ 学生需求（最重要，请优先满足）:\n{user_requirements}" if user_requirements else ""
         prompt = f"""你是一位专业的学习规划师。请根据以下信息为学生制定一份{type_desc.get(plan_type, '学习计划')}。
 
-{f'## ⭐ 学生需求（最重要，请优先满足）:\n{user_requirements}' if user_requirements else ''}
+{req_section}
 
 ## 学期: {semester}
 
