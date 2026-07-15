@@ -62,6 +62,7 @@ learning_data_backup.json
 *.pdf
 data/bookshelf-main/
 data/faiss_index/
+data/databases/*.db
 
 # Uploads
 uploads/*
