@@ -722,11 +722,17 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
               <ContinueLearningList resources={resources} onPreview={setPreviewResource} onNavigateModule={onNavigateModule} />
               <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
             </div>
-            <div className="flex-[3] min-w-0">
+            <div className="flex-[3] min-w-0 space-y-5">
               <DashboardRadarChart profile={profile} />
               <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
-              <CollaborationFeed logs={activityLogs} onNavigateModule={onNavigateModule} />
-              <QuickStartCard onNavigateModule={onNavigateModule} />
+              <div className="flex gap-4">
+                <div className="flex-1 min-w-0">
+                  <CollaborationFeed logs={activityLogs} onNavigateModule={onNavigateModule} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <QuickStartCard onNavigateModule={onNavigateModule} />
+                </div>
+              </div>
             </div>
           </div>
         </div>

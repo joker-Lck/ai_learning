@@ -360,27 +360,7 @@ html {
   scroll-behavior: smooth;
 }
 
-.snap-container {
-  scroll-snap-type: y mandatory;
-  overflow-y: auto;
-  height: 100vh;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-}
-
-.snap-section {
-  scroll-snap-align: start;
-  min-height: 100vh;
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 阻尼感：scroll-snap-stop 确保每次只停一个 section */
-.snap-section {
-  scroll-snap-stop: always;
-}
+/* 页面切换由 JS 控制，不再使用 CSS scroll-snap */
 
 /* ==================== 减少动画偏好 ==================== */
 
