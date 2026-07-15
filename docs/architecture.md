@@ -100,6 +100,39 @@
 | Multi-Hop Retriever | `services/multi_hop_retriever.py` | 多跳推理检索：逻辑图 + 2-5跳探索 + 证据链验证 |
 | Self-Learning | `services/self_learning_service.py` | 自学习闭环：反馈收集 → 经验筛选 → 数据增强 → RAG更新 |
 
+## 前端可视化
+
+### 学习能力雷达图
+
+| 位置 | 组件 | 尺寸 | 说明 |
+|------|------|------|------|
+| 首页工作台右侧边栏 | `DashboardRadarChart` | 200px | 迷你版，3x2分数网格 |
+| 学生画像页面顶部 | `ProfileRadarChart` | 280px | 完整版，带详细分数标签 |
+
+6维度评估模型（1-5分，默认3分）：
+
+| 维度 | 评分依据 |
+|------|---------|
+| 知识基础 | `knowledge_base.level` 映射（入门=1, 初级=2, 中级=3, 高级=4, 精通=5） |
+| 学习目标 | `learning_goals` 数组长度 |
+| 记忆能力 | `learning_history` 长度 |
+| 自控力 | `preferred_resources` 中计划性偏好 |
+| 专注度 | `interest_areas` 参与度 |
+| 学习深度 | `interest_areas` 广度 + `weak_points` 数量 |
+
+技术栈：Recharts RadarChart + useMemo 缓存 + 紫色主题（#a78bfa）
+
+## 企业级特性
+
+| 特性 | 实现 |
+|------|------|
+| 测试 | 45个单元测试（pytest），覆盖 core/database/services |
+| CI/CD | GitHub Actions（Lint + Test 3版本 + Type Check） |
+| RBAC | 4级角色权限（admin>teacher>student>guest） |
+| 配置 | pydantic-settings 环境隔离（dev/staging/prod） |
+| 代码规范 | Ruff linter + pre-commit hooks |
+| 依赖 | pyproject.toml（主依赖+dev依赖分离） |
+
 ## 多数据库架构
 
 | 数据库 | 用途 | 核心表 |

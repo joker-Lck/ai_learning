@@ -1,5 +1,26 @@
 # 版本变更日志
 
+## v7.5.0 (2026-07)
+
+### 新增
+- 学习能力雷达图（6维度评估）
+  - 首页工作台右侧边栏迷你版（200px）
+  - 学生画像页面顶部完整版（280px + 分数标签）
+  - 6维度：知识基础、学习目标、记忆能力、自控力、专注度、学习深度
+  - 基于画像数据动态评估（1-5分，默认3分）
+  - 使用 Recharts RadarChart，紫色主题
+- 企业级改造
+  - 测试覆盖：45个单元测试（core/database/services），全部通过
+  - CI/CD：GitHub Actions 流水线（Lint + Test Python 3.10/3.11/3.12 + Type Check）
+  - RBAC权限：4级角色（admin>teacher>student>guest），细粒度权限控制
+  - 配置管理：pydantic-settings 环境隔离（dev/staging/prod）
+  - 代码规范：Ruff linter + pre-commit hooks + coverage 配置
+  - 依赖管理：pyproject.toml 主依赖+dev依赖分离
+
+### 改进
+- 启动脚本路径修复：所有 .bat 文件正确解析到项目根目录
+- setup.bat 更新：MIMO_API_KEY 引用，安装 pydantic-settings
+
 ## v7.4.0 (2026-07)
 
 ### 新增
