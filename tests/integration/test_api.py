@@ -1,7 +1,8 @@
 """集成测试：API 端点"""
-import pytest
 import os
 import sys
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -14,6 +15,7 @@ os.environ.setdefault("MIMO_API_KEY", "test_api_key")
 def client():
     """创建测试客户端"""
     from fastapi.testclient import TestClient
+
     from backend.main import app
     return TestClient(app)
 

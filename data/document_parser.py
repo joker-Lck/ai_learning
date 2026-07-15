@@ -1,17 +1,18 @@
-from core.logger import info, error, warning
+from core.logger import error
+
 """
 文档解析与 JSON 格式转换模块
 支持多种文件格式转换为统一的 JSON 格式
 """
 
 import json
-from datetime import datetime
 import os
+from datetime import datetime
 
 
 class DocumentParser:
     """文档解析器 - 将各种文件格式转换为统一的 JSON 格式"""
-    
+
     @staticmethod
     def parse_to_json(file, subject="通用", uploaded_by=None):
         """
@@ -30,7 +31,7 @@ class DocumentParser:
             file_name = file.name
             file_ext = file_name.split('.')[-1].lower()
             file_size = file.size
-            
+
             # 读取文件内容
             content_text = ""
             if file_ext in ['txt', 'md']:
@@ -43,10 +44,10 @@ class DocumentParser:
                 content_text = DocumentParser._read_pptx(file)
             elif file_ext in ['jpg', 'jpeg', 'png']:
                 content_text = DocumentParser._read_image(file)
-            
+
             # 重置文件指针，以便后续下载
             file.seek(0)
-            
+
             # 构建统一的 JSON 结构
             document_data = {
                 "metadata": {
@@ -76,35 +77,37 @@ class DocumentParser:
                     "compression": False
                 }
             }
-            
+
             return document_data
-            
+
         except Exception as e:
-            error(f"解析文件失败：{str(e)}")
+            error(f"解析文件失败：{e!s}")
             return None
-    
+
     @staticmethod
     def _read_docx(file):
         """读取 Word 文档"""
         try:
-            from docx import Document
             import io
-            
+
+            from docx import Document
+
             doc = Document(io.BytesIO(file.read()))
             paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
             return "\n".join(paragraphs)
         except ImportError:
             return "[需要安装 python-docx 库]"
         except Exception as e:
-            return f"[Word 文档读取失败：{str(e)}]"
-    
+            return f"[Word 文档读取失败：{e!s}]"
+
     @staticmethod
     def _read_pdf(file):
         """读取 PDF 文档"""
         try:
-            from PyPDF2 import PdfReader
             import io
-            
+
+            from PyPDF2 import PdfReader
+
             pdf_reader = PdfReader(io.BytesIO(file.read()))
             text = ""
             for page in pdf_reader.pages:
@@ -113,15 +116,16 @@ class DocumentParser:
         except ImportError:
             return "[需要安装 PyPDF2 库]"
         except Exception as e:
-            return f"[PDF 文档读取失败：{str(e)}]"
-    
+            return f"[PDF 文档读取失败：{e!s}]"
+
     @staticmethod
     def _read_pptx(file):
         """读取 PPT 文档"""
         try:
-            from pptx import Presentation
             import io
-            
+
+            from pptx import Presentation
+
             prs = Presentation(io.BytesIO(file.read()))
             slides_text = []
             for slide in prs.slides:
@@ -134,8 +138,8 @@ class DocumentParser:
         except ImportError:
             return "[需要安装 python-pptx 库]"
         except Exception as e:
-            return f"[PPT 文档读取失败：{str(e)}]"
-    
+            return f"[PPT 文档读取失败：{e!s}]"
+
     @staticmethod
     def _read_image(file):
         """
@@ -149,25 +153,26 @@ class DocumentParser:
         """
         try:
             import base64
-            from openai import OpenAI
-            from dotenv import load_dotenv
             import os
-            
+
+            from dotenv import load_dotenv
+            from openai import OpenAI
+
             load_dotenv()
-            
+
             # 读取图片数据
             image_data = file.read()
-            
+
             # 确定 MIME 类型
             file_ext = file.name.split('.')[-1].lower()
             if file_ext == 'png':
                 mime_type = 'image/png'
             else:
                 mime_type = 'image/jpeg'
-            
+
             # 转换为 base64
             base64_image = base64.b64encode(image_data).decode('utf-8')
-            
+
             # 使用 MiMo 视觉模型识别图片文字
             client = OpenAI(
                 api_key=os.getenv('MIMO_API_KEY', ''),
@@ -195,23 +200,23 @@ class DocumentParser:
                 ],
                 max_tokens=2000
             )
-            
+
             return response.choices[0].message.content
-            
+
         except ImportError as e:
-            return f"[需要安装 openai 库：{str(e)}]"
+            return f"[需要安装 openai 库：{e!s}]"
         except Exception as e:
-            return f"[图片识别失败：{str(e)}]"
-    
+            return f"[图片识别失败：{e!s}]"
+
     @staticmethod
     def _split_paragraphs(text, max_length=500):
         """将文本分割为段落"""
         if not text:
             return []
-        
+
         # 按换行符分割
         paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
-        
+
         # 如果段落太长，进一步分割
         result = []
         for para in paragraphs:
@@ -230,18 +235,18 @@ class DocumentParser:
                         current = sentence + "。"
                 if current:
                     result.append(current.strip())
-        
+
         return result[:100]  # 最多保留 100 个段落
-    
+
     @staticmethod
     def to_json_string(document_data, indent=2):
         """将文档数据转换为 JSON 字符串"""
         try:
             return json.dumps(document_data, ensure_ascii=False, indent=indent)
         except Exception as e:
-            error(f"JSON 转换失败：{str(e)}")
+            error(f"JSON 转换失败：{e!s}")
             return "{}"
-    
+
     @staticmethod
     def save_to_file(document_data, output_dir="uploads/json_docs"):
         """保存 JSON 文档到文件"""
@@ -249,33 +254,33 @@ class DocumentParser:
             # 创建输出目录
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
-            
+
             # 生成文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             title = document_data["metadata"]["title"].replace(".", "_")
             filename = f"{timestamp}_{title}.json"
             filepath = os.path.join(output_dir, filename)
-            
+
             # 写入 JSON 文件
             json_str = DocumentParser.to_json_string(document_data)
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(json_str)
-            
+
             return filepath
-            
+
         except Exception as e:
-            error(f"保存 JSON 文件失败：{str(e)}")
+            error(f"保存 JSON 文件失败：{e!s}")
             return None
-    
+
     @staticmethod
     def load_from_file(filepath):
         """从 JSON 文件加载文档数据"""
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, encoding='utf-8') as f:
                 data = json.load(f)
             return data
         except Exception as e:
-            error(f"加载 JSON 文件失败：{str(e)}")
+            error(f"加载 JSON 文件失败：{e!s}")
             return None
 
 

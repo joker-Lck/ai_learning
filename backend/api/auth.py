@@ -1,18 +1,24 @@
 """
 认证 API - 登录/注册/用户信息
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from backend.schemas.models import (
-    LoginRequest, RegisterRequest, ChangePasswordRequest,
-    AuthResponse, UserInfo, BaseResponse,
-)
+
 from backend.dependencies import (
-    create_token, get_current_user, require_auth,
+    create_token,
+    require_auth,
 )
+from backend.schemas.models import (
+    AuthResponse,
+    BaseResponse,
+    ChangePasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    UserInfo,
+)
+from core.logger import error, user_login
 from services.auth_service import auth_service
-from core.logger import info, error, user_login
 
 router = APIRouter()
 _auth_limiter = Limiter(key_func=get_remote_address)
@@ -35,8 +41,9 @@ async def login(request: Request, req: LoginRequest):
 
         # 记录登录活动
         try:
-            from data.db_operations import assessment_db
             import json
+
+            from data.db_operations import assessment_db
             if assessment_db.connect():
                 assessment_db.cursor.execute(
                     "INSERT INTO learning_activities (user_id, activity_type, metadata) VALUES (?, ?, ?)",

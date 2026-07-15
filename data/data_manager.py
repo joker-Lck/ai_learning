@@ -2,15 +2,17 @@
 数据管理模块
 统一管理数据持久化、缓存和数据库连接
 """
-from datetime import datetime
 import json
 import os
-import time
 import threading
+import time
+from datetime import datetime
+
+from core.logger import error, info, warning
+
 from .db_operations import db
 from .qa_db_operations import qa_db
 from .rag_knowledge_base import rag_kb
-from core.logger import info, warning, error
 
 
 class SimpleCache:
@@ -60,7 +62,7 @@ class LearningDataManager:
                 json.dump(data_to_save, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            error(f"保存学习数据失败：{str(e)}")
+            error(f"保存学习数据失败：{e!s}")
             return False
 
     @staticmethod
@@ -68,12 +70,12 @@ class LearningDataManager:
         """从本地文件加载学习数据"""
         try:
             if os.path.exists("learning_data_backup.json"):
-                with open("learning_data_backup.json", "r", encoding="utf-8") as f:
+                with open("learning_data_backup.json", encoding="utf-8") as f:
                     data = json.load(f)
-                    info(f"✅ 从本地备份恢复了学习数据")
+                    info("✅ 从本地备份恢复了学习数据")
                     return data
         except Exception as e:
-            warning(f"⚠️ 加载学习数据失败：{str(e)}")
+            warning(f"⚠️ 加载学习数据失败：{e!s}")
         return None
 
 
@@ -98,21 +100,21 @@ class DatabaseManager:
             if connections['main']:
                 info("✅ 主数据库连接成功")
         except Exception as e:
-            error(f"主数据库连接异常：{str(e)}")
+            error(f"主数据库连接异常：{e!s}")
 
         try:
             connections['qa'] = qa_db.connect()
             if connections['qa']:
                 info("✅ 答疑数据库连接成功")
         except Exception as e:
-            error(f"答疑数据库连接异常：{str(e)}")
+            error(f"答疑数据库连接异常：{e!s}")
 
         try:
             connections['rag'] = rag_kb.connect()
             if connections['rag']:
                 info("✅ RAG 知识库连接成功")
         except Exception as e:
-            error(f"RAG 知识库连接异常：{str(e)}")
+            error(f"RAG 知识库连接异常：{e!s}")
 
         _cache.set("db_connections", connections, ttl=3600)
         return connections

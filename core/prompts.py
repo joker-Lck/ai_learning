@@ -5,13 +5,13 @@
 
 class ProfilePrompts:
     """学生画像构建相关提示词"""
-    
+
     @staticmethod
     def build_extraction_prompt(conversation_log, basic_info, existing_profile):
         """构建从对话中提取画像特征的提示词"""
-        
+
         conversation_text = "\n".join([f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in conversation_log[-10:]])
-        
+
         return f"""请基于以下对话和基本信息,提取学生的多维度学习画像特征。
 
 对话历史:
@@ -58,7 +58,7 @@ class ProfilePrompts:
 
 class AnalysisPrompts:
     """学情分析相关提示词"""
-    
+
     @staticmethod
     def get_analysis_prompt(target_info, data_summary, file_info=""):
         """获取学情分析报告生成提示词"""
@@ -83,7 +83,7 @@ class AnalysisPrompts:
 
 class DocumentAnalysisPrompts:
     """文档分析相关提示词"""
-    
+
     @staticmethod
     def get_courseware_analysis_prompt(file_list):
         """获取课件解析提示词"""
@@ -101,7 +101,7 @@ class DocumentAnalysisPrompts:
 6. 🔗 **拓展资源**（相关知识点链接、延伸阅读材料）
 
 要求：结构清晰，语言专业，适合教师直接使用。"""
-    
+
     @staticmethod
     def get_knowledge_base_analysis_prompt(doc_list):
         """获取知识库文档分析提示词"""
@@ -122,7 +122,7 @@ class DocumentAnalysisPrompts:
 
 class VoiceQAPrompts:
     """语音问答相关提示词"""
-    
+
     @staticmethod
     def get_voice_qa_prompt(transcribed_text, rag_context=None):
         """获取语音问答提示词"""

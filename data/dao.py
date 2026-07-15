@@ -4,9 +4,9 @@
 """
 
 import json
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-from core.logger import info, error, warning
+from typing import Any
+
+from core.logger import error
 
 
 class ResourceDAO:
@@ -18,7 +18,7 @@ class ResourceDAO:
     def save(self, user_id: int, title: str, resource_type: str,
              subject: str, topic: str, difficulty: str,
              content_data: Any, duration_minutes: int = None,
-             generated_by: str = None) -> Optional[int]:
+             generated_by: str = None) -> int | None:
         """保存学习资源，返回资源 ID"""
         try:
             with self._db:
@@ -40,7 +40,7 @@ class ResourceDAO:
             error(f"保存资源失败: {e}")
             return None
 
-    def get_by_user(self, user_id: int, limit: int = 50, offset: int = 0) -> List[Dict]:
+    def get_by_user(self, user_id: int, limit: int = 50, offset: int = 0) -> list[dict]:
         """获取用户的资源列表"""
         try:
             with self._db:
@@ -101,7 +101,7 @@ class ActivityDAO:
         self._db = db
 
     def record(self, user_id: int, activity_type: str,
-               metadata: Dict = None, duration_seconds: int = 0) -> Optional[int]:
+               metadata: dict = None, duration_seconds: int = 0) -> int | None:
         """记录一条活动日志"""
         try:
             with self._db:
@@ -118,7 +118,7 @@ class ActivityDAO:
             error(f"记录活动日志失败: {e}")
             return None
 
-    def get_recent(self, user_id: int, limit: int = 10) -> List[Dict]:
+    def get_recent(self, user_id: int, limit: int = 10) -> list[dict]:
         """获取最近活动日志"""
         try:
             with self._db:
@@ -152,7 +152,7 @@ class ActivityDAO:
                 )
                 row = self._db.cursor.fetchone()
                 return dict(row)["cnt"] if row else 0
-        except Exception as e:
+        except Exception:
             return 0
 
     def get_login_days(self, user_id: int) -> int:
@@ -167,7 +167,7 @@ class ActivityDAO:
                 )
                 row = self._db.cursor.fetchone()
                 return dict(row)["days"] if row else 0
-        except Exception as e:
+        except Exception:
             return 0
 
     def get_total_study_seconds(self, user_id: int) -> int:
@@ -181,13 +181,13 @@ class ActivityDAO:
                 )
                 row = self._db.cursor.fetchone()
                 return dict(row)["total"] if row else 0
-        except Exception as e:
+        except Exception:
             return 0
 
 
 # 全局 DAO 实例（延迟初始化）
-_resource_dao: Optional[ResourceDAO] = None
-_activity_dao: Optional[ActivityDAO] = None
+_resource_dao: ResourceDAO | None = None
+_activity_dao: ActivityDAO | None = None
 
 
 def get_resource_dao() -> ResourceDAO:

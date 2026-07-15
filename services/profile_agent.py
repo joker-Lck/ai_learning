@@ -4,17 +4,17 @@
 """
 
 import json
-from typing import Dict, List, Optional
 from datetime import datetime
-from core.logger import info, error, debug, warning
+
 from core.json_utils import safe_parse_json
+from core.logger import error, info, warning
 from core.prompts import ProfilePrompts
 from services.qa_service import qa_service
 
 
 class ProfileAgent:
     """学生画像智能体"""
-    
+
     def __init__(self):
         self.dimensions = [
             "knowledge_base",      # 知识基础
@@ -28,8 +28,8 @@ class ProfileAgent:
             "grade_level"         # 年级
         ]
         info("学生画像智能体初始化完成")
-    
-    def build_profile(self, user_id: int, input_data: Dict) -> Dict:
+
+    def build_profile(self, user_id: int, input_data: dict) -> dict:
         """
         构建学生画像
         
@@ -41,28 +41,28 @@ class ProfileAgent:
             画像数据
         """
         info(f"开始构建学生画像, 用户: {user_id}")
-        
+
         try:
             # Step 1: 提取已有信息
             existing_profile = self._get_existing_profile(user_id)
-            
+
             # Step 2: 通过对话或输入数据提取特征
             conversation_log = input_data.get("conversation_log", [])
             basic_info = input_data.get("basic_info", {})
-            
+
             # Step 3: AI分析提取画像维度
             profile_data = self._extract_profile_features(
-                conversation_log, 
-                basic_info, 
+                conversation_log,
+                basic_info,
                 existing_profile
             )
-            
+
             # Step 4: 验证画像完整性(确保≥6维度)
             validated_profile = self._validate_profile(profile_data)
-            
+
             # Step 5: 保存到数据库
             profile_id = self._save_profile(user_id, validated_profile, conversation_log)
-            
+
             result = {
                 "profile_id": profile_id,
                 "profile": validated_profile,
@@ -70,21 +70,21 @@ class ProfileAgent:
                 "summary": validated_profile.get("summary", ""),
                 "message": f"成功构建包含 {len([v for v in validated_profile.values() if v])} 个维度的学生画像"
             }
-            
+
             info(f"学生画像构建完成: {result['dimensions_count']} 个维度")
             return result
-            
+
         except Exception as e:
-            error(f"构建学生画像失败: {str(e)}")
+            error(f"构建学生画像失败: {e!s}")
             return {
                 "success": False,
-                "message": f"构建失败: {str(e)}"
+                "message": f"构建失败: {e!s}"
             }
-    
-    def get_or_build_profile(self, user_id: int) -> Dict:
+
+    def get_or_build_profile(self, user_id: int) -> dict:
         """获取已有画像,如无则返回空模板"""
         profile = self._get_existing_profile(user_id)
-        
+
         if profile:
             return {
                 "success": True,
@@ -98,8 +98,8 @@ class ProfileAgent:
                 "profile": self._create_empty_profile(),
                 "message": "暂无画像,请通过对话构建"
             }
-    
-    def update_profile_from_learning(self, user_id: int, learning_data: Dict) -> Dict:
+
+    def update_profile_from_learning(self, user_id: int, learning_data: dict) -> dict:
         """
         根据学习行为动态更新画像
         
@@ -111,68 +111,68 @@ class ProfileAgent:
             更新后的画像
         """
         info(f"动态更新学生画像, 用户: {user_id}")
-        
+
         try:
             # 获取现有画像
             profile = self._get_existing_profile(user_id)
             if not profile:
                 profile = self._create_empty_profile()
-            
+
             # 更新学习历史
             if "learning_history" not in profile:
                 profile["learning_history"] = []
-            
+
             profile["learning_history"].append({
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "activity": learning_data.get("activity"),
                 "duration": learning_data.get("duration"),
                 "performance": learning_data.get("performance")
             })
-            
+
             # 限制历史记录长度
             if len(profile["learning_history"]) > 50:
                 profile["learning_history"] = profile["learning_history"][-50:]
-            
+
             # 基于表现更新薄弱点
             if learning_data.get("weak_topics"):
                 if "weak_points" not in profile:
                     profile["weak_points"] = []
-                
+
                 for topic in learning_data["weak_topics"]:
                     if topic not in profile["weak_points"]:
                         profile["weak_points"].append(topic)
-            
+
             # 更新时间戳
             profile["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
+
             # 保存更新
             self._save_profile(user_id, profile, [])
-            
+
             return {
                 "success": True,
                 "profile": profile,
                 "message": "画像动态更新成功"
             }
-            
+
         except Exception as e:
-            error(f"更新学生画像失败: {str(e)}")
+            error(f"更新学生画像失败: {e!s}")
             return {
                 "success": False,
-                "message": f"更新失败: {str(e)}"
+                "message": f"更新失败: {e!s}"
             }
-    
-    def _extract_profile_features(self, conversation_log: List, 
-                                  basic_info: Dict,
-                                  existing_profile: Dict) -> Dict:
+
+    def _extract_profile_features(self, conversation_log: list,
+                                  basic_info: dict,
+                                  existing_profile: dict) -> dict:
         """通过AI从对话和基本信息中提取画像特征"""
-        
+
         # 构建提示词
         prompt = ProfilePrompts.build_extraction_prompt(
-            conversation_log, 
-            basic_info, 
+            conversation_log,
+            basic_info,
             existing_profile
         )
-        
+
         try:
             # 调用大模型提取特征
             response = qa_service.call_ai(prompt, max_tokens=3000)
@@ -182,14 +182,14 @@ class ProfileAgent:
 
             # 如果解析失败，使用降级方案
             if not profile_data:
-                warning(f"AI 返回的画像数据无法解析，使用降级方案")
+                warning("AI 返回的画像数据无法解析，使用降级方案")
                 return self._fallback_extract(basic_info, existing_profile)
-            
+
             # 如果返回的是数组，取第一个元素
             if isinstance(profile_data, list) and len(profile_data) > 0:
-                info(f"AI 返回了数组格式，取第一个元素")
+                info("AI 返回了数组格式，取第一个元素")
                 profile_data = profile_data[0] if isinstance(profile_data[0], dict) else {"learning_style": "balanced"}
-            
+
             if not isinstance(profile_data, dict):
                 warning(f"AI 返回的画像数据类型无效: {type(profile_data)}，使用降级方案")
                 return self._fallback_extract(basic_info, existing_profile)
@@ -204,46 +204,46 @@ class ProfileAgent:
                 return profile_data
 
         except Exception as e:
-            error(f"AI提取画像特征失败: {str(e)}")
+            error(f"AI提取画像特征失败: {e!s}")
             # 降级:使用基本信息填充
             return self._fallback_extract(basic_info, existing_profile)
-    
-    def _fallback_extract(self, basic_info: Dict, existing_profile: Dict) -> Dict:
+
+    def _fallback_extract(self, basic_info: dict, existing_profile: dict) -> dict:
         """降级方案:直接使用基本信息"""
         profile = existing_profile or self._create_empty_profile()
-        
+
         if basic_info.get("major"):
             profile["major"] = basic_info["major"]
         if basic_info.get("grade_level"):
             profile["grade_level"] = basic_info["grade_level"]
         if basic_info.get("learning_goals"):
             profile["learning_goals"] = basic_info["learning_goals"]
-        
+
         profile["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return profile
-    
-    def _validate_profile(self, profile: Dict) -> Dict:
+
+    def _validate_profile(self, profile: dict) -> dict:
         """验证画像完整性,确保至少6个维度有值"""
         required_dimensions = [
             "knowledge_base",
-            "cognitive_style", 
+            "cognitive_style",
             "learning_goals",
             "weak_points",
             "learning_history",
             "interest_areas"
         ]
-        
+
         filled_dimensions = [dim for dim in required_dimensions if profile.get(dim)]
-        
+
         if len(filled_dimensions) < 6:
             # 补充默认值
             for dim in required_dimensions:
                 if not profile.get(dim):
                     profile[dim] = self._get_default_value(dim)
-        
+
         profile["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return profile
-    
+
     def _get_default_value(self, dimension: str):
         """获取维度的默认值"""
         defaults = {
@@ -258,8 +258,8 @@ class ProfileAgent:
             "grade_level": "未设置"
         }
         return defaults.get(dimension, [])
-    
-    def _create_empty_profile(self) -> Dict:
+
+    def _create_empty_profile(self) -> dict:
         """创建空画像模板"""
         return {
             "knowledge_base": {"level": "beginner", "topics": []},
@@ -273,8 +273,8 @@ class ProfileAgent:
             "grade_level": "",
             "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-    
-    def _get_existing_profile(self, user_id: int) -> Optional[Dict]:
+
+    def _get_existing_profile(self, user_id: int) -> dict | None:
         """从数据库获取已有画像"""
         try:
             from data.db_operations import profile_db
@@ -290,11 +290,11 @@ class ProfileAgent:
                 return None
 
         except Exception as e:
-            error(f"获取画像失败: {str(e)}")
+            error(f"获取画像失败: {e!s}")
             return None
-    
-    def _save_profile(self, user_id: int, profile_data: Dict,
-                     conversation_log: List) -> int:
+
+    def _save_profile(self, user_id: int, profile_data: dict,
+                     conversation_log: list) -> int:
         """保存画像到数据库"""
         try:
             from data.db_operations import profile_db
@@ -339,10 +339,10 @@ class ProfileAgent:
                 return profile_id
 
         except Exception as e:
-            error(f"保存画像失败: {str(e)}")
+            error(f"保存画像失败: {e!s}")
             raise
 
-    def update_profile_field(self, user_id: int, field: str, value: Any) -> Dict:
+    def update_profile_field(self, user_id: int, field: str, value: Any) -> dict:
         """更新画像单个字段"""
         allowed = {'major', 'grade_level', 'cognitive_style', 'knowledge_base',
                     'learning_goals', 'weak_points', 'interest_areas', 'preferred_resources'}

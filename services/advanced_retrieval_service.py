@@ -15,8 +15,8 @@
 
 import json
 import re
-from typing import Dict, List, Optional, Tuple
-from core.logger import info, error, warning, debug
+
+from core.logger import error, info, warning
 
 
 class AdvancedRetrievalService:
@@ -68,7 +68,7 @@ class AdvancedRetrievalService:
         subject: str = None,
         limit: int = 5,
         model: str = "simple",
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         HyDE 检索：LLM 生成假设答案 → 向量化 → ANN 检索
 
@@ -107,7 +107,7 @@ class AdvancedRetrievalService:
 
     def _generate_hypothetical_document(
         self, query: str, subject: str = None, model: str = "simple"
-    ) -> Optional[str]:
+    ) -> str | None:
         """用 LLM 生成假设性答案文档"""
         subject_hint = f"（学科：{subject}）" if subject else ""
         prompt = (
@@ -136,7 +136,7 @@ class AdvancedRetrievalService:
         subject: str = None,
         limit: int = 5,
         num_variants: int = 3,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         多查询检索：LLM 生成多个查询变体 → 混合检索(KNN+ANN) → 合并去重
 
@@ -177,7 +177,7 @@ class AdvancedRetrievalService:
             error(f"Multi-Query 检索失败: {e}")
             return self._fallback_vector_search(query, limit)
 
-    def _generate_query_variants(self, query: str, num_variants: int = 3) -> List[str]:
+    def _generate_query_variants(self, query: str, num_variants: int = 3) -> list[str]:
         """用 LLM 生成语义等价的查询变体"""
         prompt = (
             f"请将以下查询改写为 {num_variants} 个不同的表述方式，保持语义一致但措辞不同。\n"
@@ -203,7 +203,7 @@ class AdvancedRetrievalService:
         limit: int = 5,
         num_variants: int = 4,
         rrf_k: int = 60,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         RAG-Fusion：多查询 + 混合基座检索(KNN+ANN) + RRF 融合排序
 
@@ -271,7 +271,7 @@ class AdvancedRetrievalService:
         query: str,
         subject: str = None,
         limit: int = 5,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         上下文检索：混合检索(KNN+ANN)粗召回 → LLM 上下文精排
 
@@ -302,8 +302,8 @@ class AdvancedRetrievalService:
             return self._fallback_vector_search(query, limit)
 
     def _contextual_rerank(
-        self, query: str, candidates: List[Dict], subject: str = None
-    ) -> List[Dict]:
+        self, query: str, candidates: list[dict], subject: str = None
+    ) -> list[dict]:
         """用 LLM 对候选文档做上下文相关性评分"""
         doc_summaries = []
         for i, doc in enumerate(candidates):
@@ -366,7 +366,7 @@ class AdvancedRetrievalService:
         subject: str = None,
         limit: int = 5,
         graph_depth: int = 2,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         图谱增强检索：实体识别 → 图谱遍历 → 查询扩展 → 混合检索(KNN+ANN)
 
@@ -402,7 +402,7 @@ class AdvancedRetrievalService:
             error(f"Graph-Enhanced 检索失败: {e}")
             return self._fallback_vector_search(query, limit)
 
-    def _extract_entities(self, query: str) -> List[str]:
+    def _extract_entities(self, query: str) -> list[str]:
         """用 LLM 从查询中提取教育领域实体"""
         prompt = (
             f"从以下教育相关查询中提取核心知识实体（概念、方法、算法、定理等）。\n"
@@ -421,8 +421,8 @@ class AdvancedRetrievalService:
             return [query]
 
     def _traverse_graph(
-        self, user_id: int, entities: List[str], depth: int = 2
-    ) -> Dict:
+        self, user_id: int, entities: list[str], depth: int = 2
+    ) -> dict:
         """在知识图谱中遍历关联实体"""
         graph_data = {'entities': [], 'relations': [], 'related_concepts': []}
         try:
@@ -456,7 +456,7 @@ class AdvancedRetrievalService:
         graph_data['related_concepts'] = list(set(graph_data['related_concepts']))[:10]
         return graph_data
 
-    def _expand_query_with_graph(self, query: str, graph_context: Dict) -> str:
+    def _expand_query_with_graph(self, query: str, graph_context: dict) -> str:
         """用图谱上下文扩展查询"""
         related = graph_context.get('related_concepts', [])
         if not related:
@@ -475,9 +475,9 @@ class AdvancedRetrievalService:
         content_text: str,
         file_path: str = '',
         file_type: str = 'txt',
-        knowledge_points: List[str] = None,
+        knowledge_points: list[str] = None,
         uploaded_by: int = None,
-    ) -> Optional[int]:
+    ) -> int | None:
         """
         上下文分块入库：为每个段落添加上下文前缀后再嵌入
 
@@ -522,8 +522,8 @@ class AdvancedRetrievalService:
             return None
 
     def _add_context_to_paragraphs(
-        self, title: str, subject: str, paragraphs: List[str]
-    ) -> List[str]:
+        self, title: str, subject: str, paragraphs: list[str]
+    ) -> list[str]:
         """为每个段落生成上下文前缀"""
         batch_size = 5
         contextualized = []
@@ -559,7 +559,7 @@ class AdvancedRetrievalService:
 
         return contextualized if contextualized else paragraphs
 
-    def _split_paragraphs(self, text: str, max_length: int = 500) -> List[str]:
+    def _split_paragraphs(self, text: str, max_length: int = 500) -> list[str]:
         """将文本分割为段落"""
         if not text:
             return []
@@ -588,7 +588,7 @@ class AdvancedRetrievalService:
 
     def _base_hybrid_search(
         self, query: str, subject: str = None, limit: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         基座检索：KNN 全文检索 + ANN 向量检索 → RRF 融合
         所有高级策略的底层检索方法
@@ -612,7 +612,7 @@ class AdvancedRetrievalService:
         subject: str = None,
         limit: int = 5,
         strategy: str = "auto",
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         智能检索入口：根据策略选择最佳检索方法
 
@@ -663,7 +663,7 @@ class AdvancedRetrievalService:
         else:
             return self._auto_search(user_id, query, subject, limit)
 
-    def _multi_hop_search(self, user_id: int, query: str, limit: int) -> List[Dict]:
+    def _multi_hop_search(self, user_id: int, query: str, limit: int) -> list[dict]:
         """多跳推理检索"""
         try:
             from services.multi_hop_retriever import multi_hop_retriever
@@ -688,7 +688,7 @@ class AdvancedRetrievalService:
 
     def _auto_search(
         self, user_id: int, query: str, subject: str, limit: int
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         自动策略路由：
 
@@ -703,7 +703,7 @@ class AdvancedRetrievalService:
 
     def _hybrid_advanced_search(
         self, user_id: int, query: str, subject: str, limit: int
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """HyDE + RAG-Fusion + 基座KNN+ANN 三路 RRF 融合"""
         rrf_k = 60
         scores = {}
@@ -738,7 +738,7 @@ class AdvancedRetrievalService:
 
     def _ensemble_search(
         self, user_id: int, query: str, subject: str, limit: int
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         全方法集成：7 种方法取并集，RRF 融合
 
@@ -781,7 +781,7 @@ class AdvancedRetrievalService:
 
     # ── 回退方法 ──────────────────────────────
 
-    def _fallback_vector_search(self, query: str, limit: int) -> List[Dict]:
+    def _fallback_vector_search(self, query: str, limit: int) -> list[dict]:
         """降级：普通向量检索"""
         try:
             embedding = self.embedding_service.get_embedding(query)
@@ -792,8 +792,8 @@ class AdvancedRetrievalService:
         return []
 
     def lightweight_rerank(
-        self, query: str, candidates: List[Dict], limit: int = 5
-    ) -> List[Dict]:
+        self, query: str, candidates: list[dict], limit: int = 5
+    ) -> list[dict]:
         """
         轻量级重排序：基于词项覆盖度 + 向量分数融合
         不依赖 LLM，适合高并发场景

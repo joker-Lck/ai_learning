@@ -1,6 +1,4 @@
 """单元测试：核心工具模块"""
-import pytest
-import json
 
 
 class TestJsonUtils:
@@ -33,7 +31,7 @@ class TestLogger:
     """测试日志模块"""
 
     def test_logger_import(self):
-        from core.logger import info, error, warning, debug
+        from core.logger import debug, error, info, warning
         assert callable(info)
         assert callable(error)
         assert callable(warning)
@@ -136,9 +134,8 @@ class TestConfig:
         assert s.cors_origins == ["http://a.com", "http://b.com"]
 
     def test_config_environment(self, monkeypatch):
-        from backend.config import Settings
         # 清除 lru_cache 以使用新配置
-        from backend.config import get_settings
+        from backend.config import Settings, get_settings
         get_settings.cache_clear()
 
         monkeypatch.setenv("ENVIRONMENT", "production")

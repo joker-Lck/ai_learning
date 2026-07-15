@@ -2,22 +2,24 @@
 流式输出 API - SSE实时推送生成进度
 """
 
-import uuid
+import asyncio
 import json
 import time
-import asyncio
+import uuid
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from typing import Dict, Any, List
-from backend.dependencies import require_auth, get_current_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from services.streaming_service import sse_generator, progress_tracker
-from services.resource_agent import resource_agent
-from services.content_safety_service import content_safety_service, anti_hallucination_service
-from services.tutor_agent import tutor_agent
+
+from backend.dependencies import get_current_user, require_auth
+from core.logger import error, info
+from services.content_safety_service import anti_hallucination_service, content_safety_service
 from services.qa_service import qa_service
-from core.logger import info, error
+from services.resource_agent import resource_agent
+from services.streaming_service import progress_tracker, sse_generator
+from services.tutor_agent import tutor_agent
 
 router = APIRouter(tags=["流式输出"])
 _rate_limiter = Limiter(key_func=get_remote_address)
@@ -41,12 +43,12 @@ async def stream_generate_resource(
     try:
         user_id = user["id"]
         task_id = f"task_{uuid.uuid4().hex[:12]}"
-        
+
         info(f"开始流式生成资源: {resource_type}, 任务ID: {task_id}")
-        
+
         # 获取用户画像
         profile = {"user_id": user_id}
-        
+
         async def event_generator():
             source = sse_generator.generate_resource_stream(
                 task_id=task_id, resource_type=resource_type,
@@ -54,7 +56,7 @@ async def stream_generate_resource(
             )
             async for event in sse_generator.wrap_with_heartbeat(source):
                 yield event
-        
+
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
@@ -65,9 +67,9 @@ async def stream_generate_resource(
                 "Content-Encoding": "identity",
             }
         )
-        
+
     except Exception as e:
-        error(f"流式生成资源失败: {str(e)}")
+        error(f"流式生成资源失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -139,7 +141,7 @@ async def stream_generate_resources_real(
             for idx, rtype in enumerate(types_list):
                 # 检测客户端断开连接
                 try:
-                    from starlette.requests import Request as _Req
+                    pass
                 except Exception:
                     pass
 
@@ -238,7 +240,7 @@ async def stream_generate_resources_real(
     except HTTPException:
         raise
     except Exception as e:
-        error(f"流式生成资源失败: {str(e)}")
+        error(f"流式生成资源失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -249,13 +251,13 @@ async def get_task_progress(
 ):
     """获取任务进度"""
     task = progress_tracker.get_task_status(task_id)
-    
+
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-    
+
     if task["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="无权访问此任务")
-    
+
     return {
         "success": True,
         "data": task
@@ -269,7 +271,7 @@ async def get_user_tasks(
 ):
     """获取用户的任务列表"""
     tasks = progress_tracker.get_user_tasks(user["id"], limit)
-    
+
     return {
         "success": True,
         "data": tasks,
@@ -279,7 +281,7 @@ async def get_user_tasks(
 
 @router.post("/check-content-safety")
 async def check_content_safety_api(
-    content_data: Dict[str, Any],
+    content_data: dict[str, Any],
     user: dict = Depends(require_auth)
 ):
     """
@@ -292,19 +294,19 @@ async def check_content_safety_api(
     """
     try:
         content = content_data.get("content", "")
-        
+
         if not content:
             raise HTTPException(status_code=400, detail="内容为空")
-        
+
         # 安全检查
         safety_result = content_safety_service.check_content_safety(content)
-        
+
         # 如果不安全,提供过滤后的版本
         filtered = None
         if not safety_result["is_safe"]:
             filtered_result = content_safety_service.filter_and_clean(content)
             filtered = filtered_result["filtered_content"]
-        
+
         return {
             "success": True,
             "data": {
@@ -312,17 +314,17 @@ async def check_content_safety_api(
                 "filtered_content": filtered
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        error(f"内容安全检查失败: {str(e)}")
+        error(f"内容安全检查失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/verify-fact")
 async def verify_fact_api(
-    fact_data: Dict[str, Any],
+    fact_data: dict[str, Any],
     user: dict = Depends(require_auth)
 ):
     """
@@ -337,19 +339,19 @@ async def verify_fact_api(
     try:
         claim = fact_data.get("claim", "")
         knowledge_context = fact_data.get("knowledge_context", "")
-        
+
         if not claim:
             raise HTTPException(status_code=400, detail="陈述内容为空")
-        
+
         # 事实验证
         verification_result = anti_hallucination_service.verify_with_rag(
             claim=claim,
             knowledge_context=knowledge_context
         )
-        
+
         # 检测不确定性标记
         uncertainty_markers = anti_hallucination_service.detect_uncertainty_markers(claim)
-        
+
         return {
             "success": True,
             "data": {
@@ -357,17 +359,17 @@ async def verify_fact_api(
                 "uncertainty_markers": uncertainty_markers
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        error(f"事实验证失败: {str(e)}")
+        error(f"事实验证失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/add-citations")
 async def add_citations_api(
-    citation_data: Dict[str, Any],
+    citation_data: dict[str, Any],
     user: dict = Depends(require_auth)
 ):
     """
@@ -384,13 +386,13 @@ async def add_citations_api(
     try:
         content = citation_data.get("content", "")
         sources = citation_data.get("sources", [])
-        
+
         if not content:
             raise HTTPException(status_code=400, detail="内容为空")
-        
+
         # 添加引用
         cited_content = anti_hallucination_service.add_citations(content, sources)
-        
+
         return {
             "success": True,
             "data": {
@@ -398,17 +400,17 @@ async def add_citations_api(
                 "sources_count": len(sources)
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        error(f"添加引用失败: {str(e)}")
+        error(f"添加引用失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/cross-validate")
 async def cross_validate_api(
-    validation_data: Dict[str, Any],
+    validation_data: dict[str, Any],
     user: dict = Depends(require_auth)
 ):
     """
@@ -423,31 +425,31 @@ async def cross_validate_api(
     try:
         primary_answer = validation_data.get("primary_answer", "")
         alternative_sources = validation_data.get("alternative_sources", [])
-        
+
         if not primary_answer or not alternative_sources:
             raise HTTPException(status_code=400, detail="参数不完整")
-        
+
         # 交叉验证
         consistency_result = anti_hallucination_service.cross_validate(
             primary_answer=primary_answer,
             alternative_sources=alternative_sources
         )
-        
+
         return {
             "success": True,
             "data": consistency_result
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        error(f"交叉验证失败: {str(e)}")
+        error(f"交叉验证失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/tutor")
 async def stream_tutor_query(
-    input_data: Dict[str, Any],
+    input_data: dict[str, Any],
     user: dict = Depends(get_current_user),
 ):
     """

@@ -3,28 +3,25 @@
 包括学生画像、资源生成、路径规划、智能辅导、效果评估
 """
 import json
-from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form, Query
+from typing import Any
+
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
-from typing import Dict, List, Optional, Any
+
+from backend.dependencies import get_current_user, require_auth
 from backend.schemas.models import BaseResponse
-from backend.dependencies import require_auth, get_current_user
 from backend.schemas.request_models import (
-    BuildProfileRequest, GenerateResourcesRequest, PlanPathRequest,
-    TutorQueryRequest, AssessRequest, ComprehensivePlanRequest,
-    UpdatePathProgressRequest, ExportResourceRequest, SaveResourceRequest,
-    AdvancedSearchRequest, RecordSessionRequest,
+    GenerateResourcesRequest,
+    TutorQueryRequest,
 )
-from backend.exceptions import (
-    ValidationError, DatabaseError, AIServiceError, ResourceGenerationError,
-)
-from data.dao import get_resource_dao, get_activity_dao
+from core.logger import error, info, warning
+from data.dao import get_activity_dao, get_resource_dao
 from services.agent_coordinator import agent_coordinator
-from services.profile_agent import ProfileAgent
-from services.path_agent import PathAgent
 from services.assessment_agent import AssessmentAgent
-from services.resource_export_service import resource_export_service
 from services.document_analysis_service import document_analysis_service
-from core.logger import info, error
+from services.path_agent import PathAgent
+from services.profile_agent import ProfileAgent
+from services.resource_export_service import resource_export_service
 
 router = APIRouter(prefix="/agent", tags=["学习智能体"])
 
@@ -35,7 +32,7 @@ assessment_agent = AssessmentAgent()
 
 @router.post("/build-profile", response_model=BaseResponse)
 async def build_student_profile(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user)  # 允许guest用户
 ):
     """
@@ -50,21 +47,21 @@ async def build_student_profile(
     try:
         user_id = user["id"]
         info(f"用户 {user_id} 请求构建学生画像")
-        
+
         result = agent_coordinator.execute_task(
             task_type="build_profile",
             user_id=user_id,
             input_data=input_data
         )
-        
+
         return BaseResponse(
             success=result["success"],
             message=result["message"],
             data=result.get("data")
         )
-        
+
     except Exception as e:
-        error(f"构建学生画像失败: {str(e)}")
+        error(f"构建学生画像失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -82,13 +79,13 @@ async def get_student_profile(user: dict = Depends(require_auth)):
         )
 
     except Exception as e:
-        error(f"获取学生画像失败: {str(e)}")
+        error(f"获取学生画像失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/update-profile-field", response_model=BaseResponse)
 async def update_profile_field(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth),
 ):
     """更新画像单个字段"""
@@ -183,8 +180,9 @@ async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
 
         # 5. 保存评定记录到数据库
         try:
-            from data.config import get_memory_db_path
             import sqlite3
+
+            from data.config import get_memory_db_path
             conn = sqlite3.connect(get_memory_db_path())
             conn.execute("""
                 INSERT INTO profile_evaluations
@@ -221,7 +219,7 @@ async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
         )
 
     except Exception as e:
-        error(f"AI 画像评定失败: {str(e)}")
+        error(f"AI 画像评定失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -244,12 +242,12 @@ async def generate_learning_resources(
     try:
         user_id = user["id"]
         info(f"用户 {user_id} 请求生成学习资源: {input_data.topic}")
-        
+
         # 获取学生画像
         profile_result = profile_agent.get_or_build_profile(user_id)
         payload = input_data.model_dump()
         payload["profile"] = profile_result.get("profile", {})
-        
+
         result = agent_coordinator.execute_task(
             task_type="generate_resources",
             user_id=user_id,
@@ -281,15 +279,15 @@ async def generate_learning_resources(
             message=result["message"],
             data=result.get("data")
         )
-        
+
     except Exception as e:
-        error(f"生成学习资源失败: {str(e)}")
+        error(f"生成学习资源失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/plan-path", response_model=BaseResponse)
 async def plan_learning_path(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user)  # 允许guest用户
 ):
     """
@@ -304,25 +302,25 @@ async def plan_learning_path(
     try:
         user_id = user["id"]
         info(f"用户 {user_id} 请求规划学习路径")
-        
+
         # 获取学生画像
         profile_result = profile_agent.get_or_build_profile(user_id)
         input_data["profile"] = profile_result.get("profile", {})
-        
+
         result = agent_coordinator.execute_task(
             task_type="plan_learning_path",
             user_id=user_id,
             input_data=input_data
         )
-        
+
         return BaseResponse(
             success=result["success"],
             message=result["message"],
             data=result.get("data")
         )
-        
+
     except Exception as e:
-        error(f"规划学习路径失败: {str(e)}")
+        error(f"规划学习路径失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -388,12 +386,12 @@ async def tutor_query(
         return JSONResponse(content=resp_content)
 
     except Exception as e:
-        error(f"智能辅导失败: {str(e)}")
+        error(f"智能辅导失败: {e!s}")
         import traceback
         error(f"异常堆栈: {traceback.format_exc()}")
         return JSONResponse(
             status_code=500,
-            content={"success": False, "message": f"辅导失败: {str(e)}", "data": None}
+            content={"success": False, "message": f"辅导失败: {e!s}", "data": None}
         )
 
 
@@ -407,13 +405,13 @@ async def get_knowledge_map(
         knowledge_map = tutor_agent.get_user_knowledge_map(user['id'])
         return {"success": True, "data": knowledge_map}
     except Exception as e:
-        error(f"获取知识图谱失败: {str(e)}")
+        error(f"获取知识图谱失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/learning-recommendations")
 async def get_learning_recommendations(
-    subject: Optional[str] = Query(None),
+    subject: str | None = Query(None),
     user: dict = Depends(get_current_user)
 ):
     """获取基于记忆的学习推荐"""
@@ -422,7 +420,7 @@ async def get_learning_recommendations(
         recommendations = tutor_agent.get_learning_recommendations(user['id'], subject)
         return {"success": True, "data": {"recommendations": recommendations}}
     except Exception as e:
-        error(f"获取学习推荐失败: {str(e)}")
+        error(f"获取学习推荐失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -436,13 +434,13 @@ async def apply_memory_maintenance(
         result = tutor_agent.apply_memory_maintenance(user['id'])
         return {"success": True, "data": result}
     except Exception as e:
-        error(f"记忆维护失败: {str(e)}")
+        error(f"记忆维护失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/assess", response_model=BaseResponse)
 async def assess_learning(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user)  # 允许guest用户
 ):
     """
@@ -458,7 +456,7 @@ async def assess_learning(
     try:
         user_id = user["id"]
         info(f"用户 {user_id} 请求学习效果评估")
-        
+
         result = agent_coordinator.execute_task(
             task_type="assess_learning",
             user_id=user_id,
@@ -490,15 +488,15 @@ async def assess_learning(
             message=result["message"],
             data=result.get("data")
         )
-        
+
     except Exception as e:
-        error(f"学习效果评估失败: {str(e)}")
+        error(f"学习效果评估失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/comprehensive-plan", response_model=BaseResponse)
 async def comprehensive_learning_plan(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth)
 ):
     """
@@ -515,21 +513,21 @@ async def comprehensive_learning_plan(
     try:
         user_id = user["id"]
         info(f"用户 {user_id} 请求综合学习计划")
-        
+
         result = agent_coordinator.execute_task(
             task_type="comprehensive_learning_plan",
             user_id=user_id,
             input_data=input_data
         )
-        
+
         return BaseResponse(
             success=result["success"],
             message=result["message"],
             data=result.get("data")
         )
-        
+
     except Exception as e:
-        error(f"综合学习计划失败: {str(e)}")
+        error(f"综合学习计划失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -543,42 +541,42 @@ async def update_path_progress(
     try:
         user_id = user["id"]
         result = path_agent.update_path_progress(path_id, completed_step, user_id)
-        
+
         return BaseResponse(
             success=result["success"],
             message=result["message"],
             data=result.get("path_data")
         )
-        
+
     except Exception as e:
-        error(f"更新路径进度失败: {str(e)}")
+        error(f"更新路径进度失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/update-profile-from-learning", response_model=BaseResponse)
 async def update_profile_from_learning(
-    learning_data: Dict[str, Any] = Body(...),
+    learning_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth)
 ):
     """根据学习行为动态更新画像"""
     try:
         user_id = user["id"]
         result = profile_agent.update_profile_from_learning(user_id, learning_data)
-        
+
         return BaseResponse(
             success=result["success"],
             message=result["message"],
             data=result.get("profile")
         )
-        
+
     except Exception as e:
-        error(f"更新画像失败: {str(e)}")
+        error(f"更新画像失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/export-resource", response_model=BaseResponse)
 async def export_resource_file(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user)  # 允许guest用户
 ):
     """
@@ -598,7 +596,7 @@ async def export_resource_file(
     try:
         user_id = user["id"]
         info(f"用户 {user_id} 请求导出资源: {input_data.get('resource', {}).get('title')}")
-        
+
         resource = input_data.get("resource", {})
         if not resource:
             return BaseResponse(
@@ -606,10 +604,10 @@ async def export_resource_file(
                 message="资源数据不能为空",
                 data=None
             )
-        
+
         # 调用导出服务
         result = resource_export_service.export_resource(resource)
-        
+
         if result.get("success"):
             info(f"资源导出成功: {result.get('file_path')}")
             return BaseResponse(
@@ -627,9 +625,9 @@ async def export_resource_file(
                 message=result.get("message", "导出失败"),
                 data=None
             )
-        
+
     except Exception as e:
-        error(f"导出资源失败: {str(e)}")
+        error(f"导出资源失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -637,7 +635,7 @@ async def export_resource_file(
 
 @router.post("/save-resource", response_model=BaseResponse)
 async def save_resource(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user)
 ):
     """
@@ -657,12 +655,12 @@ async def save_resource(
     try:
         user_id = user["id"]
         info(f"用户 {user_id} 保存学习资源: {input_data.get('title')}")
-        
+
         from data.db_operations import resource_db
-        
+
         if not resource_db.connect():
             return BaseResponse(success=False, message="数据库连接失败", data=None)
-        
+
         sql = """
             INSERT INTO learning_resources 
             (user_id, title, resource_type, subject, topic, difficulty_level, content_data, tags, generated_by_agent)
@@ -682,16 +680,16 @@ async def save_resource(
         resource_db.conn.commit()
         resource_id = resource_db.cursor.lastrowid
         resource_db.close()
-        
+
         info(f"学习资源保存成功: resource_id={resource_id}")
         return BaseResponse(
             success=True,
             message="资源保存成功",
             data={"resource_id": resource_id}
         )
-        
+
     except Exception as e:
-        error(f"保存学习资源失败: {str(e)}")
+        error(f"保存学习资源失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -708,23 +706,23 @@ async def list_resources(
     """
     try:
         user_id = user["id"]
-        
+
         from data.db_operations import resource_db
-        
+
         if not resource_db.connect():
             return BaseResponse(success=False, message="数据库连接失败", data=None)
-        
+
         conditions = ["(user_id = ? OR (user_id IS NULL AND generated_by_agent = ?))"]
         params = [user_id, f"user_{user_id}"]
-        
+
         if resource_type:
             conditions.append("resource_type = ?")
             params.append(resource_type)
-        
+
         if subject:
             conditions.append("subject LIKE ?")
             params.append(f"%{subject}%")
-        
+
         where = " AND ".join(conditions)
         sql = f"""
             SELECT id, title, resource_type, subject, topic, difficulty_level, 
@@ -735,10 +733,10 @@ async def list_resources(
             LIMIT ? OFFSET ?
         """
         params.extend([limit, offset])
-        
+
         resource_db.cursor.execute(sql, params)
         rows = resource_db.cursor.fetchall()
-        
+
         # 解析 JSON 字段
         for row in rows:
             if row.get("content_data"):
@@ -753,22 +751,22 @@ async def list_resources(
                     pass
             if row.get("created_at"):
                 row["created_at"] = str(row["created_at"])
-        
+
         # 获取总数
         count_sql = f"SELECT COUNT(*) as total FROM learning_resources WHERE {where}"
         resource_db.cursor.execute(count_sql, params[:-2])
         total = resource_db.cursor.fetchone()["total"]
-        
+
         resource_db.close()
-        
+
         return BaseResponse(
             success=True,
             message="获取成功",
             data={"resources": rows, "total": total}
         )
-        
+
     except Exception as e:
-        error(f"获取学习资源列表失败: {str(e)}")
+        error(f"获取学习资源列表失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -780,36 +778,36 @@ async def delete_resource(
     """删除学习资源"""
     try:
         user_id = user["id"]
-        
+
         from data.db_operations import resource_db
-        
+
         if not resource_db.connect():
             return BaseResponse(success=False, message="数据库连接失败", data=None)
-        
+
         # 验证资源属于当前用户
         sql = "SELECT id FROM learning_resources WHERE id = ? AND (user_id = ? OR (user_id IS NULL AND generated_by_agent = ?))"
         resource_db.cursor.execute(sql, (resource_id, user_id, f"user_{user_id}"))
         if not resource_db.cursor.fetchone():
             resource_db.close()
             return BaseResponse(success=False, message="资源不存在或无权限删除", data=None)
-        
+
         # 删除资源
         delete_sql = "DELETE FROM learning_resources WHERE id = ?"
         resource_db.cursor.execute(delete_sql, (resource_id,))
         resource_db.conn.commit()
         resource_db.close()
-        
+
         info(f"用户 {user_id} 删除资源: resource_id={resource_id}")
         return BaseResponse(success=True, message="删除成功")
-        
+
     except Exception as e:
-        error(f"删除学习资源失败: {str(e)}")
+        error(f"删除学习资源失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/analyze-documents", response_model=BaseResponse)
 async def analyze_documents(
-    files: List[UploadFile] = File(...),
+    files: list[UploadFile] = File(...),
     subject: str = Form(""),
     topic: str = Form(""),
     difficulty: str = Form(""),
@@ -875,14 +873,14 @@ async def analyze_documents(
         )
 
     except Exception as e:
-        error(f"文档分析失败: {str(e)}")
+        error(f"文档分析失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ========== RAG 知识库上传 ==========
 @router.post("/upload-to-rag", response_model=BaseResponse)
 async def upload_to_rag(
-    files: List[UploadFile] = File(...),
+    files: list[UploadFile] = File(...),
     subject: str = Form(""),
     user: dict = Depends(get_current_user),
 ):
@@ -917,8 +915,8 @@ async def upload_to_rag(
             # AI 提取知识点
             kp_prompt = f"从以下文本中提取5-15个关键知识点名称，用JSON数组返回（只输出JSON数组）:\n{text[:4000]}"
             try:
-                from services.spark_client import spark_client
                 from core.json_utils import safe_parse_json
+                from services.spark_client import spark_client
                 kp_resp = spark_client.simple(kp_prompt, max_tokens=500)
                 kp_list = safe_parse_json(kp_resp)
                 if not isinstance(kp_list, list):
@@ -960,7 +958,7 @@ async def upload_to_rag(
         )
 
     except Exception as e:
-        error(f"RAG上传失败: {str(e)}")
+        error(f"RAG上传失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -975,7 +973,7 @@ async def list_rag_documents(
         docs = rag_kb.get_documents_by_user(str(user["id"]), limit=limit)
         return BaseResponse(success=True, message="获取成功", data={"documents": docs})
     except Exception as e:
-        error(f"获取RAG文档列表失败: {str(e)}")
+        error(f"获取RAG文档列表失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -986,7 +984,7 @@ from services.student_data_service import student_data_service
 
 @router.post("/save-course-schedule", response_model=BaseResponse)
 async def save_course_schedule(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth),
 ):
     """保存学期课程表"""
@@ -1029,7 +1027,7 @@ async def list_semesters(user: dict = Depends(require_auth)):
 
 @router.post("/save-grades", response_model=BaseResponse)
 async def save_grades(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth),
 ):
     """保存学习成绩"""
@@ -1047,7 +1045,7 @@ async def save_grades(
 
 @router.get("/get-grades", response_model=BaseResponse)
 async def get_grades(
-    semester: Optional[str] = None,
+    semester: str | None = None,
     user: dict = Depends(require_auth),
 ):
     """获取学习成绩"""
@@ -1061,7 +1059,7 @@ async def get_grades(
 
 @router.post("/save-error-note", response_model=BaseResponse)
 async def save_error_note(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth),
 ):
     """添加错题"""
@@ -1075,8 +1073,8 @@ async def save_error_note(
 
 @router.get("/get-error-notes", response_model=BaseResponse)
 async def get_error_notes(
-    subject: Optional[str] = None,
-    mastery: Optional[int] = None,
+    subject: str | None = None,
+    mastery: int | None = None,
     user: dict = Depends(require_auth),
 ):
     """获取错题列表"""
@@ -1090,7 +1088,7 @@ async def get_error_notes(
 
 @router.post("/update-error-mastery", response_model=BaseResponse)
 async def update_error_mastery(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth),
 ):
     """更新错题掌握状态"""
@@ -1108,7 +1106,7 @@ async def update_error_mastery(
 
 @router.post("/delete-error-note", response_model=BaseResponse)
 async def delete_error_note(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth),
 ):
     """删除错题"""
@@ -1124,7 +1122,7 @@ async def delete_error_note(
 
 @router.post("/generate-study-plan", response_model=BaseResponse)
 async def generate_study_plan(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(require_auth),
 ):
     """AI 生成学习计划"""
@@ -1138,7 +1136,7 @@ async def generate_study_plan(
 
 @router.get("/get-study-plans", response_model=BaseResponse)
 async def get_study_plans(
-    semester: Optional[str] = None,
+    semester: str | None = None,
     user: dict = Depends(require_auth),
 ):
     """获取学习计划列表"""
@@ -1223,7 +1221,7 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         return {"success": True, "data": stats}
 
     except Exception as e:
-        error(f"获取工作台统计失败: {str(e)}")
+        error(f"获取工作台统计失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1241,13 +1239,13 @@ async def get_activity_logs(
         return BaseResponse(success=True, data={"logs": rows})
 
     except Exception as e:
-        error(f"获取活动日志失败: {str(e)}")
+        error(f"获取活动日志失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/activity-logs")
 async def record_session_time(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user)
 ):
     """记录会话学习时长"""
@@ -1262,7 +1260,7 @@ async def record_session_time(
 
         return {"success": True}
     except Exception as e:
-        error(f"记录会话时长失败: {str(e)}")
+        error(f"记录会话时长失败: {e!s}")
         return {"success": False}
 
 
@@ -1271,7 +1269,7 @@ async def record_session_time(
 
 @router.post("/advanced-search", response_model=BaseResponse)
 async def advanced_search(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -1330,13 +1328,13 @@ async def advanced_search(
         )
 
     except Exception as e:
-        error(f"高级检索失败: {str(e)}")
+        error(f"高级检索失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/contextual-upload", response_model=BaseResponse)
 async def contextual_upload(
-    files: List[UploadFile] = File(...),
+    files: list[UploadFile] = File(...),
     subject: str = Form(""),
     user: dict = Depends(get_current_user),
 ):
@@ -1373,8 +1371,8 @@ async def contextual_upload(
             # AI 提取知识点
             kp_prompt = f"从以下文本中提取5-15个关键知识点名称，用JSON数组返回（只输出JSON数组）:\n{text[:4000]}"
             try:
-                from services.spark_client import spark_client
                 from core.json_utils import safe_parse_json
+                from services.spark_client import spark_client
                 kp_resp = spark_client.simple(kp_prompt, max_tokens=500)
                 kp_list = safe_parse_json(kp_resp)
                 if not isinstance(kp_list, list):
@@ -1407,7 +1405,7 @@ async def contextual_upload(
         )
 
     except Exception as e:
-        error(f"上下文上传失败: {str(e)}")
+        error(f"上下文上传失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1416,7 +1414,7 @@ async def contextual_upload(
 
 @router.post("/hyde-search", response_model=BaseResponse)
 async def hyde_search(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -1455,13 +1453,13 @@ async def hyde_search(
         )
 
     except Exception as e:
-        error(f"HyDE检索失败: {str(e)}")
+        error(f"HyDE检索失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/multi-query-search", response_model=BaseResponse)
 async def multi_query_search(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -1500,13 +1498,13 @@ async def multi_query_search(
         )
 
     except Exception as e:
-        error(f"Multi-Query检索失败: {str(e)}")
+        error(f"Multi-Query检索失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/rag-fusion-search", response_model=BaseResponse)
 async def rag_fusion_search(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -1548,13 +1546,13 @@ async def rag_fusion_search(
         )
 
     except Exception as e:
-        error(f"RAG-Fusion检索失败: {str(e)}")
+        error(f"RAG-Fusion检索失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/graph-search", response_model=BaseResponse)
 async def graph_search(
-    input_data: Dict[str, Any] = Body(...),
+    input_data: dict[str, Any] = Body(...),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -1594,7 +1592,7 @@ async def graph_search(
         )
 
     except Exception as e:
-        error(f"图谱增强检索失败: {str(e)}")
+        error(f"图谱增强检索失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1604,7 +1602,7 @@ async def graph_search(
 
 @router.post("/feedback")
 async def submit_feedback(
-    request_data: Dict = Body(...),
+    request_data: dict = Body(...),
     user=Depends(get_current_user),
 ):
     """提交用户反馈（点赞/点踩/评分/评论）"""
@@ -1632,7 +1630,7 @@ async def submit_feedback(
             data={"interaction_id": interaction_id},
         )
     except Exception as e:
-        error(f"提交反馈失败: {str(e)}")
+        error(f"提交反馈失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1644,7 +1642,7 @@ async def get_learning_stats(user=Depends(require_auth)):
         stats = self_learning_service.get_learning_stats(user["id"])
         return BaseResponse(success=True, message="获取统计成功", data=stats)
     except Exception as e:
-        error(f"获取学习统计失败: {str(e)}")
+        error(f"获取学习统计失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1656,5 +1654,5 @@ async def trigger_learning_cycle(user=Depends(require_auth)):
         result = self_learning_service.trigger_learning_cycle()
         return BaseResponse(success=True, message="学习循环完成", data=result)
     except Exception as e:
-        error(f"触发学习循环失败: {str(e)}")
+        error(f"触发学习循环失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))

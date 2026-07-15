@@ -4,14 +4,13 @@ AI 教学视频生成服务
 支持：自动播放、语音朗读、进度条、下载
 """
 
-import os
-import re
-import json
 import hashlib
+import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, List
-from core.logger import info, error, warning
+from typing import Optional
+
+from core.logger import error, info, warning
 
 EXPORT_DIR = Path(__file__).parent.parent / "exports"
 EXPORT_DIR.mkdir(exist_ok=True)
@@ -32,7 +31,7 @@ class VideoGenerationService:
     # ──────────────────────────────────────────────
 
     def generate_video(self, subject: str, topic: str, description: str,
-                       duration: int = 10) -> Dict:
+                       duration: int = 10) -> dict:
         """生成教学视频 — 始终返回可用结果"""
         try:
             # 1. 使用 AI 生成教学脚本（多个场景）
@@ -62,7 +61,7 @@ class VideoGenerationService:
             return self._generate_fallback_video(subject, topic, description)
 
     def generate_animation(self, subject: str, topic: str, description: str,
-                           duration: int = 4) -> Dict:
+                           duration: int = 4) -> dict:
         """生成教学动画"""
         return self.generate_video(subject, topic, description, duration)
 
@@ -70,10 +69,10 @@ class VideoGenerationService:
     # AI 生成教学脚本
     # ──────────────────────────────────────────────
 
-    def _generate_script(self, subject: str, topic: str, description: str) -> List[Dict]:
+    def _generate_script(self, subject: str, topic: str, description: str) -> list[dict]:
         """使用 AI 生成多场景教学脚本"""
-        from services.qa_service import qa_service
         from core.json_utils import safe_parse_json
+        from services.qa_service import qa_service
 
         prompt = f"""请为{subject}课程的"{topic}"主题生成一个教学视频脚本，包含多个讲解场景。
 
@@ -112,7 +111,7 @@ class VideoGenerationService:
         # 降级：生成默认脚本
         return self._default_scenes(subject, topic, description)
 
-    def _default_scenes(self, subject: str, topic: str, description: str) -> List[Dict]:
+    def _default_scenes(self, subject: str, topic: str, description: str) -> list[dict]:
         """默认教学场景（AI 失败时）"""
         return [
             {
@@ -129,7 +128,7 @@ class VideoGenerationService:
                 "title": f"{topic}的基本原理",
                 "narration": f"接下来我们来了解{topic}的基本原理。理解这些原理是掌握这个知识点的关键。我们通过图示来帮助大家理解。",
                 "visual_type": "diagram",
-                "visual_content": f"<div style='display:flex;align-items:center;gap:20px;justify-content:center'><div style='padding:12px 20px;background:rgba(6,182,212,0.2);border:1px solid rgba(6,182,212,0.4);border-radius:8px'>输入</div><div style='font-size:24px'>→</div><div style='padding:12px 20px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);border-radius:8px'>处理</div><div style='font-size:24px'>→</div><div style='padding:12px 20px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);border-radius:8px'>输出</div></div>",
+                "visual_content": "<div style='display:flex;align-items:center;gap:20px;justify-content:center'><div style='padding:12px 20px;background:rgba(6,182,212,0.2);border:1px solid rgba(6,182,212,0.4);border-radius:8px'>输入</div><div style='font-size:24px'>→</div><div style='padding:12px 20px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);border-radius:8px'>处理</div><div style='font-size:24px'>→</div><div style='padding:12px 20px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);border-radius:8px'>输出</div></div>",
                 "highlight": "基本原理",
                 "svg": self._generate_scene_svg("principle", topic, subject)
             },
@@ -138,7 +137,7 @@ class VideoGenerationService:
                 "title": f"{topic}的应用实例",
                 "narration": f"了解了基本原理后，让我们来看一个具体的应用实例。通过实例，我们可以更好地理解{topic}是如何在实际中发挥作用的。",
                 "visual_type": "diagram",
-                "visual_content": f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px'><div style='padding:16px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>🎯</div>场景一</div><div style='padding:16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>💡</div>场景二</div><div style='padding:16px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>🔧</div>场景三</div><div style='padding:16px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>📊</div>场景四</div></div>",
+                "visual_content": "<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px'><div style='padding:16px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>🎯</div>场景一</div><div style='padding:16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>💡</div>场景二</div><div style='padding:16px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>🔧</div>场景三</div><div style='padding:16px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;text-align:center'><div style='font-size:24px;margin-bottom:8px'>📊</div>场景四</div></div>",
                 "highlight": "应用实例",
                 "svg": self._generate_scene_svg("example", topic, subject)
             },
@@ -147,7 +146,7 @@ class VideoGenerationService:
                 "title": "总结与回顾",
                 "narration": f"好的，让我们来总结一下今天学习的内容。{topic}是{subject}中非常重要的知识点，希望大家能够掌握并应用到实际中。",
                 "visual_type": "summary",
-                "visual_content": f"<div style='text-align:left;display:inline-block'><div style='margin-bottom:12px;font-size:18px'>📋 知识要点</div><div style='padding:8px 16px;margin:4px 0;background:rgba(6,182,212,0.1);border-radius:6px'>1. 基本概念与定义</div><div style='padding:8px 16px;margin:4px 0;background:rgba(59,130,246,0.1);border-radius:6px'>2. 核心原理分析</div><div style='padding:8px 16px;margin:4px 0;background:rgba(245,158,11,0.1);border-radius:6px'>3. 实际应用场景</div></div>",
+                "visual_content": "<div style='text-align:left;display:inline-block'><div style='margin-bottom:12px;font-size:18px'>📋 知识要点</div><div style='padding:8px 16px;margin:4px 0;background:rgba(6,182,212,0.1);border-radius:6px'>1. 基本概念与定义</div><div style='padding:8px 16px;margin:4px 0;background:rgba(59,130,246,0.1);border-radius:6px'>2. 核心原理分析</div><div style='padding:8px 16px;margin:4px 0;background:rgba(245,158,11,0.1);border-radius:6px'>3. 实际应用场景</div></div>",
                 "highlight": "总结",
                 "svg": self._generate_scene_svg("summary", topic, subject)
             }
@@ -182,7 +181,7 @@ class VideoGenerationService:
   <text x="400" y="280" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="14">数据流向: 输入 → 处理 → 输出</text>
 </svg>'''
         elif scene_type == "example":
-            return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+            return '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
   <rect width="800" height="400" fill="#0a1628" rx="12"/>
   <text x="400" y="50" text-anchor="middle" fill="white" font-size="22" font-weight="bold">应用实例</text>
   <rect x="80" y="80" width="300" height="140" rx="10" fill="rgba(6,182,212,0.1)" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
@@ -216,7 +215,7 @@ class VideoGenerationService:
     # 构建 HTML 视频
     # ──────────────────────────────────────────────
 
-    def _build_video_html(self, subject: str, topic: str, scenes: List[Dict]) -> str:
+    def _build_video_html(self, subject: str, topic: str, scenes: list[dict]) -> str:
         """构建完整的 HTML 教学视频"""
         scenes_json = json.dumps(scenes, ensure_ascii=False)
 
@@ -633,7 +632,7 @@ init();
 </body>
 </html>'''
 
-    def _generate_fallback_video(self, subject: str, topic: str, description: str) -> Dict:
+    def _generate_fallback_video(self, subject: str, topic: str, description: str) -> dict:
         """降级视频生成"""
         scenes = self._default_scenes(subject, topic, description)
         html = self._build_video_html(subject, topic, scenes)

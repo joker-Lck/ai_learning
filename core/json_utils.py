@@ -5,7 +5,7 @@
 
 import json
 import re
-from typing import Any, Optional
+from typing import Any
 
 # 预编译正则表达式以提升性能
 _CODE_FENCE_RE = re.compile(r'```(?:json)?\s*\n(.*?)\n\s*```', re.DOTALL)
@@ -13,13 +13,13 @@ _JSON_OBJECT_RE = re.compile(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', re.DOTALL)
 _JSON_ARRAY_RE = re.compile(r'\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', re.DOTALL)
 
 
-def safe_parse_json(text: str) -> Optional[Any]:
+def safe_parse_json(text: str) -> Any | None:
     """
     安全解析 LLM 返回的 JSON 文本
     
     处理常见问题：
     1. markdown 代码块包裹 (```json ... ```)
-    2. 非法反斜杠转义 (\s, \d, \frac 等)
+    2. 非法反斜杠转义 (\\s, \\d, \frac 等)
     3. 前后多余文字
     
     Args:
@@ -71,7 +71,7 @@ def safe_parse_json(text: str) -> Optional[Any]:
     return None
 
 
-def _try_loads(text: str) -> Optional[Any]:
+def _try_loads(text: str) -> Any | None:
     """尝试 json.loads，失败返回 None"""
     try:
         return json.loads(text)
@@ -144,7 +144,7 @@ def _fix_invalid_escapes(text: str) -> str:
     return ''.join(result)
 
 
-def _extract_json(text: str) -> Optional[str]:
+def _extract_json(text: str) -> str | None:
     """从文本中提取第一个 JSON 对象或数组"""
     # 找第一个 { 或 [
     for start_ch, end_ch in [('{', '}'), ('[', ']')]:

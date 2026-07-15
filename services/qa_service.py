@@ -3,9 +3,10 @@ QA服务 — 供各智能体调用的 AI 文本生成
 底层委托给 spark_client（MiMo API OpenAI 兼容接口）
 """
 
-from typing import Optional, Generator
-from services.spark_client import spark_client, MODEL_STANDARD
-from core.logger import info, error
+from collections.abc import Generator
+
+from core.logger import error, info
+from services.spark_client import spark_client
 
 
 class QAService:
@@ -18,7 +19,7 @@ class QAService:
         self,
         prompt: str,
         max_tokens: int = 2000,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
     ) -> str:
         """
         标准 AI 调用（Spark Pro）
@@ -48,7 +49,7 @@ class QAService:
         self,
         prompt: str,
         max_tokens: int = 2000,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
     ) -> Generator[str, None, None]:
         """流式 AI 调用，逐 chunk 返回"""
         return spark_client.chat_stream(

@@ -3,20 +3,20 @@
 """
 
 import json
-from typing import Dict, List, Optional
 from datetime import datetime
-from core.logger import info, error, warning
+
 from core.json_utils import safe_parse_json
+from core.logger import error, info, warning
 from services.qa_service import qa_service
 
 
 class PathAgent:
     """学习路径规划智能体"""
-    
+
     def __init__(self):
         info("学习路径规划智能体初始化完成")
-    
-    def plan_path(self, user_id: int, input_data: Dict) -> Dict:
+
+    def plan_path(self, user_id: int, input_data: dict) -> dict:
         """
         规划个性化学习路径
         
@@ -32,12 +32,12 @@ class PathAgent:
             学习路径数据
         """
         info(f"开始规划学习路径, 用户: {user_id}")
-        
+
         try:
             profile = input_data.get("profile", {})
             resources = input_data.get("resources", [])
             learning_goal = input_data.get("learning_goal", "")
-            
+
             # AI规划学习路径
             path_data = self._generate_learning_path(profile, resources, learning_goal)
 
@@ -61,15 +61,15 @@ class PathAgent:
 
             info(f"学习路径规划完成: {result_path['total_steps']} 个步骤")
             return result
-            
+
         except Exception as e:
-            error(f"规划学习路径失败: {str(e)}")
+            error(f"规划学习路径失败: {e!s}")
             return {
                 "success": False,
-                "message": f"规划失败: {str(e)}"
+                "message": f"规划失败: {e!s}"
             }
-    
-    def _format_steps(self, steps: List[Dict]) -> List[Dict]:
+
+    def _format_steps(self, steps: list[dict]) -> list[dict]:
         """格式化步骤数据，确保符合前端期望"""
         formatted = []
         for i, step in enumerate(steps):
@@ -86,14 +86,14 @@ class PathAgent:
             })
         return formatted
 
-    def _generate_learning_path(self, profile: Dict, resources: List, 
-                               learning_goal: str) -> Dict:
+    def _generate_learning_path(self, profile: dict, resources: list,
+                               learning_goal: str) -> dict:
         """通过AI生成学习路径"""
-        
+
         cognitive_style = profile.get("cognitive_style", "visual")
         weak_points = profile.get("weak_points", [])
         preferred_resources = profile.get("preferred_resources", ["document"])
-        
+
         # 构建资源描述
         resources_desc = ""
         if resources:
@@ -101,7 +101,7 @@ class PathAgent:
             for res in resources[:10]:
                 res_list.append(f"- ID:{res.get('id')}, 类型:{res.get('type')}, 标题:{res.get('title')}, 时长:{res.get('duration_minutes', '未知')}分钟")
             resources_desc = "\n可用资源:\n" + "\n".join(res_list)
-        
+
         prompt = f"""你是一个专业的学习规划师。请为学生规划一个个性化的学习路径。
 
 学习目标: {learning_goal or '掌握相关知识'}
@@ -156,7 +156,7 @@ class PathAgent:
 5. resource_type可以从 document/quiz/mindmap/video/code 中选择
 6. 总时长控制在2-6小时
 """
-        
+
         try:
             response = qa_service.call_ai(prompt, max_tokens=2500)
             info(f"AI学习路径原始响应: {response[:500] if response else '空'}")
@@ -164,18 +164,18 @@ class PathAgent:
 
             # 如果解析失败，使用降级方案
             if not path_data:
-                warning(f"AI 返回的学习路径数据无法解析，使用降级方案")
+                warning("AI 返回的学习路径数据无法解析，使用降级方案")
                 return self._fallback_path(resources, learning_goal)
-            
+
             # 如果返回的是数组，转换为对象格式
             if isinstance(path_data, list):
-                info(f"AI 返回了数组格式，转换为对象格式")
+                info("AI 返回了数组格式，转换为对象格式")
                 path_data = {
                     "title": learning_goal or "学习路径",
                     "steps": path_data,
                     "total_time": sum(step.get("estimated_time", 30) for step in path_data if isinstance(step, dict))
                 }
-            
+
             if not isinstance(path_data, dict):
                 warning(f"AI 返回的学习路径数据类型无效: {type(path_data)}，使用降级方案")
                 return self._fallback_path(resources, learning_goal)
@@ -183,7 +183,7 @@ class PathAgent:
             # 验证steps存在且非空
             steps = path_data.get("steps", [])
             if not steps or not isinstance(steps, list):
-                warning(f"AI 返回的步骤数据无效，使用降级方案")
+                warning("AI 返回的步骤数据无效，使用降级方案")
                 return self._fallback_path(resources, learning_goal)
 
             # 添加元数据
@@ -195,14 +195,14 @@ class PathAgent:
             return path_data
 
         except Exception as e:
-            error(f"AI生成学习路径失败: {str(e)}")
+            error(f"AI生成学习路径失败: {e!s}")
             return self._fallback_path(resources, learning_goal)
-    
-    def _fallback_path(self, resources: List, learning_goal: str = "") -> Dict:
+
+    def _fallback_path(self, resources: list, learning_goal: str = "") -> dict:
         """降级方案:根据学习目标生成有意义的步骤"""
         steps = []
         total_time = 0
-        
+
         if resources:
             # 有资源时，按资源生成步骤
             for i, res in enumerate(resources[:8]):
@@ -236,7 +236,7 @@ class PathAgent:
                 {"title": f"总结复习{goal}", "type": "document", "time": 20,
                  "desc": "回顾学习内容，查漏补缺", "obj": "巩固学习成果，发现薄弱环节"}
             ]
-            
+
             for i, s in enumerate(default_steps):
                 step = {
                     "step_id": i + 1,
@@ -251,7 +251,7 @@ class PathAgent:
                 }
                 steps.append(step)
                 total_time += s["time"]
-        
+
         return {
             "path_name": f"{learning_goal or '基础'}学习路径",
             "description": f"针对「{learning_goal or '相关知识'}」的系统学习路径",
@@ -265,8 +265,8 @@ class PathAgent:
             "current_step": 1,
             "completed_steps": 0
         }
-    
-    def _save_path(self, user_id: int, path_data: Dict) -> int:
+
+    def _save_path(self, user_id: int, path_data: dict) -> int:
         """保存学习路径到数据库"""
         try:
             from data.db_operations import path_db
@@ -293,10 +293,10 @@ class PathAgent:
                 return path_id
 
         except Exception as e:
-            error(f"保存学习路径失败: {str(e)}")
+            error(f"保存学习路径失败: {e!s}")
             raise
-    
-    def update_path_progress(self, path_id: int, completed_step: int, user_id: int = None) -> Dict:
+
+    def update_path_progress(self, path_id: int, completed_step: int, user_id: int = None) -> dict:
         """更新学习路径进度"""
         try:
             from data.db_operations import path_db
@@ -352,5 +352,5 @@ class PathAgent:
                 }
 
         except Exception as e:
-            error(f"更新路径进度失败: {str(e)}")
-            return {"success": False, "message": f"更新失败: {str(e)}"}
+            error(f"更新路径进度失败: {e!s}")
+            return {"success": False, "message": f"更新失败: {e!s}"}

@@ -11,18 +11,23 @@
 
 import json
 import time
-from typing import Dict, List, Optional, Any
 from datetime import datetime
-from core.logger import info, error, debug
+from typing import Any
+
+from core.logger import debug, error, info
 from services.agent_message import (
-    AgentMessage, MessageType, AgentRole, TaskPriority, CollaborationContext,
+    AgentMessage,
+    AgentRole,
+    CollaborationContext,
+    MessageType,
+    TaskPriority,
 )
+from services.assessment_agent import AssessmentAgent
 from services.message_bus import message_bus
+from services.path_agent import PathAgent
 from services.profile_agent import ProfileAgent
 from services.resource_agent import ResourceAgent
-from services.path_agent import PathAgent
 from services.tutor_agent import TutorAgent
-from services.assessment_agent import AssessmentAgent
 
 
 class AgentCoordinator:
@@ -53,7 +58,7 @@ class AgentCoordinator:
         message_bus.subscribe(AgentRole.TUTOR, self._handle_tutor_message)
         message_bus.subscribe(AgentRole.ASSESSMENT, self._handle_assessment_message)
 
-    def _handle_profile_message(self, msg: AgentMessage) -> Optional[AgentMessage]:
+    def _handle_profile_message(self, msg: AgentMessage) -> AgentMessage | None:
         """画像智能体消息处理器"""
         if msg.msg_type in (MessageType.REQUEST, MessageType.QUERY):
             result = self.profile_agent.build_profile(
@@ -70,7 +75,7 @@ class AgentCoordinator:
             )
         return None
 
-    def _handle_resource_message(self, msg: AgentMessage) -> Optional[AgentMessage]:
+    def _handle_resource_message(self, msg: AgentMessage) -> AgentMessage | None:
         """资源智能体消息处理器"""
         if msg.msg_type in (MessageType.REQUEST, MessageType.DELEGATE):
             result = self.resource_agent.generate_resources(
@@ -84,7 +89,7 @@ class AgentCoordinator:
             return msg.reply(AgentRole.RESOURCE, {"acknowledged": True})
         return None
 
-    def _handle_path_message(self, msg: AgentMessage) -> Optional[AgentMessage]:
+    def _handle_path_message(self, msg: AgentMessage) -> AgentMessage | None:
         """路径智能体消息处理器"""
         if msg.msg_type in (MessageType.REQUEST, MessageType.DELEGATE):
             result = self.path_agent.plan_path(
@@ -93,7 +98,7 @@ class AgentCoordinator:
             return msg.reply(AgentRole.PATH, result)
         return None
 
-    def _handle_tutor_message(self, msg: AgentMessage) -> Optional[AgentMessage]:
+    def _handle_tutor_message(self, msg: AgentMessage) -> AgentMessage | None:
         """辅导智能体消息处理器"""
         if msg.msg_type == MessageType.REQUEST:
             result = self.tutor_agent.answer_query(
@@ -102,7 +107,7 @@ class AgentCoordinator:
             return msg.reply(AgentRole.TUTOR, result)
         return None
 
-    def _handle_assessment_message(self, msg: AgentMessage) -> Optional[AgentMessage]:
+    def _handle_assessment_message(self, msg: AgentMessage) -> AgentMessage | None:
         """评估智能体消息处理器"""
         if msg.msg_type == MessageType.REQUEST:
             result = self.assessment_agent.assess(
@@ -118,8 +123,8 @@ class AgentCoordinator:
     def execute_task(self,
                     task_type: str,
                     user_id: int,
-                    input_data: Dict[str, Any],
-                    session_id: str = None) -> Dict[str, Any]:
+                    input_data: dict[str, Any],
+                    session_id: str = None) -> dict[str, Any]:
         """
         执行任务 — 通过消息总线调度智能体
 
@@ -174,9 +179,9 @@ class AgentCoordinator:
                 error(f"未知任务类型: {task_type}")
 
         except Exception as e:
-            result["message"] = f"任务执行失败: {str(e)}"
+            result["message"] = f"任务执行失败: {e!s}"
             ctx.status = "failed"
-            error(f"任务执行失败 [{task_type}]: {str(e)}")
+            error(f"任务执行失败 [{task_type}]: {e!s}")
 
         finally:
             execution_time = int((time.time() - start_time) * 1000)
@@ -202,8 +207,8 @@ class AgentCoordinator:
     # 消息驱动的任务处理
     # ═══════════════════════════════════════
 
-    def _msg_build_profile(self, user_id: int, input_data: Dict,
-                           ctx: CollaborationContext) -> Dict:
+    def _msg_build_profile(self, user_id: int, input_data: dict,
+                           ctx: CollaborationContext) -> dict:
         """通过消息总线构建学生画像"""
         msg = AgentMessage(
             msg_type=MessageType.REQUEST,
@@ -224,8 +229,8 @@ class AgentCoordinator:
 
         return {"error": "画像构建超时"}
 
-    def _msg_generate_resources(self, user_id: int, input_data: Dict,
-                                ctx: CollaborationContext) -> Dict:
+    def _msg_generate_resources(self, user_id: int, input_data: dict,
+                                ctx: CollaborationContext) -> dict:
         """通过消息总线生成学习资源"""
         msg = AgentMessage(
             msg_type=MessageType.REQUEST,
@@ -246,8 +251,8 @@ class AgentCoordinator:
 
         return {"error": "资源生成超时"}
 
-    def _msg_plan_path(self, user_id: int, input_data: Dict,
-                       ctx: CollaborationContext) -> Dict:
+    def _msg_plan_path(self, user_id: int, input_data: dict,
+                       ctx: CollaborationContext) -> dict:
         """通过消息总线规划学习路径"""
         msg = AgentMessage(
             msg_type=MessageType.REQUEST,
@@ -268,8 +273,8 @@ class AgentCoordinator:
 
         return {"error": "路径规划超时"}
 
-    def _msg_tutor_query(self, user_id: int, input_data: Dict,
-                         ctx: CollaborationContext) -> Dict:
+    def _msg_tutor_query(self, user_id: int, input_data: dict,
+                         ctx: CollaborationContext) -> dict:
         """通过消息总线进行智能辅导"""
         msg = AgentMessage(
             msg_type=MessageType.REQUEST,
@@ -290,8 +295,8 @@ class AgentCoordinator:
 
         return {"error": "辅导响应超时"}
 
-    def _msg_assess_learning(self, user_id: int, input_data: Dict,
-                             ctx: CollaborationContext) -> Dict:
+    def _msg_assess_learning(self, user_id: int, input_data: dict,
+                             ctx: CollaborationContext) -> dict:
         """通过消息总线评估学习效果"""
         msg = AgentMessage(
             msg_type=MessageType.REQUEST,
@@ -316,8 +321,8 @@ class AgentCoordinator:
     # 综合学习计划 — 多智能体协同 + 协商
     # ═══════════════════════════════════════
 
-    def _msg_comprehensive_plan(self, user_id: int, input_data: Dict,
-                                ctx: CollaborationContext) -> Dict:
+    def _msg_comprehensive_plan(self, user_id: int, input_data: dict,
+                                ctx: CollaborationContext) -> dict:
         """
         综合学习计划 — 展示真正的多智能体协同
 
@@ -438,9 +443,9 @@ class AgentCoordinator:
              f"消息: {ctx.message_count} 条, 协商: {len(ctx.negotiations)} 次")
         return comprehensive_result
 
-    def _negotiate_resource_strategy(self, user_id: int, profile: Dict,
+    def _negotiate_resource_strategy(self, user_id: int, profile: dict,
                                      subject: str, topic: str,
-                                     ctx: CollaborationContext) -> Dict:
+                                     ctx: CollaborationContext) -> dict:
         """
         协商资源生成策略
 
@@ -517,7 +522,7 @@ class AgentCoordinator:
                 "source": "default",
             }
 
-    def _async_assessment_feedback(self, user_id: int, resources_result: Dict,
+    def _async_assessment_feedback(self, user_id: int, resources_result: dict,
                                    ctx: CollaborationContext):
         """异步发送评估反馈（不阻塞主流程）"""
         resources = resources_result.get("resources", [])
@@ -546,7 +551,7 @@ class AgentCoordinator:
     # 辅助方法
     # ═══════════════════════════════════════
 
-    def _success_message(self, task_type: str, data: Dict) -> str:
+    def _success_message(self, task_type: str, data: dict) -> str:
         """生成成功消息"""
         msg_map = {
             "build_profile": "学生画像构建成功",
@@ -558,7 +563,7 @@ class AgentCoordinator:
         }
         return msg_map.get(task_type, "任务执行完成")
 
-    def _generate_recommendations(self, profile, resources_result, path_result) -> List[str]:
+    def _generate_recommendations(self, profile, resources_result, path_result) -> list[str]:
         """基于画像、资源和路径生成学习建议"""
         recommendations = []
 
@@ -596,7 +601,7 @@ class AgentCoordinator:
 
         return recommendations if recommendations else ["建议按学习路径逐步推进"]
 
-    def _log_collaboration(self, ctx: CollaborationContext, result: Dict):
+    def _log_collaboration(self, ctx: CollaborationContext, result: dict):
         """记录协作日志"""
         try:
             log_summary = {
@@ -613,9 +618,9 @@ class AgentCoordinator:
             debug(f"协作日志: {json.dumps(log_summary, ensure_ascii=False)}")
 
         except Exception as e:
-            error(f"记录协作日志失败: {str(e)}")
+            error(f"记录协作日志失败: {e!s}")
 
-    def get_bus_stats(self) -> Dict:
+    def get_bus_stats(self) -> dict:
         """获取消息总线统计（供 API 查询）"""
         return message_bus.get_stats()
 

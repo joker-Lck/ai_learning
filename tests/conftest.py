@@ -1,8 +1,8 @@
 """Pytest 全局 fixtures"""
 import os
-import sys
 import sqlite3
-import tempfile
+import sys
+
 import pytest
 
 # 确保项目根目录在 sys.path 中

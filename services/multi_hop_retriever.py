@@ -3,8 +3,8 @@
 import json
 import re
 import sqlite3
-from typing import Dict, List, Optional, Tuple
-from core.logger import info, error, warning
+
+from core.logger import error, info, warning
 
 
 class MultiHopRetriever:
@@ -41,7 +41,7 @@ class MultiHopRetriever:
         return self._qa_service
 
     def retrieve(self, query: str, user_id: int = 0, max_hops: int = None,
-                 limit: int = 5) -> Dict:
+                 limit: int = 5) -> dict:
         """
         主入口：多跳推理检索
 
@@ -93,7 +93,7 @@ class MultiHopRetriever:
             error(f"[MultiHop] 多跳检索失败: {e}")
             return self._empty_result(str(e))
 
-    def _seed_retrieval(self, query: str, limit: int = 5) -> List[Dict]:
+    def _seed_retrieval(self, query: str, limit: int = 5) -> list[dict]:
         """初始种子检索：混合检索获取起点文档"""
         try:
             embedding = self.embedding_service.get_embedding(query)
@@ -107,7 +107,7 @@ class MultiHopRetriever:
             warning(f"[MultiHop] 种子检索失败: {e}")
             return []
 
-    def _build_logic_graph(self, seed_docs: List[Dict]) -> Dict:
+    def _build_logic_graph(self, seed_docs: list[dict]) -> dict:
         """从种子文档构建实体-关系逻辑图"""
         nodes = []
         edges = []
@@ -141,7 +141,7 @@ class MultiHopRetriever:
 
         return {"nodes": nodes, "edges": edges}
 
-    def _extract_entities(self, text: str) -> List[Dict]:
+    def _extract_entities(self, text: str) -> list[dict]:
         """从文本中提取实体（基于规则 + LLM）"""
         entities = []
 
@@ -165,8 +165,8 @@ class MultiHopRetriever:
                 unique.append(e)
         return unique[:15]
 
-    def _multi_hop_explore(self, query: str, seed_docs: List[Dict],
-                           max_hops: int) -> List[Dict]:
+    def _multi_hop_explore(self, query: str, seed_docs: list[dict],
+                           max_hops: int) -> list[dict]:
         """多跳探索：从种子段落沿逻辑边逐步扩展"""
         evidence_chain = []
         visited_ids = set()
@@ -217,7 +217,7 @@ class MultiHopRetriever:
 
         return evidence_chain
 
-    def _hop_retrieve(self, query: str, visited_ids: set, limit: int = 3) -> List[Dict]:
+    def _hop_retrieve(self, query: str, visited_ids: set, limit: int = 3) -> list[dict]:
         """单跳检索：排除已访问文档"""
         try:
             embedding = self.embedding_service.get_embedding(query)
@@ -248,7 +248,7 @@ class MultiHopRetriever:
         else:
             return "extends"
 
-    def _derive_next_query(self, original_query: str, chain: List[Dict]) -> str:
+    def _derive_next_query(self, original_query: str, chain: list[dict]) -> str:
         """基于证据链生成下一轮查询"""
         if not chain:
             return original_query
@@ -274,7 +274,7 @@ class MultiHopRetriever:
         keywords = re.findall(r'[\u4e00-\u9fff]{3,}', content[:200])
         return " ".join(keywords[:5]) if keywords else original_query
 
-    def _verify_chain(self, evidence_chain: List[Dict]) -> Dict:
+    def _verify_chain(self, evidence_chain: list[dict]) -> dict:
         """验证证据链：逻辑连贯性 + 置信度计算 + 剪枝"""
         if not evidence_chain:
             return {"confidence": 0.0, "valid": False, "pruned": []}
@@ -308,7 +308,7 @@ class MultiHopRetriever:
             "pruned": pruned,
         }
 
-    def _synthesize_answer(self, query: str, evidence_chain: List[Dict]) -> str:
+    def _synthesize_answer(self, query: str, evidence_chain: list[dict]) -> str:
         """基于证据链综合生成答案"""
         if not evidence_chain:
             return "未找到足够信息来回答此问题。"
@@ -343,7 +343,7 @@ class MultiHopRetriever:
             for e in evidence_chain[:3]
         )
 
-    def _empty_result(self, reason: str) -> Dict:
+    def _empty_result(self, reason: str) -> dict:
         return {
             "answer": reason,
             "evidence_chain": [],

@@ -3,12 +3,11 @@
 定义智能体间通信的消息格式、类型和路由规则
 """
 
-import uuid
 import time
-from enum import Enum
+import uuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-
+from enum import Enum
+from typing import Any
 
 # ═══════════════════════════════════════════
 # 消息类型枚举
@@ -80,13 +79,13 @@ class AgentMessage:
     msg_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     msg_type: MessageType = MessageType.REQUEST
     sender: AgentRole = AgentRole.COORDINATOR
-    receiver: Optional[AgentRole] = None      # None = 广播
+    receiver: AgentRole | None = None      # None = 广播
     session_id: str = ""
-    correlation_id: Optional[str] = None      # 关联请求的 msg_id（用于响应匹配）
+    correlation_id: str | None = None      # 关联请求的 msg_id（用于响应匹配）
 
     # ── 业务载荷 ──
     action: str = ""                          # 具体动作（如 "build_profile", "generate_resource"）
-    payload: Dict[str, Any] = field(default_factory=dict)
+    payload: dict[str, Any] = field(default_factory=dict)
     priority: TaskPriority = TaskPriority.NORMAL
 
     # ── 元数据 ──
@@ -97,12 +96,12 @@ class AgentMessage:
 
     # ── 结果 ──
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
     def is_expired(self) -> bool:
         return (time.time() - self.timestamp) > self.ttl
 
-    def reply(self, sender: AgentRole, payload: Dict, success: bool = True,
+    def reply(self, sender: AgentRole, payload: dict, success: bool = True,
               error: str = None, msg_type: MessageType = MessageType.RESPONSE) -> "AgentMessage":
         """快速构造响应消息"""
         return AgentMessage(
@@ -118,7 +117,7 @@ class AgentMessage:
             error=error,
         )
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "msg_id": self.msg_id,
             "msg_type": self.msg_type.value,
@@ -157,10 +156,10 @@ class CollaborationContext:
     user_id: int
     task_type: str = ""
     initiated_by: AgentRole = AgentRole.COORDINATOR
-    participants: List[AgentRole] = field(default_factory=list)
-    message_log: List[AgentMessage] = field(default_factory=list)
-    intermediate_results: Dict[str, Any] = field(default_factory=dict)
-    negotiations: List[Dict] = field(default_factory=list)   # 协商记录
+    participants: list[AgentRole] = field(default_factory=list)
+    message_log: list[AgentMessage] = field(default_factory=list)
+    intermediate_results: dict[str, Any] = field(default_factory=dict)
+    negotiations: list[dict] = field(default_factory=list)   # 协商记录
     start_time: float = field(default_factory=time.time)
     status: str = "pending"                                   # pending → running → negotiating → completed → failed
 
@@ -196,7 +195,7 @@ class CollaborationContext:
     def message_count(self) -> int:
         return len(self.message_log)
 
-    def summary(self) -> Dict:
+    def summary(self) -> dict:
         return {
             "session_id": self.session_id,
             "task_type": self.task_type,

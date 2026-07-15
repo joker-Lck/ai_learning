@@ -4,15 +4,15 @@
 """
 
 import json
-from typing import Dict, List, Optional
 from datetime import datetime
-from core.logger import info, error, warning, debug
+
 from core.json_utils import safe_parse_json
+from core.logger import debug, error, info, warning
+from services.content_safety_service import anti_hallucination_service, content_safety_service
 from services.qa_service import qa_service
-from services.content_safety_service import content_safety_service, anti_hallucination_service
 
 
-def _extract_text_from_resource(resource: Dict) -> str:
+def _extract_text_from_resource(resource: dict) -> str:
     """从资源中提取纯文本内容，用于 RAG 存储"""
     rtype = resource.get("type", "")
     data = resource.get("content_data", {})
@@ -47,7 +47,7 @@ def _extract_text_from_resource(resource: Dict) -> str:
         return json.dumps(data, ensure_ascii=False)[:5000]
 
 
-def _extract_knowledge_points(resource: Dict) -> List[str]:
+def _extract_knowledge_points(resource: dict) -> list[str]:
     """从资源中提取知识点列表"""
     data = resource.get("content_data", {})
     points = []
@@ -71,7 +71,7 @@ def _extract_knowledge_points(resource: Dict) -> List[str]:
 
 class ResourceAgent:
     """学习资源生成智能体"""
-    
+
     RESOURCE_TYPES = {
         "document": "课程讲解文档",
         "mindmap": "知识点思维导图",
@@ -81,11 +81,11 @@ class ResourceAgent:
         "code_case": "代码实操案例",
         "reading": "拓展阅读材料"
     }
-    
+
     def __init__(self):
         info("学习资源生成智能体初始化完成")
-    
-    def generate_resources(self, user_id: int, input_data: Dict) -> Dict:
+
+    def generate_resources(self, user_id: int, input_data: dict) -> dict:
         """
         生成多模态学习资源
         
@@ -103,16 +103,16 @@ class ResourceAgent:
             生成的资源列表
         """
         info(f"开始生成学习资源, 用户: {user_id}, 主题: {input_data.get('topic')}")
-        
+
         try:
             subject = input_data.get("subject", "综合")
             topic = input_data.get("topic", "")
             profile = input_data.get("profile", {})
             resource_types = input_data.get("resource_types", ["document", "quiz", "mindmap"])
             difficulty = input_data.get("difficulty", "intermediate")
-            
+
             generated_resources = []
-            
+
             # 并行或串行生成各类资源
             for resource_type in resource_types:
                 try:
@@ -128,36 +128,36 @@ class ResourceAgent:
                         else:
                             warning(f"资源 {resource_type} 安全检查失败: {safety_check['violations']}")
                 except Exception as e:
-                    error(f"生成资源 {resource_type} 失败: {str(e)}")
+                    error(f"生成资源 {resource_type} 失败: {e!s}")
                     # 继续生成其他资源
-            
+
             # 保存到数据库
             resource_ids = self._save_resources(generated_resources, user_id)
-            
+
             result = {
                 "resources": generated_resources,
                 "resource_ids": resource_ids,
                 "count": len(generated_resources),
                 "types": list(set([r["type"] for r in generated_resources]))
             }
-            
+
             info(f"资源生成完成,共 {len(generated_resources)} 个")
             return result
-            
+
         except Exception as e:
-            error(f"生成学习资源失败: {str(e)}")
+            error(f"生成学习资源失败: {e!s}")
             return {
                 "success": False,
-                "message": f"生成失败: {str(e)}",
+                "message": f"生成失败: {e!s}",
                 "resources": []
             }
-    
-    def _check_resource_safety(self, resource: Dict) -> Dict:
+
+    def _check_resource_safety(self, resource: dict) -> dict:
         """检查资源内容安全性"""
         try:
             # 提取文本内容进行检查
             content_to_check = ""
-            
+
             if resource["type"] == "document":
                 sections = resource.get("content_data", {}).get("sections", [])
                 content_to_check = " ".join([s.get("content", "") for s in sections])
@@ -167,24 +167,24 @@ class ResourceAgent:
             else:
                 # 其他类型转换为JSON字符串检查
                 content_to_check = json.dumps(resource.get("content_data", {}), ensure_ascii=False)
-            
+
             if not content_to_check:
                 return {"is_safe": True, "violations": []}
-            
+
             # 执行安全检查
             safety_result = content_safety_service.check_content_safety(content_to_check)
-            
+
             return safety_result
-            
+
         except Exception as e:
-            error(f"资源安全检查失败: {str(e)}")
+            error(f"资源安全检查失败: {e!s}")
             return {"is_safe": True, "violations": []}  # 默认通过,避免阻塞
-    
+
     def _generate_single_resource(self, user_id: int, resource_type: str,
-                                  subject: str, topic: str, 
-                                  profile: Dict, difficulty: str) -> Optional[Dict]:
+                                  subject: str, topic: str,
+                                  profile: dict, difficulty: str) -> dict | None:
         """生成单个资源"""
-        
+
         if resource_type == "document":
             return self._generate_document(subject, topic, profile, difficulty)
         elif resource_type == "mindmap":
@@ -202,14 +202,14 @@ class ResourceAgent:
         else:
             error(f"不支持的资源类型: {resource_type}")
             return None
-    
-    def _generate_document(self, subject: str, topic: str, 
-                          profile: Dict, difficulty: str) -> Dict:
+
+    def _generate_document(self, subject: str, topic: str,
+                          profile: dict, difficulty: str) -> dict:
         """生成课程讲解文档"""
-        
+
         cognitive_style = profile.get("cognitive_style", "visual")
         weak_points = profile.get("weak_points", [])
-        
+
         prompt = f"""请为{subject}课程的"{topic}"主题生成一份详细的讲解文档。
 
 学生特征:
@@ -240,21 +240,21 @@ class ResourceAgent:
     "references": ["参考资料1"]
 }}
 """
-        
+
         try:
             response = qa_service.call_ai(prompt, max_tokens=2000)
             doc_data = safe_parse_json(response)
 
             # 如果解析失败，返回 None
             if not doc_data:
-                warning(f"AI 返回的文档数据无法解析")
+                warning("AI 返回的文档数据无法解析")
                 return None
-            
+
             # 如果返回的是数组，取第一个元素
             if isinstance(doc_data, list) and len(doc_data) > 0:
-                info(f"AI 返回了数组格式，取第一个元素")
+                info("AI 返回了数组格式，取第一个元素")
                 doc_data = doc_data[0] if isinstance(doc_data[0], dict) else {"title": f"{topic}讲解文档", "sections": doc_data}
-            
+
             if not isinstance(doc_data, dict):
                 warning(f"AI 返回的文档数据类型无效: {type(doc_data)}")
                 return None
@@ -277,11 +277,11 @@ class ResourceAgent:
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         except Exception as e:
-            error(f"生成文档失败: {str(e)}")
+            error(f"生成文档失败: {e!s}")
             return None
-    
+
     def _generate_mindmap(self, subject: str, topic: str,
-                         profile: Dict, difficulty: str) -> Dict:
+                         profile: dict, difficulty: str) -> dict:
         """生成知识点思维导图"""
 
         prompt = f"""请为{subject}课程的"{topic}"主题生成一个结构清晰的知识点思维导图。
@@ -333,14 +333,14 @@ class ResourceAgent:
 
             # 如果解析失败，返回 None
             if not mindmap_data:
-                warning(f"AI 返回的思维导图数据无法解析")
+                warning("AI 返回的思维导图数据无法解析")
                 return None
-            
+
             # 如果返回的是数组，取第一个元素
             if isinstance(mindmap_data, list) and len(mindmap_data) > 0:
-                info(f"AI 返回了数组格式，取第一个元素")
+                info("AI 返回了数组格式，取第一个元素")
                 mindmap_data = mindmap_data[0] if isinstance(mindmap_data[0], dict) else {"topic": topic, "children": mindmap_data}
-            
+
             if not isinstance(mindmap_data, dict):
                 warning(f"AI 返回的思维导图数据类型无效: {type(mindmap_data)}")
                 return None
@@ -350,8 +350,8 @@ class ResourceAgent:
 
             # 保存为 HTML 文件
             if svg_code:
-                from pathlib import Path
                 import hashlib
+                from pathlib import Path
                 EXPORT_DIR = Path(__file__).parent.parent / "exports"
                 EXPORT_DIR.mkdir(exist_ok=True)
                 html = self._wrap_svg_html(svg_code, f"{topic} - 思维导图")
@@ -371,10 +371,10 @@ class ResourceAgent:
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         except Exception as e:
-            error(f"生成思维导图失败: {str(e)}")
+            error(f"生成思维导图失败: {e!s}")
             return None
 
-    def _generate_mindmap_svg(self, data: Dict, topic: str) -> str:
+    def _generate_mindmap_svg(self, data: dict, topic: str) -> str:
         """将思维导图 JSON 转换为 SVG"""
         try:
             root = data.get("root", {})
@@ -480,9 +480,9 @@ function downloadSVG() {{
 </script>
 </body>
 </html>'''
-    
+
     def _generate_quiz(self, subject: str, topic: str,
-                      profile: Dict, difficulty: str) -> Dict:
+                      profile: dict, difficulty: str) -> dict:
         """生成练习题目"""
 
         weak_points = profile.get("weak_points", [])
@@ -527,19 +527,19 @@ function downloadSVG() {{
 
             # 如果解析失败，使用降级方案
             if not quiz_data:
-                warning(f"AI 返回的题库数据无法解析，使用降级方案")
+                warning("AI 返回的题库数据无法解析，使用降级方案")
                 return self._fallback_quiz(subject, topic, difficulty)
-            
+
             # 如果返回的是数组，转换为对象格式
             if isinstance(quiz_data, list):
-                info(f"AI 返回了数组格式，转换为对象格式")
+                info("AI 返回了数组格式，转换为对象格式")
                 quiz_data = {
                     "title": f"{topic}练习题",
                     "questions": quiz_data,
                     "total_questions": len(quiz_data),
                     "estimated_time": 20
                 }
-            
+
             if not isinstance(quiz_data, dict):
                 warning(f"AI 返回的题库数据类型无效: {type(quiz_data)}，使用降级方案")
                 return self._fallback_quiz(subject, topic, difficulty)
@@ -554,11 +554,11 @@ function downloadSVG() {{
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         except Exception as e:
-            error(f"生成题库失败: {str(e)}")
+            error(f"生成题库失败: {e!s}")
             return None
-    
+
     def _generate_video_script(self, subject: str, topic: str,
-                              profile: Dict, difficulty: str) -> Dict:
+                              profile: dict, difficulty: str) -> dict:
         """生成教学视频 — spark-x 脚本 + TTI 图片 + TTS 语音"""
         from services.spark_client import spark_client
 
@@ -639,10 +639,10 @@ function downloadSVG() {{
             }
 
         except Exception as e:
-            error(f"生成视频失败: {str(e)}")
+            error(f"生成视频失败: {e!s}")
             return self._fallback_video(subject, topic, difficulty)
 
-    def _default_video_script(self, subject: str, topic: str) -> Dict:
+    def _default_video_script(self, subject: str, topic: str) -> dict:
         """默认视频脚本"""
         return {
             "title": f"{topic}教学视频",
@@ -655,7 +655,7 @@ function downloadSVG() {{
             "total_scenes": 4
         }
 
-    def _fallback_video(self, subject: str, topic: str, difficulty: str) -> Dict:
+    def _fallback_video(self, subject: str, topic: str, difficulty: str) -> dict:
         """视频降级方案"""
         script = self._default_video_script(subject, topic)
         return {
@@ -673,11 +673,10 @@ function downloadSVG() {{
             "duration_minutes": 8,
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-    
+
     def _generate_animation_script(self, subject: str, topic: str,
-                                  profile: Dict, difficulty: str) -> Dict:
+                                  profile: dict, difficulty: str) -> dict:
         """生成教学图片（TTI API）"""
-        from services.spark_client import spark_client
         from services.image_service import image_service
 
         # 使用 TTI API 生成图片
@@ -703,11 +702,11 @@ function downloadSVG() {{
             "duration_minutes": 5,
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-    
+
     def _generate_code_case(self, subject: str, topic: str,
-                           profile: Dict, difficulty: str) -> Dict:
+                           profile: dict, difficulty: str) -> dict:
         """生成代码实操案例"""
-        
+
         prompt = f"""请为{subject}课程的"{topic}"主题生成一个代码实操案例。
 
 难度级别: {difficulty}
@@ -735,21 +734,21 @@ function downloadSVG() {{
     "estimated_time": 30
 }}
 """
-        
+
         try:
             response = qa_service.call_ai(prompt, max_tokens=2000)
             code_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
             if not code_data:
-                warning(f"AI 返回的代码案例数据无法解析，使用降级方案")
+                warning("AI 返回的代码案例数据无法解析，使用降级方案")
                 return self._fallback_code(subject, topic, difficulty)
-            
+
             # 如果返回的是数组，取第一个元素
             if isinstance(code_data, list) and len(code_data) > 0:
-                info(f"AI 返回了数组格式，取第一个元素")
+                info("AI 返回了数组格式，取第一个元素")
                 code_data = code_data[0] if isinstance(code_data[0], dict) else {"title": f"{topic}代码案例", "code": code_data}
-            
+
             if not isinstance(code_data, dict):
                 warning(f"AI 返回的代码案例数据类型无效: {type(code_data)}，使用降级方案")
                 return self._fallback_code(subject, topic, difficulty)
@@ -764,15 +763,15 @@ function downloadSVG() {{
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         except Exception as e:
-            error(f"生成代码案例失败: {str(e)}")
+            error(f"生成代码案例失败: {e!s}")
             return self._fallback_code(subject, topic, difficulty)
-    
+
     def _generate_reading_material(self, subject: str, topic: str,
-                                  profile: Dict, difficulty: str) -> Dict:
+                                  profile: dict, difficulty: str) -> dict:
         """生成拓展阅读材料"""
-        
+
         interest_areas = profile.get("interest_areas", [])
-        
+
         prompt = f"""请为{subject}课程的"{topic}"主题生成拓展阅读材料。
 
 学生兴趣领域: {', '.join(interest_areas[:3]) if interest_areas else '通用'}
@@ -797,21 +796,21 @@ function downloadSVG() {{
     "references": ["参考文献1", "参考文献2"]
 }}
 """
-        
+
         try:
             response = qa_service.call_ai(prompt, max_tokens=1500)
             reading_data = safe_parse_json(response)
 
             # 如果解析失败，使用降级方案
             if not reading_data:
-                warning(f"AI 返回的阅读材料数据无法解析，使用降级方案")
+                warning("AI 返回的阅读材料数据无法解析，使用降级方案")
                 return self._fallback_reading(subject, topic, difficulty)
-            
+
             # 如果返回的是数组，取第一个元素
             if isinstance(reading_data, list) and len(reading_data) > 0:
-                info(f"AI 返回了数组格式，取第一个元素")
+                info("AI 返回了数组格式，取第一个元素")
                 reading_data = reading_data[0] if isinstance(reading_data[0], dict) else {"title": f"{topic}阅读材料", "content": str(reading_data)}
-            
+
             if not isinstance(reading_data, dict):
                 warning(f"AI 返回的阅读材料数据类型无效: {type(reading_data)}，使用降级方案")
                 return self._fallback_reading(subject, topic, difficulty)
@@ -834,10 +833,10 @@ function downloadSVG() {{
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         except Exception as e:
-            error(f"生成阅读材料失败: {str(e)}")
+            error(f"生成阅读材料失败: {e!s}")
             return self._fallback_reading(subject, topic, difficulty)
-    
-    def _save_resources(self, resources: List[Dict], user_id: int = None) -> List[int]:
+
+    def _save_resources(self, resources: list[dict], user_id: int = None) -> list[int]:
         """保存资源到主数据库 + RAG 知识库"""
         try:
             from data.db_operations import resource_db
@@ -872,10 +871,10 @@ function downloadSVG() {{
             return resource_ids
 
         except Exception as e:
-            error(f"保存资源失败: {str(e)}")
+            error(f"保存资源失败: {e!s}")
             return []
 
-    def _save_to_rag(self, resources: List[Dict], user_id: int = None) -> None:
+    def _save_to_rag(self, resources: list[dict], user_id: int = None) -> None:
         """将生成的资源同步写入 RAG 知识库"""
         try:
             from data.rag_knowledge_base import rag_kb
@@ -911,7 +910,7 @@ function downloadSVG() {{
     # 降级方案（AI 生成失败时使用）
     # ──────────────────────────────────────────────
 
-    def _fallback_quiz(self, subject: str, topic: str, difficulty: str) -> Dict:
+    def _fallback_quiz(self, subject: str, topic: str, difficulty: str) -> dict:
         """题库降级方案"""
         return {
             "type": "quiz",
@@ -936,7 +935,7 @@ function downloadSVG() {{
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
-    def _fallback_code(self, subject: str, topic: str, difficulty: str) -> Dict:
+    def _fallback_code(self, subject: str, topic: str, difficulty: str) -> dict:
         """代码案例降级方案"""
         return {
             "type": "code_case",
@@ -958,7 +957,7 @@ function downloadSVG() {{
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
-    def _fallback_reading(self, subject: str, topic: str, difficulty: str) -> Dict:
+    def _fallback_reading(self, subject: str, topic: str, difficulty: str) -> dict:
         """阅读材料降级方案"""
         return {
             "type": "reading",
@@ -977,7 +976,7 @@ function downloadSVG() {{
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
-    def _fallback_animation(self, subject: str, topic: str, difficulty: str) -> Dict:
+    def _fallback_animation(self, subject: str, topic: str, difficulty: str) -> dict:
         """动画降级方案 — 生成图片"""
         from services.image_service import image_service
         result = image_service.generate_image_from_suggestion(
@@ -1001,7 +1000,7 @@ function downloadSVG() {{
     def generate_resource(
         self, resource_type: str, subject: str, topic: str,
         difficulty: str = "intermediate", user_id: int = 0
-    ) -> Dict:
+    ) -> dict:
         """单类型资源生成便捷方法（供 stream.py 使用）"""
         try:
             resource = self._generate_single_resource(

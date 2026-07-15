@@ -3,9 +3,11 @@
 处理用户登录、注册、密码加密等功能
 """
 
-import bcrypt
 import hashlib
 import sqlite3
+
+import bcrypt
+
 from data.config import get_accounts_db_config
 
 
@@ -118,7 +120,7 @@ class AuthService:
         except Exception as e:
             if conn:
                 conn.rollback()
-            return {'success': False, 'message': f'注册失败：{str(e)}'}
+            return {'success': False, 'message': f'注册失败：{e!s}'}
         finally:
             if conn:
                 conn.close()
@@ -175,7 +177,7 @@ class AuthService:
             }
 
         except Exception as e:
-            return {'success': False, 'message': f'登录失败：{str(e)}'}
+            return {'success': False, 'message': f'登录失败：{e!s}'}
         finally:
             if conn:
                 conn.close()
@@ -250,7 +252,7 @@ class AuthService:
         except Exception as e:
             if conn:
                 conn.rollback()
-            return {'success': False, 'message': f'修改失败：{str(e)}'}
+            return {'success': False, 'message': f'修改失败：{e!s}'}
         finally:
             if conn:
                 conn.close()
@@ -304,7 +306,7 @@ class AuthService:
         except Exception as e:
             if conn:
                 conn.rollback()
-            return {'success': False, 'message': f'删除失败：{str(e)}'}
+            return {'success': False, 'message': f'删除失败：{e!s}'}
         finally:
             if conn:
                 conn.close()

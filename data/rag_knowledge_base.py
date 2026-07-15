@@ -1,26 +1,29 @@
-from core.logger import info, error, warning
+from core.logger import error, info, warning
+
 """RAG 知识库管理模块（JSON 格式存储）"""
 
-import sqlite3
 import json
-import time
-import threading
-from collections import OrderedDict
-from .config import get_rag_db_path
-from datetime import datetime
 import os
+import sqlite3
+import threading
+import time
+from collections import OrderedDict
+from datetime import datetime
+
 import numpy as np
+
+from .config import get_rag_db_path
 
 
 class LRUCache:
     """LRU缓存 - 基于OrderedDict实现，自动淘汰最久未使用的条目"""
-    
+
     def __init__(self, max_size: int = 200, ttl: int = 600):
         self._cache = OrderedDict()
         self._max_size = max_size
         self._ttl = ttl
         self._lock = threading.Lock()
-    
+
     def get(self, key: str):
         """获取缓存值，过期或不存在返回None"""
         with self._lock:
@@ -32,7 +35,7 @@ class LRUCache:
                 else:
                     del self._cache[key]
             return None
-    
+
     def set(self, key: str, value):
         """设置缓存值"""
         with self._lock:
@@ -41,7 +44,7 @@ class LRUCache:
             elif len(self._cache) >= self._max_size:
                 self._cache.popitem(last=False)
             self._cache[key] = (value, time.time())
-    
+
     def clear(self, prefix: str = None):
         """清空缓存，可选按前缀过滤"""
         with self._lock:
@@ -51,7 +54,7 @@ class LRUCache:
                     del self._cache[key]
             else:
                 self._cache.clear()
-    
+
     def __len__(self):
         return len(self._cache)
 
@@ -202,7 +205,7 @@ class VectorIndexManager:
                 return False
             try:
                 self._index = self._faiss.read_index(_INDEX_PATH)
-                with open(_IDS_PATH, 'r', encoding='utf-8') as f:
+                with open(_IDS_PATH, encoding='utf-8') as f:
                     self._doc_ids = json.load(f)
                 self._dimension = self._index.d
                 self._dirty = False
@@ -262,7 +265,7 @@ class RAGKnowledgeBase:
         self.cursor = None
         self.db_path = get_rag_db_path()
         self._init_fts()
-    
+
     def _init_fts(self):
         """初始化 FTS5 虚拟表（如果表已存在）"""
         try:
@@ -303,8 +306,8 @@ class RAGKnowledgeBase:
             conn.commit()
             conn.close()
         except Exception as e:
-            warning(f"FTS5 初始化失败：{str(e)}")
-    
+            warning(f"FTS5 初始化失败：{e!s}")
+
     def _get_connection(self):
         """获取 SQLite 连接"""
         conn = sqlite3.connect(self.db_path, timeout=10)
@@ -312,7 +315,7 @@ class RAGKnowledgeBase:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
-    
+
     def connect(self):
         """连接数据库"""
         try:
@@ -322,14 +325,14 @@ class RAGKnowledgeBase:
         except Exception as e:
             self.conn = None
             self.cursor = None
-            raise ConnectionError(f"RAG 知识库连接失败：{str(e)}")
+            raise ConnectionError(f"RAG 知识库连接失败：{e!s}")
 
     def _ensure_connected(self):
         """确保数据库已连接，返回 True/False"""
         if self.cursor is not None and self.conn is not None:
             return True
         return self.connect()
-    
+
     def close(self):
         """关闭连接"""
         try:
@@ -340,12 +343,12 @@ class RAGKnowledgeBase:
                 self.conn.close()
                 self.conn = None
         except Exception as e:
-            warning(f"关闭连接失败：{str(e)}")
-    
+            warning(f"关闭连接失败：{e!s}")
+
     # ========== 知识文档相关操作 ==========
-    
-    def add_document(self, title, subject, file_path, file_type, content_text, 
-                     knowledge_points=None, ai_summary=None, uploaded_by=None, 
+
+    def add_document(self, title, subject, file_path, file_type, content_text,
+                     knowledge_points=None, ai_summary=None, uploaded_by=None,
                      file_size=0, embedding=None):
         """
         添加知识文档到库中（JSON 格式存储）
@@ -364,7 +367,7 @@ class RAGKnowledgeBase:
         """
         try:
             self.connect()
-            
+
             # 构建完整的 JSON 数据结构
             document_data = {
                 "metadata": {
@@ -388,7 +391,7 @@ class RAGKnowledgeBase:
                     "tags": []
                 }
             }
-            
+
             # 如果有向量，添加到 JSON 数据中
             if embedding:
                 document_data["embedding"] = embedding
@@ -423,11 +426,11 @@ class RAGKnowledgeBase:
             self.cursor.execute(sql, params)
             self.conn.commit()
             doc_id = self.cursor.lastrowid
-            
+
             # 如果有关键词，添加到关键词表
             if knowledge_points:
                 self._add_knowledge_points(doc_id, knowledge_points)
-            
+
             # 添加文档后清空搜索缓存
             _clear_search_cache()
 
@@ -441,11 +444,11 @@ class RAGKnowledgeBase:
 
             return doc_id
         except Exception as e:
-            error(f"添加文档失败：{str(e)}")
+            error(f"添加文档失败：{e!s}")
             return None
         finally:
             self.close()
-    
+
     def _add_knowledge_points(self, doc_id, knowledge_points_str):
         """添加知识点到关联表"""
         try:
@@ -454,23 +457,23 @@ class RAGKnowledgeBase:
                 points = knowledge_points_str
             else:
                 points = [p.strip() for p in str(knowledge_points_str).split(',') if p.strip()]
-            
+
             for point in points:
                 sql = "INSERT OR IGNORE INTO knowledge_points (doc_id, point_name) VALUES (?, ?)"
                 self.cursor.execute(sql, (doc_id, point))
-            
+
             self.conn.commit()
         except Exception as e:
-            error(f"添加知识点失败：{str(e)}")
-    
+            error(f"添加知识点失败：{e!s}")
+
     def _split_paragraphs(self, text, max_length=500):
         """将文本分割为段落"""
         if not text:
             return []
-        
+
         # 按换行符分割
         paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
-        
+
         # 如果段落太长，进一步分割
         result = []
         for para in paragraphs:
@@ -489,9 +492,9 @@ class RAGKnowledgeBase:
                         current = sentence + "。"
                 if current:
                     result.append(current.strip())
-        
+
         return result[:100]  # 最多保留 100 个段落
-    
+
     def get_documents_by_subject(self, subject, limit=50):
         """获取指定学科的所有文档（解析 JSON 数据）"""
         try:
@@ -502,7 +505,7 @@ class RAGKnowledgeBase:
                     LIMIT ?"""
             self.cursor.execute(sql, (subject, limit))
             results = self.cursor.fetchall()
-            
+
             # 解析 JSON 字段
             for record in results:
                 if record.get('document_data'):
@@ -512,14 +515,14 @@ class RAGKnowledgeBase:
                     record['content_text'] = doc_data.get('content', {}).get('raw_text', '')
                     record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
                     record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
-            
+
             return results
         except Exception as e:
-            error(f"获取学科文档失败：{str(e)}")
+            error(f"获取学科文档失败：{e!s}")
             return []
         finally:
             self.close()
-    
+
     def get_all_documents(self, limit=100, offset=0):
         """获取所有文档（按上传时间倒序，最新在前）"""
         try:
@@ -529,14 +532,14 @@ class RAGKnowledgeBase:
                     LIMIT ? OFFSET ?"""
             self.cursor.execute(sql, (limit, offset))
             results = self.cursor.fetchall()
-            
+
             # 解析 JSON 字段
             for record in results:
                 if record.get('document_data'):
                     record['document_data'] = json.loads(record['document_data'])
                     # 兼容旧代码
                     doc_data = record['document_data']
-                    
+
                     # ✅ 兼容两种格式：
                     # 1. 旧格式：doc_data['content']['raw_text']（嵌套对象）
                     # 2. 新格式：doc_data['content']（直接文本字符串，如 CSV 导入）
@@ -547,17 +550,17 @@ class RAGKnowledgeBase:
                     else:
                         # 新格式：直接文本字符串
                         record['content_text'] = content
-                    
+
                     record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
                     record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
-            
+
             return results
         except Exception as e:
-            error(f"获取所有文档失败：{str(e)}")
+            error(f"获取所有文档失败：{e!s}")
             return []
         finally:
             self.close()
-    
+
     def get_documents_by_user(self, user_id, limit=100, offset=0):
         """获取指定用户上传的文档"""
         try:
@@ -568,7 +571,7 @@ class RAGKnowledgeBase:
                     LIMIT ? OFFSET ?"""
             self.cursor.execute(sql, (int(user_id), limit, offset))
             results = self.cursor.fetchall()
-            
+
             for record in results:
                 if record.get('document_data'):
                     record['document_data'] = json.loads(record['document_data'])
@@ -580,14 +583,14 @@ class RAGKnowledgeBase:
                         record['content_text'] = content
                     record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
                     record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
-            
+
             return results
         except Exception as e:
-            error(f"获取用户文档失败：{str(e)}")
+            error(f"获取用户文档失败：{e!s}")
             return []
         finally:
             self.close()
-    
+
     def search_documents_by_vector(self, query_embedding, limit=5):
         """
         基于向量相似度检索文档（优先 FAISS，回退暴力搜索）
@@ -746,11 +749,11 @@ class RAGKnowledgeBase:
             return results
 
         except Exception as e:
-            error(f"暴力向量检索失败: {str(e)}")
+            error(f"暴力向量检索失败: {e!s}")
             return []
         finally:
             self.close()
-    
+
     def search_documents_by_fulltext(self, keywords, subject=None, limit=10):
         """
         KNN 关键词检索：FULLTEXT 标题匹配 + JSON LIKE 补充
@@ -798,7 +801,7 @@ class RAGKnowledgeBase:
             fts_query = " ".join(f'"{kw}"' for kw in keywords.split() if len(kw) > 1)
             if not fts_query:
                 return []
-            
+
             if subject:
                 sql = """SELECT kd.id, kd.title, kd.subject, kd.document_data, rank
                          FROM knowledge_documents_fts fts
@@ -933,15 +936,15 @@ class RAGKnowledgeBase:
         """简单的 LIKE 搜索（回退方案）"""
         try:
             keyword_list = [f"%{kw}%" for kw in keywords.split() if len(kw) > 1]
-            
+
             conditions = []
             params = []
             for kw in keyword_list[:3]:  # 最多 3 个关键词
                 conditions.append("(title LIKE ? OR json_extract(document_data, '$.content.raw_text') LIKE ?)")
                 params.extend([kw, kw])
-            
+
             where_sql = " AND ".join(conditions)
-            
+
             if subject:
                 sql = f"""SELECT id, title, subject, document_data, 0.5 as relevance
                          FROM knowledge_documents
@@ -954,26 +957,26 @@ class RAGKnowledgeBase:
                          WHERE {where_sql}
                          LIMIT ?"""
                 params = params + [limit]
-            
+
             self.cursor.execute(sql, params)
             results = self.cursor.fetchall()
-            
+
             # 解析 JSON 数据并提取所需字段
             for record in results:
                 doc_data = record.get('document_data')
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
-                
+
                 record['content_text'] = doc_data.get('content', {}).get('raw_text', '')
                 record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
                 record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
-            
+
             return results
-            
+
         except Exception as e:
-            error(f"简单搜索失败：{str(e)}")
+            error(f"简单搜索失败：{e!s}")
             return []
-    
+
     def get_document_by_id(self, doc_id):
         """根据 ID 获取文档详情（解析 JSON 数据）"""
         try:
@@ -981,7 +984,7 @@ class RAGKnowledgeBase:
             sql = "SELECT * FROM knowledge_documents WHERE id = ?"
             self.cursor.execute(sql, (doc_id,))
             record = self.cursor.fetchone()
-            
+
             # 解析 JSON 字段
             if record and record.get('document_data'):
                 record['document_data'] = json.loads(record['document_data'])
@@ -990,14 +993,14 @@ class RAGKnowledgeBase:
                 record['content_text'] = doc_data.get('content', {}).get('raw_text', '')
                 record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
                 record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
-            
+
             return record
         except Exception as e:
-            error(f"获取文档详情失败：{str(e)}")
+            error(f"获取文档详情失败：{e!s}")
             return None
         finally:
             self.close()
-    
+
     def update_document_usage(self, doc_id):
         """更新文档使用次数"""
         try:
@@ -1007,11 +1010,11 @@ class RAGKnowledgeBase:
             self.conn.commit()
             return True
         except Exception as e:
-            error(f"更新使用次数失败：{str(e)}")
+            error(f"更新使用次数失败：{e!s}")
             return False
         finally:
             self.close()
-    
+
     def delete_document(self, doc_id):
         """删除文档"""
         try:
@@ -1036,13 +1039,13 @@ class RAGKnowledgeBase:
             _clear_search_cache()
             return True
         except Exception as e:
-            error(f"删除文档失败：{str(e)}")
+            error(f"删除文档失败：{e!s}")
             return False
         finally:
             self.close()
-    
+
     # ========== 知识点相关操作 ==========
-    
+
     def get_knowledge_points_by_doc(self, doc_id):
         """获取文档的所有知识点"""
         try:
@@ -1051,11 +1054,11 @@ class RAGKnowledgeBase:
             self.cursor.execute(sql, (doc_id,))
             return self.cursor.fetchall()
         except Exception as e:
-            error(f"获取知识点失败：{str(e)}")
+            error(f"获取知识点失败：{e!s}")
             return []
         finally:
             self.close()
-    
+
     def search_by_knowledge_point(self, point_name, limit=20):
         """根据知识点搜索相关文档"""
         try:
@@ -1069,40 +1072,40 @@ class RAGKnowledgeBase:
             self.cursor.execute(sql, (f"%{point_name}%", limit))
             return self.cursor.fetchall()
         except Exception as e:
-            error(f"按知识点搜索失败：{str(e)}")
+            error(f"按知识点搜索失败：{e!s}")
             return []
         finally:
             self.close()
-    
+
     # ========== 统计功能 ==========
-    
+
     def get_statistics(self):
         """获取知识库统计信息"""
         try:
             self.connect()
-            
+
             # 总文档数
             sql_total = "SELECT COUNT(*) as total_docs FROM knowledge_documents"
             self.cursor.execute(sql_total)
             total_docs = self.cursor.fetchone()['total_docs']
-            
+
             # 各学科文档数
             sql_subject = """SELECT subject, COUNT(*) as count 
                             FROM knowledge_documents 
                             GROUP BY subject"""
             self.cursor.execute(sql_subject)
             subject_stats = self.cursor.fetchall()
-            
+
             # 总知识点数
             sql_points = "SELECT COUNT(DISTINCT point_name) as total_points FROM knowledge_points"
             self.cursor.execute(sql_points)
             total_points = self.cursor.fetchone()['total_points']
-            
+
             # 平均使用次数
             sql_usage = "SELECT AVG(usage_count) as avg_usage FROM knowledge_documents"
             self.cursor.execute(sql_usage)
             avg_usage = self.cursor.fetchone()['avg_usage'] or 0
-            
+
             return {
                 'total_documents': total_docs,
                 'subject_distribution': subject_stats,
@@ -1110,7 +1113,7 @@ class RAGKnowledgeBase:
                 'average_usage': round(avg_usage, 2)
             }
         except Exception as e:
-            error(f"获取统计信息失败：{str(e)}")
+            error(f"获取统计信息失败：{e!s}")
             return {}
         finally:
             self.close()

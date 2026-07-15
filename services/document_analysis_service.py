@@ -4,11 +4,10 @@
 """
 
 import io
-import json
-from typing import Dict, List, Optional
 from datetime import datetime
-from core.logger import info, error
+
 from core.json_utils import safe_parse_json
+from core.logger import error, info
 
 
 class DocumentAnalysisService:
@@ -27,7 +26,7 @@ class DocumentAnalysisService:
     def __init__(self):
         info("文档资料分析服务初始化完成")
 
-    def analyze_documents(self, files: List[Dict], user_context: Dict = None) -> Dict:
+    def analyze_documents(self, files: list[dict], user_context: dict = None) -> dict:
         """
         分析多个文档资料
 
@@ -48,7 +47,7 @@ class DocumentAnalysisService:
                 parsed_files.append({
                     "filename": f["filename"],
                     "status": "error",
-                    "error": f"文件大小超过限制(最大10MB)",
+                    "error": "文件大小超过限制(最大10MB)",
                     "text": ""
                 })
                 continue
@@ -108,7 +107,7 @@ class DocumentAnalysisService:
         info(f"文档分析完成, 成功: {len(successful)}/{len(files)}")
         return result
 
-    def _parse_file(self, filename: str, content: bytes) -> Optional[str]:
+    def _parse_file(self, filename: str, content: bytes) -> str | None:
         """解析单个文件为文本"""
         ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
 
@@ -135,8 +134,8 @@ class DocumentAnalysisService:
                 return f"[不支持的文件格式: .{ext}]"
 
         except Exception as e:
-            error(f"解析文件 {filename} 失败: {str(e)}")
-            return f"[解析失败: {str(e)}]"
+            error(f"解析文件 {filename} 失败: {e!s}")
+            return f"[解析失败: {e!s}]"
 
     def _parse_docx(self, content: bytes) -> str:
         """解析 Word 文档"""
@@ -148,7 +147,7 @@ class DocumentAnalysisService:
         except ImportError:
             return "[需要安装 python-docx: pip install python-docx]"
         except Exception as e:
-            return f"[Word解析失败: {str(e)}]"
+            return f"[Word解析失败: {e!s}]"
 
     def _parse_pdf(self, content: bytes) -> str:
         """解析 PDF 文档"""
@@ -165,7 +164,7 @@ class DocumentAnalysisService:
         except ImportError:
             return "[需要安装 PyPDF2: pip install PyPDF2]"
         except Exception as e:
-            return f"[PDF解析失败: {str(e)}]"
+            return f"[PDF解析失败: {e!s}]"
 
     def _parse_pptx(self, content: bytes) -> str:
         """解析 PPT 文档"""
@@ -181,7 +180,7 @@ class DocumentAnalysisService:
         except ImportError:
             return "[需要安装 python-pptx: pip install python-pptx]"
         except Exception as e:
-            return f"[PPT解析失败: {str(e)}]"
+            return f"[PPT解析失败: {e!s}]"
 
     def _parse_excel(self, content: bytes, ext: str) -> str:
         """解析 Excel/CSV 文件"""
@@ -203,9 +202,9 @@ class DocumentAnalysisService:
         except ImportError:
             return "[需要安装 pandas: pip install pandas openpyxl xlrd]"
         except Exception as e:
-            return f"[Excel解析失败: {str(e)}]"
+            return f"[Excel解析失败: {e!s}]"
 
-    def _combine_texts(self, files: List[Dict], max_chars: int = 12000) -> str:
+    def _combine_texts(self, files: list[dict], max_chars: int = 12000) -> str:
         """合并多个文件的文本内容"""
         parts = []
         total = 0
@@ -227,8 +226,8 @@ class DocumentAnalysisService:
 
         return "\n\n".join(parts)
 
-    def _ai_analyze(self, text: str, files_info: List[Dict],
-                    subject: str, topic: str, difficulty: str) -> Dict:
+    def _ai_analyze(self, text: str, files_info: list[dict],
+                    subject: str, topic: str, difficulty: str) -> dict:
         """调用AI分析文档内容"""
 
         file_list = ", ".join([f["filename"] for f in files_info if f["status"] != "error"])
@@ -295,10 +294,10 @@ class DocumentAnalysisService:
             return analysis
 
         except Exception as e:
-            error(f"AI文档分析失败: {str(e)}")
+            error(f"AI文档分析失败: {e!s}")
             return self._fallback_analysis(files_info)
 
-    def _fallback_analysis(self, files_info: List[Dict]) -> Dict:
+    def _fallback_analysis(self, files_info: list[dict]) -> dict:
         """降级分析方案"""
         successful = [f for f in files_info if f["status"] != "error"]
         total_chars = sum(f.get("char_count", 0) for f in successful)

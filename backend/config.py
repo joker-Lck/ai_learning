@@ -2,9 +2,7 @@
 应用配置管理 — 基于 pydantic-settings 的环境隔离配置
 支持 .env 文件 + 环境变量覆盖
 """
-import os
 from functools import lru_cache
-from typing import List
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -55,7 +53,7 @@ class Settings(BaseSettings):
     rag_similarity_threshold: float = 0.8
 
     @property
-    def cors_origins(self) -> List[str]:
+    def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
 
     @property
@@ -74,7 +72,7 @@ class Settings(BaseSettings):
     }
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """获取配置单例（缓存）"""
     return Settings()

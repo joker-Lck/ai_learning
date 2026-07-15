@@ -1,11 +1,10 @@
 """
 Pydantic 数据模型 - 请求/响应结构定义
 """
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-from datetime import datetime
 from enum import Enum
+from typing import Any
 
+from pydantic import BaseModel, Field
 
 # ==================== 通用模型 ====================
 
@@ -20,8 +19,8 @@ class BaseResponse(BaseModel):
     """通用响应模型"""
     success: bool = True
     message: str = ""
-    error: Optional[str] = None
-    data: Optional[Any] = None
+    error: str | None = None
+    data: Any | None = None
 
 
 class PaginatedResponse(BaseResponse):
@@ -43,7 +42,7 @@ class RegisterRequest(BaseModel):
     """注册请求"""
     username: str = Field(..., min_length=3, max_length=20, description="用户名")
     password: str = Field(..., min_length=6, description="密码")
-    email: Optional[str] = Field(None, description="邮箱")
+    email: str | None = Field(None, description="邮箱")
 
 
 class UserInfo(BaseModel):
@@ -51,13 +50,13 @@ class UserInfo(BaseModel):
     id: int
     username: str
     role: str
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class AuthResponse(BaseResponse):
     """认证响应"""
-    user: Optional[UserInfo] = None
-    token: Optional[str] = None
+    user: UserInfo | None = None
+    token: str | None = None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -81,8 +80,8 @@ class QAHistoryItem(BaseModel):
     scenario: str = ""
     time: str = ""
     source: str = ""
-    tokens_used: Optional[int] = None
-    response_time_ms: Optional[float] = None
+    tokens_used: int | None = None
+    response_time_ms: float | None = None
     rag_docs_count: int = 0
 
 
@@ -90,9 +89,9 @@ class QAResponse(BaseResponse):
     """问答响应"""
     answer: str = ""
     source_info: str = ""
-    tokens_used: Optional[int] = None
-    response_time_ms: Optional[float] = None
-    rag_docs_found: List[Dict[str, Any]] = []
+    tokens_used: int | None = None
+    response_time_ms: float | None = None
+    rag_docs_found: list[dict[str, Any]] = []
 
 
 # ==================== 知识库相关 ====================
@@ -100,7 +99,7 @@ class QAResponse(BaseResponse):
 class KnowledgeSearchRequest(BaseModel):
     """知识库搜索请求"""
     query: str = Field(..., min_length=1, description="搜索关键词")
-    subject: Optional[str] = Field(None, description="限定学科")
+    subject: str | None = Field(None, description="限定学科")
     limit: int = Field(10, ge=1, le=50, description="返回数量")
 
 
@@ -120,7 +119,7 @@ class KnowledgeStatsResponse(BaseResponse):
     total_documents: int = 0
     total_knowledge_points: int = 0
     average_usage: float = 0.0
-    subject_distribution: List[Dict[str, Any]] = Field(default_factory=list)
+    subject_distribution: list[dict[str, Any]] = Field(default_factory=list)
 
 
 # ==================== 学情分析相关 ====================
@@ -128,19 +127,19 @@ class KnowledgeStatsResponse(BaseResponse):
 class AnalysisRequest(BaseModel):
     """学情分析请求"""
     analysis_mode: str = Field("全班评估", description="分析模式: 单个学生/全班评估")
-    student_name: Optional[str] = Field(None, description="学生姓名 (单个学生模式)")
-    class_name: Optional[str] = Field(None, description="班级名称 (全班评估模式)")
+    student_name: str | None = Field(None, description="学生姓名 (单个学生模式)")
+    class_name: str | None = Field(None, description="班级名称 (全班评估模式)")
     total_students: int = Field(45, description="班级总人数")
 
 
 class AnalysisReportResponse(BaseResponse):
     """学情分析报告响应"""
     report: str = ""
-    charts: Dict[str, Any] = Field(default_factory=dict)
+    charts: dict[str, Any] = Field(default_factory=dict)
 
 
 class DataManageRequest(BaseModel):
     """数据管理请求"""
     action: str = Field(..., description="操作类型: backup/restore/export/clear/search")
-    keyword: Optional[str] = Field(None, description="搜索关键词 (search 操作)")
-    format: Optional[str] = Field(None, description="导出格式: json/txt (export 操作)")
+    keyword: str | None = Field(None, description="搜索关键词 (search 操作)")
+    format: str | None = Field(None, description="导出格式: json/txt (export 操作)")

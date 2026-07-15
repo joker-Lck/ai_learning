@@ -1,7 +1,6 @@
 """单元测试：数据库操作"""
-import pytest
-import sqlite3
 import os
+import sqlite3
 
 
 class TestDatabaseInit:
@@ -18,9 +17,15 @@ class TestDatabaseInit:
     def test_all_db_paths_defined(self):
         """所有数据库路径已定义"""
         from data.config import (
-            get_auth_db_path, get_profile_db_path, get_resources_db_path,
-            get_paths_db_path, get_tutor_db_path, get_assessments_db_path,
-            get_agents_db_path, get_rag_db_path, get_memory_db_path,
+            get_agents_db_path,
+            get_assessments_db_path,
+            get_auth_db_path,
+            get_memory_db_path,
+            get_paths_db_path,
+            get_profile_db_path,
+            get_rag_db_path,
+            get_resources_db_path,
+            get_tutor_db_path,
         )
         paths = [
             get_auth_db_path(), get_profile_db_path(), get_resources_db_path(),
@@ -49,7 +54,7 @@ class TestDAO:
         assert ActivityDAO is not None
 
     def test_dao_singletons(self):
-        from data.dao import get_resource_dao, get_activity_dao
+        from data.dao import get_resource_dao
         dao1 = get_resource_dao()
         dao2 = get_resource_dao()
         assert dao1 is dao2  # 单例
@@ -61,7 +66,6 @@ class TestDAO:
     def test_db_context_manager(self, tmp_db):
         """Database 上下文管理器"""
         from data.db_operations import Database
-        from data.config import get_auth_db_config
 
         # 使用临时数据库
         db = Database(config_func=lambda: {"database": tmp_db})

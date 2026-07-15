@@ -3,8 +3,8 @@
 import json
 import sqlite3
 import uuid
-from typing import Dict, List, Optional
-from core.logger import info, error, warning
+
+from core.logger import error, info, warning
 
 
 class SelfLearningService:
@@ -44,7 +44,7 @@ class SelfLearningService:
         return str(uuid.uuid4())[:12]
 
     def collect_feedback(self, user_id: int, interaction_id: str,
-                         feedback: Dict) -> bool:
+                         feedback: dict) -> bool:
         """
         收集用户反馈
 
@@ -89,7 +89,7 @@ class SelfLearningService:
             error(f"[SelfLearning] 收集反馈失败: {e}")
             return False
 
-    def process_feedback_batch(self, batch_size: int = 50) -> Dict:
+    def process_feedback_batch(self, batch_size: int = 50) -> dict:
         """
         批量处理反馈：筛选高置信度经验
 
@@ -161,21 +161,19 @@ class SelfLearningService:
             error(f"[SelfLearning] 批量处理失败: {e}")
             return stats
 
-    def _filter_high_quality_experiences(self, feedbacks: List[Dict]) -> List[Dict]:
+    def _filter_high_quality_experiences(self, feedbacks: list[dict]) -> list[dict]:
         """筛选：评分 >= 4 且 helpful=True 的交互"""
         high_quality = []
         for fb in feedbacks:
             rating = fb.get("rating", 0)
             helpful = fb.get("helpful", 0)
 
-            if rating >= self.RATING_THRESHOLD and helpful:
-                high_quality.append(fb)
-            elif rating >= self.RATING_THRESHOLD and fb.get("original_query"):
+            if (rating >= self.RATING_THRESHOLD and helpful) or (rating >= self.RATING_THRESHOLD and fb.get("original_query")):
                 high_quality.append(fb)
 
         return high_quality
 
-    def _augment_data(self, experience: Dict) -> List[Dict]:
+    def _augment_data(self, experience: dict) -> list[dict]:
         """数据增强：基于高质量 QA 对生成变体"""
         augmented = []
         query = experience.get("original_query", "")
@@ -207,7 +205,7 @@ class SelfLearningService:
 
         return augmented[:self.AUGMENT_BATCH_SIZE]
 
-    def _generate_variants(self, query: str, answer: str) -> List[Dict]:
+    def _generate_variants(self, query: str, answer: str) -> list[dict]:
         """生成 QA 变体"""
         prompt = f"""基于以下问答对，生成2个不同角度的变体，用于训练数据增强。
 
@@ -288,7 +286,7 @@ class SelfLearningService:
 
         return applied_count
 
-    def get_learning_stats(self, user_id: int = None) -> Dict:
+    def get_learning_stats(self, user_id: int = None) -> dict:
         """获取自学习统计"""
         try:
             from data.config import get_memory_db_path
@@ -336,7 +334,7 @@ class SelfLearningService:
             error(f"[SelfLearning] 获取统计失败: {e}")
             return {}
 
-    def trigger_learning_cycle(self) -> Dict:
+    def trigger_learning_cycle(self) -> dict:
         """手动触发一次完整的学习循环"""
         info("[SelfLearning] 手动触发学习循环")
         result = self.process_feedback_batch()

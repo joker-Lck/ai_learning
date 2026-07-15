@@ -4,10 +4,10 @@
 """
 
 import json
-from typing import Dict, List, Optional
 from datetime import datetime, timedelta
-from core.logger import info, error
+
 from core.json_utils import safe_parse_json
+from core.logger import error, info
 from services.spark_client import spark_client
 
 
@@ -17,7 +17,7 @@ class AssessmentAgent:
     def __init__(self):
         info("学习效果评估智能体初始化完成")
 
-    def assess(self, user_id: int, input_data: Dict) -> Dict:
+    def assess(self, user_id: int, input_data: dict) -> dict:
         """
         评估学习效果
 
@@ -70,10 +70,10 @@ class AssessmentAgent:
             return result
 
         except Exception as e:
-            error(f"学习效果评估失败: {str(e)}")
+            error(f"学习效果评估失败: {e!s}")
             return {
                 "success": False,
-                "message": f"评估失败: {str(e)}"
+                "message": f"评估失败: {e!s}"
             }
 
     def _calculate_period(self, assessment_type: str):
@@ -92,7 +92,7 @@ class AssessmentAgent:
             end_date.strftime("%Y-%m-%d")
         )
 
-    def _collect_student_data(self, user_id: int) -> Dict:
+    def _collect_student_data(self, user_id: int) -> dict:
         """收集所有学生数据"""
         try:
             from data.db_operations import profile_db
@@ -150,12 +150,12 @@ class AssessmentAgent:
             return result
 
         except Exception as e:
-            error(f"收集学生数据失败: {str(e)}")
+            error(f"收集学生数据失败: {e!s}")
             return {"grades": [], "courses": [], "error_notes": [], "study_plans": [], "profile": None}
 
-    def _generate_assessment_report(self, user_id: int, student_data: Dict,
+    def _generate_assessment_report(self, user_id: int, student_data: dict,
                                    assessment_type: str,
-                                   period_start: str, period_end: str) -> Dict:
+                                   period_start: str, period_end: str) -> dict:
         """通过AI生成评估报告"""
 
         # 构建数据摘要
@@ -326,10 +326,10 @@ class AssessmentAgent:
             return assessment_data
 
         except Exception as e:
-            error(f"生成评估报告失败: {str(e)}，使用降级方案")
+            error(f"生成评估报告失败: {e!s}，使用降级方案")
             return self._fallback_assessment(student_data, period_start, period_end)
 
-    def _fallback_assessment(self, student_data: Dict, period_start: str, period_end: str) -> Dict:
+    def _fallback_assessment(self, student_data: dict, period_start: str, period_end: str) -> dict:
         """降级方案:基于实际学生数据生成多维度评估"""
 
         grades = student_data.get("grades", [])
@@ -355,7 +355,7 @@ class AssessmentAgent:
         knowledge_score = round(avg_score, 1) if avg_score > 0 else 50.0
         attitude_score = min(100, round(course_count * 15 + len(study_plans) * 10))
         weakness_score = round(mastery_rate * 100) if error_count > 0 else 50.0
-        progress_score = round((knowledge_score * 0.5 + attitude_score * 0.3 + weakness_score * 0.2))
+        progress_score = round(knowledge_score * 0.5 + attitude_score * 0.3 + weakness_score * 0.2)
 
         overall_score = round(progress_score)
         overall_score = max(0, min(100, overall_score))
@@ -505,8 +505,8 @@ class AssessmentAgent:
             return "每一步都是进步！制定一个学习计划，你会发现自己的潜力。"
         else:
             return "学习旅程从第一步开始！今天就开始你的学习吧。"
-    
-    def _save_assessment(self, user_id: int, assessment_data: Dict,
+
+    def _save_assessment(self, user_id: int, assessment_data: dict,
                         assessment_type: str, period_start: str,
                         period_end: str) -> int:
         """保存评估结果到数据库"""
@@ -534,10 +534,10 @@ class AssessmentAgent:
                 return assessment_id
 
         except Exception as e:
-            error(f"保存评估结果失败: {str(e)}")
+            error(f"保存评估结果失败: {e!s}")
             raise
-    
-    def _get_user_profile(self, user_id: int) -> Optional[Dict]:
+
+    def _get_user_profile(self, user_id: int) -> dict | None:
         """获取用户画像"""
         try:
             from data.db_operations import profile_db
@@ -553,5 +553,5 @@ class AssessmentAgent:
                 return None
 
         except Exception as e:
-            error(f"获取用户画像失败: {str(e)}")
+            error(f"获取用户画像失败: {e!s}")
             return None

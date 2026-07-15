@@ -4,11 +4,19 @@
 
 ### 新增
 - 学习能力雷达图（6维度评估）
-  - 首页工作台右侧边栏迷你版（200px）
-  - 学生画像页面顶部完整版（280px + 分数标签）
+  - 首页工作台右侧边栏迷你版（200px）+ 「AI 评定」按钮
+  - 学生画像页面顶部完整版（280px + 分数标签），自动同步 AI 评分
   - 6维度：知识基础、学习目标、记忆能力、自控力、专注度、学习深度
-  - 基于画像数据动态评估（1-5分，默认3分）
-  - 使用 Recharts RadarChart，紫色主题
+  - 两种评估模式：规则评估（默认）+ AI 评定（MiMo 综合分析）
+  - 评分缓存：localStorage 24小时有效，两页面共享
+  - 使用 Recharts RadarChart，紫色主题，domain [0,5]
+- AI 画像评定
+  - `POST /api/agent/evaluate-profile`：MiMo 综合分析画像+使用数据
+  - 评定记录持久化到 `profile_evaluations` 表
+  - 参考数据：资源数、活动数、记忆统计
+- 新增数据库表：`profile_evaluations`（ai_memory.db）
+  - 字段：user_id, 6维度分数, reasoning, resource_count, activity_count
+  - 按用户和时间索引
 - 企业级改造
   - 测试覆盖：45个单元测试（core/database/services），全部通过
   - CI/CD：GitHub Actions 流水线（Lint + Test Python 3.10/3.11/3.12 + Type Check）
@@ -20,6 +28,8 @@
 ### 改进
 - 启动脚本路径修复：所有 .bat 文件正确解析到项目根目录
 - setup.bat 更新：MIMO_API_KEY 引用，安装 pydantic-settings
+- 工作台背景：使用 DashboardBackground 线条装饰（与 Hero 页一致）
+- 雷达图统一：共享计算函数 `lib/radar.ts`，消除两页面评分不一致
 
 ## v7.4.0 (2026-07)
 

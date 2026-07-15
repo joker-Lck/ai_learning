@@ -2,37 +2,39 @@
 FastAPI 应用入口 — 企业级配置
 多模态 AI 教学智能体 - 后端 API 服务
 """
-import sys
 import os
-import uuid
+import sys
 import time
-import signal
+import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-from datetime import datetime
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
-from backend.api.auth import router as auth_router
 from backend.api.agent import router as agent_router
+from backend.api.auth import router as auth_router
 from backend.api.stream import router as stream_router
-
 from backend.exceptions import (
-    AppException, DatabaseError, AIServiceError,
-    ResourceGenerationError, ValidationError,
-    AuthenticationError, AuthorizationError, RateLimitError,
+    AppException,
 )
 from core.logger import (
-    info, error as log_error, warning,
-    set_request_context, clear_request_context,
+    clear_request_context,
+    info,
+    set_request_context,
+    warning,
+)
+from core.logger import (
+    error as log_error,
 )
 
 # ── 配置 ──

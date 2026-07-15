@@ -3,14 +3,11 @@ AI 教学图片生成器
 优先使用 MiMo API 生成真实图片，降级为 SVG
 """
 
-import os
 import re
-import hashlib
-import base64
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict
-from core.logger import info, error, warning
+
+from core.logger import error, info, warning
 
 # 导出目录
 EXPORT_DIR = Path(__file__).parent.parent / "exports"
@@ -24,7 +21,7 @@ class ImageService:
         info("图片生成服务初始化完成")
 
     def generate_image_from_suggestion(self, suggestion: str, topic: str,
-                                       subject: str, slide_index: int = 0) -> Dict:
+                                       subject: str, slide_index: int = 0) -> dict:
         """根据图片建议生成教学示意图"""
         try:
             # 1. 优先使用 SparkChain 生成真实图片
@@ -58,40 +55,40 @@ class ImageService:
             }
 
         except Exception as e:
-            error(f"图片生成失败: {str(e)}")
+            error(f"图片生成失败: {e!s}")
             return self._generate_placeholder(suggestion, topic, subject, slide_index)
 
-    def _generate_with_sparkchain(self, suggestion: str, topic: str, subject: str) -> Optional[Dict]:
+    def _generate_with_sparkchain(self, suggestion: str, topic: str, subject: str) -> dict | None:
         """使用 MiMo API 生成真实图片"""
         try:
             from services.spark_client import spark_client
-            
+
             # 构建图片生成提示词
             prompt = f"{subject}课程{topic}的教学示意图，{suggestion}，清晰美观，教育风格，专业图表"
-            
+
             # 生成图片
             b64_data = spark_client.generate_image(prompt, width=512, height=512)
-            
+
             if not b64_data:
                 return None
-            
+
             # 保存为 HTML 文件（包含 base64 图片）
             html = self._wrap_image_html(b64_data, f"{subject} - {suggestion}")
             safe_name = re.sub(r'[^\w]', '_', suggestion)[:30]
             filename = f"img_{safe_name}_{datetime.now().strftime('%H%M%S')}.html"
             filepath = EXPORT_DIR / filename
             filepath.write_text(html, encoding="utf-8")
-            
+
             url = f"/exports/{filename}"
             info(f"SparkChain 图片生成成功: {filename}")
-            
+
             return {
                 "success": True,
                 "url": url,
                 "html_path": str(filepath),
                 "type": "sparkchain_image"
             }
-            
+
         except Exception as e:
             warning(f"SparkChain 图片生成失败，降级到 SVG: {e}")
             return None
@@ -183,7 +180,7 @@ function downloadImage() {{
 </body>
 </html>'''
 
-    def _generate_svg(self, suggestion: str, topic: str, subject: str) -> Optional[str]:
+    def _generate_svg(self, suggestion: str, topic: str, subject: str) -> str | None:
         """使用 AI 生成 SVG 教学示意图"""
         from services.qa_service import qa_service
 
@@ -208,7 +205,7 @@ function downloadImage() {{
             warning(f"AI SVG 生成失败: {e}")
             return None
 
-    def _extract_svg(self, text: str) -> Optional[str]:
+    def _extract_svg(self, text: str) -> str | None:
         """从 AI 响应中提取 SVG 代码"""
         if not text:
             return None
@@ -279,7 +276,7 @@ function downloadImage() {{
 </svg>'''
 
     def _generate_placeholder(self, suggestion: str, topic: str,
-                              subject: str, slide_index: int) -> Dict:
+                              subject: str, slide_index: int) -> dict:
         """生成占位图（最终降级方案）"""
         svg = self._generate_template_svg(suggestion, topic, subject)
         html = self._wrap_svg_html(svg, f"{subject} - {suggestion}")

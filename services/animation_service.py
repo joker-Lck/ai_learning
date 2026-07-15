@@ -1,10 +1,8 @@
 """动画生成服务模块 — 使用 MiMo API 生成 SVG + CSS 教学动画"""
-from core.logger import info, error, warning
-
 import json
-import os
-import tempfile
 from datetime import datetime
+
+from core.logger import error, info, warning
 from services.spark_client import spark_client
 
 
@@ -14,7 +12,7 @@ class AnimationService:
     def __init__(self):
         """初始化 — 使用 spark_client 单例"""
         pass
-    
+
     def generate_animations_for_courseware(self, topic, subject, slides, requirements=""):
         """根据课件内容生成配套动画"""
         try:
@@ -64,22 +62,22 @@ class AnimationService:
             from core.json_utils import safe_parse_json
             animation_data = safe_parse_json(content)
             if not animation_data:
-                warning(f"动画 JSON 解析失败，返回空列表")
+                warning("动画 JSON 解析失败，返回空列表")
                 return []
-            
+
             animations = animation_data.get("animations", [])
-            
+
             if animations:
                 info(f"成功生成 {len(animations)} 个教学动画")
             else:
                 info("课件内容不需要动画辅助")
-            
+
             return animations
-            
+
         except Exception as e:
-            error(f"生成动画失败：{str(e)}")
+            error(f"生成动画失败：{e!s}")
             return []
-    
+
     def generate_html_animation(self, svg_code, title="教学动画", auto_play=False):
         """生成独立的 HTML 动画文件"""
         html_template = f"""<!DOCTYPE html>
@@ -201,27 +199,27 @@ class AnimationService:
         
         // 自动播放（如果启用）
         window.onload = function() {{
-            {f'restartAnimation();' if auto_play else ''}
+            {'restartAnimation();' if auto_play else ''}
         }};
     </script>
 </body>
 </html>"""
-        
+
         return html_template
-    
+
     def svg_to_gif(self, svg_code, output_path=None, duration=3, fps=10):
         """将 SVG 动画转换为 GIF"""
         try:
             if output_path is None:
                 output_path = f"animation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.gif"
-            
+
             html_content = self.generate_html_animation(svg_code, "Animation", auto_play=True)
             html_output = output_path.replace('.gif', '.html')
             with open(html_output, 'w', encoding='utf-8') as f:
                 f.write(html_content)
-            
+
             info(f"HTML 动画文件生成成功：{html_output}")
             return html_output
         except Exception as e:
-            error(f"动画文件生成失败：{str(e)}")
+            error(f"动画文件生成失败：{e!s}")
             return None

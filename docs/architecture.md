@@ -106,21 +106,46 @@
 
 | 位置 | 组件 | 尺寸 | 说明 |
 |------|------|------|------|
-| 首页工作台右侧边栏 | `DashboardRadarChart` | 200px | 迷你版，3x2分数网格 |
-| 学生画像页面顶部 | `ProfileRadarChart` | 280px | 完整版，带详细分数标签 |
+| 首页工作台右侧边栏 | `DashboardRadarChart` | 200px | 迷你版，3x2分数网格，带「AI 评定」按钮 |
+| 学生画像页面顶部 | `ProfileRadarChart` | 280px | 完整版，带详细分数标签，自动同步 AI 评分 |
 
-6维度评估模型（1-5分，默认3分）：
+#### 两种评估模式
 
-| 维度 | 评分依据 |
-|------|---------|
-| 知识基础 | `knowledge_base.level` 映射（入门=1, 初级=2, 中级=3, 高级=4, 精通=5） |
-| 学习目标 | `learning_goals` 数组长度 |
-| 记忆能力 | `learning_history` 长度 |
-| 自控力 | `preferred_resources` 中计划性偏好 |
-| 专注度 | `interest_areas` 参与度 |
-| 学习深度 | `interest_areas` 广度 + `weak_points` 数量 |
+| 模式 | 触发 | 数据来源 | API |
+|------|------|---------|-----|
+| 规则评估 | 自动（默认） | 画像字段规则映射 | 无（前端计算） |
+| AI 评定 | 用户点击按钮 | MiMo 综合分析画像+使用数据 | `POST /api/agent/evaluate-profile` |
 
-技术栈：Recharts RadarChart + useMemo 缓存 + 紫色主题（#a78bfa）
+#### 6 维度评分标准（1-5分）
+
+| 维度 | 规则评估 | AI 评定 |
+|------|---------|---------|
+| 知识基础 | `knowledge_base.level` 映射 | 综合知识掌握程度+学习历史深度 |
+| 学习目标 | `learning_goals` 数组长度 | 目标明确度+可执行性+匹配度 |
+| 记忆能力 | `learning_history` 长度 | 记忆条数+保持率+遗忘曲线状态 |
+| 自控力 | 偏好中含计划类关键词 | 学习频率+计划执行率+规律性 |
+| 专注度 | `cognitive_style` 关键词 | 学习时长分布+单次深度 |
+| 学习深度 | `interest_areas` 广度 | 兴趣广度+薄弱环节改善率 |
+
+#### AI 评定数据流
+
+```
+用户点击「AI 评定」→ POST /api/agent/evaluate-profile
+→ 后端收集画像+资源数+活动数+记忆统计
+→ MiMo 综合评估 → 返回 6 维度分数+理由
+→ 前端缓存 localStorage（24h）→ 保存 profile_evaluations 表
+→ 画像页面自动同步（storage 事件监听）
+```
+
+#### 评判标准
+
+- 1分：几乎无数据，初始状态
+- 2分：少量数据，表现较弱
+- 3分：中等水平（默认值）
+- 4分：良好，数据充分
+- 5分：优秀，数据丰富且稳定
+
+技术栈：共享函数 `lib/radar.ts` + Recharts RadarChart + localStorage 缓存 + `profile_evaluations` 数据库表
 
 ## 企业级特性
 

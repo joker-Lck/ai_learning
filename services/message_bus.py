@@ -9,20 +9,23 @@
 - 消息追踪与统计
 """
 
+import queue
 import threading
 import time
-import queue
-from concurrent.futures import ThreadPoolExecutor, Future, as_completed
-from typing import Dict, List, Optional, Callable, Any, Set
 from collections import defaultdict
-from core.logger import info, error, debug, warning
+from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
+
+from core.logger import debug, error, info, warning
 from services.agent_message import (
-    AgentMessage, MessageType, AgentRole, TaskPriority,
+    AgentMessage,
+    AgentRole,
     CollaborationContext,
+    MessageType,
 )
 
 # 消息处理器类型: (msg: AgentMessage) -> Optional[AgentMessage]
-MessageHandler = Callable[[AgentMessage], Optional[AgentMessage]]
+MessageHandler = Callable[[AgentMessage], AgentMessage | None]
 
 
 class MessageBus:
@@ -48,10 +51,10 @@ class MessageBus:
 
     def __init__(self, max_workers: int = 4):
         # ── 订阅表: role → [handler, ...] ──
-        self._subscribers: Dict[AgentRole, List[MessageHandler]] = defaultdict(list)
+        self._subscribers: dict[AgentRole, list[MessageHandler]] = defaultdict(list)
 
         # ── 待响应消息: correlation_id → Event+Queue ──
-        self._pending_responses: Dict[str, Dict] = {}
+        self._pending_responses: dict[str, dict] = {}
 
         # ── 消息队列（按优先级排序）──
         self._message_queue = queue.PriorityQueue()
@@ -69,10 +72,10 @@ class MessageBus:
             "total_errors": 0,
             "avg_latency_ms": 0,
         }
-        self._latency_samples: List[float] = []
+        self._latency_samples: list[float] = []
 
         # ── 协作上下文缓存 ──
-        self._contexts: Dict[str, CollaborationContext] = {}
+        self._contexts: dict[str, CollaborationContext] = {}
 
         # ── 锁 ──
         self._lock = threading.Lock()
@@ -96,7 +99,7 @@ class MessageBus:
             if handler in handlers:
                 handlers.remove(handler)
 
-    def publish(self, msg: AgentMessage) -> Optional[AgentMessage]:
+    def publish(self, msg: AgentMessage) -> AgentMessage | None:
         """
         发布消息 — 总线路由到目标智能体
 
@@ -135,7 +138,7 @@ class MessageBus:
     # 同步请求/响应
     # ═══════════════════════════════════════
 
-    def request(self, msg: AgentMessage, timeout: float = 30.0) -> Optional[AgentMessage]:
+    def request(self, msg: AgentMessage, timeout: float = 30.0) -> AgentMessage | None:
         """
         同步请求 — 发送消息并阻塞等待响应
 
@@ -149,7 +152,7 @@ class MessageBus:
         msg.msg_type = MessageType.REQUEST
         return self._request_response(msg, timeout)
 
-    def _request_response(self, msg: AgentMessage, timeout: float = 30.0) -> Optional[AgentMessage]:
+    def _request_response(self, msg: AgentMessage, timeout: float = 30.0) -> AgentMessage | None:
         """内部: 发送请求并等待响应"""
         event = threading.Event()
         response_holder = {"msg": None}
@@ -211,8 +214,8 @@ class MessageBus:
         """提交并发任务到线程池"""
         return self._executor.submit(fn, *args, **kwargs)
 
-    def parallel_requests(self, messages: List[AgentMessage],
-                          timeout: float = 30.0) -> List[Optional[AgentMessage]]:
+    def parallel_requests(self, messages: list[AgentMessage],
+                          timeout: float = 30.0) -> list[AgentMessage | None]:
         """
         并发发送多个请求，等待全部完成
 
@@ -223,7 +226,7 @@ class MessageBus:
         Returns:
             响应列表（与输入一一对应，超时为 None）
         """
-        futures: List[Future] = []
+        futures: list[Future] = []
         for msg in messages:
             msg.msg_type = MessageType.REQUEST
             future = self._executor.submit(self._request_response, msg, timeout)
@@ -253,7 +256,7 @@ class MessageBus:
         self._contexts[session_id] = ctx
         return ctx
 
-    def get_context(self, session_id: str) -> Optional[CollaborationContext]:
+    def get_context(self, session_id: str) -> CollaborationContext | None:
         """获取协作上下文"""
         return self._contexts.get(session_id)
 
@@ -265,7 +268,7 @@ class MessageBus:
     # 统计
     # ═══════════════════════════════════════
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """获取消息总线统计"""
         with self._lock:
             avg_latency = (

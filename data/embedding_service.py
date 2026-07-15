@@ -3,13 +3,13 @@
 支持文本向量化和相似度计算
 """
 
-from openai import OpenAI
-import numpy as np
-import requests
-import json
 import os
+
+import numpy as np
 from dotenv import load_dotenv
-from core.logger import info, error, warning
+from openai import OpenAI
+
+from core.logger import error, info
 
 load_dotenv(override=True)
 
@@ -66,7 +66,7 @@ class EmbeddingService:
             return vector
 
         except Exception as e:
-            error(f"获取向量失败：{str(e)}")
+            error(f"获取向量失败：{e!s}")
             return None
 
     def cosine_similarity(self, vec1, vec2):
@@ -85,7 +85,7 @@ class EmbeddingService:
             return float(similarity)
 
         except Exception as e:
-            error(f"计算相似度失败：{str(e)}")
+            error(f"计算相似度失败：{e!s}")
             return 0.0
 
 

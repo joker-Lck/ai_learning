@@ -2,12 +2,11 @@
 学生数据服务 — 课程表 / 成绩 / 错题 / 学习计划 CRUD + AI 学习规划生成
 """
 
-import json
 import base64
 import io
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
-from core.logger import info, error, warning
+import json
+
+from core.logger import error, info, warning
 from data.db_operations import profile_db
 from services.qa_service import qa_service
 
@@ -41,7 +40,7 @@ class StudentDataService:
 
     # ==================== 学期课程表 ====================
 
-    def save_course_schedule(self, user_id: int, semester: str, courses: List[Dict]) -> Dict:
+    def save_course_schedule(self, user_id: int, semester: str, courses: list[dict]) -> dict:
         """保存/更新学期课程表"""
         try:
             profile_db.connect()
@@ -61,7 +60,7 @@ class StudentDataService:
         finally:
             profile_db.close()
 
-    def get_course_schedule(self, user_id: int, semester: str) -> Dict:
+    def get_course_schedule(self, user_id: int, semester: str) -> dict:
         """获取指定学期课程表"""
         try:
             profile_db.connect()
@@ -79,7 +78,7 @@ class StudentDataService:
         finally:
             profile_db.close()
 
-    def list_semesters(self, user_id: int) -> Dict:
+    def list_semesters(self, user_id: int) -> dict:
         """列出用户所有学期"""
         try:
             profile_db.connect()
@@ -96,7 +95,7 @@ class StudentDataService:
 
     # ==================== 学习成绩 ====================
 
-    def save_grades(self, user_id: int, semester: str, grades: List[Dict]) -> Dict:
+    def save_grades(self, user_id: int, semester: str, grades: list[dict]) -> dict:
         """批量保存成绩（先删后插）"""
         try:
             profile_db.connect()
@@ -122,7 +121,7 @@ class StudentDataService:
         finally:
             profile_db.close()
 
-    def get_grades(self, user_id: int, semester: Optional[str] = None) -> Dict:
+    def get_grades(self, user_id: int, semester: str | None = None) -> dict:
         """获取成绩列表"""
         try:
             profile_db.connect()
@@ -145,7 +144,7 @@ class StudentDataService:
 
     # ==================== 错题记录 ====================
 
-    def save_error_note(self, user_id: int, note: Dict) -> Dict:
+    def save_error_note(self, user_id: int, note: dict) -> dict:
         """添加一条错题"""
         try:
             profile_db.connect()
@@ -166,7 +165,7 @@ class StudentDataService:
         finally:
             profile_db.close()
 
-    def get_error_notes(self, user_id: int, subject: Optional[str] = None, mastery: Optional[int] = None) -> Dict:
+    def get_error_notes(self, user_id: int, subject: str | None = None, mastery: int | None = None) -> dict:
         """获取错题列表"""
         try:
             profile_db.connect()
@@ -193,7 +192,7 @@ class StudentDataService:
         finally:
             profile_db.close()
 
-    def update_error_note_mastery(self, user_id: int, note_id: int, mastery: int) -> Dict:
+    def update_error_note_mastery(self, user_id: int, note_id: int, mastery: int) -> dict:
         """标记错题已掌握/未掌握"""
         try:
             profile_db.connect()
@@ -207,7 +206,7 @@ class StudentDataService:
         finally:
             profile_db.close()
 
-    def delete_error_note(self, user_id: int, note_id: int) -> Dict:
+    def delete_error_note(self, user_id: int, note_id: int) -> dict:
         """删除错题"""
         try:
             profile_db.connect()
@@ -223,7 +222,7 @@ class StudentDataService:
 
     # ==================== 学习计划 ====================
 
-    def generate_study_plan(self, user_id: int, data: Dict) -> Dict:
+    def generate_study_plan(self, user_id: int, data: dict) -> dict:
         """AI 生成学习计划"""
         try:
             semester = data.get('semester', '')
@@ -286,7 +285,7 @@ class StudentDataService:
             fallback = self._fallback_plan(data)
             return {"success": True, "data": fallback, "message": "已生成基础计划（AI 暂不可用）"}
 
-    def get_study_plans(self, user_id: int, semester: Optional[str] = None, status: str = 'active') -> Dict:
+    def get_study_plans(self, user_id: int, semester: str | None = None, status: str = 'active') -> dict:
         """获取学习计划列表"""
         try:
             profile_db.connect()
@@ -312,9 +311,9 @@ class StudentDataService:
 
     # ==================== 辅助方法 ====================
 
-    def _analyze_weak_subjects(self, grades: List[Dict], errors: List[Dict]) -> List[Dict]:
+    def _analyze_weak_subjects(self, grades: list[dict], errors: list[dict]) -> list[dict]:
         """分析薄弱学科"""
-        subject_stats: Dict[str, Dict] = {}
+        subject_stats: dict[str, dict] = {}
 
         for g in grades:
             name = g.get('course_name', '')
@@ -344,13 +343,13 @@ class StudentDataService:
         weak.sort(key=lambda x: (0 if x['priority'] == 'high' else 1, x['avg_score']))
         return weak
 
-    def _calculate_free_slots(self, courses: List[Dict]) -> Dict[str, List[str]]:
+    def _calculate_free_slots(self, courses: list[dict]) -> dict[str, list[str]]:
         """根据课程表计算每周空闲时段"""
         # 默认每天 8:00-22:00 为可学习时间
         all_hours = [f"{h:02d}:00" for h in range(8, 22)]
         days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
-        busy: Dict[str, set] = {d: set() for d in days}
+        busy: dict[str, set] = {d: set() for d in days}
         for c in courses:
             day = c.get('day', '')
             start = c.get('start_time', '')
@@ -365,7 +364,7 @@ class StudentDataService:
                 except (ValueError, IndexError):
                     pass
 
-        free: Dict[str, List[str]] = {}
+        free: dict[str, list[str]] = {}
         for d in days:
             free[d] = [h for h in all_hours if h not in busy[d]]
 
@@ -452,7 +451,7 @@ class StudentDataService:
 
         return prompt
 
-    def _parse_plan_result(self, result: str) -> Dict:
+    def _parse_plan_result(self, result: str) -> dict:
         """解析 AI 返回的学习计划"""
         import re as _re
         try:
@@ -488,7 +487,7 @@ class StudentDataService:
             "tips": []
         }
 
-    def _fallback_plan(self, data: Dict) -> Dict:
+    def _fallback_plan(self, data: dict) -> dict:
         """AI 不可用时的降级计划"""
         semester = data.get('semester', '')
         plan_type = data.get('plan_type', 'weekly')
@@ -539,7 +538,7 @@ class StudentDataImportMixin:
         from services.document_analysis_service import document_analysis_service
         return document_analysis_service._parse_file(filename, content)
 
-    def _pdf_to_image(self, content: bytes) -> Optional[str]:
+    def _pdf_to_image(self, content: bytes) -> str | None:
         """将 PDF 第一页转为 base64 图片（用于扫描版 PDF 的 OCR）"""
         try:
             import fitz  # PyMuPDF
@@ -559,7 +558,7 @@ class StudentDataImportMixin:
             error(f"PDF 转图片失败: {e}")
             return None
 
-    def import_courses_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
+    def import_courses_from_file(self, user_id: int, filename: str, content: bytes) -> dict:
         """从文件中 AI 识别课程表"""
         try:
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
@@ -611,14 +610,14 @@ class StudentDataImportMixin:
                 system_prompt = None
 
             from services.spark_client import spark_client
-            
+
             if is_image:
                 # 使用 OCR 提取文字，再用 AI 解析
                 image_b64 = _compress_image(content)
-                
+
                 # 1. 先用 OCR 提取文字
                 ocr_text = spark_client.ocr_image(image_b64)
-                
+
                 if ocr_text and len(ocr_text) > 10:
                     # 2. 用 AI 解析 OCR 提取的文字
                     info(f"OCR 提取文字成功: {len(ocr_text)} 字符")
@@ -630,7 +629,7 @@ class StudentDataImportMixin:
                         prompt, image_b64, max_tokens=4000,
                         system_prompt=system_prompt,
                     )
-                    
+
                     # 检查图片理解是否成功
                     if not response or not response.strip():
                         warning("图片理解返回空结果，可能是 API 凭证或配额问题")
@@ -661,7 +660,7 @@ class StudentDataImportMixin:
                                     prompt, image_b64, max_tokens=4000,
                                     system_prompt=system_prompt,
                                 )
-                                
+
                                 # 检查图片理解是否成功
                                 if not response or not response.strip():
                                     warning("PDF 图片理解返回空结果，可能是 API 凭证或配额问题")
@@ -677,11 +676,11 @@ class StudentDataImportMixin:
                     response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
 
             info(f"AI 识别课程表原始响应 (前300字): {response[:300]}")
-            
+
             # 检查是否为非课程表内容
             if 'NOT_SCHEDULE' in response or 'not_schedule' in response.lower():
                 return {"success": False, "message": "该文件不是课程表，请上传包含课程时间安排的文件（如课表截图、选课结果、教学日历等）"}
-            
+
             from core.json_utils import safe_parse_json
             courses = safe_parse_json(response)
             info(f"AI 识别课程表解析结果: {courses}")
@@ -738,9 +737,9 @@ class StudentDataImportMixin:
 
         except Exception as e:
             error(f"文件导入课程表失败: {e}")
-            return {"success": False, "message": f"导入失败: {str(e)}"}
+            return {"success": False, "message": f"导入失败: {e!s}"}
 
-    def import_grades_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
+    def import_grades_from_file(self, user_id: int, filename: str, content: bytes) -> dict:
         """从文件中 AI 识别成绩"""
         try:
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
@@ -767,10 +766,10 @@ class StudentDataImportMixin:
                 # 使用 OCR 提取文字，再用 AI 解析
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
-                
+
                 # 1. 先用 OCR 提取文字
                 ocr_text = spark_client.ocr_image(image_b64)
-                
+
                 if ocr_text and len(ocr_text) > 10:
                     # 2. 用 AI 解析 OCR 提取的文字
                     info(f"OCR 提取文字成功: {len(ocr_text)} 字符")
@@ -804,13 +803,13 @@ class StudentDataImportMixin:
                 else:
                     from services.spark_client import spark_client
                     response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
-            
+
             info(f"AI 识别成绩原始响应 (前300字): {response[:300]}")
-            
+
             # 检查是否为非成绩内容
             if 'NOT_GRADES' in response or 'not_grades' in response.lower():
                 return {"success": False, "message": "该文件不是成绩单，请上传包含课程成绩的文件（如成绩单截图、成绩查询页面等）"}
-            
+
             from core.json_utils import safe_parse_json
             grades = safe_parse_json(response)
 
@@ -837,9 +836,9 @@ class StudentDataImportMixin:
 
         except Exception as e:
             error(f"文件导入成绩失败: {e}")
-            return {"success": False, "message": f"导入失败: {str(e)}"}
+            return {"success": False, "message": f"导入失败: {e!s}"}
 
-    def import_errors_from_file(self, user_id: int, filename: str, content: bytes) -> Dict:
+    def import_errors_from_file(self, user_id: int, filename: str, content: bytes) -> dict:
         """从文件中 AI 识别错题"""
         try:
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
@@ -870,10 +869,10 @@ class StudentDataImportMixin:
                 # 使用 OCR 提取文字，再用 AI 解析
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
-                
+
                 # 1. 先用 OCR 提取文字
                 ocr_text = spark_client.ocr_image(image_b64)
-                
+
                 if ocr_text and len(ocr_text) > 10:
                     # 2. 用 AI 解析 OCR 提取的文字
                     info(f"OCR 提取文字成功: {len(ocr_text)} 字符")
@@ -907,13 +906,13 @@ class StudentDataImportMixin:
                 else:
                     from services.spark_client import spark_client
                     response = spark_client.simple(f"{prompt}\n\n文件内容:\n{text[:8000]}", max_tokens=4000)
-            
+
             info(f"AI 识别错题原始响应 (前300字): {response[:300]}")
-            
+
             # 检查是否为非错题内容
             if 'NOT_ERRORS' in response or 'not_errors' in response.lower():
                 return {"success": False, "message": "该文件不是错题本，请上传包含错题/订正内容的文件（如试卷订正、错题本截图等）"}
-            
+
             from core.json_utils import safe_parse_json
             errors = safe_parse_json(response)
 
@@ -942,7 +941,7 @@ class StudentDataImportMixin:
 
         except Exception as e:
             error(f"文件导入错题失败: {e}")
-            return {"success": False, "message": f"导入失败: {str(e)}"}
+            return {"success": False, "message": f"导入失败: {e!s}"}
 
 
 # 给 StudentDataService 添加导入能力

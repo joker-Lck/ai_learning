@@ -1,7 +1,6 @@
 """
 自定义异常类 - 分层异常处理
 """
-from fastapi import HTTPException, status
 
 
 class AppException(Exception):

@@ -48,6 +48,7 @@ Content-Type: application/json
 | POST | /build-profile | 构建学生画像 |
 | GET | /get-profile | 获取画像 |
 | POST | /update-profile-field | 更新画像字段 |
+| POST | /evaluate-profile | AI 评定画像（6维度雷达图分数） |
 
 ### 学生数据管理
 

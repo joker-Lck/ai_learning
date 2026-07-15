@@ -3,9 +3,10 @@ Redis 缓存模块
 提供热点数据缓存，降低数据库压力
 """
 
-import json
 import hashlib
-from typing import Optional, Any
+import json
+from typing import Any
+
 from core.logger import info, warning
 
 _redis_client = None
@@ -18,6 +19,7 @@ def _get_redis():
         return _redis_client
     try:
         import redis
+
         from .config import get_redis_config
         config = get_redis_config()
         _redis_client = redis.Redis(**config)
@@ -38,7 +40,7 @@ def _make_key(prefix: str, *args) -> str:
     return raw
 
 
-def cache_get(prefix: str, *args) -> Optional[Any]:
+def cache_get(prefix: str, *args) -> Any | None:
     r = _get_redis()
     if r is None:
         return None

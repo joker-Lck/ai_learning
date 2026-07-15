@@ -11,13 +11,14 @@ MiMo API 客户端 — OpenAI 兼容接口
 """
 
 import os
-import json
-import base64
-from typing import Optional, List, Dict, Generator
-from openai import OpenAI
-from dotenv import load_dotenv
-from core.logger import info, error, warning
+from collections.abc import Generator
+from typing import Optional
+
 import httpx
+from dotenv import load_dotenv
+from openai import OpenAI
+
+from core.logger import error, info, warning
 
 load_dotenv(override=True)
 
@@ -76,7 +77,7 @@ class MiMoClient:
         model: str = MODEL_STANDARD,
         max_tokens: int = 2000,
         temperature: float = 0.7,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
     ) -> str:
         """
         标准文本生成调用
@@ -92,7 +93,7 @@ class MiMoClient:
             模型输出文本
         """
         try:
-            messages: List[Dict] = []
+            messages: list[dict] = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
@@ -117,7 +118,6 @@ class MiMoClient:
                     content = json.dumps(parsed, ensure_ascii=False)
                 else:
                     # 尝试提取最后一个完整的 JSON 对象
-                    import re
                     # 用括号深度匹配提取 JSON（支持任意嵌套）
                     def _extract_last_json(text):
                         candidates = []
@@ -183,12 +183,12 @@ class MiMoClient:
     def chat_with_image(
         self,
         prompt: str,
-        image_b64: str | List[str],
+        image_b64: str | list[str],
         *,
         model: str = MODEL_VISION,
         max_tokens: int = 4000,
         temperature: float = 0.3,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
     ) -> str:
         """
         多模态调用 — MiMo 图片理解 API
@@ -198,10 +198,10 @@ class MiMoClient:
             images = [image_b64] if isinstance(image_b64, str) else image_b64
             info(f"MiMo 图片理解: prompt={prompt[:50]}..., 图片数量={len(images)}")
 
-            messages: List[Dict] = []
+            messages: list[dict] = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
-            content_parts: List[Dict] = [{"type": "text", "text": prompt}]
+            content_parts: list[dict] = [{"type": "text", "text": prompt}]
             for img in images:
                 if img.startswith('data:'):
                     content_parts.append({"type": "image_url", "image_url": {"url": img}})
@@ -248,11 +248,11 @@ class MiMoClient:
         model: str = MODEL_STANDARD,
         max_tokens: int = 2000,
         temperature: float = 0.7,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
     ) -> Generator[str, None, None]:
         """流式文本生成，逐 chunk 返回"""
         try:
-            messages: List[Dict] = []
+            messages: list[dict] = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
@@ -292,7 +292,7 @@ class MiMoClient:
         return self.chat(prompt, model=MODEL_ULTRA, max_tokens=max_tokens, system_prompt=system_prompt)
 
     # ── 图片生成 ──────────────────────────────────────────────
-    def generate_image(self, prompt: str, width: int = 512, height: int = 512) -> Optional[str]:
+    def generate_image(self, prompt: str, width: int = 512, height: int = 512) -> str | None:
         """
         使用 MiMo 图片生成 API
 
@@ -347,12 +347,12 @@ class MiMoClient:
             error(f"MiMo 图片生成失败: {e}")
             return None
 
-    def generate_image_url(self, prompt: str, width: int = 512, height: int = 512) -> Optional[str]:
+    def generate_image_url(self, prompt: str, width: int = 512, height: int = 512) -> str | None:
         """图片生成，返回 base64 数据"""
         return self.generate_image(prompt, width, height)
 
     # ── OCR 文字识别 ──────────────────────────────────────────
-    def ocr_image(self, image_b64: str, ocr_type: str = "auto") -> Optional[str]:
+    def ocr_image(self, image_b64: str, ocr_type: str = "auto") -> str | None:
         """
         智能 OCR 识别 — 使用 MiMo 视觉模型
 
@@ -375,16 +375,16 @@ class MiMoClient:
             error(f"OCR 识别失败: {e}")
             return None
 
-    def ocr_handwriting(self, image_b64: str) -> Optional[str]:
+    def ocr_handwriting(self, image_b64: str) -> str | None:
         """手写文字识别（使用视觉模型）"""
         return self.ocr_image(image_b64, "handwriting")
 
-    def ocr_print(self, image_b64: str) -> Optional[str]:
+    def ocr_print(self, image_b64: str) -> str | None:
         """印刷文字识别（使用视觉模型）"""
         return self.ocr_image(image_b64, "print")
 
     # ── 语音合成 (TTS) ────────────────────────────────────────
-    def text_to_speech(self, text: str, voice: str = "alloy") -> Optional[bytes]:
+    def text_to_speech(self, text: str, voice: str = "alloy") -> bytes | None:
         """
         语音合成 — 使用 MiMo TTS API
 

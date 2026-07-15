@@ -3,11 +3,12 @@
 提供SSE实时推送和生成进度管理，支持心跳保活和超时控制
 """
 
-import json
 import asyncio
-from typing import Dict, List, Optional, AsyncGenerator
+import json
+from collections.abc import AsyncGenerator
 from datetime import datetime
-from core.logger import info, error
+
+from core.logger import error, info
 
 STREAM_DELAY_SHORT = 0.1
 STREAM_DELAY_MEDIUM = 0.3
@@ -18,14 +19,14 @@ STREAM_TIMEOUT = 300
 
 class ProgressTracker:
     """进度追踪器 - 管理任务生成进度"""
-    
+
     def __init__(self):
         # 存储所有任务的进度 {task_id: progress_data}
         self.tasks = {}
         info("进度追踪器初始化完成")
-    
-    def create_task(self, task_id: str, task_type: str, user_id: int, 
-                   total_steps: int = 100) -> Dict:
+
+    def create_task(self, task_id: str, task_type: str, user_id: int,
+                   total_steps: int = 100) -> dict:
         """创建新任务"""
         # 定期清理过期任务
         if len(self.tasks) > 50:
@@ -48,23 +49,23 @@ class ProgressTracker:
             "result": None,
             "error": None
         }
-        
+
         self.tasks[task_id] = task_data
         info(f"创建任务: {task_id}, 类型: {task_type}")
-        
+
         return task_data
-    
-    def update_progress(self, task_id: str, progress: int, 
-                       current_step: str = "", message: str = "") -> Dict:
+
+    def update_progress(self, task_id: str, progress: int,
+                       current_step: str = "", message: str = "") -> dict:
         """更新任务进度"""
         if task_id not in self.tasks:
             error(f"任务不存在: {task_id}")
             return None
-        
+
         task = self.tasks[task_id]
         task["progress"] = min(max(progress, 0), 100)
         task["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         if current_step:
             task["current_step"] = current_step
             task["steps"].append({
@@ -72,74 +73,74 @@ class ProgressTracker:
                 "progress": progress,
                 "timestamp": task["updated_at"]
             })
-        
+
         if message:
             task["message"] = message
-        
+
         return task
-    
-    def complete_task(self, task_id: str, result: Dict = None) -> Dict:
+
+    def complete_task(self, task_id: str, result: dict = None) -> dict:
         """标记任务完成"""
         if task_id not in self.tasks:
             return None
-        
+
         task = self.tasks[task_id]
         task["status"] = "completed"
         task["progress"] = 100
         task["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         task["result"] = result
         task["message"] = "任务完成"
-        
+
         info(f"任务完成: {task_id}")
         return task
-    
-    def fail_task(self, task_id: str, error_message: str) -> Dict:
+
+    def fail_task(self, task_id: str, error_message: str) -> dict:
         """标记任务失败"""
         if task_id not in self.tasks:
             return None
-        
+
         task = self.tasks[task_id]
         task["status"] = "failed"
         task["error"] = error_message
         task["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         task["message"] = f"任务失败: {error_message}"
-        
+
         error(f"任务失败: {task_id}, 错误: {error_message}")
         return task
-    
-    def get_task_status(self, task_id: str) -> Optional[Dict]:
+
+    def get_task_status(self, task_id: str) -> dict | None:
         """获取任务状态"""
         return self.tasks.get(task_id)
-    
-    def get_user_tasks(self, user_id: int, limit: int = 10) -> List[Dict]:
+
+    def get_user_tasks(self, user_id: int, limit: int = 10) -> list[dict]:
         """获取用户的任务列表"""
         user_tasks = [
             task for task in self.tasks.values()
             if task["user_id"] == user_id
         ]
-        
+
         # 按创建时间排序,返回最新的limit个
         user_tasks.sort(key=lambda x: x["created_at"], reverse=True)
         return user_tasks[:limit]
-    
+
     def cleanup_old_tasks(self, max_age_hours: int = 24):
         """清理过期任务（更积极的清理策略）"""
         from datetime import timedelta
-        
+
         cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
         tasks_to_remove = []
-        
+
         for task_id, task in self.tasks.items():
             created_at = datetime.strptime(task["created_at"], "%Y-%m-%d %H:%M:%S")
             if created_at < cutoff_time:
                 tasks_to_remove.append(task_id)
-        
+
         for task_id in tasks_to_remove:
             del self.tasks[task_id]
-        
+
         if tasks_to_remove:
             info(f"清理了 {len(tasks_to_remove)} 个过期任务")
-    
+
     def force_cleanup(self, max_size: int = 50):
         """强制清理：当任务数超过阈值时保留最新任务"""
         if len(self.tasks) <= max_size:
@@ -186,7 +187,7 @@ class SSEStreamGenerator:
                                        resource_type: str,
                                        subject: str,
                                        topic: str,
-                                       profile: Dict) -> AsyncGenerator[str, None]:
+                                       profile: dict) -> AsyncGenerator[str, None]:
         tracker = ProgressTracker()
         try:
             tracker.create_task(task_id, f"generate_{resource_type}",
@@ -227,13 +228,13 @@ class SSEStreamGenerator:
             tracker.fail_task(task_id, str(e))
             yield self._format_sse({"type": "error", "task_id": task_id, "error": str(e)})
 
-    async def generate_text_stream(self, text_chunks: List[str]) -> AsyncGenerator[str, None]:
+    async def generate_text_stream(self, text_chunks: list[str]) -> AsyncGenerator[str, None]:
         for i, chunk in enumerate(text_chunks):
             yield self._format_sse({"type": "chunk", "index": i, "content": chunk})
             await asyncio.sleep(STREAM_DELAY_SHORT)
         yield self._format_sse({"type": "done", "message": "输出完成"})
 
-    def _format_sse(self, data: Dict) -> str:
+    def _format_sse(self, data: dict) -> str:
         return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 

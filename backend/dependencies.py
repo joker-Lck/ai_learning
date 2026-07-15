@@ -3,11 +3,10 @@ FastAPI 依赖注入 — 企业级安全配置
 JWT 认证、请求上下文注入、权限校验
 """
 import os
-import jwt
-import secrets
 from datetime import datetime, timedelta
-from fastapi import Depends, HTTPException, Header, Request
-from typing import Optional
+
+import jwt
+from fastapi import Depends, Header, HTTPException, Request
 
 from data.data_manager import CacheManager
 
@@ -68,7 +67,7 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="无效的 Token")
 
 
-async def get_current_user(request: Request, authorization: Optional[str] = Header(None)) -> dict:
+async def get_current_user(request: Request, authorization: str | None = Header(None)) -> dict:
     """获取当前认证用户
 
     支持三种认证方式:

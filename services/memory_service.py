@@ -15,14 +15,13 @@
 
 import json
 import sqlite3
-import numpy as np
-from datetime import datetime
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
 import threading
-from data.config import get_memory_db_path
-from core.logger import info, error, warning
+from datetime import datetime
 
+import numpy as np
+
+from core.logger import error, info, warning
+from data.config import get_memory_db_path
 
 # ==========================================
 # 数据库基类
@@ -55,12 +54,12 @@ class MemoryDB:
         self._execute(sql, params)
         self.conn.commit()
 
-    def _fetchone(self, sql: str, params: tuple = None) -> Optional[Dict]:
+    def _fetchone(self, sql: str, params: tuple = None) -> dict | None:
         self._execute(sql, params)
         row = self.cursor.fetchone()
         return dict(row) if row else None
 
-    def _fetchall(self, sql: str, params: tuple = None) -> List[Dict]:
+    def _fetchall(self, sql: str, params: tuple = None) -> list[dict]:
         self._execute(sql, params)
         return [dict(row) for row in self.cursor.fetchall()]
 
@@ -101,7 +100,7 @@ class ShortTermHandler(MemoryDB):
         return memory_id
 
     def get_context(self, user_id: int, session_id: str,
-                    max_tokens: int = None) -> List[Dict]:
+                    max_tokens: int = None) -> list[dict]:
         max_tokens = max_tokens or self.MAX_CONTEXT_TOKENS
         rows = self._fetchall(
             "SELECT role, content, token_count, created_at "
@@ -148,8 +147,8 @@ class EpisodicHandler(MemoryDB):
     """对话事件 / 学习场景"""
 
     def add(self, user_id: int, episode_type: str, title: str,
-            summary: str, content: str, context: Dict = None,
-            emotions: Dict = None, importance: float = 0.5) -> int:
+            summary: str, content: str, context: dict = None,
+            emotions: dict = None, importance: float = 0.5) -> int:
         sql = """
             INSERT INTO episodic_memory
             (user_id, episode_type, title, summary, context, content, emotions, importance)
@@ -164,7 +163,7 @@ class EpisodicHandler(MemoryDB):
         ))
         return self._last_id()
 
-    def search(self, user_id: int, query: str, limit: int = 5) -> List[Dict]:
+    def search(self, user_id: int, query: str, limit: int = 5) -> list[dict]:
         term = f"%{query}%"
         return self._fetchall(
             "SELECT id, episode_type, title, summary, context, content, "
@@ -175,7 +174,7 @@ class EpisodicHandler(MemoryDB):
             (user_id, term, term, term, limit)
         )
 
-    def recent(self, user_id: int, limit: int = 10) -> List[Dict]:
+    def recent(self, user_id: int, limit: int = 10) -> list[dict]:
         return self._fetchall(
             "SELECT id, episode_type, title, summary, importance, created_at "
             "FROM episodic_memory WHERE user_id = ? "
@@ -217,7 +216,7 @@ class SemanticHandler(MemoryDB):
         return memory_id
 
     def search(self, user_id: int, query: str, fact_type: str = None,
-               limit: int = 10) -> List[Dict]:
+               limit: int = 10) -> list[dict]:
         conditions = ["user_id = ?", "(subject LIKE ? OR predicate LIKE ? OR object LIKE ?)"]
         params: list = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
         if fact_type:
@@ -232,7 +231,7 @@ class SemanticHandler(MemoryDB):
             tuple(params)
         )
 
-    def get_by_subject(self, user_id: int, subject: str) -> List[Dict]:
+    def get_by_subject(self, user_id: int, subject: str) -> list[dict]:
         return self._fetchall(
             "SELECT id, fact_type, subject, predicate, object, confidence, created_at "
             "FROM semantic_memory WHERE user_id = ? AND subject = ? "
@@ -241,7 +240,7 @@ class SemanticHandler(MemoryDB):
         )
 
     def _detect_conflict(self, user_id: int, subject: str,
-                         predicate: str, object_val: str) -> Optional[Dict]:
+                         predicate: str, object_val: str) -> dict | None:
         return self._fetchone(
             "SELECT id, object, confidence FROM semantic_memory "
             "WHERE user_id = ? AND subject = ? AND predicate = ? AND object != ? "
@@ -273,7 +272,7 @@ class EntityHandler(MemoryDB):
     """实体画像存储 + 知识图谱"""
 
     def add(self, user_id: int, entity_type: str, entity_name: str,
-            attributes: Dict = None, description: str = "",
+            attributes: dict = None, description: str = "",
             entity_alias: str = "", importance: float = 0.5) -> int:
         # 先查询已有记录，用于应用层 JSON 合并
         existing = self._fetchone(
@@ -344,7 +343,7 @@ class EntityHandler(MemoryDB):
             return self._last_id()
 
     def search(self, user_id: int, query: str, entity_type: str = None,
-               limit: int = 10) -> List[Dict]:
+               limit: int = 10) -> list[dict]:
         conditions = ["user_id = ?", "(entity_name LIKE ? OR entity_alias LIKE ? OR description LIKE ?)"]
         params: list = [user_id, f"%{query}%", f"%{query}%", f"%{query}%"]
         if entity_type:
@@ -364,7 +363,7 @@ class EntityHandler(MemoryDB):
         return rows
 
     def get_relations(self, user_id: int, entity_id: int,
-                      direction: str = 'both') -> List[Dict]:
+                      direction: str = 'both') -> list[dict]:
         relations = []
         if direction in ('out', 'both'):
             rows = self._fetchall(
@@ -388,7 +387,7 @@ class EntityHandler(MemoryDB):
             relations.extend(rows)
         return relations
 
-    def get_graph(self, user_id: int, center_id: int, depth: int = 2) -> Dict:
+    def get_graph(self, user_id: int, center_id: int, depth: int = 2) -> dict:
         visited, nodes, edges, queue = set(), [], [], [(center_id, 0)]
         while queue:
             eid, d = queue.pop(0)
@@ -476,7 +475,7 @@ class ForgettingHandler(MemoryDB):
         except Exception as e:
             warning(f"记录访问日志失败: {e}")
 
-    def apply_curve(self, user_id: int = None) -> Dict[str, int]:
+    def apply_curve(self, user_id: int = None) -> dict[str, int]:
         """应用遗忘曲线，返回 {forgotten, reinforced}"""
         try:
             sql = "SELECT id, memory_type, memory_id, user_id, importance, decay_rate, last_accessed_at, access_count FROM memory_metadata WHERE is_forgotten = 0"
@@ -561,7 +560,7 @@ class ForgettingHandler(MemoryDB):
 class ConflictHandler(MemoryDB):
     """记忆冲突检测与修正"""
 
-    def get_pending(self, user_id: int) -> List[Dict]:
+    def get_pending(self, user_id: int) -> list[dict]:
         return self._fetchall(
             "SELECT mc.*, "
             "om.subject as old_subject, om.predicate as old_predicate, om.object as old_object, "
@@ -747,7 +746,7 @@ class MemoryService:
         results = self.episodic.search(user_id, query, limit)
         for r in results:
             self.forgetting.update_access('episodic', r['id'], user_id)
-        
+
         if use_vector and not results:
             try:
                 from data.embedding_service import embedding_service
@@ -765,7 +764,7 @@ class MemoryService:
                         } for vr in vector_results]
             except Exception as e:
                 warning(f"向量检索降级: {e}")
-        
+
         return results
 
     def get_recent_episodes(self, user_id, limit=10):
@@ -825,7 +824,7 @@ class MemoryService:
     def resolve_conflict(self, conflict_id, strategy, user_id):
         return self.conflict.resolve(conflict_id, strategy, user_id)
 
-    def get_memory_stats(self, user_id: int) -> Dict:
+    def get_memory_stats(self, user_id: int) -> dict:
         try:
             return {
                 'short_term':        self.short_term.count(user_id),

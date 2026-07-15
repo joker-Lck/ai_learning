@@ -4,13 +4,11 @@
 集成无限长时记忆架构：短期/情景/语义/实体记忆 + 遗忘机制
 """
 
-from core.json_utils import safe_parse_json
-
 import json
-import re
-from typing import Dict, List, Optional
 from datetime import datetime
-from core.logger import info, error, warning, debug
+
+from core.json_utils import safe_parse_json
+from core.logger import debug, error, info, warning
 from services.qa_service import qa_service
 
 
@@ -24,7 +22,7 @@ class TutorAgent:
     # 核心问答（带记忆增强）
     # ==========================================
 
-    def answer_query(self, user_id: int, input_data: Dict) -> Dict:
+    def answer_query(self, user_id: int, input_data: dict) -> dict:
         """
         回答学生问题 - 记忆增强版
 
@@ -127,10 +125,10 @@ class TutorAgent:
                 return result
 
         except Exception as e:
-            warning(f"记忆增强失败，降级到普通问答: {str(e)}")
+            warning(f"记忆增强失败，降级到普通问答: {e!s}")
             return self._fallback_answer(user_id, input_data)
 
-    def _fallback_answer(self, user_id: int, input_data: Dict) -> Dict:
+    def _fallback_answer(self, user_id: int, input_data: dict) -> dict:
         """降级问答（无记忆）"""
         try:
             question = input_data.get("question", "")
@@ -144,14 +142,14 @@ class TutorAgent:
             self._save_tutor_record(user_id, question, answer_data)
             return {"answer": answer_data, "message": "智能辅导回答生成完成"}
         except Exception as e:
-            error(f"辅导失败: {str(e)}")
-            return {"success": False, "message": f"辅导失败: {str(e)}"}
+            error(f"辅导失败: {e!s}")
+            return {"success": False, "message": f"辅导失败: {e!s}"}
 
     # ==========================================
     # 记忆检索与上下文构建
     # ==========================================
 
-    def _retrieve_memories(self, ms, user_id: int, question: str, subject: str) -> Dict:
+    def _retrieve_memories(self, ms, user_id: int, question: str, subject: str) -> dict:
         """检索相关记忆（集成高级检索）"""
         memories = {'semantic': [], 'episodic': [], 'entity': [], 'rag_docs': []}
         try:
@@ -174,10 +172,10 @@ class TutorAgent:
             except Exception as e:
                 debug(f"高级 RAG 检索降级: {e}")
         except Exception as e:
-            warning(f"检索记忆失败: {str(e)}")
+            warning(f"检索记忆失败: {e!s}")
         return memories
 
-    def _build_user_context(self, ms, user_id: int, subject: str) -> Dict:
+    def _build_user_context(self, ms, user_id: int, subject: str) -> dict:
         """构建用户知识背景"""
         context = {'knowledge_level': 'beginner', 'known_concepts': [], 'learning_goals': [], 'preferences': {}}
         try:
@@ -193,12 +191,12 @@ class TutorAgent:
             elif len(context['known_concepts']) > 5:
                 context['knowledge_level'] = 'intermediate'
         except Exception as e:
-            warning(f"构建用户上下文失败: {str(e)}")
+            warning(f"构建用户上下文失败: {e!s}")
         return context
 
     def _build_enhanced_context(self, question: str, subject: str,
-                                relevant_memories: Dict, user_context: Dict,
-                                conversation_history: List) -> str:
+                                relevant_memories: dict, user_context: dict,
+                                conversation_history: list) -> str:
         """构建增强上下文（集成 RAG 知识文档）"""
         parts = []
         if user_context.get('known_concepts'):
@@ -252,13 +250,13 @@ class TutorAgent:
                                 summary=f"问题: {question[:100]}...", content=f"Q: {question}\nA: {answer[:500]}",
                                 context={'session_id': session_id, 'subject': subject}, importance=0.6)
         except Exception as e:
-            warning(f"提取记忆失败: {str(e)}")
+            warning(f"提取记忆失败: {e!s}")
 
     # ==========================================
     # 知识图谱与学习推荐
     # ==========================================
 
-    def get_user_knowledge_map(self, user_id: int) -> Dict:
+    def get_user_knowledge_map(self, user_id: int) -> dict:
         """获取用户知识图谱"""
         try:
             from services.memory_service import memory_service
@@ -274,10 +272,10 @@ class TutorAgent:
                     'stats': stats
                 }
         except Exception as e:
-            error(f"获取知识图谱失败: {str(e)}")
+            error(f"获取知识图谱失败: {e!s}")
             return {'skills': [], 'concepts': [], 'courses': [], 'stats': {}}
 
-    def get_learning_recommendations(self, user_id: int, subject: str = None) -> List[Dict]:
+    def get_learning_recommendations(self, user_id: int, subject: str = None) -> list[dict]:
         """基于记忆获取学习推荐"""
         recommendations = []
         try:
@@ -307,10 +305,10 @@ class TutorAgent:
                 recommendations.sort(key=lambda x: x.get('priority', 0), reverse=True)
                 return recommendations[:10]
         except Exception as e:
-            error(f"获取学习推荐失败: {str(e)}")
+            error(f"获取学习推荐失败: {e!s}")
             return []
 
-    def apply_memory_maintenance(self, user_id: int = None) -> Dict:
+    def apply_memory_maintenance(self, user_id: int = None) -> dict:
         """应用记忆维护（遗忘曲线、清理等）"""
         try:
             from services.memory_service import memory_service
@@ -319,7 +317,7 @@ class TutorAgent:
                 cleanup_count = ms.cleanup_forgotten_memories(user_id, days=90)
                 return {'forgetting': forgetting_result, 'cleanup': cleanup_count}
         except Exception as e:
-            error(f"记忆维护失败: {str(e)}")
+            error(f"记忆维护失败: {e!s}")
             return {'forgetting': {'forgotten': 0, 'reinforced': 0}, 'cleanup': 0}
 
     # ==========================================
@@ -327,8 +325,8 @@ class TutorAgent:
     # ==========================================
 
     def _generate_multimodal_answer(self, question: str, subject: str,
-                                   context: str, profile: Dict,
-                                   preferred_format: str) -> Dict:
+                                   context: str, profile: dict,
+                                   preferred_format: str) -> dict:
         """生成多模态解答"""
         cognitive_style = profile.get("cognitive_style", "visual") if profile else "visual"
         weak_points = profile.get("weak_points", []) if profile else []
@@ -373,7 +371,7 @@ class TutorAgent:
         return answer_data
 
     def _generate_text_answer(self, question: str, subject: str,
-                             context: str, cognitive_style: str) -> Dict:
+                             context: str, cognitive_style: str) -> dict:
         """生成文字解答"""
         prompt = f"""请详细回答以下{subject}课程的问题。
 
@@ -401,11 +399,11 @@ class TutorAgent:
             response = qa_service.call_ai(prompt, max_tokens=1500)
             return safe_parse_json(response)
         except Exception as e:
-            error(f"生成文字解答失败: {str(e)}")
+            error(f"生成文字解答失败: {e!s}")
             return None
 
     def _generate_diagram_explanation(self, question: str, subject: str,
-                                     cognitive_style: str) -> Dict:
+                                     cognitive_style: str) -> dict:
         """生成图解说明 — 返回 Mermaid 语法"""
         prompt = f"""请为以下{subject}问题生成一个 Mermaid.js 图表代码。
 
@@ -434,11 +432,11 @@ graph TD
                 mermaid_code = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
             return {"mermaid": mermaid_code.strip()}
         except Exception as e:
-            error(f"生成图解说明失败: {str(e)}")
+            error(f"生成图解说明失败: {e!s}")
             return None
 
     def _generate_example(self, question: str, subject: str,
-                         weak_points: List[str]) -> Dict:
+                         weak_points: list[str]) -> dict:
         """生成实例讲解或代码示例"""
         weak_points_str = ', '.join(weak_points[:2]) if weak_points else '无'
         prompt = f"""请为以下{subject}问题提供一个具体的实例或代码示例。
@@ -466,14 +464,14 @@ graph TD
             response = qa_service.call_ai(prompt, max_tokens=1800)
             return safe_parse_json(response)
         except Exception as e:
-            error(f"生成实例讲解失败: {str(e)}")
+            error(f"生成实例讲解失败: {e!s}")
             return None
 
     # ==========================================
     # 工具方法
     # ==========================================
 
-    def _get_user_profile(self, user_id: int) -> Optional[Dict]:
+    def _get_user_profile(self, user_id: int) -> dict | None:
         """获取用户画像"""
         try:
             from data.db_operations import profile_db
@@ -487,10 +485,10 @@ graph TD
                         return json.loads(row["profile_data"])
                 return None
         except Exception as e:
-            error(f"获取用户画像失败: {str(e)}")
+            error(f"获取用户画像失败: {e!s}")
             return None
 
-    def _save_tutor_record(self, user_id: int, question: str, answer_data: Dict):
+    def _save_tutor_record(self, user_id: int, question: str, answer_data: dict):
         """保存辅导记录"""
         try:
             from data.db_operations import assessment_db
@@ -506,7 +504,7 @@ graph TD
                 ))
                 assessment_db.conn.commit()
         except Exception as e:
-            error(f"保存辅导记录失败: {str(e)}")
+            error(f"保存辅导记录失败: {e!s}")
 
 
 # 全局单例

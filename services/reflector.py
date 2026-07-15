@@ -2,8 +2,8 @@
 
 import json
 import re
-from typing import Dict, List, Optional
-from core.logger import info, error, warning
+
+from core.logger import error, info, warning
 
 
 class Reflector:
@@ -39,7 +39,7 @@ class Reflector:
             self._retrieval_service = retrieval_service
         return self._retrieval_service
 
-    def reflect(self, query: str, answer: str, context: str, user_id: int = 0) -> Dict:
+    def reflect(self, query: str, answer: str, context: str, user_id: int = 0) -> dict:
         """
         主入口：对答案进行反思评估
 
@@ -102,7 +102,7 @@ class Reflector:
             }
 
     def reflect_and_improve(self, query: str, answer: str, context: str,
-                            user_id: int = 0, retry_count: int = 0) -> Dict:
+                            user_id: int = 0, retry_count: int = 0) -> dict:
         """
         反思并改进：评估 → 低分时二次检索 → 重新生成
 
@@ -217,7 +217,7 @@ class Reflector:
 
         return max(0, min(10, score))
 
-    def _check_evidence_chain(self, answer: str, context: str) -> Dict:
+    def _check_evidence_chain(self, answer: str, context: str) -> dict:
         """证据链完整性检查"""
         if not context or len(context) < 50:
             return {"score": 0.3, "details": ["缺少参考上下文"]}
@@ -237,7 +237,7 @@ class Reflector:
             warning(f"[Reflector] 证据链检查失败: {e}")
             return {"score": 0.5, "details": [str(e)]}
 
-    def _identify_issues(self, query: str, answer: str, context: str) -> List[str]:
+    def _identify_issues(self, query: str, answer: str, context: str) -> list[str]:
         """识别答案中的具体问题"""
         issues = []
 
@@ -259,7 +259,7 @@ class Reflector:
 
         return issues
 
-    def _generate_improved_query(self, query: str, issues: List[str]) -> str:
+    def _generate_improved_query(self, query: str, issues: list[str]) -> str:
         """基于问题生成改进查询"""
         if not issues:
             return query
@@ -280,7 +280,7 @@ class Reflector:
 
         return query + " " + " ".join(issues[:2])
 
-    def _generate_suggestions(self, issues: List[str]) -> List[str]:
+    def _generate_suggestions(self, issues: list[str]) -> list[str]:
         """基于问题生成改进建议"""
         suggestions = []
         for issue in issues:
@@ -292,8 +292,8 @@ class Reflector:
                 suggestions.append("建议更准确地理解用户问题，聚焦核心要点")
         return suggestions
 
-    def _regenerate_with_feedback(self, query: str, suggestions: List[str],
-                                  context: str) -> Optional[str]:
+    def _regenerate_with_feedback(self, query: str, suggestions: list[str],
+                                  context: str) -> str | None:
         """带反馈的二次生成"""
         feedback_text = "\n".join(f"- {s}" for s in suggestions) if suggestions else "请提供更准确、完整的回答。"
 
@@ -317,7 +317,7 @@ class Reflector:
             error(f"[Reflector] 二次生成失败: {e}")
             return None
 
-    def _extract_json(self, text: str) -> Optional[Dict]:
+    def _extract_json(self, text: str) -> dict | None:
         """从文本中提取 JSON 对象"""
         if not text:
             return None

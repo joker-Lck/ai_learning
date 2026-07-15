@@ -6,7 +6,7 @@ UI 组件模块（已迁移至 frontend/ Next.js 前端）
 
 class CustomCSS:
     """自定义 CSS 样式管理"""
-    
+
     @staticmethod
     def get_custom_css():
         """返回自定义 CSS 样式"""
@@ -87,37 +87,37 @@ class CustomCSS:
 
 class PageLayout:
     """页面布局组件"""
-    
+
     @staticmethod
     def render_sidebar():
         """渲染侧边栏导航"""
         with st.sidebar:
             st.markdown("### 🎓 AI 学习助手")
             st.divider()
-            
+
             menu = st.radio(
                 "导航菜单",
                 ["智能答疑", "学情分析"],
                 index=0,
                 key="main_menu"
             )
-            
+
             st.divider()
-            
+
             # 系统状态
             st.markdown("### 📊 系统状态")
             if st.session_state.get('db_connected'):
                 st.success("✅ 数据库已连接")
             else:
                 st.error("❌ 数据库未连接")
-            
+
             if st.session_state.get('rag_kb_connected'):
                 st.success("✅ RAG 知识库就绪")
             else:
                 st.warning("⚠️ RAG 知识库未连接")
-        
+
         return menu
-    
+
     @staticmethod
     def render_header(title, subtitle=""):
         """渲染页面头部"""
@@ -129,7 +129,7 @@ class PageLayout:
 
 class UIComponents:
     """通用 UI 组件"""
-    
+
     @staticmethod
     def show_status_card(title, status, icon="ℹ️"):
         """显示状态卡片"""
@@ -139,27 +139,27 @@ class UIComponents:
             <p>{status}</p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     @staticmethod
     def show_info_box(message, icon="💡"):
         """显示信息提示框"""
         st.info(f"{icon} {message}")
-    
+
     @staticmethod
     def show_success_box(message, icon="✅"):
         """显示成功提示框"""
         st.success(f"{icon} {message}")
-    
+
     @staticmethod
     def show_error_box(message, icon="❌"):
         """显示错误提示框"""
         st.error(f"{icon} {message}")
-    
+
     @staticmethod
     def show_warning_box(message, icon="⚠️"):
         """显示警告提示框"""
         st.warning(f"{icon} {message}")
-    
+
     @staticmethod
     def create_action_buttons(actions):
         """创建操作按钮组"""

@@ -3,15 +3,20 @@ SQLite 数据库操作模块（JSON 格式存储）
 提供数据库 CRUD 操作，所有复杂数据以 JSON 格式存储
 """
 
-import sqlite3
 import json
-from .config import (
-    get_db_config, get_auth_db_config, get_profile_db_config,
-    get_resources_db_config, get_paths_db_config,
-    get_assessments_db_config, get_agents_db_config
-)
+import sqlite3
 from datetime import datetime
-from core.logger import db_operation_success, db_operation_failed, debug, error, warning
+
+from core.logger import db_operation_failed, db_operation_success, debug, error
+
+from .config import (
+    get_agents_db_config,
+    get_assessments_db_config,
+    get_db_config,
+    get_paths_db_config,
+    get_profile_db_config,
+    get_resources_db_config,
+)
 
 
 class Database:
@@ -33,7 +38,7 @@ class Database:
             debug(f"SQLite 连接成功: {db_path}")
             return True
         except Exception as e:
-            error(f"数据库连接失败：{str(e)}")
+            error(f"数据库连接失败：{e!s}")
             db_operation_failed("connect", str(e))
             return False
 
@@ -47,7 +52,7 @@ class Database:
                 self.conn.close()
                 self.conn = None
         except Exception as e:
-            error(f"关闭连接失败：{str(e)}")
+            error(f"关闭连接失败：{e!s}")
 
     def __enter__(self):
         self.connect()
@@ -68,7 +73,7 @@ class Database:
             db_operation_success("add_user", f"user_id={user_id}")
             return user_id
         except Exception as e:
-            error(f"添加用户失败：{str(e)}")
+            error(f"添加用户失败：{e!s}")
             db_operation_failed("add_user", str(e))
             return None
         finally:
@@ -83,7 +88,7 @@ class Database:
             row = self.cursor.fetchone()
             return dict(row) if row else None
         except Exception as e:
-            error(f"获取用户失败：{str(e)}")
+            error(f"获取用户失败：{e!s}")
             return None
         finally:
             self.close()
@@ -98,7 +103,7 @@ class Database:
             self.conn.commit()
             return self.cursor.lastrowid
         except Exception as e:
-            error(f"添加班级失败：{str(e)}")
+            error(f"添加班级失败：{e!s}")
             return None
         finally:
             self.close()
@@ -112,7 +117,7 @@ class Database:
             row = self.cursor.fetchone()
             return dict(row) if row else None
         except Exception as e:
-            error(f"获取班级失败：{str(e)}")
+            error(f"获取班级失败：{e!s}")
             return None
         finally:
             self.close()
@@ -127,7 +132,7 @@ class Database:
             self.conn.commit()
             return self.cursor.lastrowid
         except Exception as e:
-            error(f"添加学生失败：{str(e)}")
+            error(f"添加学生失败：{e!s}")
             return None
         finally:
             self.close()
@@ -140,7 +145,7 @@ class Database:
             self.cursor.execute(sql, (class_id,))
             return [dict(row) for row in self.cursor.fetchall()]
         except Exception as e:
-            error(f"获取学生失败：{str(e)}")
+            error(f"获取学生失败：{e!s}")
             return []
         finally:
             self.close()
@@ -179,7 +184,7 @@ class Database:
             db_operation_success("add_question", f"question_id={question_id}")
             return question_id
         except Exception as e:
-            error(f"添加问题记录失败：{str(e)}")
+            error(f"添加问题记录失败：{e!s}")
             db_operation_failed("add_question", str(e))
             return None
         finally:
@@ -205,7 +210,7 @@ class Database:
 
             return results
         except Exception as e:
-            error(f"获取问题记录失败：{str(e)}")
+            error(f"获取问题记录失败：{e!s}")
             db_operation_failed("get_questions_by_user", str(e))
             return []
         finally:
@@ -244,7 +249,7 @@ class Database:
             db_operation_success("add_analysis", f"analysis_id={analysis_id}")
             return analysis_id
         except Exception as e:
-            error(f"添加学情分析失败：{str(e)}")
+            error(f"添加学情分析失败：{e!s}")
             db_operation_failed("add_analysis", str(e))
             return None
         finally:
@@ -269,7 +274,7 @@ class Database:
 
             return results
         except Exception as e:
-            error(f"获取学情分析失败：{str(e)}")
+            error(f"获取学情分析失败：{e!s}")
             db_operation_failed("get_analysis_by_student", str(e))
             return []
         finally:

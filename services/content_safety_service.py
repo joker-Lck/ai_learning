@@ -4,23 +4,21 @@
 使用AC自动机算法加速多模式匹配
 """
 
-import os
 import re
-import json
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-from core.logger import info, error, warning
+
+from core.logger import info, warning
 
 
 class AhoCorasick:
     """AC自动机 - 用于高效的多模式字符串匹配"""
-    
+
     def __init__(self):
         self.goto = [{}]
         self.fail = [0]
         self.output = [[]]
         self.state_count = 1
-    
+
     def add_pattern(self, pattern: str, pattern_id: int):
         """添加模式串"""
         state = 0
@@ -33,16 +31,16 @@ class AhoCorasick:
                 self.state_count += 1
             state = self.goto[state][char]
         self.output[state].append((pattern_id, pattern))
-    
+
     def build(self):
         """构建失败指针"""
         from collections import deque
         queue = deque()
-        
+
         for char, state in self.goto[0].items():
             self.fail[state] = 0
             queue.append(state)
-        
+
         while queue:
             r = queue.popleft()
             for char, s in self.goto[r].items():
@@ -54,41 +52,41 @@ class AhoCorasick:
                 if self.fail[s] == s:
                     self.fail[s] = 0
                 self.output[s] = self.output[s] + self.output[self.fail[s]]
-    
-    def search(self, text: str) -> List[Tuple[int, str, int]]:
+
+    def search(self, text: str) -> list[tuple[int, str, int]]:
         """搜索文本中的所有模式匹配
         
         返回: [(pattern_id, pattern, position), ...]
         """
         results = []
         state = 0
-        
+
         for i, char in enumerate(text):
             while state != 0 and char not in self.goto[state]:
                 state = self.fail[state]
             state = self.goto[state].get(char, 0)
-            
+
             for pattern_id, pattern in self.output[state]:
                 results.append((pattern_id, pattern, i - len(pattern) + 1))
-        
+
         return results
 
 
 class ContentSafetyService:
     """内容安全服务 - 过滤敏感和违规内容（使用AC自动机加速）"""
-    
+
     def __init__(self):
         self.sensitive_words = self._load_sensitive_words()
         self.academic_irregular_patterns = self._load_academic_patterns()
-        
+
         self._ac_automaton = AhoCorasick()
         for idx, word in enumerate(self.sensitive_words):
             self._ac_automaton.add_pattern(word, idx)
         self._ac_automaton.build()
-        
+
         info("内容安全服务初始化完成（AC自动机加速）")
-    
-    def check_content_safety(self, content: str) -> Dict:
+
+    def check_content_safety(self, content: str) -> dict:
         """
         检查内容安全性
         
@@ -105,7 +103,7 @@ class ContentSafetyService:
         """
         violations = []
         risk_level = "low"
-        
+
         # 1. 敏感词检测
         sensitive_hits = self._detect_sensitive_words(content)
         if sensitive_hits:
@@ -115,7 +113,7 @@ class ContentSafetyService:
                 "severity": "high"
             })
             risk_level = "high"
-        
+
         # 2. 违规内容检测
         violation_hits = self._detect_policy_violations(content)
         if violation_hits:
@@ -125,7 +123,7 @@ class ContentSafetyService:
                 "severity": "high"
             })
             risk_level = "high"
-        
+
         # 3. 学术不规范检测
         irregular_hits = self._detect_academic_irregularities(content)
         if irregular_hits:
@@ -136,10 +134,10 @@ class ContentSafetyService:
             })
             if risk_level == "low":
                 risk_level = "medium"
-        
+
         # 4. 生成修改建议
         suggestions = self._generate_suggestions(violations)
-        
+
         result = {
             "is_safe": len(violations) == 0,
             "violations": violations,
@@ -147,13 +145,13 @@ class ContentSafetyService:
             "suggestions": suggestions,
             "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        
+
         if not result["is_safe"]:
             warning(f"内容安全检查发现 {len(violations)} 个问题")
-        
+
         return result
-    
-    def filter_and_clean(self, content: str) -> Dict:
+
+    def filter_and_clean(self, content: str) -> dict:
         """
         过滤并清理内容
         
@@ -169,20 +167,20 @@ class ContentSafetyService:
         """
         original_content = content
         removed_items = []
-        
+
         # 1. 移除敏感词
         for word in self.sensitive_words:
             if word in content:
                 content = content.replace(word, "***")
                 removed_items.append({"type": "sensitive_word", "original": word})
-        
+
         # 2. 移除不当表达
         inappropriate_patterns = [
             (r'绝对正确', '较为准确'),
             (r'毫无疑问', '通常情况下'),
             (r'所有人都知道', '普遍认为'),
         ]
-        
+
         for pattern, replacement in inappropriate_patterns:
             if re.search(pattern, content):
                 content = re.sub(pattern, replacement, content)
@@ -191,16 +189,16 @@ class ContentSafetyService:
                     "original": pattern,
                     "replaced_with": replacement
                 })
-        
+
         result = {
             "filtered_content": content,
             "removed_items": removed_items,
             "is_modified": content != original_content
         }
-        
+
         return result
-    
-    def _load_sensitive_words(self) -> List[str]:
+
+    def _load_sensitive_words(self) -> list[str]:
         """加载敏感词库 — 覆盖 8 大类常见违规内容"""
         return [
             # ── 政治敏感 ──
@@ -267,8 +265,8 @@ class ContentSafetyService:
             "代写作业", "代做作业", "作业代写",
             "论文洗稿", "洗稿",
         ]
-    
-    def _load_academic_patterns(self) -> List[Dict]:
+
+    def _load_academic_patterns(self) -> list[dict]:
         """加载学术不规范模式"""
         return [
             {
@@ -287,14 +285,14 @@ class ContentSafetyService:
                 "suggestion": "建议客观描述,提供对比数据"
             }
         ]
-    
-    def _detect_sensitive_words(self, content: str) -> List[str]:
+
+    def _detect_sensitive_words(self, content: str) -> list[str]:
         """检测敏感词 - 使用AC自动机"""
         matches = self._ac_automaton.search(content)
         hits = list(set(pattern for _, pattern, _ in matches))
         return hits
-    
-    def _detect_policy_violations(self, content: str) -> List[Dict]:
+
+    def _detect_policy_violations(self, content: str) -> list[dict]:
         """检测违规内容"""
         violations = []
 
@@ -354,11 +352,11 @@ class ContentSafetyService:
                 })
 
         return violations
-    
-    def _detect_academic_irregularities(self, content: str) -> List[Dict]:
+
+    def _detect_academic_irregularities(self, content: str) -> list[dict]:
         """检测学术不规范"""
         irregularities = []
-        
+
         for item in self.academic_irregular_patterns:
             if re.search(item["pattern"], content):
                 irregularities.append({
@@ -366,10 +364,10 @@ class ContentSafetyService:
                     "description": item["description"],
                     "suggestion": item["suggestion"]
                 })
-        
+
         return irregularities
-    
-    def _generate_suggestions(self, violations: List[Dict]) -> List[str]:
+
+    def _generate_suggestions(self, violations: list[dict]) -> list[str]:
         """生成修改建议"""
         suggestions = []
 
@@ -396,14 +394,14 @@ class ContentSafetyService:
 
 class AntiHallucinationService:
     """防幻觉服务 - 减少AI生成内容的错误"""
-    
+
     def __init__(self):
         info("防幻觉服务初始化完成")
-    
-    def verify_with_rag(self, 
-                       claim: str, 
+
+    def verify_with_rag(self,
+                       claim: str,
                        knowledge_context: str,
-                       threshold: float = 0.7) -> Dict:
+                       threshold: float = 0.7) -> dict:
         """
         基于RAG知识库验证事实
         
@@ -423,10 +421,10 @@ class AntiHallucinationService:
         # 简化版:检查关键信息是否在知识库中
         evidence = []
         contradictions = []
-        
+
         # 提取claim中的关键实体
         key_entities = self._extract_key_entities(claim)
-        
+
         # 在知识库上下文中查找证据
         for entity in key_entities:
             if entity.lower() in knowledge_context.lower():
@@ -440,12 +438,12 @@ class AntiHallucinationService:
                     "not_found": True,
                     "warning": "该实体未在知识库中找到,可能存在幻觉"
                 })
-        
+
         # 计算置信度
         total = len(key_entities)
         verified = len(evidence)
         confidence = verified / total if total > 0 else 0.5
-        
+
         result = {
             "is_verified": confidence >= threshold,
             "confidence": round(confidence, 2),
@@ -453,13 +451,13 @@ class AntiHallucinationService:
             "contradictions": contradictions,
             "verified_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        
+
         if not result["is_verified"]:
             warning(f"事实验证失败,置信度: {confidence}")
-        
+
         return result
-    
-    def add_citations(self, content: str, sources: List[Dict]) -> str:
+
+    def add_citations(self, content: str, sources: list[dict]) -> str:
         """
         为内容添加引用标注
         
@@ -472,7 +470,7 @@ class AntiHallucinationService:
         """
         if not sources:
             return content
-        
+
         # 在内容末尾添加引用
         citations_text = "\n\n---\n**参考资料:**\n"
         for i, source in enumerate(sources, 1):
@@ -482,10 +480,10 @@ class AntiHallucinationService:
             if source.get('year'):
                 citations_text += f" ({source['year']})"
             citations_text += "\n"
-        
+
         return content + citations_text
-    
-    def detect_uncertainty_markers(self, content: str) -> List[Dict]:
+
+    def detect_uncertainty_markers(self, content: str) -> list[dict]:
         """
         检测不确定性标记,提示可能的幻觉
         
@@ -497,7 +495,7 @@ class AntiHallucinationService:
             (r"(?:据说|传言|听说)", "传闻性表述"),
             (r"(?:似乎|好像|看起来)", "模糊性表述"),
         ]
-        
+
         markers = []
         for pattern, description in uncertainty_patterns:
             matches = re.findall(pattern, content)
@@ -507,12 +505,12 @@ class AntiHallucinationService:
                     "type": description,
                     "suggestion": "建议核实信息来源,提供更准确的表述"
                 })
-        
+
         return markers
-    
-    def cross_validate(self, 
+
+    def cross_validate(self,
                       primary_answer: str,
-                      alternative_sources: List[str]) -> Dict:
+                      alternative_sources: list[str]) -> dict:
         """
         交叉验证 - 对比多个来源的一致性
         
@@ -524,7 +522,7 @@ class AntiHallucinationService:
             一致性分析结果
         """
         consistency_scores = []
-        
+
         for source in alternative_sources:
             # 简化的相似度计算
             similarity = self._calculate_text_similarity(primary_answer, source)
@@ -532,44 +530,44 @@ class AntiHallucinationService:
                 "source_preview": source[:50] + "...",
                 "similarity": round(similarity, 2)
             })
-        
+
         avg_consistency = sum(s["similarity"] for s in consistency_scores) / len(consistency_scores) if consistency_scores else 0
-        
+
         return {
             "average_consistency": round(avg_consistency, 2),
             "sources_checked": len(consistency_scores),
             "details": consistency_scores,
             "is_consistent": avg_consistency >= 0.6
         }
-    
-    def _extract_key_entities(self, text: str) -> List[str]:
+
+    def _extract_key_entities(self, text: str) -> list[str]:
         """提取关键实体(简化版)"""
         # 实际应使用NER模型
         # 这里简单提取名词短语
         entities = []
-        
+
         # 提取引号内的内容
         quoted = re.findall(r'"([^"]*)"', text)
         entities.extend(quoted)
-        
+
         # 提取专有名词(大写字母开头的词)
         proper_nouns = re.findall(r'\b[A-Z][a-z]+\b', text)
         entities.extend(proper_nouns)
-        
+
         # 去重
         return list(set(entities))
-    
+
     def _calculate_text_similarity(self, text1: str, text2: str) -> float:
         """计算文本相似度(简化版Jaccard相似度)"""
         words1 = set(text1.lower().split())
         words2 = set(text2.lower().split())
-        
+
         if not words1 or not words2:
             return 0.0
-        
+
         intersection = words1 & words2
         union = words1 | words2
-        
+
         return len(intersection) / len(union)
 
 
