@@ -31,8 +31,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install fastapi uvicorn python-multipart PyJWT bcrypt slowapi
           pip install openai python-dotenv requests
-          pip install numpy pandas Pillow
-          pip install pydantic pydantic-settings
+          pip install numpy faiss-cpu pandas Pillow
+          pip install python-pptx python-docx PyPDF2 openpyxl PyMuPDF
+          pip install pydantic pydantic-settings structlog
           pip install jieba scikit-learn
           pip install pytest pytest-asyncio pytest-cov pytest-mock httpx
       - name: Create test .env
