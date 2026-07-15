@@ -525,12 +525,12 @@ function SuggestionCard({ recommendations, onNavigateModule }: { recommendations
 
 function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const quickItems = [
-    { label: 'AI 问答', icon: Lightbulb, color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', moduleId: 'tutor' as ModuleType, primary: true },
-    { label: '资源生成', icon: Brain, color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20', moduleId: 'resources' as ModuleType },
-    { label: '学习路径', icon: Router, color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', moduleId: 'path' as ModuleType },
-    { label: '学习评估', icon: BarChart3, color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', moduleId: 'assessment' as ModuleType },
-    { label: '学生画像', icon: UserCheck, color: 'bg-violet-500/10 text-violet-400 border-violet-500/20', moduleId: 'profile' as ModuleType },
-    { label: '知识库', icon: Database, color: 'bg-rose-500/10 text-rose-400 border-rose-500/20', moduleId: 'rag' as ModuleType },
+    { label: 'AI 问答', icon: Lightbulb, bg: 'bg-amber-500/15', border: 'border-amber-400/30 hover:border-amber-400/50', iconBg: 'bg-amber-500/10', iconText: 'text-amber-400', labelText: 'text-amber-300', moduleId: 'tutor' as ModuleType },
+    { label: '资源生成', icon: Brain, bg: 'bg-cyan-500/15', border: 'border-cyan-400/30 hover:border-cyan-400/50', iconBg: 'bg-cyan-500/10', iconText: 'text-cyan-400', labelText: 'text-cyan-300', moduleId: 'resources' as ModuleType },
+    { label: '学习路径', icon: Router, bg: 'bg-blue-500/15', border: 'border-blue-400/30 hover:border-blue-400/50', iconBg: 'bg-blue-500/10', iconText: 'text-blue-400', labelText: 'text-blue-300', moduleId: 'path' as ModuleType },
+    { label: '学习评估', icon: BarChart3, bg: 'bg-emerald-500/15', border: 'border-emerald-400/30 hover:border-emerald-400/50', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-400', labelText: 'text-emerald-300', moduleId: 'assessment' as ModuleType },
+    { label: '学生画像', icon: UserCheck, bg: 'bg-violet-500/15', border: 'border-violet-400/30 hover:border-violet-400/50', iconBg: 'bg-violet-500/10', iconText: 'text-violet-400', labelText: 'text-violet-300', moduleId: 'profile' as ModuleType },
+    { label: '知识库', icon: Database, bg: 'bg-rose-500/15', border: 'border-rose-400/30 hover:border-rose-400/50', iconBg: 'bg-rose-500/10', iconText: 'text-rose-400', labelText: 'text-rose-300', moduleId: 'rag' as ModuleType },
   ];
   return (
     <div className="mb-6">
@@ -544,16 +544,12 @@ function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.3 }}
               onClick={() => onNavigateModule(item.moduleId)}
-              className={`flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all hover:scale-[1.03] ${
-                item.primary
-                  ? 'bg-amber-500/15 border-amber-400/30 hover:border-amber-400/50'
-                  : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.1] hover:bg-white/[0.04]'
-              }`}
+              className={`flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all hover:scale-[1.03] ${item.bg} ${item.border}`}
             >
-              <div className={`w-10 h-10 rounded-lg ${item.color} flex items-center justify-center`}>
+              <div className={`w-10 h-10 rounded-lg ${item.iconBg} ${item.iconText} flex items-center justify-center`}>
                 <Icon className="w-5 h-5" />
               </div>
-              <span className={`text-xs font-medium ${item.primary ? 'text-amber-300' : 'text-white/50'}`}>{item.label}</span>
+              <span className={`text-xs font-medium ${item.labelText}`}>{item.label}</span>
             </motion.button>
           );
         })}
