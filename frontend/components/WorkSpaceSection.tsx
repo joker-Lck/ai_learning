@@ -525,16 +525,18 @@ function SuggestionCard({ recommendations, onNavigateModule }: { recommendations
 
 function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const quickItems = [
-    { label: 'AI 问答', icon: Lightbulb, color: 'bg-amber-500/10 text-amber-400', moduleId: 'tutor' as ModuleType },
+    { label: '学生画像', icon: UserCheck, color: 'bg-purple-500/10 text-purple-400', moduleId: 'profile' as ModuleType },
     { label: '资源生成', icon: Brain, color: 'bg-cyan-500/10 text-cyan-400', moduleId: 'resources' as ModuleType },
+    { label: '学习路径', icon: Router, color: 'bg-blue-500/10 text-blue-400', moduleId: 'path' as ModuleType },
+    { label: 'AI 问答', icon: Lightbulb, color: 'bg-amber-500/10 text-amber-400', moduleId: 'tutor' as ModuleType },
     { label: '学习评估', icon: BarChart3, color: 'bg-emerald-500/10 text-emerald-400', moduleId: 'assessment' as ModuleType },
-    { label: '上传文档', icon: Database, color: 'bg-purple-500/10 text-purple-400', moduleId: 'rag' as ModuleType },
+    { label: '知识库', icon: Database, color: 'bg-pink-500/10 text-pink-400', moduleId: 'rag' as ModuleType },
   ];
   return (
     <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05]">
       <div className="flex items-center gap-2 mb-4">
         <Zap className="w-4 h-4 text-purple-400" />
-        <h3 className="text-sm font-semibold text-white">快速开始</h3>
+        <h3 className="text-sm font-semibold text-white">功能模块</h3>
       </div>
       <div className="grid grid-cols-2 gap-2.5">
         {quickItems.map(item => {
