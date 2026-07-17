@@ -24,9 +24,14 @@ class TutorAgent:
 
     def answer_query(self, user_id: int, input_data: dict) -> dict:
         """
-        回答学生问题 - 记忆增强版
+        回答学生问题 - 记忆增强版 + Self-RAG 决策
 
-        自动检索用户记忆上下文，构建增强 Prompt，生成个性化回答
+        流程：
+        1. Self-RAG 前置判断：是否需要检索
+        2. 策略路由：按题型选择最优检索策略
+        3. 记忆增强 + 检索
+        4. 生成回答
+        5. 后置校验：结果质量验证
         """
         info(f"开始智能辅导答疑, 用户: {user_id}")
 
@@ -34,13 +39,41 @@ class TutorAgent:
         subject = input_data.get("subject", "综合")
         session_id = input_data.get("session_id", "default")
 
+        # ── Self-RAG 前置判断 ──
+        try:
+            from services.self_rag import self_rag
+            gate_result = self_rag.retrieval_gate(question, subject)
+
+            if not gate_result["needs_retrieval"]:
+                info(f"[Self-RAG] 跳过检索: reason={gate_result['reason']}")
+                direct = gate_result.get("direct_answer")
+                if direct:
+                    return {
+                        "answer": {"text_answer": {"summary": direct, "steps": []}},
+                        "message": "直接回答（无需检索）",
+                        "self_rag": {"skipped": True, "reason": gate_result["reason"]},
+                    }
+                # 无直接回答，让 LLM 生成（不带检索上下文）
+                return self._fallback_answer(user_id, input_data)
+
+            # 策略路由
+            route_result = self_rag.strategy_router(question, subject)
+            preferred_strategy = route_result["strategy"]
+            info(f"[Self-RAG] 策略路由: {preferred_strategy} (type={route_result['question_type']}, "
+                 f"conf={route_result['confidence']:.2f})")
+        except Exception as e:
+            debug(f"Self-RAG 决策降级: {e}")
+            preferred_strategy = None
+
         # 尝试使用记忆增强，失败则降级
         try:
             from services.memory_service import memory_service
 
             with memory_service as ms:
-                # 1. 检索相关记忆
-                relevant_memories = self._retrieve_memories(ms, user_id, question, subject)
+                # 1. 检索相关记忆（使用 Self-RAG 策略路由）
+                relevant_memories = self._retrieve_memories(
+                    ms, user_id, question, subject, preferred_strategy
+                )
 
                 # 2. 获取用户知识背景
                 user_context = self._build_user_context(ms, user_id, subject)
@@ -88,6 +121,52 @@ class TutorAgent:
                 except Exception as reflect_err:
                     debug(f"反思验证跳过: {reflect_err}")
 
+                # 6.6 Self-RAG 后置校验：检索结果是否充分
+                try:
+                    from services.self_rag import self_rag
+                    answer_text_for_verify = answer_data.get('text_answer', {})
+                    if isinstance(answer_text_for_verify, dict):
+                        answer_text_for_verify = answer_text_for_verify.get('summary', str(answer_text_for_verify))
+                    verify_result = self_rag.result_verifier(
+                        question, relevant_memories.get('rag_docs', []), str(answer_text_for_verify)
+                    )
+                    answer_data['self_rag'] = {
+                        "quality_score": verify_result["quality_score"],
+                        "is_sufficient": verify_result["is_sufficient"],
+                        "strategy_used": preferred_strategy,
+                    }
+                    # 如果质量不足且应重试，用新策略重新检索
+                    if verify_result["should_retry"] and verify_result["retry_strategy"]:
+                        retry_strategy = verify_result["retry_strategy"]
+                        info(f"[Self-RAG] 质量不足，重试策略: {retry_strategy}")
+                        retry_results = self._retrieve_memories(
+                            ms, user_id, question, subject, retry_strategy
+                        )
+                        if retry_results.get('rag_docs'):
+                            # 用新检索结果重新生成
+                            retry_context = self._build_enhanced_context(
+                                question, subject, retry_results, user_context, conversation_history
+                            )
+                            retry_merged = f"{original_context}\n\n{retry_context}".strip()
+                            retry_answer = self._generate_multimodal_answer(
+                                question, subject, retry_merged, profile,
+                                input_data.get("preferred_format", "all")
+                            )
+                            # 如果重试结果更好，使用重试结果
+                            retry_text = retry_answer.get('text_answer', {})
+                            if isinstance(retry_text, dict):
+                                retry_text = retry_text.get('summary', str(retry_text))
+                            if retry_text and len(str(retry_text)) > len(str(answer_text_for_verify)):
+                                answer_data = retry_answer
+                                answer_data['self_rag'] = {
+                                    "quality_score": verify_result["quality_score"],
+                                    "retried": True,
+                                    "retry_strategy": retry_strategy,
+                                    "strategy_used": retry_strategy,
+                                }
+                except Exception as self_rag_err:
+                    debug(f"Self-RAG 后置校验跳过: {self_rag_err}")
+
                 # 7. 保存问答记录
                 self._save_tutor_record(user_id, question, answer_data)
 
@@ -118,7 +197,10 @@ class TutorAgent:
                         "relevant_memories_count": len(relevant_memories.get('semantic', [])),
                         "user_knowledge_level": user_context.get('knowledge_level', 'unknown'),
                         "conversation_turns": len(conversation_history)
-                    }
+                    },
+                    "self_rag": answer_data.get('self_rag', {
+                        "strategy_used": preferred_strategy,
+                    }),
                 }
 
                 info(f"智能辅导完成, 解答类型: {answer_data.get('formats', [])}")
@@ -149,8 +231,9 @@ class TutorAgent:
     # 记忆检索与上下文构建
     # ==========================================
 
-    def _retrieve_memories(self, ms, user_id: int, question: str, subject: str) -> dict:
-        """检索相关记忆（集成高级检索）"""
+    def _retrieve_memories(self, ms, user_id: int, question: str, subject: str,
+                           preferred_strategy: str | None = None) -> dict:
+        """检索相关记忆（集成高级检索 + Self-RAG 策略路由）"""
         memories = {'semantic': [], 'episodic': [], 'entity': [], 'rag_docs': []}
         try:
             memories['semantic'] = ms.search_semantic(user_id, question, limit=5)
@@ -161,12 +244,18 @@ class TutorAgent:
                 if subject_facts:
                     memories['semantic'].extend(subject_facts[:3])
 
-            # 高级 RAG 检索（Graph-Enhanced）
+            # 高级 RAG 检索（根据 Self-RAG 策略选择）
             try:
                 from services.advanced_retrieval_service import retrieval_service
-                rag_results = retrieval_service.graph_enhanced_search(
-                    user_id=user_id, query=question, subject=subject, limit=3
-                )
+                if preferred_strategy:
+                    rag_results = retrieval_service.search(
+                        user_id=user_id, query=question, subject=subject,
+                        strategy=preferred_strategy, limit=3
+                    )
+                else:
+                    rag_results = retrieval_service.graph_enhanced_search(
+                        user_id=user_id, query=question, subject=subject, limit=3
+                    )
                 if rag_results:
                     memories['rag_docs'] = rag_results
             except Exception as e:

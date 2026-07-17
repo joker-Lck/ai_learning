@@ -92,6 +92,7 @@ KNN 结果 + ANN 结果 → RRF 统一排序 → Top-N 返回。
 | `contextual` | 上下文精排（Anthropic, 2024） | 高精度场景 |
 | `graph` | 图谱增强检索（Microsoft GraphRAG, 2024） | 有图谱数据时 |
 | `multi_hop` | 多跳推理检索（逻辑图 + 2-5跳探索 + 证据链验证） | 复杂推理问题 |
+| `react` | ReAct 推理-检索交替（推理→检索→推理） | 推导题、多步骤问题 |
 | `hybrid_advl` | 基座 + HyDE + RAG-Fusion 三路 RRF | 平衡速度与精度 |
 | `ensemble` | 全部 6 种方法取并集，RRF 融合 | 最全面 |
 

@@ -41,10 +41,58 @@ class AgentCoordinator:
         self.tutor_agent = TutorAgent()
         self.assessment_agent = AssessmentAgent()
 
+        # ── Agent 状态追踪（用于可视化）──
+        self._status_tracker: dict[str, list[dict]] = {}  # session_id -> [events]
+        self._status_callbacks: list = []  # SSE 回调函数列表
+
         # ── 注册到消息总线 ──
         self._register_handlers()
 
         info("多智能体协调器初始化完成（事件驱动架构）")
+
+    # ═══════════════════════════════════════
+    # Agent 状态可视化
+    # ═══════════════════════════════════════
+
+    def register_status_callback(self, callback):
+        """注册状态回调函数（用于 SSE 推送）"""
+        self._status_callbacks.append(callback)
+
+    def unregister_status_callback(self, callback):
+        """取消注册状态回调"""
+        if callback in self._status_callbacks:
+            self._status_callbacks.remove(callback)
+
+    def _emit_status(self, session_id: str, event_type: str, data: dict):
+        """发射 Agent 状态事件"""
+        event = {
+            "session_id": session_id,
+            "type": event_type,
+            "data": data,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        # 存储到追踪器
+        if session_id not in self._status_tracker:
+            self._status_tracker[session_id] = []
+        self._status_tracker[session_id].append(event)
+
+        # 通知所有回调
+        for callback in self._status_callbacks:
+            try:
+                callback(event)
+            except Exception:
+                pass
+
+        debug(f"[AgentStatus] {session_id}: {event_type} - {data.get('agent', '')}")
+
+    def get_session_status(self, session_id: str) -> list[dict]:
+        """获取会话的所有状态事件"""
+        return self._status_tracker.get(session_id, [])
+
+    def clear_session_status(self, session_id: str):
+        """清除会话状态"""
+        self._status_tracker.pop(session_id, None)
 
     # ═══════════════════════════════════════
     # 消息总线注册
@@ -159,6 +207,13 @@ class AgentCoordinator:
         try:
             info(f"开始执行任务: {task_type}, 用户: {user_id}, 会话: {session_id}")
 
+            # ── 发射开始事件 ──
+            self._emit_status(session_id, "task_start", {
+                "task_type": task_type,
+                "user_id": user_id,
+                "agent": "coordinator",
+            })
+
             # ── 路由到对应处理流程 ──
             task_map = {
                 "build_profile":           self._msg_build_profile,
@@ -171,9 +226,21 @@ class AgentCoordinator:
 
             handler = task_map.get(task_type)
             if handler:
+                # ── 发射处理中事件 ──
+                self._emit_status(session_id, "agent_thinking", {
+                    "task_type": task_type,
+                    "agent": task_type.split("_")[0],
+                })
+
                 result["data"] = handler(user_id, input_data, ctx)
                 result["success"] = True
                 result["message"] = self._success_message(task_type, result["data"])
+
+                # ── 发射完成事件 ──
+                self._emit_status(session_id, "task_complete", {
+                    "task_type": task_type,
+                    "agent": "coordinator",
+                })
             else:
                 result["message"] = f"未知任务类型: {task_type}"
                 error(f"未知任务类型: {task_type}")

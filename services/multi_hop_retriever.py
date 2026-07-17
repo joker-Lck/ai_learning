@@ -343,6 +343,151 @@ class MultiHopRetriever:
             for e in evidence_chain[:3]
         )
 
+    def react_retrieve(self, query: str, user_id: int = 0,
+                       max_steps: int = 3, limit: int = 5) -> dict:
+        """
+        ReAct 推理-检索交替检索
+
+        流程：
+        1. LLM 推理一步 → 判断需要什么信息
+        2. 针对性检索
+        3. 基于新信息继续推理
+        4. 重复直到信息充分或达到步数上限
+
+        适配：理科推导、多步骤答疑、需要逐步构建答案的场景
+        """
+        info(f"[ReAct] 开始推理-检索交替: query='{query[:50]}'")
+
+        reasoning_steps = []
+        evidence_chain = []
+        visited_ids = set()
+        current_context = ""
+
+        for step in range(max_steps):
+            # Step 1: 推理 — 基于当前信息，判断下一步需要什么
+            reasoning = self._reasoning_step(query, current_context, step)
+            if not reasoning:
+                break
+
+            reasoning_steps.append({
+                "step": step,
+                "thought": reasoning.get("thought", ""),
+                "need_info": reasoning.get("need_info", ""),
+                "is_sufficient": reasoning.get("is_sufficient", False),
+            })
+
+            # 如果推理认为信息已充分，停止
+            if reasoning.get("is_sufficient"):
+                info(f"[ReAct] Step {step}: 信息充分，停止检索")
+                break
+
+            # Step 2: 检索 — 针对推理出的需求检索
+            search_query = reasoning.get("need_info", query)
+            docs = self._hop_retrieve(search_query, visited_ids, limit=3)
+
+            if not docs:
+                # 尝试用原始查询
+                docs = self._hop_retrieve(query, visited_ids, limit=3)
+
+            if not docs:
+                break
+
+            # Step 3: 整合新证据
+            for doc in docs:
+                doc_id = doc.get("id", 0)
+                if doc_id in visited_ids:
+                    continue
+                visited_ids.add(doc_id)
+                content = doc.get("content", "") or doc.get("content_text", "")
+
+                evidence_chain.append({
+                    "hop": step,
+                    "doc_id": doc_id,
+                    "title": doc.get("title", ""),
+                    "content": content[:500],
+                    "score": doc.get("score", 0.4),
+                    "relation": f"react_step_{step}",
+                })
+                current_context += f"\n[证据] {doc.get('title', '')}: {content[:300]}"
+
+            # 构建逻辑图
+            if step == 0:
+                logic_graph = self._build_logic_graph(docs)
+            else:
+                # 扩展逻辑图
+                new_graph = self._build_logic_graph(docs)
+                logic_graph["nodes"].extend(new_graph["nodes"])
+                logic_graph["edges"].extend(new_graph["edges"])
+
+        # 综合答案
+        answer = self._synthesize_answer(query, evidence_chain)
+
+        # 验证
+        chain_result = self._verify_chain(evidence_chain)
+        hops_used = max((e.get("hop", 0) for e in evidence_chain), default=0)
+
+        info(f"[ReAct] 完成: steps={len(reasoning_steps)} evidence={len(evidence_chain)} "
+             f"confidence={chain_result['confidence']:.3f}")
+
+        return {
+            "answer": answer,
+            "evidence_chain": evidence_chain,
+            "confidence": chain_result["confidence"],
+            "hops_used": hops_used,
+            "reasoning_steps": reasoning_steps,
+            "logic_graph": logic_graph if evidence_chain else {"nodes": [], "edges": []},
+        }
+
+    def _reasoning_step(self, query: str, current_context: str, step: int) -> dict | None:
+        """
+        ReAct 推理步骤：LLM 分析当前信息，判断下一步需要什么
+
+        返回:
+        {
+            "thought": str,       # 推理过程
+            "need_info": str,     # 需要检索的信息
+            "is_sufficient": bool # 当前信息是否已充分
+        }
+        """
+        prompt = f"""你是一个推理助手。根据用户问题和已知信息，判断下一步需要什么。
+
+【用户问题】
+{query}
+
+【已知信息】
+{current_context if current_context else "暂无"}
+
+【当前步骤】第 {step + 1} 步
+
+请用 JSON 格式回答：
+{{
+  "thought": "你的推理过程（简短）",
+  "need_info": "下一步需要检索的信息（用于搜索的关键词/问题）",
+  "is_sufficient": true/false（当前信息是否已足够回答问题）
+}}
+
+只输出 JSON，不要其他内容。"""
+
+        try:
+            result = self.qa_service.call_simple(prompt, max_tokens=200)
+            if result and not result.startswith("错误"):
+                import json
+                # 提取 JSON
+                match = re.search(r'\{[^{}]*\}', result)
+                if match:
+                    return json.loads(match.group())
+        except Exception as e:
+            debug(f"[ReAct] 推理步骤失败: {e}")
+
+        # 降级：使用规则推理
+        if step == 0:
+            return {
+                "thought": "初始检索",
+                "need_info": query,
+                "is_sufficient": False,
+            }
+        return None
+
     def _empty_result(self, reason: str) -> dict:
         return {
             "answer": reason,
@@ -378,6 +523,155 @@ class MultiHopRetriever:
             return True
         except Exception as e:
             error(f"[MultiHop] 存储实体图失败: {e}")
+            return False
+
+    def build_knowledge_graph(self, doc_id: int, subject: str, content: str) -> dict:
+        """
+        知识图谱自动构建流水线 — LLM-based NER + RE
+
+        1. 规则提取实体（快速）
+        2. LLM 补充实体 + 抽取关系（精准）
+        3. 合并去重
+        4. 存入 knowledge_entity_graph 表
+
+        返回:
+        {
+            "entities": [...],
+            "relations": [...],
+            "stored": bool
+        }
+        """
+        info(f"[KG] 开始构建知识图谱: doc_id={doc_id}")
+
+        # 1. 规则提取
+        rule_entities = self._extract_entities(content)
+
+        # 2. LLM 提取实体 + 关系
+        llm_result = self._llm_extract_entities_relations(content[:4000])
+        llm_entities = llm_result.get("entities", [])
+        relations = llm_result.get("relations", [])
+
+        # 3. 合并去重
+        all_entities = self._merge_entities(rule_entities, llm_entities)
+
+        # 4. 存储
+        stored = self._store_graph_data(doc_id, subject, all_entities, relations)
+
+        result = {
+            "entities": all_entities,
+            "relations": relations,
+            "stored": stored,
+            "entity_count": len(all_entities),
+            "relation_count": len(relations),
+        }
+
+        info(f"[KG] 知识图谱构建完成: entities={len(all_entities)} relations={len(relations)}")
+        return result
+
+    def _llm_extract_entities_relations(self, text: str) -> dict:
+        """LLM 提取实体和关系"""
+        prompt = f"""从以下文本中提取实体和它们之间的关系。
+
+【文本】
+{text}
+
+请用 JSON 格式输出：
+{{
+  "entities": [
+    {{"name": "实体名", "type": "concept|person|algorithm|formula|method"}}
+  ],
+  "relations": [
+    {{"source": "实体A", "target": "实体B", "relation": "关系类型"}}
+  ]
+}}
+
+关系类型包括：is_a, part_of, uses, depends_on, improves, related_to, causes, equals
+只输出 JSON，不要其他内容。"""
+
+        try:
+            result = self.qa_service.call_simple(prompt, max_tokens=1500)
+            if result and not result.startswith("错误"):
+                match = re.search(r'\{.*\}', result, re.DOTALL)
+                if match:
+                    data = json.loads(match.group())
+                    return {
+                        "entities": data.get("entities", []),
+                        "relations": data.get("relations", []),
+                    }
+        except Exception as e:
+            debug(f"[KG] LLM 实体关系提取失败: {e}")
+
+        return {"entities": [], "relations": []}
+
+    def _merge_entities(self, rule_entities: list, llm_entities: list) -> list:
+        """合并去重规则提取和 LLM 提取的实体"""
+        seen = set()
+        merged = []
+
+        for ent in rule_entities:
+            name = ent.get("name", "")
+            if name and name not in seen:
+                seen.add(name)
+                merged.append({"name": name, "type": ent.get("type", "concept"), "source": "rule"})
+
+        for ent in llm_entities:
+            name = ent.get("name", "")
+            if name and name not in seen:
+                seen.add(name)
+                merged.append({"name": name, "type": ent.get("type", "concept"), "source": "llm"})
+
+        return merged
+
+    def _store_graph_data(self, doc_id: int, subject: str,
+                          entities: list, relations: list) -> bool:
+        """存储实体和关系到数据库"""
+        try:
+            from data.config import get_rag_db_path
+            conn = sqlite3.connect(get_rag_db_path())
+            cursor = conn.cursor()
+
+            # 存储实体
+            for ent in entities:
+                related_names = []
+                for rel in relations:
+                    if rel.get("source") == ent["name"]:
+                        related_names.append(rel.get("target", ""))
+                    elif rel.get("target") == ent["name"]:
+                        related_names.append(rel.get("source", ""))
+
+                cursor.execute("""
+                    INSERT OR REPLACE INTO knowledge_entity_graph
+                    (doc_id, subject, entity_name, entity_type, related_entities)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (doc_id, subject, ent["name"], ent.get("type", "concept"),
+                      json.dumps(related_names[:10], ensure_ascii=False)))
+
+            # 存储关系（如果有 relations 表）
+            try:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS entity_relations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        doc_id INTEGER,
+                        source_entity TEXT,
+                        target_entity TEXT,
+                        relation_type TEXT,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                for rel in relations:
+                    cursor.execute("""
+                        INSERT INTO entity_relations (doc_id, source_entity, target_entity, relation_type)
+                        VALUES (?, ?, ?, ?)
+                    """, (doc_id, rel.get("source", ""), rel.get("target", ""),
+                          rel.get("relation", "related_to")))
+            except Exception:
+                pass
+
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            error(f"[KG] 存储图谱数据失败: {e}")
             return False
 
 

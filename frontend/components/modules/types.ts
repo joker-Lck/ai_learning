@@ -59,6 +59,20 @@ export interface TutorMessage {
   diagram?: string | Record<string, any>;
   example?: string | Record<string, any>;
   timestamp: Date;
+  evidence_chain?: Array<{
+    hop: number;
+    doc_id: number;
+    title: string;
+    content: string;
+    score: number;
+    relation: string;
+  }>;
+  logic_graph?: {
+    nodes: Array<{ id: string; label: string; type: string }>;
+    edges: Array<{ source: string; target: string; relation: string }>;
+  };
+  confidence?: number;
+  hops_used?: number;
 }
 
 export interface AssessmentDimension {

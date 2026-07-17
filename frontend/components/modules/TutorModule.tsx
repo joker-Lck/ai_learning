@@ -9,6 +9,27 @@ import { useVoiceInput } from '@/lib/useVoiceInput';
 
 const MermaidDiagram = dynamic(() => import('./MermaidDiagram'), { ssr: false });
 
+/** 将 logic_graph 转换为 Mermaid 图表语法 */
+function buildMermaidFromGraph(graph: { nodes: Array<{ id: string; label: string; type: string }>; edges: Array<{ source: string; target: string; relation: string }> }): string {
+  let mermaid = 'graph LR\n';
+  for (const node of graph.nodes) {
+    const safeId = node.id.replace(/[^a-zA-Z0-9_]/g, '_');
+    const safeLabel = node.label.replace(/"/g, "'");
+    if (node.type === 'document') {
+      mermaid += `  ${safeId}["📄 ${safeLabel}"]\n`;
+    } else {
+      mermaid += `  ${safeId}["${safeLabel}"]\n`;
+    }
+  }
+  for (const edge of graph.edges) {
+    const safeSource = edge.source.replace(/[^a-zA-Z0-9_]/g, '_');
+    const safeTarget = edge.target.replace(/[^a-zA-Z0-9_]/g, '_');
+    const safeRelation = edge.relation.replace(/"/g, "'");
+    mermaid += `  ${safeSource} -->|"${safeRelation}"| ${safeTarget}\n`;
+  }
+  return mermaid;
+}
+
 interface TutorModuleProps {
   question: string;
   setQuestion: (v: string) => void;
@@ -76,6 +97,63 @@ export default memo(function TutorModule({
                     <div className="mt-2 p-3 glass rounded-lg text-sm">
                       <div className="text-purple-400 font-medium mb-1">📊 图解说明</div>
                       <MarkdownRenderer content={msg.diagram} />
+                    </div>
+                  )}
+                  {/* Multi-Hop 推理链路可视化 */}
+                  {msg.evidence_chain && msg.evidence_chain.length > 0 && (
+                    <div className="mt-3 p-3 glass rounded-lg text-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="text-cyan-400 font-medium">🔗 推理链路</div>
+                        {msg.confidence !== undefined && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300">
+                            置信度: {(msg.confidence * 100).toFixed(0)}%
+                          </span>
+                        )}
+                        {msg.hops_used !== undefined && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+                            {msg.hops_used} 跳
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {msg.evidence_chain.map((evidence, eIdx) => (
+                          <div key={eIdx} className="flex items-start gap-2">
+                            <div className="flex flex-col items-center">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                evidence.hop === 0
+                                  ? 'bg-green-500/30 text-green-300'
+                                  : evidence.hop === 1
+                                  ? 'bg-blue-500/30 text-blue-300'
+                                  : 'bg-purple-500/30 text-purple-300'
+                              }`}>
+                                {evidence.hop}
+                              </div>
+                              {eIdx < (msg.evidence_chain?.length ?? 0) - 1 && (
+                                <div className="w-0.5 h-4 bg-white/10" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white/90 font-medium truncate">{evidence.title}</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white/50">
+                                  {evidence.relation}
+                                </span>
+                                <span className="text-xs text-white/40">
+                                  {(evidence.score * 100).toFixed(0)}%
+                                </span>
+                              </div>
+                              <p className="text-white/50 text-xs mt-0.5 line-clamp-2">{evidence.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* 知识关联图谱 (Mermaid) */}
+                  {msg.logic_graph && msg.logic_graph.nodes.length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-amber-400 font-medium text-sm mb-1">🕸️ 知识关联图</div>
+                      <MermaidDiagram chart={buildMermaidFromGraph(msg.logic_graph)} />
                     </div>
                   )}
                   {msg.example && (

@@ -317,6 +317,170 @@ class Reflector:
             error(f"[Reflector] 二次生成失败: {e}")
             return None
 
+    def pairwise_compare(self, query: str, candidates: list[str],
+                         context: str = "") -> dict:
+        """
+        LLM-A 法官对比：多条候选答案两两比较，选出最优
+
+        参数:
+            query: 用户问题
+            candidates: 候选答案列表 [answer1, answer2, ...]
+            context: 参考上下文
+
+        返回:
+        {
+            "best_index": int,          # 最优答案索引
+            "best_answer": str,         # 最优答案内容
+            "ranking": list[int],       # 排名（从优到劣的索引顺序）
+            "comparison": dict,         # 详细对比结果
+            "reason": str               # 选择理由
+        }
+        """
+        if not candidates:
+            return {"best_index": -1, "best_answer": "", "ranking": [], "comparison": {}, "reason": "无候选答案"}
+
+        if len(candidates) == 1:
+            return {
+                "best_index": 0,
+                "best_answer": candidates[0],
+                "ranking": [0],
+                "comparison": {},
+                "reason": "仅一个候选答案",
+            }
+
+        # 构建对比 prompt
+        candidate_text = ""
+        for i, ans in enumerate(candidates[:4]):  # 最多比较 4 个
+            candidate_text += f"\n【候选答案 {chr(65+i)}】\n{ans[:1500]}\n"
+
+        prompt = f"""请对比以下候选答案，选出最优的一个。
+
+【用户问题】
+{query}
+
+{candidate_text}
+
+【参考上下文】
+{context[:2000] if context else "无"}
+
+请从以下维度评估每个答案：
+1. 准确性：是否与参考信息一致
+2. 完整性：是否完整回答了问题
+3. 清晰度：表达是否清晰易懂
+4. 实用性：对用户是否有帮助
+
+请用 JSON 格式输出：
+{{
+  "best": "A/B/C/D",
+  "ranking": ["A", "B", "C", "D"],
+  "reason": "选择理由（简短）",
+  "scores": {{"A": 分数, "B": 分数, "C": 分数, "D": 分数}}
+}}
+
+只输出 JSON，不要其他内容。"""
+
+        try:
+            result = self.qa_service.call_simple(prompt, max_tokens=500)
+            parsed = self._extract_json(result)
+            if parsed and "best" in parsed:
+                # 转换字母为索引
+                best_letter = parsed["best"].strip().upper()
+                best_index = ord(best_letter) - ord('A') if best_letter in 'ABCD' else 0
+                best_index = max(0, min(best_index, len(candidates) - 1))
+
+                # 转换排名
+                ranking = []
+                for letter in parsed.get("ranking", []):
+                    idx = ord(letter.strip().upper()) - ord('A')
+                    if 0 <= idx < len(candidates):
+                        ranking.append(idx)
+
+                # 补充缺失的索引
+                for i in range(len(candidates)):
+                    if i not in ranking:
+                        ranking.append(i)
+
+                return {
+                    "best_index": best_index,
+                    "best_answer": candidates[best_index],
+                    "ranking": ranking,
+                    "comparison": parsed.get("scores", {}),
+                    "reason": parsed.get("reason", ""),
+                }
+        except Exception as e:
+            warning(f"[Reflector] Pairwise 对比失败: {e}")
+
+        # 降级：返回第一个
+        return {
+            "best_index": 0,
+            "best_answer": candidates[0],
+            "ranking": list(range(len(candidates))),
+            "comparison": {},
+            "reason": "对比失败，使用默认答案",
+        }
+
+    def generate_and_select_best(self, query: str, context: str,
+                                  num_candidates: int = 3) -> dict:
+        """
+        生成多条候选答案并通过 pairwise 对比选出最优
+
+        参数:
+            query: 用户问题
+            context: 参考上下文
+            num_candidates: 候选答案数量（2-4）
+
+        返回:
+        {
+            "best_answer": str,
+            "candidates": list[str],
+            "comparison": dict
+        }
+        """
+        num_candidates = max(2, min(num_candidates, 4))
+        candidates = []
+
+        # 生成多条候选答案（不同策略/温度）
+        strategies = [
+            ("标准回答", "请提供准确、完整的回答。"),
+            ("简洁回答", "请用简洁的语言回答，突出关键点。"),
+            ("详细回答", "请提供详细的回答，包含解释和示例。"),
+            ("步骤回答", "请分步骤回答，条理清晰。"),
+        ]
+
+        for i in range(num_candidates):
+            strategy_name, instruction = strategies[i % len(strategies)]
+            prompt = f"""{instruction}
+
+【用户问题】
+{query}
+
+【参考信息】
+{context[:3000]}
+
+请直接回答问题，不要重复问题内容。"""
+
+            try:
+                answer = self.qa_service.call_standard(prompt, max_tokens=2000)
+                if answer and not answer.startswith("错误"):
+                    candidates.append(answer)
+            except Exception as e:
+                debug(f"[Reflector] 候选答案 {i+1} 生成失败: {e}")
+
+        if not candidates:
+            return {"best_answer": "", "candidates": [], "comparison": {}}
+
+        if len(candidates) == 1:
+            return {"best_answer": candidates[0], "candidates": candidates, "comparison": {}}
+
+        # Pairwise 对比选出最优
+        comparison = self.pairwise_compare(query, candidates, context)
+
+        return {
+            "best_answer": comparison["best_answer"],
+            "candidates": candidates,
+            "comparison": comparison,
+        }
+
     def _extract_json(self, text: str) -> dict | None:
         """从文本中提取 JSON 对象"""
         if not text:

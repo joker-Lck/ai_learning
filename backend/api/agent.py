@@ -6,7 +6,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from backend.dependencies import get_current_user, require_auth
 from backend.schemas.models import BaseResponse
@@ -947,6 +947,18 @@ async def upload_to_rag(
             if doc_id:
                 results.append({"filename": f.filename, "success": True, "doc_id": doc_id,
                                 "knowledge_points": len(kp_list), "summary": summary})
+
+                # 异步构建知识图谱（不阻塞响应）
+                try:
+                    from services.multi_hop_retriever import multi_hop_retriever
+                    import threading
+                    threading.Thread(
+                        target=multi_hop_retriever.build_knowledge_graph,
+                        args=(doc_id, subject or "综合", text),
+                        daemon=True
+                    ).start()
+                except Exception as kg_err:
+                    debug(f"知识图谱构建启动失败: {kg_err}")
             else:
                 results.append({"filename": f.filename, "success": False, "message": "写入数据库失败"})
 
@@ -1656,3 +1668,334 @@ async def trigger_learning_cycle(user=Depends(require_auth)):
     except Exception as e:
         error(f"触发学习循环失败: {e!s}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════
+# 检索评测 API
+# ═══════════════════════════════════════════
+
+@router.get("/eval-retrieval/datasets", response_model=BaseResponse)
+async def list_eval_datasets(user: dict = Depends(require_auth)):
+    """获取所有检索评测数据集"""
+    try:
+        from services.retrieval_evaluator import retrieval_evaluator
+        datasets = retrieval_evaluator.get_datasets()
+        return BaseResponse(success=True, message="获取成功", data=datasets)
+    except Exception as e:
+        error(f"获取评测数据集失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/eval-retrieval/datasets", response_model=BaseResponse)
+async def create_eval_dataset(
+    input_data: dict = Body(...),
+    user: dict = Depends(require_auth)
+):
+    """创建检索评测数据集"""
+    try:
+        from services.retrieval_evaluator import retrieval_evaluator
+        name = input_data.get("name", "")
+        description = input_data.get("description", "")
+        if not name:
+            raise HTTPException(status_code=400, detail="数据集名称不能为空")
+        result = retrieval_evaluator.create_dataset(name, description)
+        return BaseResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"创建评测数据集失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/eval-retrieval/queries", response_model=BaseResponse)
+async def add_eval_query(
+    input_data: dict = Body(...),
+    user: dict = Depends(require_auth)
+):
+    """向数据集添加评测查询"""
+    try:
+        from services.retrieval_evaluator import retrieval_evaluator
+        dataset_id = input_data.get("dataset_id")
+        query = input_data.get("query", "")
+        relevant_doc_ids = input_data.get("relevant_doc_ids", [])
+        if not dataset_id or not query:
+            raise HTTPException(status_code=400, detail="dataset_id 和 query 不能为空")
+        result = retrieval_evaluator.add_query(dataset_id, query, relevant_doc_ids)
+        return BaseResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"添加评测查询失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/eval-retrieval/run", response_model=BaseResponse)
+async def run_eval_retrieval(
+    input_data: dict = Body(...),
+    user: dict = Depends(require_auth)
+):
+    """
+    运行检索评测
+
+    请求体:
+    {
+        "dataset_id": 1,
+        "strategy": "hybrid",
+        "k": 5
+    }
+    """
+    try:
+        from data.rag_knowledge_base import rag_kb
+        from services.retrieval_evaluator import retrieval_evaluator
+
+        dataset_id = input_data.get("dataset_id")
+        strategy = input_data.get("strategy", "hybrid")
+        k = input_data.get("k", 5)
+
+        if not dataset_id:
+            raise HTTPException(status_code=400, detail="dataset_id 不能为空")
+
+        # 构建检索函数
+        def retrieval_fn(query: str):
+            from data.embedding_service import embedding_service
+            embedding = embedding_service.get_embedding(query)
+            if strategy == "hybrid":
+                return rag_kb.hybrid_search(query, query_embedding=embedding, limit=k)
+            elif strategy == "fts5":
+                return rag_kb.search_documents_by_fulltext(query, limit=k)
+            elif strategy == "vector":
+                return rag_kb.search_documents_by_vector(embedding, limit=k)
+            else:
+                return rag_kb.hybrid_search(query, query_embedding=embedding, limit=k)
+
+        result = retrieval_evaluator.run_evaluation(
+            dataset_id=dataset_id,
+            retrieval_fn=retrieval_fn,
+            strategy_name=strategy,
+            k=k
+        )
+        return BaseResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"运行检索评测失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/eval-retrieval/history", response_model=BaseResponse)
+async def get_eval_history(
+    dataset_id: int | None = Query(None),
+    user: dict = Depends(require_auth)
+):
+    """获取评测历史"""
+    try:
+        from services.retrieval_evaluator import retrieval_evaluator
+        history = retrieval_evaluator.get_history(dataset_id)
+        return BaseResponse(success=True, message="获取成功", data=history)
+    except Exception as e:
+        error(f"获取评测历史失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/eval-retrieval/compare", response_model=BaseResponse)
+async def compare_eval_strategies(
+    dataset_id: int = Query(...),
+    k: int = Query(5),
+    user: dict = Depends(require_auth)
+):
+    """对比不同策略的评测结果"""
+    try:
+        from services.retrieval_evaluator import retrieval_evaluator
+        result = retrieval_evaluator.compare_strategies(dataset_id, k)
+        return BaseResponse(**result)
+    except Exception as e:
+        error(f"对比评测策略失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════
+# Multi-Hop 检索可视化 API
+# ═══════════════════════════════════════════
+
+@router.post("/multi-hop-search", response_model=BaseResponse)
+async def multi_hop_search(
+    input_data: dict = Body(...),
+    user: dict = Depends(get_current_user)
+):
+    """
+    Multi-Hop 多跳推理检索（含可视化数据）
+
+    请求体:
+    {
+        "query": "问题内容",
+        "max_hops": 3,
+        "limit": 5
+    }
+
+    返回:
+    {
+        "answer": "综合答案",
+        "evidence_chain": [{"hop": 0, "doc_id": ..., "title": ..., "content": ..., "score": ..., "relation": ...}],
+        "confidence": 0.85,
+        "hops_used": 2,
+        "logic_graph": {"nodes": [...], "edges": [...]}
+    }
+    """
+    try:
+        from services.multi_hop_retriever import multi_hop_retriever
+
+        query = input_data.get("query", "")
+        max_hops = input_data.get("max_hops", 3)
+        limit = input_data.get("limit", 5)
+
+        if not query:
+            raise HTTPException(status_code=400, detail="查询内容不能为空")
+
+        user_id = user["id"]
+        info(f"用户 {user_id} 请求 Multi-Hop 检索: {query[:50]}")
+
+        result = multi_hop_retriever.retrieve(
+            query=query, user_id=user_id,
+            max_hops=max_hops, limit=limit
+        )
+
+        return BaseResponse(
+            success=True,
+            message="Multi-Hop 检索完成",
+            data=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"Multi-Hop 检索失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/react-search", response_model=BaseResponse)
+async def react_search(
+    input_data: dict = Body(...),
+    user: dict = Depends(get_current_user)
+):
+    """
+    ReAct 推理-检索交替检索（适配推导题、多步骤问题）
+
+    请求体:
+    {
+        "query": "问题内容",
+        "max_steps": 3,
+        "limit": 5
+    }
+
+    返回:
+    {
+        "answer": "综合答案",
+        "evidence_chain": [...],
+        "reasoning_steps": [{"step": 0, "thought": "...", "need_info": "...", "is_sufficient": false}],
+        "confidence": 0.85,
+        "logic_graph": {"nodes": [...], "edges": [...]}
+    }
+    """
+    try:
+        from services.multi_hop_retriever import multi_hop_retriever
+
+        query = input_data.get("query", "")
+        max_steps = input_data.get("max_steps", 3)
+        limit = input_data.get("limit", 5)
+
+        if not query:
+            raise HTTPException(status_code=400, detail="查询内容不能为空")
+
+        user_id = user["id"]
+        info(f"用户 {user_id} 请求 ReAct 检索: {query[:50]}")
+
+        result = multi_hop_retriever.react_retrieve(
+            query=query, user_id=user_id,
+            max_steps=max_steps, limit=limit
+        )
+
+        return BaseResponse(
+            success=True,
+            message="ReAct 检索完成",
+            data=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"ReAct 检索失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/faiss-info", response_model=BaseResponse)
+async def get_faiss_index_info(user: dict = Depends(require_auth)):
+    """获取 FAISS 索引信息（类型、向量数、维度）"""
+    try:
+        from data.rag_knowledge_base import vector_index
+        info_data = vector_index.index_info
+        return BaseResponse(success=True, message="获取成功", data=info_data)
+    except Exception as e:
+        error(f"获取 FAISS 索引信息失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════
+# Agent 协作状态可视化 API
+# ═══════════════════════════════════════════
+
+@router.get("/agent-status/{session_id}", response_model=BaseResponse)
+async def get_agent_status(session_id: str, user: dict = Depends(require_auth)):
+    """获取 Agent 协作状态（用于实时可视化）"""
+    try:
+        events = agent_coordinator.get_session_status(session_id)
+        return BaseResponse(success=True, message="获取成功", data=events)
+    except Exception as e:
+        error(f"获取 Agent 状态失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agent-status-stream/{session_id}")
+async def stream_agent_status(session_id: str, user: dict = Depends(get_current_user)):
+    """
+    SSE 流式推送 Agent 协作状态
+
+    事件格式:
+    data: {"type": "task_start|agent_thinking|retrieving|synthesizing|task_complete", "data": {...}}
+    """
+    import asyncio
+
+    async def event_generator():
+        queue = asyncio.Queue()
+
+        def callback(event):
+            try:
+                queue.put_nowait(event)
+            except Exception:
+                pass
+
+        agent_coordinator.register_status_callback(callback)
+        try:
+            # 发送已有事件
+            existing = agent_coordinator.get_session_status(session_id)
+            for event in existing:
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+            # 持续推送新事件
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=30)
+                    if event.get("session_id") == session_id:
+                        yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                except asyncio.TimeoutError:
+                    # 心跳
+                    yield f": heartbeat\n\n"
+        finally:
+            agent_coordinator.unregister_status_callback(callback)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )

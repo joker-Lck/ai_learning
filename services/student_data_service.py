@@ -613,7 +613,37 @@ class StudentDataImportMixin:
             from services.spark_client import spark_client
 
             if is_image:
-                # 使用 OCR 提取文字，再用 AI 解析
+                # 使用增强视觉识别服务
+                from services.enhanced_vision_service import enhanced_vision
+
+                info("使用增强视觉识别服务...")
+                vision_result = enhanced_vision.recognize_schedule(content)
+
+                if vision_result["success"] and vision_result["courses"]:
+                    info(f"增强识别成功: {len(vision_result['courses'])} 门课程, "
+                         f"置信度={vision_result['confidence']:.2f}")
+                    # 直接返回识别结果，跳过后续 AI 解析
+                    courses = vision_result["courses"]
+                    # 格式化为统一格式
+                    formatted = []
+                    for c in courses:
+                        formatted.append({
+                            "name": c.get("course_name", ""),
+                            "day": c.get("day", ""),
+                            "start_time": c.get("start_time", ""),
+                            "end_time": c.get("end_time", ""),
+                            "location": c.get("location", ""),
+                            "teacher": c.get("teacher", ""),
+                        })
+                    return {
+                        "success": True,
+                        "data": formatted,
+                        "message": vision_result["message"],
+                        "confidence": vision_result["confidence"],
+                    }
+
+                # 增强识别失败，降级到原流程
+                info(f"增强识别未成功(confidence={vision_result['confidence']:.2f})，降级到原流程")
                 image_b64 = _compress_image(content)
 
                 # 1. 先用 OCR 提取文字
@@ -647,10 +677,37 @@ class StudentDataImportMixin:
                 if not text or text.startswith("["):
                     # 解析失败，尝试作为图片处理（可能是扫描版 PDF）
                     if ext == 'pdf':
-                        info("PDF 文本提取失败，尝试 OCR 识别扫描版 PDF")
-                        # 将 PDF 转为图片再 OCR
+                        info("PDF 文本提取失败，尝试增强视觉识别扫描版 PDF")
+                        # 将 PDF 转为图片
                         image_b64 = self._pdf_to_image(content)
                         if image_b64:
+                            # 使用增强视觉识别
+                            from services.enhanced_vision_service import enhanced_vision
+                            import base64 as b64
+                            image_bytes = b64.b64decode(image_b64)
+                            vision_result = enhanced_vision.recognize_schedule(image_bytes)
+
+                            if vision_result["success"] and vision_result["courses"]:
+                                info(f"PDF 增强识别成功: {len(vision_result['courses'])} 门课程")
+                                courses = vision_result["courses"]
+                                formatted = []
+                                for c in courses:
+                                    formatted.append({
+                                        "name": c.get("course_name", ""),
+                                        "day": c.get("day", ""),
+                                        "start_time": c.get("start_time", ""),
+                                        "end_time": c.get("end_time", ""),
+                                        "location": c.get("location", ""),
+                                        "teacher": c.get("teacher", ""),
+                                    })
+                                return {
+                                    "success": True,
+                                    "data": formatted,
+                                    "message": vision_result["message"],
+                                    "confidence": vision_result["confidence"],
+                                }
+
+                            # 增强识别失败，降级到原流程
                             ocr_text = spark_client.ocr_image(image_b64)
                             if ocr_text and len(ocr_text) > 10:
                                 info(f"扫描版 PDF OCR 成功: {len(ocr_text)} 字符")
@@ -764,7 +821,24 @@ class StudentDataImportMixin:
 如果没有成绩信息，返回空数组 []"""
 
             if is_image:
-                # 使用 OCR 提取文字，再用 AI 解析
+                # 使用增强视觉识别服务
+                from services.enhanced_vision_service import enhanced_vision
+
+                info("使用增强视觉识别服务识别成绩...")
+                vision_result = enhanced_vision.recognize_grade(content)
+
+                if vision_result["success"] and vision_result["grades"]:
+                    info(f"增强识别成绩成功: {len(vision_result['grades'])} 条, "
+                         f"置信度={vision_result['confidence']:.2f}")
+                    return {
+                        "success": True,
+                        "data": vision_result["grades"],
+                        "message": f"成功识别 {len(vision_result['grades'])} 条成绩",
+                        "confidence": vision_result["confidence"],
+                    }
+
+                # 增强识别失败，降级到原流程
+                info(f"增强识别成绩未成功，降级到原流程")
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
 
@@ -867,7 +941,27 @@ class StudentDataImportMixin:
 如果没有错题信息，返回空数组 []"""
 
             if is_image:
-                # 使用 OCR 提取文字，再用 AI 解析
+                # 使用增强视觉识别服务
+                from services.enhanced_vision_service import enhanced_vision
+
+                info("使用增强视觉识别服务识别错题...")
+                vision_result = enhanced_vision.recognize_error_note(content)
+
+                if vision_result["success"] and vision_result["error_note"]:
+                    error_note = vision_result["error_note"]
+                    # 包装为列表格式
+                    error_data = [error_note] if isinstance(error_note, dict) else error_note
+                    info(f"增强识别错题成功: {len(error_data)} 条, "
+                         f"置信度={vision_result['confidence']:.2f}")
+                    return {
+                        "success": True,
+                        "data": error_data,
+                        "message": f"成功识别 {len(error_data)} 道错题",
+                        "confidence": vision_result["confidence"],
+                    }
+
+                # 增强识别失败，降级到原流程
+                info(f"增强识别错题未成功，降级到原流程")
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
 

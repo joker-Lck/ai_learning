@@ -59,12 +59,105 @@ class LRUCache:
         return len(self._cache)
 
 
+class SemanticCache:
+    """
+    语义缓存 — 基于向量相似度的缓存匹配
+    在精确匹配 LRUCache 基础上，增加 embedding 相似度匹配，
+    相似问题 (>0.92) 直接复用缓存结果，减少 API 调用。
+    """
+
+    def __init__(self, max_size: int = 200, ttl: int = 600, similarity_threshold: float = 0.92):
+        self._entries: list[dict] = []  # [{key, value, timestamp, embedding}]
+        self._max_size = max_size
+        self._ttl = ttl
+        self._threshold = similarity_threshold
+        self._lock = threading.Lock()
+
+    def get(self, key: str, query_embedding: list[float] | None = None):
+        """
+        获取缓存值。
+        1. 先精确匹配 key
+        2. 若失败且有 query_embedding，计算向量相似度匹配
+        """
+        with self._lock:
+            # 精确匹配
+            for i, entry in enumerate(self._entries):
+                if entry["key"] == key:
+                    if time.time() - entry["timestamp"] < self._ttl:
+                        # 移到最前（LRU）
+                        self._entries.insert(0, self._entries.pop(i))
+                        return entry["value"]
+                    else:
+                        self._entries.pop(i)
+                        return None
+
+            # 语义相似度匹配
+            if query_embedding is not None:
+                query_vec = np.array(query_embedding, dtype='float32')
+                query_norm = np.linalg.norm(query_vec)
+                if query_norm > 0:
+                    query_vec = query_vec / query_norm
+
+                    best_sim = 0.0
+                    best_idx = -1
+                    for i, entry in enumerate(self._entries):
+                        if entry.get("embedding") is None:
+                            continue
+                        if time.time() - entry["timestamp"] >= self._ttl:
+                            continue
+                        emb_vec = np.array(entry["embedding"], dtype='float32')
+                        emb_norm = np.linalg.norm(emb_vec)
+                        if emb_norm > 0:
+                            sim = float(np.dot(query_vec, emb_vec / emb_norm))
+                            if sim > best_sim:
+                                best_sim = sim
+                                best_idx = i
+
+                    if best_sim >= self._threshold and best_idx >= 0:
+                        entry = self._entries[best_idx]
+                        # 移到最前
+                        self._entries.insert(0, self._entries.pop(best_idx))
+                        info(f"[SemanticCache] 语义命中 sim={best_sim:.3f} key='{key[:30]}'")
+                        return entry["value"]
+
+            return None
+
+    def set(self, key: str, value, embedding: list[float] | None = None):
+        """设置缓存值，可选存储 embedding 向量"""
+        with self._lock:
+            # 移除已有的同 key 条目
+            self._entries = [e for e in self._entries if e["key"] != key]
+            # 淘汰超限
+            while len(self._entries) >= self._max_size:
+                self._entries.pop()  # 移除最旧的
+            # 插入到最前
+            self._entries.insert(0, {
+                "key": key,
+                "value": value,
+                "timestamp": time.time(),
+                "embedding": embedding,
+            })
+
+    def clear(self, prefix: str | None = None):
+        """清空缓存，可选按前缀过滤"""
+        with self._lock:
+            if prefix:
+                self._entries = [e for e in self._entries if not e["key"].startswith(prefix)]
+            else:
+                self._entries.clear()
+
+    def __len__(self):
+        return len(self._entries)
+
+
 _query_cache = LRUCache(max_size=200, ttl=600)
+_semantic_cache = SemanticCache(max_size=200, ttl=600, similarity_threshold=0.92)
 _CACHE_TTL = 600
 
 def _clear_search_cache():
     """清空搜索缓存"""
     _query_cache.clear(prefix='rag:')
+    _semantic_cache.clear(prefix='rag:')
 
 
 # ═══════════════════════════════════════════
@@ -151,6 +244,9 @@ class VectorIndexManager:
             self._doc_ids.extend(doc_ids)
             self._dirty = True
 
+            # 检查是否需要升级索引类型
+            self._maybe_upgrade_index()
+
     def remove_by_ids(self, doc_ids: set):
         """按 ID 移除向量（FAISS 不支持原生删除，需重建）"""
         with self._lock:
@@ -221,6 +317,30 @@ class VectorIndexManager:
     def total_vectors(self) -> int:
         return self._index.ntotal if self._index else 0
 
+    @property
+    def index_type(self) -> str:
+        """返回当前索引类型名称"""
+        if self._index is None:
+            return "none"
+        type_name = type(self._index).__name__
+        if "HNSW" in type_name:
+            return "HNSW"
+        elif "IVF" in type_name:
+            return "IVFFlat"
+        elif "Flat" in type_name:
+            return "FlatIP"
+        return type_name
+
+    @property
+    def index_info(self) -> dict:
+        """返回索引详细信息"""
+        return {
+            "type": self.index_type,
+            "total_vectors": self.total_vectors,
+            "dimension": self._dimension,
+            "is_ready": self.is_ready,
+        }
+
     def maybe_rebuild(self, rebuild_fn):
         if time.time() - self._last_rebuild > self._rebuild_interval:
             try:
@@ -230,6 +350,36 @@ class VectorIndexManager:
                 warning(f"定期重建FAISS索引失败: {e}")
 
     # ── 内部方法 ──────────────────────────────
+
+    def _maybe_upgrade_index(self):
+        """检查当前索引类型是否匹配文档量，不匹配则重建"""
+        n = len(self._doc_ids)
+        current = self.index_type
+
+        need_upgrade = False
+        if n < 10_000 and current != "FlatIP":
+            need_upgrade = True
+        elif 10_000 <= n < 100_000 and current != "IVFFlat":
+            need_upgrade = True
+        elif n >= 100_000 and current != "HNSW":
+            need_upgrade = True
+
+        if need_upgrade:
+            info(f"[FAISS] 索引升级: {current} → 文档数={n}, 重建中...")
+            # 保存所有向量
+            all_vecs = []
+            if self._index is not None and self._index.ntotal > 0:
+                try:
+                    all_vecs = [self._index.reconstruct(i) for i in range(self._index.ntotal)]
+                except Exception:
+                    pass
+            # 重建
+            self._index = self._create_index(self._dimension)
+            if all_vecs and self._index is not None:
+                vecs = np.array(all_vecs, dtype='float32')
+                self._faiss.normalize_L2(vecs)
+                self._index.add(vecs)
+            info(f"[FAISS] 索引升级完成: {self.index_type}, 向量数={self.total_vectors}")
 
     def _rebuild_internal(self, doc_ids: list, embeddings: list):
         """内部重建（需已持有锁）"""
@@ -249,10 +399,48 @@ class VectorIndexManager:
         self._dirty = True
 
     def _create_index(self, dim: int):
-        """创建 FAISS FlatIP 索引（归一化后内积等价余弦相似度）"""
+        """
+        创建 FAISS 索引 — 按文档量自动选择最优类型：
+        - <10,000:   IndexFlatIP (暴力检索，精确)
+        - 10,000-100,000: IndexIVFFlat (倒排索引，10-50x 加速)
+        - >100,000:  IndexHNSW (图索引，最高性能)
+        """
         if dim <= 0 or not self._faiss_available:
             return None
-        return self._faiss.IndexFlatIP(dim)
+
+        n = len(self._doc_ids)
+
+        if n < 10_000:
+            # 小规模：暴力检索，精确且快
+            return self._faiss.IndexFlatIP(dim)
+
+        elif n < 100_000:
+            # 中规模：IVF 倒排索引
+            nlist = max(1, min(int(n ** 0.5), 4096))
+            quantizer = self._faiss.IndexFlatIP(dim)
+            index = self._faiss.IndexIVFFlat(quantizer, dim, nlist,
+                                             self._faiss.METRIC_INNER_PRODUCT)
+            # IVF 需要训练，用已有向量训练
+            if self._index is not None and self._index.ntotal > 0:
+                try:
+                    train_vecs = np.array(
+                        [self._index.reconstruct(i) for i in range(min(n, self._index.ntotal))],
+                        dtype='float32'
+                    )
+                    index.train(train_vecs)
+                    index.nprobe = min(max(1, nlist // 10), 64)
+                except Exception:
+                    # 训练失败回退到 FlatIP
+                    return self._faiss.IndexFlatIP(dim)
+            return index
+
+        else:
+            # 大规模：HNSW 图索引
+            M = 32
+            index = self._faiss.IndexHNSWFlat(dim, M, self._faiss.METRIC_INNER_PRODUCT)
+            index.hnsw.efConstruction = 200
+            index.hnsw.efSearch = 128
+            return index
 
 
 # 全局单例
@@ -897,6 +1085,12 @@ class RAGKnowledgeBase:
           limit: 返回数量
           rrf_k: RRF 平滑常数
         """
+        # ── 语义缓存命中检查 ──
+        cache_key = f"rag:hybrid:{query}:{subject}:{limit}"
+        cached = _semantic_cache.get(cache_key, query_embedding)
+        if cached is not None:
+            return cached
+
         rrf_scores = {}
         data_map = {}
 
@@ -930,6 +1124,9 @@ class RAGKnowledgeBase:
             doc['rrf_score'] = rrf_scores[doc_id]
             doc['retrieval_method'] = 'hybrid_knn_ann'
             results.append(doc)
+
+        # 写入语义缓存
+        _semantic_cache.set(cache_key, results, query_embedding)
         return results
 
     def _simple_search(self, keywords, subject=None, limit=10):

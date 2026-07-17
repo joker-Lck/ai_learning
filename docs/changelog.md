@@ -1,5 +1,77 @@
 # 版本变更日志
 
+## v8.0.0 (2026-07-17) — 检索系统全面升级 + 协同学习
+
+### 新增 — P0 高收益优化
+- **语义缓存** (`SemanticCache`)
+  - 基于向量相似度的缓存匹配（阈值 0.92）
+  - 相似问题直接复用缓存结果，减少 API 调用
+  - 集成到 `hybrid_search()` 方法
+- **检索评测指标** (`services/retrieval_evaluator.py`)
+  - NDCG@k、MRR、Recall@k 三个标准指标
+  - 支持创建评测数据集、标注查询、运行评测、策略对比
+  - SQLite 持久化评测结果
+- **Multi-Hop 可视化**
+  - 推理链路展示（跳数标签 + 关系 + 置信度）
+  - Mermaid 知识关联图谱渲染
+  - 新增 `POST /api/agent/multi-hop-search` 端点
+- **FAISS 索引升级**
+  - 按文档量自动选择：<10K → FlatIP，10K-100K → IVFFlat，>100K → HNSW
+  - `_maybe_upgrade_index()` 自动升级
+  - `index_type` / `index_info` 属性监控
+
+### 新增 — P1 体验提升
+- **Self-RAG 检索决策** (`services/self_rag.py`)
+  - `retrieval_gate()`: 前置判断是否需要检索
+  - `strategy_router()`: 按题型自动选择策略
+  - `result_verifier()`: 后置校验检索质量
+- **ReAct 推理-检索交替** (`multi_hop_retriever.react_retrieve()`)
+  - 推理→检索→推理 交替执行
+  - LLM 判断信息充分性，精准检索
+  - 适配推导题、多步骤答疑
+- **智能路由**（按题型自动分发）
+  - 代码题 → hybrid，概念题 → HyDE，推导题 → ReAct，应用题 → Graph
+- **Agent 协作实时可视化**
+  - 状态追踪器 + SSE 推送
+  - 事件类型：task_start / agent_thinking / task_complete
+  - `GET /api/agent/agent-status/{session_id}` 轮询
+  - `GET /api/agent/agent-status-stream/{session_id}` SSE 流
+
+### 新增 — P2 锦上添花
+- **命题级分块** (`document_parser.split_into_propositions()`)
+  - LLM 将段落拆解为独立事实命题
+  - 原子事实独立向量化，检索精度更高
+- **知识图谱自动构建** (`multi_hop_retriever.build_knowledge_graph()`)
+  - LLM-based NER + 关系抽取
+  - 规则 + LLM 结果合并去重
+  - 文档上传时异步构建
+- **Reflector 增强**
+  - `pairwise_compare()`: 多候选答案两两比较
+  - `generate_and_select_best()`: 生成 2-4 条候选 + 选最优
+- **协同学习小组** (`services/collaboration_service.py`)
+  - 5 张新表：study_groups, group_members, shared_resources, learning_activities_feed, peer_reviews
+  - 12 个 API 端点：小组管理、资源共享、学习动态、互评、进度对比
+- **增强视觉识别** (`services/enhanced_vision_service.py`)
+  - 图像预处理（自动旋转/放大/对比度/锐度/去噪）
+  - 多策略 OCR 融合（通用 OCR + 结构化提取 + 专用 prompt）
+  - 课表/错题/成绩单专用识别接口
+  - 置信度评估 + 自动降级
+
+### 变更
+- `services/tutor_agent.py` — 集成 Self-RAG 三层决策
+- `services/advanced_retrieval_service.py` — 新增 `react` 策略
+- `services/agent_coordinator.py` — 新增状态追踪和 SSE 推送
+- `services/student_data_service.py` — 图像识别升级为增强视觉服务
+- `backend/main.py` — 注册 collaboration_router
+
+### 新增文件
+- `services/self_rag.py` — Self-RAG 检索决策器
+- `services/retrieval_evaluator.py` — 检索评测模块
+- `services/enhanced_vision_service.py` — 增强视觉识别服务
+- `services/collaboration_service.py` — 协同学习小组服务
+- `data/collaboration_db.py` — 协同学习数据库操作
+- `backend/api/collaboration.py` — 协同学习 API
+
 ## v7.5.1 (2026-07-16)
 
 ### 变更

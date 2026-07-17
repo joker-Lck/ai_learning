@@ -130,6 +130,37 @@ Content-Type: application/json
 | GET | /learning-stats | 获取自学习统计 |
 | POST | /trigger-learning | 手动触发自学习循环 |
 
+### 检索评测（v8.0 新增）
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| GET | /eval-retrieval/datasets | 获取评测数据集列表 |
+| POST | /eval-retrieval/datasets | 创建评测数据集 |
+| POST | /eval-retrieval/queries | 添加评测查询 |
+| POST | /eval-retrieval/run | 运行检索评测 |
+| GET | /eval-retrieval/history | 获取评测历史 |
+| GET | /eval-retrieval/compare | 对比策略评测结果 |
+
+### Multi-Hop / ReAct（v8.0 新增）
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| POST | /multi-hop-search | Multi-Hop 多跳推理检索（含可视化数据） |
+| POST | /react-search | ReAct 推理-检索交替检索 |
+
+### FAISS 索引（v8.0 新增）
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| GET | /faiss-info | 获取 FAISS 索引信息 |
+
+### Agent 可视化（v8.0 新增）
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| GET | /agent-status/{session_id} | 获取 Agent 协作状态 |
+| GET | /agent-status-stream/{session_id} | SSE 实时推送 Agent 状态 |
+
 ### 工作台
 
 | 方法 | 端点 | 功能 |
@@ -170,3 +201,40 @@ data: {"type": "complete", "total_resources": 2, "message": "生成完成"}
 |------|------|------|------|
 | GET | /health | 健康检查 | 否 |
 | GET | /info | 系统信息 | 否 |
+
+## 协同学习接口 `/api/collaboration`（v8.0 新增）
+
+### 小组管理
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| POST | /create-group | 创建学习小组 |
+| POST | /join-group | 通过邀请码加入小组 |
+| POST | /leave-group | 退出小组 |
+| GET | /my-groups | 获取我的小组列表 |
+| GET | /group/{group_id} | 获取小组详情 |
+
+### 资源共享
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| POST | /share-resource | 共享资源到小组 |
+| GET | /shared-resources/{group_id} | 获取小组共享资源 |
+
+### 学习动态
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| GET | /activities/{group_id} | 获取小组学习动态 |
+
+### 互评
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| POST | /review | 添加互评 |
+
+### 进度对比
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| GET | /learning-stats/{group_id} | 获取小组学习统计 |

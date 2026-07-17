@@ -1,4 +1,4 @@
-﻿from core.logger import error
+from core.logger import error
 
 """
 文档解析与 JSON 格式转换模块
@@ -234,6 +234,62 @@ class DocumentParser:
                     result.append(current.strip())
 
         return result[:100]  # 最多保留 100 个段落
+
+    @staticmethod
+    def split_into_propositions(text: str, max_propositions: int = 50) -> list[str]:
+        """
+        命题级分块 — LLM 将段落拆解为独立事实命题
+
+        每个命题是一个原子事实，独立可验证，独立向量化后检索精度更高。
+
+        参数:
+            text: 原始文本
+            max_propositions: 最大命题数
+
+        返回:
+            命题列表 ["命题1", "命题2", ...]
+        """
+        if not text or len(text.strip()) < 20:
+            return [text.strip()] if text.strip() else []
+
+        # 截取前 5000 字符（避免 prompt 过长）
+        truncated = text[:5000]
+
+        prompt = f"""请将以下文本拆解为独立的事实命题。每个命题应该：
+1. 是一个完整的、可独立验证的事实陈述
+2. 不依赖上下文就能理解
+3. 不包含代词（如"它"、"这"、"其"），需替换为具体名词
+4. 保留原文的关键信息，不添加新内容
+
+【文本】
+{truncated}
+
+请输出命题列表，每行一个命题，不要编号，不要其他内容。"""
+
+        try:
+            from services.qa_service import qa_service
+            result = qa_service.call_simple(prompt, max_tokens=2000)
+            if result and not result.startswith("错误"):
+                propositions = [
+                    line.strip().lstrip('0123456789.、- ')
+                    for line in result.strip().split('\n')
+                    if line.strip() and len(line.strip()) > 5
+                ]
+                if propositions:
+                    return propositions[:max_propositions]
+        except Exception as e:
+            from core.logger import debug
+            debug(f"命题拆解降级: {e}")
+
+        # 降级：按句子分割
+        sentences = []
+        for sep in ['。', '；', '！', '？', '.', ';']:
+            if sep in text:
+                sentences = [s.strip() for s in text.split(sep) if s.strip() and len(s.strip()) > 5]
+                break
+        if not sentences:
+            sentences = [text.strip()]
+        return sentences[:max_propositions]
 
     @staticmethod
     def to_json_string(document_data, indent=2):

@@ -23,6 +23,7 @@ from slowapi.util import get_remote_address
 
 from backend.api.agent import router as agent_router
 from backend.api.auth import router as auth_router
+from backend.api.collaboration import router as collaboration_router
 from backend.api.stream import router as stream_router
 from backend.exceptions import (
     AppException,
@@ -248,6 +249,7 @@ async def app_exception_handler(request: Request, exc: AppException):
 app.include_router(agent_router, prefix="/api", tags=["学习智能体"])
 app.include_router(stream_router, prefix="/api/stream", tags=["流式输出"])
 app.include_router(auth_router, prefix="/api/auth", tags=["认证"])
+app.include_router(collaboration_router, prefix="/api", tags=["协同学习"])
 
 # 静态文件
 exports_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "exports")
