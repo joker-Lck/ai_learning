@@ -1,6 +1,6 @@
 // 共享类型定义
 
-export type ModuleType = 'profile' | 'resources' | 'path' | 'tutor' | 'assessment' | 'rag' | null;
+export type ModuleType = 'profile' | 'resources' | 'path' | 'tutor' | 'assessment' | 'rag' | 'collaboration' | null;
 
 export interface NavigationContext {
   subject?: string;

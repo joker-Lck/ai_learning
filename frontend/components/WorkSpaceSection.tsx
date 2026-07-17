@@ -413,7 +413,7 @@ function StatCards({ profile, resourceCount, onNavigateModule }: { profile: Prof
     { label: '学习记录', value: String(historyCount), icon: Clock, color: 'text-purple-400', hoverBorder: 'hover:border-purple-500/20', moduleId: 'profile' as ModuleType },
     { label: '兴趣领域', value: String(interestCount), icon: Target, color: 'text-cyan-400', hoverBorder: 'hover:border-cyan-500/20', moduleId: 'profile' as ModuleType },
     { label: '生成资源', value: String(resourceCount), icon: Sparkles, color: 'text-amber-400', hoverBorder: 'hover:border-amber-500/20', moduleId: 'resources' as ModuleType },
-    { label: '薄弱待补', value: String(weakCount), icon: Zap, color: 'text-emerald-400', hoverBorder: 'hover:border-emerald-500/20', moduleId: 'assessment' as ModuleType },
+    { label: '薄弱待补', value: String(weakCount), icon: Zap, color: 'text-emerald-400', hoverBorder: 'hover:border-emerald-500/20', moduleId: 'profile' as ModuleType },
   ];
 
   return (
@@ -559,8 +559,8 @@ function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType
     { label: 'AI 问答', icon: Lightbulb, bg: 'bg-amber-500/15', border: 'border-amber-400/30 hover:border-amber-400/50', iconBg: 'bg-amber-500/10', iconText: 'text-amber-400', labelText: 'text-amber-300', moduleId: 'tutor' as ModuleType },
     { label: '资源生成', icon: Brain, bg: 'bg-cyan-500/15', border: 'border-cyan-400/30 hover:border-cyan-400/50', iconBg: 'bg-cyan-500/10', iconText: 'text-cyan-400', labelText: 'text-cyan-300', moduleId: 'resources' as ModuleType },
     { label: '学习路径', icon: Router, bg: 'bg-blue-500/15', border: 'border-blue-400/30 hover:border-blue-400/50', iconBg: 'bg-blue-500/10', iconText: 'text-blue-400', labelText: 'text-blue-300', moduleId: 'path' as ModuleType },
-    { label: '学习评估', icon: BarChart3, bg: 'bg-emerald-500/15', border: 'border-emerald-400/30 hover:border-emerald-400/50', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-400', labelText: 'text-emerald-300', moduleId: 'assessment' as ModuleType },
-    { label: '学生画像', icon: UserCheck, bg: 'bg-violet-500/15', border: 'border-violet-400/30 hover:border-violet-400/50', iconBg: 'bg-violet-500/10', iconText: 'text-violet-400', labelText: 'text-violet-300', moduleId: 'profile' as ModuleType },
+    { label: '学习画像', icon: BarChart3, bg: 'bg-emerald-500/15', border: 'border-emerald-400/30 hover:border-emerald-400/50', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-400', labelText: 'text-emerald-300', moduleId: 'profile' as ModuleType },
+    { label: '学习小组', icon: Users, bg: 'bg-violet-500/15', border: 'border-violet-400/30 hover:border-violet-400/50', iconBg: 'bg-violet-500/10', iconText: 'text-violet-400', labelText: 'text-violet-300', moduleId: 'collaboration' as ModuleType },
     { label: '知识库', icon: Database, bg: 'bg-rose-500/15', border: 'border-rose-400/30 hover:border-rose-400/50', iconBg: 'bg-rose-500/10', iconText: 'text-rose-400', labelText: 'text-rose-300', moduleId: 'rag' as ModuleType },
   ];
   return (
@@ -594,8 +594,8 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
     resource:          { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '资源生成', moduleId: 'resources' },
     resource_generate: { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '资源生成', moduleId: 'resources' },
     path:              { icon: Router, color: 'bg-emerald-500/15 text-emerald-400', label: '学习路径', moduleId: 'path' },
-    assess:            { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '效果评估', moduleId: 'assessment' },
-    assessment:        { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '效果评估', moduleId: 'assessment' },
+    assess:            { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '学习画像', moduleId: 'profile' },
+    assessment:        { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '学习画像', moduleId: 'profile' },
     tutor:             { icon: Lightbulb, color: 'bg-pink-500/15 text-pink-400', label: '智能辅导', moduleId: 'tutor' },
     tutor_query:       { icon: Lightbulb, color: 'bg-pink-500/15 text-pink-400', label: '智能辅导', moduleId: 'tutor' },
     profile:           { icon: UserCheck, color: 'bg-purple-500/15 text-purple-400', label: '学习画像', moduleId: 'profile' },

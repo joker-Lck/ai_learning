@@ -16,6 +16,7 @@ import PathModule from './modules/PathModule';
 import TutorModule from './modules/TutorModule';
 import AssessmentModule from './modules/AssessmentModule';
 import RagKnowledgeModule from './modules/RagKnowledgeModule';
+import CollaborationModule from './modules/CollaborationModule';
 import WorkSpaceSection from './WorkSpaceSection';
 
 // 页面过渡动画 — 阻尼感
@@ -253,6 +254,8 @@ export default function DashboardContent() {
         );
       case 'rag':
         return <RagKnowledgeModule />;
+      case 'collaboration':
+        return <CollaborationModule />;
       default:
         return null;
     }
