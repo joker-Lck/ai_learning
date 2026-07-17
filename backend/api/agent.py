@@ -494,6 +494,49 @@ async def assess_learning(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/latest-assessment", response_model=BaseResponse)
+async def get_latest_assessment(user: dict = Depends(require_auth)):
+    """获取最新一次学习评估结果"""
+    try:
+        user_id = user["id"]
+        from data.db_operations import assessment_db
+
+        if not assessment_db.connect():
+            return BaseResponse(success=True, message="暂无评估数据", data=None)
+
+        assessment_db.cursor.execute(
+            """SELECT metadata, created_at FROM learning_activities
+               WHERE user_id = ? AND activity_type = 'assessment'
+               ORDER BY created_at DESC LIMIT 1""",
+            (user_id,)
+        )
+        row = assessment_db.cursor.fetchone()
+        assessment_db.close()
+
+        if not row:
+            return BaseResponse(success=True, message="暂无评估数据", data=None)
+
+        metadata = {}
+        if row.get("metadata"):
+            try:
+                metadata = json.loads(row["metadata"])
+            except Exception:
+                pass
+
+        return BaseResponse(
+            success=True,
+            message="获取成功",
+            data={
+                "grade": metadata.get("grade", ""),
+                "assessment_type": metadata.get("assessment_type", ""),
+                "created_at": row.get("created_at", ""),
+            }
+        )
+    except Exception as e:
+        error(f"获取最新评估失败: {e}")
+        return BaseResponse(success=True, message="暂无评估数据", data=None)
+
+
 @router.post("/comprehensive-plan", response_model=BaseResponse)
 async def comprehensive_learning_plan(
     input_data: dict[str, Any] = Body(...),

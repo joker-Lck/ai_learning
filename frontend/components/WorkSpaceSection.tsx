@@ -439,17 +439,64 @@ function StatCards({ profile, resourceCount, onNavigateModule }: { profile: Prof
   );
 }
 
-function ContinueLearningList({ resources, onPreview, onNavigateModule }: { resources: ApiResource[]; onPreview: (r: ApiResource) => void; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
-  const items = resources.slice(0, 3);
+function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
+  const [assessment, setAssessment] = useState<{ grade: string; assessment_type: string; created_at: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (items.length === 0) {
+  useEffect(() => {
+    const fetchLatest = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) { setLoading(false); return; }
+        const res = await fetch('/api/agent/latest-assessment', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+          setAssessment(data.data);
+        }
+      } catch {} finally {
+        setLoading(false);
+      }
+    };
+    fetchLatest();
+  }, []);
+
+  const gradeColors: Record<string, { bg: string; text: string; border: string }> = {
+    'A+': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+    'A':  { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+    'B+': { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30' },
+    'B':  { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30' },
+    'C+': { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30' },
+    'C':  { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30' },
+    'D':  { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30' },
+  };
+
+  const grade = assessment?.grade || '';
+  const colors = gradeColors[grade] || { bg: 'bg-white/5', text: 'text-white/40', border: 'border-white/10' };
+
+  if (loading) {
     return (
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-white mb-4">继续学习</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">学习评估</h2>
+        <div className="p-6 rounded-xl bg-[#1a1a27] border border-white/[0.05] flex items-center justify-center">
+          <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!assessment || !grade) {
+    return (
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-white mb-4">学习评估</h2>
         <div className="p-6 rounded-xl bg-[#1a1a27] border border-white/[0.05] text-center">
-          <BookOpen className="w-8 h-8 text-white/15 mx-auto mb-3" />
-          <p className="text-sm text-white/25">还没有学习记录</p>
-          <button onClick={() => onNavigateModule('resources')} className="mt-3 px-4 py-2 bg-purple-500/15 text-purple-400 rounded-lg text-xs hover:bg-purple-500/25 transition-colors">去生成资源</button>
+          <TrendingUp className="w-8 h-8 text-white/15 mx-auto mb-3" />
+          <p className="text-sm text-white/25 mb-3">还没有评估记录</p>
+          <button onClick={() => onNavigateModule('profile')}
+            className="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs hover:bg-emerald-500/25 transition-colors">
+            立即评估
+          </button>
         </div>
       </div>
     );
@@ -458,26 +505,27 @@ function ContinueLearningList({ resources, onPreview, onNavigateModule }: { reso
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">继续学习</h2>
-        <button onClick={() => onNavigateModule('resources')} className="text-xs text-white/30 hover:text-white/50 flex items-center gap-1 transition-colors">查看全部 <ChevronRight className="w-3.5 h-3.5" /></button>
+        <h2 className="text-lg font-semibold text-white">学习评估</h2>
+        <button onClick={() => onNavigateModule('profile')}
+          className="text-xs text-white/30 hover:text-white/50 flex items-center gap-1 transition-colors">
+          查看详情 <ChevronRight className="w-3.5 h-3.5" />
+        </button>
       </div>
-      <div className="space-y-3">
-        {items.map((item, i) => {
-          const typeInfo = TYPE_MAP[item.resource_type] || { icon: FileText, color: 'text-white/40', label: '资源' };
-          const Icon = typeInfo.icon;
-          return (
-            <motion.div key={item.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.06, duration: 0.3 }} onClick={() => onPreview(item)} className="group flex items-center gap-4 p-4 rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-purple-500/20 cursor-pointer transition-all">
-              <div className="w-11 h-11 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0"><Icon className={`w-5 h-5 ${typeInfo.color}`} /></div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-white truncate">{item.title}</div>
-                <div className="text-xs text-white/25 mt-0.5">{item.subject}{item.topic ? ` · ${item.topic}` : ''} · {typeInfo.label}</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-white/25">{formatTimeAgo(item.created_at)}</span>
-              </div>
-            </motion.div>
-          );
-        })}
+      <div className={`p-5 rounded-xl bg-[#1a1a27] border ${colors.border} flex items-center gap-5`}>
+        <div className={`w-16 h-16 rounded-xl ${colors.bg} flex items-center justify-center flex-shrink-0`}>
+          <span className={`text-2xl font-bold ${colors.text}`}>{grade}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-white mb-1">综合评估等级</div>
+          <div className="text-xs text-white/35">
+            {assessment.assessment_type === 'comprehensive' ? '综合评估' : assessment.assessment_type}
+            {assessment.created_at && ` · ${new Date(assessment.created_at).toLocaleDateString()}`}
+          </div>
+        </div>
+        <button onClick={() => onNavigateModule('profile')}
+          className={`px-4 py-2 ${colors.bg} ${colors.text} rounded-lg text-xs hover:opacity-80 transition-colors`}>
+          重新评估
+        </button>
       </div>
     </div>
   );
@@ -759,7 +807,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
 
           <div className="flex gap-6">
             <div className="flex-[7] min-w-0">
-              <ContinueLearningList resources={resources} onPreview={setPreviewResource} onNavigateModule={onNavigateModule} />
+              <LatestAssessmentCard onNavigateModule={onNavigateModule} />
               <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
             </div>
             <div className="flex-[3] min-w-0 space-y-5">
