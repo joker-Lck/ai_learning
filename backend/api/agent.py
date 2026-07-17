@@ -496,45 +496,155 @@ async def assess_learning(
 
 @router.get("/latest-assessment", response_model=BaseResponse)
 async def get_latest_assessment(user: dict = Depends(require_auth)):
-    """获取最新一次学习评估结果"""
+    """获取最新学习评估 — 基于问答/课程表/成绩/错题综合分析"""
     try:
         user_id = user["id"]
-        from data.db_operations import assessment_db
+        from data.db_operations import assessment_db, resource_db
 
-        if not assessment_db.connect():
-            return BaseResponse(success=True, message="暂无评估数据", data=None)
+        # ── 采集 4 个维度数据 ──
 
-        assessment_db.cursor.execute(
-            """SELECT metadata, created_at FROM learning_activities
-               WHERE user_id = ? AND activity_type = 'assessment'
-               ORDER BY created_at DESC LIMIT 1""",
-            (user_id,)
-        )
-        row = assessment_db.cursor.fetchone()
-        assessment_db.close()
+        # 1. 问答数据
+        qa_count = 0
+        recent_qa = []
+        try:
+            if assessment_db.connect():
+                assessment_db.cursor.execute(
+                    "SELECT COUNT(*) as cnt FROM learning_activities WHERE user_id=? AND activity_type='tutor_query'",
+                    (user_id,)
+                )
+                qa_count = assessment_db.cursor.fetchone()["cnt"]
+                assessment_db.cursor.execute(
+                    "SELECT metadata, created_at FROM learning_activities WHERE user_id=? AND activity_type='tutor_query' ORDER BY created_at DESC LIMIT 5",
+                    (user_id,)
+                )
+                for row in assessment_db.cursor.fetchall():
+                    try:
+                        meta = json.loads(row["metadata"]) if row["metadata"] else {}
+                        recent_qa.append({"question": meta.get("question", ""), "subject": meta.get("subject", ""), "time": row["created_at"]})
+                    except Exception:
+                        pass
+                assessment_db.close()
+        except Exception:
+            pass
 
-        if not row:
-            return BaseResponse(success=True, message="暂无评估数据", data=None)
+        # 2. 课程表数据
+        courses = []
+        try:
+            if assessment_db.connect():
+                assessment_db.cursor.execute(
+                    "SELECT semester, course_data FROM course_schedules WHERE user_id=? ORDER BY created_at DESC LIMIT 1",
+                    (user_id,)
+                )
+                row = assessment_db.cursor.fetchone()
+                if row and row.get("course_data"):
+                    try:
+                        courses = json.loads(row["course_data"])
+                    except Exception:
+                        pass
+                assessment_db.close()
+        except Exception:
+            pass
 
-        metadata = {}
-        if row.get("metadata"):
-            try:
-                metadata = json.loads(row["metadata"])
-            except Exception:
-                pass
+        # 3. 成绩数据
+        grades = []
+        try:
+            if assessment_db.connect():
+                assessment_db.cursor.execute(
+                    "SELECT course_name, score, credits FROM grades WHERE user_id=? ORDER BY updated_at DESC LIMIT 20",
+                    (user_id,)
+                )
+                for row in assessment_db.cursor.fetchall():
+                    grades.append({"course": row["course_name"], "score": row["score"], "credits": row.get("credits")})
+                assessment_db.close()
+        except Exception:
+            pass
 
-        return BaseResponse(
-            success=True,
-            message="获取成功",
-            data={
-                "grade": metadata.get("grade", ""),
-                "assessment_type": metadata.get("assessment_type", ""),
-                "created_at": row.get("created_at", ""),
-            }
-        )
+        # 4. 错题数据
+        error_notes = []
+        weak_points = []
+        try:
+            if assessment_db.connect():
+                assessment_db.cursor.execute(
+                    "SELECT subject, question, error_reason, mastery FROM error_notes WHERE user_id=? ORDER BY created_at DESC LIMIT 20",
+                    (user_id,)
+                )
+                for row in assessment_db.cursor.fetchall():
+                    error_notes.append({"subject": row["subject"], "question": row["question"][:50], "mastery": row.get("mastery", 0)})
+                    if row.get("subject") and row["subject"] not in weak_points:
+                        weak_points.append(row["subject"])
+                assessment_db.close()
+        except Exception:
+            pass
+
+        # ── 生成综合评估 ──
+        has_data = qa_count > 0 or len(courses) > 0 or len(grades) > 0 or len(error_notes) > 0
+
+        if not has_data:
+            return BaseResponse(success=True, message="暂无足够数据评估", data={
+                "has_data": False,
+                "grade": "",
+                "dimensions": {},
+                "summary": "暂无学习数据，请先添加课程表、成绩或进行问答",
+            })
+
+        # 计算各维度分数 (0-5)
+        dimensions = {}
+
+        # 知识基础 — 基于成绩平均分
+        if grades:
+            avg_score = sum(g["score"] for g in grades if g.get("score")) / max(len([g for g in grades if g.get("score")]), 1)
+            dimensions["knowledge_base"] = round(min(avg_score / 20, 5), 1)  # 100分→5分
+        else:
+            dimensions["knowledge_base"] = 0
+
+        # 学习目标 — 基于课程数
+        dimensions["learning_goals"] = round(min(len(courses) / 3, 5), 1) if courses else 0
+
+        # 记忆能力 — 基于问答数量
+        dimensions["memory_ability"] = round(min(qa_count / 5, 5), 1)
+
+        # 自控力 — 基于错题订正率
+        mastered = len([e for e in error_notes if e.get("mastery") == 1])
+        if error_notes:
+            dimensions["self_control"] = round(mastered / len(error_notes) * 5, 1)
+        else:
+            dimensions["self_control"] = 0
+
+        # 专注度 — 基于问答频率
+        dimensions["focus"] = round(min(qa_count / 3, 5), 1) if qa_count > 0 else 0
+
+        # 学习深度 — 基于错题分析
+        dimensions["learning_depth"] = round(min(len(error_notes) / 4, 5), 1)
+
+        # 综合等级
+        avg_dim = sum(dimensions.values()) / max(len(dimensions), 1)
+        if avg_dim >= 4.5: grade = "A+"
+        elif avg_dim >= 4.0: grade = "A"
+        elif avg_dim >= 3.5: grade = "B+"
+        elif avg_dim >= 3.0: grade = "B"
+        elif avg_dim >= 2.0: grade = "C+"
+        elif avg_dim >= 1.0: grade = "C"
+        else: grade = "D"
+
+        return BaseResponse(success=True, message="获取成功", data={
+            "has_data": True,
+            "grade": grade,
+            "avg_score": round(avg_dim, 1),
+            "dimensions": dimensions,
+            "stats": {
+                "qa_count": qa_count,
+                "course_count": len(courses),
+                "grade_count": len(grades),
+                "error_count": len(error_notes),
+                "mastered_count": mastered,
+            },
+            "weak_points": weak_points[:5],
+            "recent_qa": recent_qa[:3],
+            "summary": f"已回答 {qa_count} 个问题，{len(grades)} 门成绩，{len(error_notes)} 道错题，薄弱科目：{'、'.join(weak_points[:3]) or '暂无'}",
+        })
     except Exception as e:
         error(f"获取最新评估失败: {e}")
-        return BaseResponse(success=True, message="暂无评估数据", data=None)
+        return BaseResponse(success=True, message="评估失败", data={"has_data": False})
 
 
 @router.post("/comprehensive-plan", response_model=BaseResponse)

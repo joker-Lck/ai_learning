@@ -439,28 +439,41 @@ function StatCards({ profile, resourceCount, onNavigateModule }: { profile: Prof
   );
 }
 
+interface AssessmentData {
+  has_data: boolean;
+  grade: string;
+  avg_score: number;
+  dimensions: Record<string, number>;
+  stats: { qa_count: number; course_count: number; grade_count: number; error_count: number; mastered_count: number };
+  weak_points: string[];
+  recent_qa: Array<{ question: string; subject: string; time: string }>;
+  summary: string;
+}
+
 function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
-  const [assessment, setAssessment] = useState<{ grade: string; assessment_type: string; created_at: string } | null>(null);
+  const [data, setData] = useState<AssessmentData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchLatest = async () => {
-      try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) { setLoading(false); return; }
-        const res = await fetch('/api/agent/latest-assessment', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success && data.data) {
-          setAssessment(data.data);
-        }
-      } catch {} finally {
-        setLoading(false);
-      }
-    };
-    fetchLatest();
+  const fetchAssessment = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      const res = await fetch('/api/agent/latest-assessment', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (json.success && json.data) setData(json.data);
+    } catch {} finally { setLoading(false); }
   }, []);
+
+  // 初始加载 + 窗口聚焦刷新 + 30秒轮询
+  useEffect(() => {
+    fetchAssessment();
+    const onFocus = () => fetchAssessment();
+    window.addEventListener('focus', onFocus);
+    const timer = setInterval(fetchAssessment, 30000);
+    return () => { window.removeEventListener('focus', onFocus); clearInterval(timer); };
+  }, [fetchAssessment]);
 
   const gradeColors: Record<string, { bg: string; text: string; border: string }> = {
     'A+': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30' },
@@ -472,8 +485,17 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
     'D':  { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30' },
   };
 
-  const grade = assessment?.grade || '';
+  const grade = data?.grade || '';
   const colors = gradeColors[grade] || { bg: 'bg-white/5', text: 'text-white/40', border: 'border-white/10' };
+
+  const dimLabels: Record<string, string> = {
+    knowledge_base: '知识基础',
+    learning_goals: '学习目标',
+    memory_ability: '记忆能力',
+    self_control: '自控力',
+    focus: '专注度',
+    learning_depth: '学习深度',
+  };
 
   if (loading) {
     return (
@@ -486,16 +508,17 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
     );
   }
 
-  if (!assessment || !grade) {
+  if (!data?.has_data) {
     return (
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-white mb-4">学习评估</h2>
         <div className="p-6 rounded-xl bg-[#1a1a27] border border-white/[0.05] text-center">
           <TrendingUp className="w-8 h-8 text-white/15 mx-auto mb-3" />
-          <p className="text-sm text-white/25 mb-3">还没有评估记录</p>
+          <p className="text-sm text-white/25 mb-1">暂无学习数据</p>
+          <p className="text-xs text-white/15 mb-3">添加课程表、成绩或进行问答后自动生成评估</p>
           <button onClick={() => onNavigateModule('profile')}
             className="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs hover:bg-emerald-500/25 transition-colors">
-            立即评估
+            去添加数据
           </button>
         </div>
       </div>
@@ -506,26 +529,52 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
     <div className="mb-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white">学习评估</h2>
-        <button onClick={() => onNavigateModule('profile')}
-          className="text-xs text-white/30 hover:text-white/50 flex items-center gap-1 transition-colors">
-          查看详情 <ChevronRight className="w-3.5 h-3.5" />
-        </button>
+        <span className="text-[10px] text-white/20">实时更新</span>
       </div>
-      <div className={`p-5 rounded-xl bg-[#1a1a27] border ${colors.border} flex items-center gap-5`}>
-        <div className={`w-16 h-16 rounded-xl ${colors.bg} flex items-center justify-center flex-shrink-0`}>
-          <span className={`text-2xl font-bold ${colors.text}`}>{grade}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1">综合评估等级</div>
-          <div className="text-xs text-white/35">
-            {assessment.assessment_type === 'comprehensive' ? '综合评估' : assessment.assessment_type}
-            {assessment.created_at && ` · ${new Date(assessment.created_at).toLocaleDateString()}`}
+
+      <div className={`p-5 rounded-xl bg-[#1a1a27] border ${colors.border}`}>
+        {/* 顶部：等级 + 统计 */}
+        <div className="flex items-center gap-5 mb-4">
+          <div className={`w-16 h-16 rounded-xl ${colors.bg} flex items-center justify-center flex-shrink-0`}>
+            <span className={`text-2xl font-bold ${colors.text}`}>{grade}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-white mb-1">综合评估 · {data.avg_score}/5.0</div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/35">
+              <span>{data.stats.qa_count} 次问答</span>
+              <span>{data.stats.course_count} 门课程</span>
+              <span>{data.stats.grade_count} 条成绩</span>
+              <span>{data.stats.error_count} 道错题</span>
+            </div>
           </div>
         </div>
-        <button onClick={() => onNavigateModule('profile')}
-          className={`px-4 py-2 ${colors.bg} ${colors.text} rounded-lg text-xs hover:opacity-80 transition-colors`}>
-          重新评估
-        </button>
+
+        {/* 6 维度进度条 */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
+          {Object.entries(data.dimensions).map(([key, val]) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="text-[11px] text-white/40 w-14 shrink-0">{dimLabels[key] || key}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full rounded-full bg-purple-500/60 transition-all duration-500"
+                  style={{ width: `${(val / 5) * 100}%` }} />
+              </div>
+              <span className="text-[11px] text-white/30 w-6 text-right">{val}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 薄弱科目 */}
+        {data.weak_points.length > 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[11px] text-white/30">薄弱：</span>
+            {data.weak_points.map((wp, i) => (
+              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400/70">{wp}</span>
+            ))}
+          </div>
+        )}
+
+        {/* 摘要 */}
+        <p className="text-xs text-white/25 leading-relaxed">{data.summary}</p>
       </div>
     </div>
   );
