@@ -150,21 +150,128 @@ class DocumentAnalysisService:
             return f"[Word解析失败: {e!s}]"
 
     def _parse_pdf(self, content: bytes) -> str:
-        """解析 PDF 文档"""
+        """解析 PDF 文档（支持文字版和扫描版）"""
+        text = ""
+        page_count = 0
+
+        # 优先用 PyMuPDF（支持更多 PDF 格式）
         try:
-            from PyPDF2 import PdfReader
-            reader = PdfReader(io.BytesIO(content))
-            text = ""
-            for page in reader.pages:
-                page_text = page.extract_text() or ""
-                # 清理乱码：保留可打印字符
+            import fitz
+            doc = fitz.open(stream=content, filetype="pdf")
+            page_count = len(doc)
+            for page in doc:
+                page_text = page.get_text() or ""
                 cleaned = ''.join(c for c in page_text if c.isprintable() or c in '\n\r\t')
-                text += cleaned + "\n"
-            return text.strip()
+                if cleaned.strip():
+                    text += cleaned + "\n"
+            doc.close()
+            info(f"[PDF] PyMuPDF: {len(text)} chars from {page_count} pages")
         except ImportError:
-            return "[需要安装 PyPDF2: pip install PyPDF2]"
+            info("[PDF] PyMuPDF not available")
         except Exception as e:
-            return f"[PDF解析失败: {e!s}]"
+            info(f"[PDF] PyMuPDF error: {e}")
+
+        # 如果 PyMuPDF 没提取到文本，尝试 PyPDF2
+        if not text.strip():
+            try:
+                from PyPDF2 import PdfReader
+                reader = PdfReader(io.BytesIO(content))
+                page_count = len(reader.pages)
+                for page in reader.pages:
+                    page_text = page.extract_text() or ""
+                    cleaned = ''.join(c for c in page_text if c.isprintable() or c in '\n\r\t')
+                    if cleaned.strip():
+                        text += cleaned + "\n"
+                info(f"[PDF] PyPDF2: {len(text)} chars from {page_count} pages")
+            except Exception as e:
+                info(f"[PDF] PyPDF2 error: {e}")
+
+        # 判断是否需要 OCR：文本量太少（平均每页<100字符）视为扫描版
+        text_len = len(text.strip())
+        need_ocr = False
+        if text_len == 0:
+            need_ocr = True
+            info("[PDF] 无文本，需要 OCR")
+        elif page_count > 0 and text_len / page_count < 100:
+            need_ocr = True
+            info(f"[PDF] 文本偏少（{text_len}/{page_count}页），需要 OCR")
+
+        if need_ocr:
+            info("[PDF] 开始 AI OCR...")
+            ocr_text = self._ocr_pdf_with_ai(content)
+            info(f"[PDF] OCR 完成: {len(ocr_text)} chars")
+            if len(ocr_text) > text_len:
+                text = ocr_text
+                info("[PDF] 使用 OCR 结果")
+
+        info(f"[PDF] 最终: {len(text)} chars")
+        return text.strip()
+
+    def _ocr_pdf_with_ai(self, content: bytes, max_pages: int = 50) -> str:
+        """用 AI 视觉模型识别扫描版 PDF（逐页渲染 + AI 识别）"""
+        try:
+            import fitz
+            import base64
+            from services.spark_client import spark_client
+        except ImportError:
+            error("[OCR] PyMuPDF 未安装")
+            return "[扫描版 PDF 需要安装 PyMuPDF: pip install PyMuPDF]"
+
+        try:
+            doc = fitz.open(stream=content, filetype="pdf")
+            total_pages = len(doc)
+            info(f"[OCR] 总页数: {total_pages}, 最大处理: {max_pages}")
+
+            all_text = []
+            # 采样策略：超过 max_pages 时均匀采样
+            if total_pages > max_pages:
+                step = total_pages // max_pages
+                page_indices = list(range(0, total_pages, step))[:max_pages]
+                info(f"[OCR] 采样: {len(page_indices)} 页 (每 {step} 页)")
+            else:
+                page_indices = list(range(total_pages))
+                info(f"[OCR] 处理全部 {len(page_indices)} 页")
+
+            success_count = 0
+            fail_count = 0
+            for i, idx in enumerate(page_indices):
+                try:
+                    page = doc[idx]
+                    pix = page.get_pixmap(dpi=150)
+                    img_bytes = pix.tobytes("png")
+                    img_b64 = "data:image/png;base64," + base64.b64encode(img_bytes).decode()
+
+                    prompt = "请提取这张图片中的所有文字内容。只输出文字。"
+                    result = spark_client.chat_with_image(
+                        prompt=prompt,
+                        image_b64=img_b64,
+                        max_tokens=4000
+                    )
+                    if result and len(result) > 10 and not result.startswith("["):
+                        all_text.append(result)
+                        success_count += 1
+                    else:
+                        fail_count += 1
+                        if i < 3:
+                            info(f"[OCR] 第{idx+1}页: 失败 result={repr(result[:80]) if result else 'None'}")
+
+                    if (i + 1) % 10 == 0:
+                        info(f"[OCR] 进度: {i+1}/{len(page_indices)}, 成功: {success_count}")
+
+                except Exception as e:
+                    fail_count += 1
+                    if i < 3:
+                        error(f"[OCR] 第{idx+1}页异常: {e}")
+                    continue
+
+            doc.close()
+            result_text = "\n\n".join(all_text)
+            info(f"[OCR] 完成: 成功 {success_count}, 失败 {fail_count}, 文本 {len(result_text)} chars")
+            return result_text if result_text else "[扫描版 PDF AI 识别未提取到文本]"
+
+        except Exception as e:
+            error(f"[OCR] 异常: {e}")
+            return f"[扫描版 PDF 识别失败: {e}]"
 
     def _parse_pptx(self, content: bytes) -> str:
         """解析 PPT 文档"""

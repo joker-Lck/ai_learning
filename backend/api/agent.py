@@ -1042,7 +1042,7 @@ async def upload_to_rag(
     支持格式: txt, md, pdf, doc, docx, ppt, pptx
     """
     ALLOWED = {'.txt', '.md', '.pdf', '.doc', '.docx', '.ppt', '.pptx'}
-    MAX_SIZE = 20 * 1024 * 1024
+    MAX_SIZE = 100 * 1024 * 1024
 
     try:
         user_id = user["id"]

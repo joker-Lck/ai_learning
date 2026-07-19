@@ -568,9 +568,9 @@ class RAGKnowledgeBase:
                     "version": "1.0"
                 },
                 "content": {
-                    "raw_text": content_text[:50000] if content_text else "",  # 限制长度
+                    "raw_text": content_text[:500000] if content_text else "",  # 电子书支持50万字符
                     "text_length": len(content_text) if content_text else 0,
-                    "paragraphs": self._split_paragraphs(content_text) if content_text else []
+                    "paragraphs": self._split_paragraphs(content_text, max_length=800, max_count=2000) if content_text else []
                 },
                 "analysis": {
                     "knowledge_points": knowledge_points if isinstance(knowledge_points, list) else [],
@@ -654,7 +654,7 @@ class RAGKnowledgeBase:
         except Exception as e:
             error(f"添加知识点失败：{e!s}")
 
-    def _split_paragraphs(self, text, max_length=500):
+    def _split_paragraphs(self, text, max_length=500, max_count=100):
         """将文本分割为段落"""
         if not text:
             return []
@@ -668,20 +668,27 @@ class RAGKnowledgeBase:
             if len(para) <= max_length:
                 result.append(para)
             else:
-                # 按句子分割
-                sentences = para.split('。')
-                current = ""
-                for sentence in sentences:
-                    if len(current + sentence) <= max_length:
-                        current += sentence + "。"
-                    else:
+                # 按句号、分号等分割
+                for sep in ['。', '；', '!', '？', '.', ';', '!', '?']:
+                    if sep in para:
+                        sentences = para.split(sep)
+                        current = ""
+                        for sentence in sentences:
+                            if len(current + sentence) <= max_length:
+                                current += sentence + sep
+                            else:
+                                if current:
+                                    result.append(current.strip())
+                                current = sentence + sep
                         if current:
                             result.append(current.strip())
-                        current = sentence + "。"
-                if current:
-                    result.append(current.strip())
+                        break
+                else:
+                    # 没有句号，按字符数强制分割
+                    for i in range(0, len(para), max_length):
+                        result.append(para[i:i + max_length])
 
-        return result[:100]  # 最多保留 100 个段落
+        return result[:max_count]
 
     def get_documents_by_subject(self, subject, limit=50):
         """获取指定学科的所有文档（解析 JSON 数据）"""
