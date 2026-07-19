@@ -1,8 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useState, memo } from 'react';
-import { Router, Loader2, Clock, Zap, CalendarDays, BookOpen } from 'lucide-react';
+import { Router, Loader2, Clock, Zap, CalendarDays, BookOpen, Sparkles } from 'lucide-react';
 import type { LearningPath, StudyPlan } from './types';
+import type { ModuleType, NavigationContext } from './types';
 
 interface PathModuleProps {
   learningGoal: string;
@@ -14,13 +15,15 @@ interface PathModuleProps {
   studyPlans: StudyPlan[];
   planLoading: boolean;
   handleGeneratePlan: (data: { plan_type: string; custom_goal?: string; exam_date?: string; exam_subjects?: string[] }) => Promise<any>;
+  // 资源联动
+  onNavigateModule?: (m: ModuleType, ctx?: NavigationContext) => void;
 }
 
 type PathTab = 'path' | 'plan';
 
 export default memo(function PathModule({
   learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath,
-  studyPlans, planLoading, handleGeneratePlan,
+  studyPlans, planLoading, handleGeneratePlan, onNavigateModule,
 }: PathModuleProps) {
   const [tab, setTab] = useState<PathTab>('path');
 
@@ -50,7 +53,7 @@ export default memo(function PathModule({
       </div>
 
       {/* 内容 */}
-      {tab === 'path' && <PathTabContent learningGoal={learningGoal} setLearningGoal={setLearningGoal} pathLoading={pathLoading} learningPath={learningPath} handlePlanPath={handlePlanPath} />}
+      {tab === 'path' && <PathTabContent learningGoal={learningGoal} setLearningGoal={setLearningGoal} pathLoading={pathLoading} learningPath={learningPath} handlePlanPath={handlePlanPath} onNavigateModule={onNavigateModule} />}
       {tab === 'plan' && <PlanTabContent plans={studyPlans} loading={planLoading} onGenerate={handleGeneratePlan} />}
     </div>
   );
@@ -58,7 +61,7 @@ export default memo(function PathModule({
 
 // ==================== 学习路径 Tab ====================
 
-function PathTabContent({ learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath }: Pick<PathModuleProps, 'learningGoal' | 'setLearningGoal' | 'pathLoading' | 'learningPath' | 'handlePlanPath'>) {
+function PathTabContent({ learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath, onNavigateModule }: Pick<PathModuleProps, 'learningGoal' | 'setLearningGoal' | 'pathLoading' | 'learningPath' | 'handlePlanPath' | 'onNavigateModule'>) {
   return (
     <div className="space-y-4">
       <div className="border border-white/[0.06] rounded-lg p-4 bg-white/[0.02] space-y-4">
@@ -112,6 +115,16 @@ function PathTabContent({ learningGoal, setLearningGoal, pathLoading, learningPa
               </div>
             ))}
           </div>
+          {/* 一键生成配套资源 */}
+          {onNavigateModule && (
+            <button
+              onClick={() => onNavigateModule('resources', { topic: learningPath.goal, autoPlan: true })}
+              className="w-full mt-3 py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/20 text-purple-400 rounded-lg hover:from-purple-500/30 hover:to-pink-500/30 flex items-center justify-center gap-2 text-sm font-medium transition-all"
+            >
+              <Sparkles className="w-4 h-4" />
+              为这条路径生成配套资源
+            </button>
+          )}
         </div>
       )}
     </div>

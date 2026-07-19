@@ -5,9 +5,9 @@ import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
   CalendarDays, BarChart3, AlertCircle, Plus, Trash2, Check, X,
-  ChevronDown, Edit3, Save, Upload, Minus, Search, Pencil,
+  ChevronDown, Edit3, Save, Upload, Minus, Search, Pencil, Camera,
 } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { PROFILE_DIMENSIONS } from './constants';
 import type {
   DimensionChat, ProfileData, ProfileTab, CourseItem, GradeItem, ErrorNote,
@@ -234,7 +234,7 @@ function FileImporter({ onImport, onConfirm, label, previewType, onFail }: {
       <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.bmp,.webp" onChange={handleFile} className="hidden" />
       <button onClick={() => fileRef.current?.click()} disabled={importing}
         className="px-3 py-1.5 bg-amber-500/15 border border-amber-400/20 text-amber-400 rounded-lg text-sm hover:border-amber-400/40 flex items-center gap-1.5 disabled:opacity-50 transition-all">
-        {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+        {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (previewType === 'errors' ? <Camera className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />)}
         {result || (importing ? 'AI 识别中...' : label)}
       </button>
 
@@ -847,6 +847,49 @@ function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfi
         </div>
       )}
 
+      {/* 成绩趋势折线图 */}
+      {gradedOnly.length >= 2 && (() => {
+        const CHART_COLORS = ['#a78bfa', '#34d399', '#fbbf24', '#f87171', '#60a5fa', '#f472b6', '#fb923c', '#2dd4bf'];
+        const subjects = Array.from(new Set(gradedOnly.map(g => g.course_name))).slice(0, 5);
+        const chartData = gradedOnly
+          .filter(g => subjects.includes(g.course_name))
+          .sort((a, b) => (a.exam_date || '').localeCompare(b.exam_date || ''))
+          .map((g, i) => ({ name: g.exam_date || `#${i + 1}`, [g.course_name]: g.score }));
+
+        // 合并同日期数据
+        const merged: Record<string, any> = {};
+        for (const d of chartData) {
+          if (!merged[d.name]) merged[d.name] = { name: d.name };
+          Object.assign(merged[d.name], d);
+        }
+        const data = Object.values(merged);
+
+        return (
+          <div className="border border-white/[0.06] rounded-lg p-4 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-medium text-white/60">成绩趋势</span>
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} />
+                <Tooltip
+                  contentStyle={{ background: '#1a1a27', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {subjects.map((subj, i) => (
+                  <Line key={subj} type="monotone" dataKey={subj} stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                    strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
+
       {grades.length === 0 ? (
         <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>暂无成绩，点击「录入」或「上传成绩」开始</p>
@@ -950,7 +993,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
           {q && <span className="text-xs text-white/30">找到 {filtered.length} 条</span>}
         </div>
         <div className="flex items-center gap-2">
-          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="上传错题" previewType="errors" />
+          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="拍照/上传识别" previewType="errors" />
           {subjects.length > 0 && (
             <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)}
               className="px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-xs text-white/60 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
@@ -970,34 +1013,7 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
         </div>
       </div>
 
-      {showForm && (
-        <div className="border border-white/[0.06] rounded-lg p-4 space-y-3 border-purple-400/10 bg-white/[0.02]">
-          <div className="grid grid-cols-2 gap-2">
-            <input value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} placeholder="学科 *"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30" />
-            <input value={form.chapter} onChange={e => setForm(p => ({ ...p, chapter: e.target.value }))} placeholder="章节"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
-          </div>
-          <textarea value={form.question} onChange={e => setForm(p => ({ ...p, question: e.target.value }))} placeholder="题目内容 *" rows={2}
-            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30 resize-none" />
-          <div className="grid grid-cols-2 gap-2">
-            <textarea value={form.my_answer} onChange={e => setForm(p => ({ ...p, my_answer: e.target.value }))} placeholder="我的答案" rows={2}
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
-            <textarea value={form.correct_answer} onChange={e => setForm(p => ({ ...p, correct_answer: e.target.value }))} placeholder="正确答案" rows={2}
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
-          </div>
-          <textarea value={form.error_reason} onChange={e => setForm(p => ({ ...p, error_reason: e.target.value }))} placeholder="错误原因分析" rows={2}
-            className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
-          <div className="flex gap-2">
-            <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))} placeholder="标签（逗号分隔）"
-              className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
-            <button onClick={handleSubmit} disabled={!form.subject.trim() || !form.question.trim()}
-              className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center gap-1 disabled:opacity-40">
-              <Plus className="w-4 h-4" /> 添加
-            </button>
-          </div>
-        </div>
-      )}
+      {showForm && <ErrorNoteForm form={form} setForm={setForm} onSubmit={handleSubmit} />}
 
       {filtered.length === 0 ? (
         <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
@@ -1037,6 +1053,55 @@ function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, on
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function ErrorNoteForm({ form, setForm, onSubmit }: { form: any; setForm: (f: any) => void; onSubmit: () => void }) {
+  const [showDetail, setShowDetail] = useState(false);
+  const hasDetail = form.chapter || form.my_answer || form.correct_answer || form.error_reason || form.tags;
+
+  return (
+    <div className="border border-purple-400/10 rounded-lg p-4 space-y-3 bg-white/[0.02]">
+      {/* 核心必填：学科 + 题目，一行搞定 */}
+      <div className="flex gap-2">
+        <input value={form.subject} onChange={e => setForm((p: any) => ({ ...p, subject: e.target.value }))} placeholder="学科 *"
+          className="w-28 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30 flex-shrink-0" />
+        <input value={form.question} onChange={e => setForm((p: any) => ({ ...p, question: e.target.value }))} placeholder="题目内容 *"
+          className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30" />
+        <button onClick={onSubmit} disabled={!form.subject.trim() || !form.question.trim()}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center gap-1 disabled:opacity-40 flex-shrink-0">
+          <Plus className="w-4 h-4" /> 添加
+        </button>
+      </div>
+
+      {/* 可选详情：默认折叠 */}
+      <div>
+        <button onClick={() => setShowDetail(!showDetail)}
+          className="text-xs text-white/25 hover:text-white/50 flex items-center gap-1 transition-colors">
+          <ChevronDown className={`w-3 h-3 transition-transform ${showDetail ? 'rotate-180' : ''}`} />
+          {showDetail ? '收起详情' : '补充详情（可选）'}
+          {!showDetail && hasDetail && <span className="w-1.5 h-1.5 rounded-full bg-purple-400/60 ml-1" />}
+        </button>
+        {showDetail && (
+          <div className="mt-3 space-y-2.5">
+            <div className="grid grid-cols-2 gap-2">
+              <input value={form.chapter} onChange={e => setForm((p: any) => ({ ...p, chapter: e.target.value }))} placeholder="章节"
+                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
+              <input value={form.tags} onChange={e => setForm((p: any) => ({ ...p, tags: e.target.value }))} placeholder="标签（逗号分隔）"
+                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <textarea value={form.my_answer} onChange={e => setForm((p: any) => ({ ...p, my_answer: e.target.value }))} placeholder="我的答案" rows={2}
+                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
+              <textarea value={form.correct_answer} onChange={e => setForm((p: any) => ({ ...p, correct_answer: e.target.value }))} placeholder="正确答案" rows={2}
+                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
+            </div>
+            <textarea value={form.error_reason} onChange={e => setForm((p: any) => ({ ...p, error_reason: e.target.value }))} placeholder="错误原因分析" rows={2}
+              className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

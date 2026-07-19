@@ -21,8 +21,8 @@ class CollaborationDB:
     def connect(self):
         """连接数据库"""
         try:
-            from data.config import get_assessment_db_path
-            self.db_path = get_assessment_db_path()
+            from data.config import get_assessments_db_path
+            self.db_path = get_assessments_db_path()
             self.conn = sqlite3.connect(self.db_path)
             self.conn.row_factory = sqlite3.Row
             self.cursor = self.conn.cursor()

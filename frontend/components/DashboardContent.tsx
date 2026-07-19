@@ -225,6 +225,7 @@ export default function DashboardContent() {
             learningPath={d.learningPath} pathLoading={d.pathLoading}
             handlePlanPath={d.handlePlanPath} studyPlans={d.studyPlans}
             planLoading={d.planLoading} handleGeneratePlan={d.handleGeneratePlan}
+            onNavigateModule={navigateToModule}
           />
         );
       case 'tutor':

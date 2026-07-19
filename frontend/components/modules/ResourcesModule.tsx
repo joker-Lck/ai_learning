@@ -4,7 +4,7 @@ import {
   Brain, FileText, GitBranch, FileCode, Video, Sparkles, Code, BookOpen,
   Loader2, CheckCircle, ChevronDown, ChevronUp, Maximize2,
 } from 'lucide-react';
-import { useState, memo } from 'react';
+import { useState, memo, useEffect, useRef } from 'react';
 import api from '@/lib/api';
 import type { ResourceItem } from './types';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
@@ -276,11 +276,35 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
   );
 }
 
+/** 学科 → 推荐资源类型映射 */
+function getRecommendedTypes(subj: string): string[] {
+  const s = subj.toLowerCase();
+  if (/编程|程序|代码|python|java|javascript|c\+\+|go|rust|前端|后端|算法/.test(s)) return ['code_case', 'document', 'quiz'];
+  if (/数学|高数|线性代数|概率|统计|微积分|离散/.test(s)) return ['document', 'quiz', 'mindmap'];
+  if (/英语|外语|翻译|写作/.test(s)) return ['reading', 'document', 'quiz'];
+  if (/物理|化学|生物|实验/.test(s)) return ['document', 'animation', 'quiz'];
+  if (/历史|文学|哲学|社会|政治|经济/.test(s)) return ['reading', 'document'];
+  if (/设计|美术|艺术|视觉/.test(s)) return ['document', 'mindmap'];
+  if (/数据|机器学习|人工智能|深度学习/.test(s)) return ['code_case', 'document', 'quiz'];
+  return ['document', 'quiz'];
+}
+
 export default memo(function ResourcesModule({
   subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
   difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
   resourceProgress, resourceCurrentType, resourceTotal, resourceDone,
 }: ResourcesModuleProps) {
+  const lastAutoRef = useRef('');
+
+  // 学科变化时智能推荐资源类型（仅当用户未手动选择过时）
+  useEffect(() => {
+    const trimmed = subject.trim();
+    if (!trimmed || trimmed === lastAutoRef.current) return;
+    lastAutoRef.current = trimmed;
+    const recommended = getRecommendedTypes(trimmed);
+    setSelectedTypes(recommended);
+  }, [subject]);
+
   return (
     <div className="space-y-8">
       <h3 className="text-3xl font-bold text-white">多智能体资源生成</h3>

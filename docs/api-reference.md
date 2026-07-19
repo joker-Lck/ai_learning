@@ -167,7 +167,9 @@ Content-Type: application/json
 |------|------|------|
 | GET | /dashboard/stats | 工作台统计 |
 | GET | /activity-logs | 活动日志 |
-| GET | /learning-recommendations | 个性化学习推荐 |
+| GET | /learning-recommendations | 个性化学习推荐（v8.1 升级：专业学习规划师） |
+| GET | /review-due | 待复习错题（v8.1 新增，遗忘曲线调度） |
+| GET | /review-reminder | 综合学习提醒（v8.1 新增，错题复习+计划检查） |
 
 ## 流式接口 `/api/stream`
 

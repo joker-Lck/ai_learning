@@ -1,6 +1,6 @@
 'use client';
 
-import { Send, Lightbulb, Loader2, Mic, MicOff } from 'lucide-react';
+import { Send, Lightbulb, Loader2, Mic, MicOff, MessageCircle, HelpCircle, RefreshCw } from 'lucide-react';
 import { memo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { TutorMessage } from './types';
@@ -164,6 +164,28 @@ export default memo(function TutorModule({
                       ) : (
                         <MarkdownRenderer content={'```json\n' + JSON.stringify(msg.example, null, 2) + '\n```'} />
                       )}
+                    </div>
+                  )}
+                  {/* AI 追问按钮 */}
+                  {msg.role === 'assistant' && idx === tutorMessages.length - 1 && !tutorLoading && (
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+                      {[
+                        { label: '能再解释一下吗', icon: HelpCircle },
+                        { label: '举个例子说明', icon: MessageCircle },
+                        { label: '换个角度讲解', icon: RefreshCw },
+                      ].map((btn) => {
+                        const Icon = btn.icon;
+                        return (
+                          <button
+                            key={btn.label}
+                            onClick={() => setQuestion(btn.label)}
+                            className="px-3 py-1.5 rounded-lg text-xs bg-white/[0.04] border border-white/[0.08] text-white/40 hover:text-white/70 hover:border-purple-400/30 hover:bg-purple-500/10 flex items-center gap-1.5 transition-all"
+                          >
+                            <Icon className="w-3 h-3" />
+                            {btn.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

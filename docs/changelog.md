@@ -1,5 +1,82 @@
 # 版本变更日志
 
+## v8.1.0 (2026-07-19) — 用户体验全面升级
+
+### 新增 — 学习规划师与智能提醒
+- **今日建议升级为专业学习规划师**
+  - 多维度薄弱点分析：成绩（<60/75 分级）、错题（掌握率+错误原因）、画像 weak_points
+  - 遗忘曲线复习推荐：超过 7 天未复习的知识点自动提醒
+  - 学习计划检查：无计划时主动建议制定
+  - 认知风格策略：视觉/听觉/动觉类型个性化学习方法推荐
+  - 分类标签：薄弱（红）、复习（橙）、规划（蓝）、策略（紫）
+  - `GET /api/agent/learning-recommendations` 返回结构化建议（含 category/action/detail/priority）
+- **智能提醒系统**
+  - `GET /api/agent/review-due` — 基于遗忘曲线（1/3/7/14/30 天间隔）返回待复习错题
+  - `GET /api/agent/review-reminder` — 综合提醒卡片（错题复习 + 学习计划检查）
+  - 前端 `ReviewReminderCard` 组件，红色脉冲点标记紧急项
+
+### 新增 — 数据可视化与智能推荐
+- **成绩趋势折线图**（Recharts LineChart）
+  - 成绩 Tab 新增多科目趋势图，按考试日期排序
+  - 最多展示 5 个科目，暗色主题，Tooltip 交互
+- **资源类型智能推荐**
+  - `getRecommendedTypes()` 根据学科关键词自动选择资源类型
+  - 编程→代码+文档+题库，数学→文档+题库+思维导图，等等
+  - 输入学科后自动勾选，用户仍可手动修改
+
+### 新增 — 交互体验优化
+- **AI 追问按钮**
+  - TutorModule 最后一条 AI 回答下方显示 3 个追问按钮
+  - "能再解释一下吗" / "举个例子说明" / "换个角度讲解"
+  - 点击自动填入输入框
+- **新用户引导流程**
+  - 首次访问显示引导遮罩（3 步：构建画像→导入数据→生成资源）
+  - 每步可点击跳转对应模块，"跳过引导"按钮
+  - localStorage 记录完成状态，不重复显示
+- **学习路径→资源生成联动**
+  - PathModule 路径结果底部新增"为这条路径生成配套资源"按钮
+  - 点击跳转资源模块并预填学习目标
+
+### 新增 — 番茄钟计时器
+- **PomodoroTimer 组件**
+  - 圆形进度条 + 开始/暂停/重置
+  - 可设置面板：专注时长（15/25/30/45/60 分钟 + 自定义输入）+ 休息时长（3/5/10/15 分钟 + 自定义输入）
+  - 今日累计学习时长（localStorage 按日持久化）
+  - 已完成番茄数统计
+  - 设置面板默认折叠，点击"设置"展开
+
+### 新增 — 错题录入优化
+- **两步式极简表单**
+  - 默认只显示：学科 + 题目 + 添加按钮（一行三元素）
+  - "补充详情（可选）"折叠区：章节、标签、我的答案、正确答案、错误原因
+  - 已填详情时折叠按钮显示紫色圆点提示
+- **拍照识别入口优化**
+  - 错题上传按钮改为"拍照/上传识别"，显示 Camera 图标
+
+### 新增 — 工作台布局重构
+- **今日建议横置**
+  - 原右侧栏 SuggestionCard 替换 StatCards（学习记录/兴趣领域/生成资源/薄弱待补）
+  - 改为横向 4 宫格布局（grid-cols-4），带分类边框颜色
+  - 右侧栏精简为：雷达图 + 番茄钟 + 学习提醒
+
+### 修复
+- **协同学习数据库连接失败**
+  - `data/collaboration_db.py` 导入函数名拼写错误：`get_assessment_db_path` → `get_assessments_db_path`
+
+### 变更文件
+- `services/tutor_agent.py` — 重写 `get_learning_recommendations`，新增 `_analyze_weaknesses`
+- `backend/api/agent.py` — 新增 `/review-due`、`/review-reminder` 端点
+- `frontend/components/WorkSpaceSection.tsx` — 新增 PomodoroTimer、ReviewReminderCard、OnboardingGuide；SuggestionCard 横置
+- `frontend/components/modules/ProfileModule.tsx` — 两步式错题表单、成绩趋势折线图、Camera 图标
+- `frontend/components/modules/ResourcesModule.tsx` — 资源类型智能推荐
+- `frontend/components/modules/TutorModule.tsx` — AI 追问按钮
+- `frontend/components/modules/PathModule.tsx` — 资源生成联动按钮
+- `frontend/components/DashboardContent.tsx` — PathModule 传递 onNavigateModule
+- `mobile/app/(tabs)/index.tsx` — 今日建议分类标签
+- `data/collaboration_db.py` — 修复函数名拼写
+
+---
+
 ## v8.0.0 (2026-07-17) — 检索系统全面升级 + 协同学习
 
 ### 新增 — P0 高收益优化

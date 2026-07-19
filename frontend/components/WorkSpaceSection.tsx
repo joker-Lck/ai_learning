@@ -8,7 +8,7 @@ import {
   FileText, Video, BarChart3,
   ArrowRight, Clock, Zap, Users, ChevronRight,
   Sparkles, Target, X, GitBranch, FileCode, Code, BookOpen,
-  Maximize2, Loader2,
+  Maximize2, Loader2, Timer, Play, Pause, RotateCcw, Upload,
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import type { ModuleType, NavigationContext } from './modules/types';
@@ -54,7 +54,11 @@ interface Recommendation {
   topic: string;
   reason: string;
   resource_type?: string;
-  priority?: string;
+  priority?: number;
+  type?: string;
+  category?: string;
+  action?: string;
+  detail?: string;
 }
 
 interface ActivityLog {
@@ -622,29 +626,279 @@ function RecentGeneratedList({ resources, onPreview }: { resources: ApiResource[
   );
 }
 
-function SuggestionCard({ recommendations, onNavigateModule }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
+function PomodoroTimer() {
+  const DURATIONS = [15, 25, 30, 45, 60];
+  const [focusMin, setFocusMin] = useState(() => {
+    const saved = localStorage.getItem('pomodoro_focus_min');
+    return saved ? Number(saved) : 25;
+  });
+  const [breakMin, setBreakMin] = useState(() => {
+    const saved = localStorage.getItem('pomodoro_break_min');
+    return saved ? Number(saved) : 5;
+  });
+  const [customFocus, setCustomFocus] = useState('');
+  const [customBreak, setCustomBreak] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [seconds, setSeconds] = useState(focusMin * 60);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isBreak, setIsBreak] = useState(false);
+  const [sessions, setSessions] = useState(0);
+  const [todayMinutes, setTodayMinutes] = useState(0);
+
+  useEffect(() => {
+    const key = `pomodoro_${new Date().toISOString().slice(0, 10)}`;
+    const saved = localStorage.getItem(key);
+    if (saved) setTodayMinutes(Number(saved));
+  }, []);
+
+  const saveToday = (m: number) => {
+    setTodayMinutes(m);
+    localStorage.setItem(`pomodoro_${new Date().toISOString().slice(0, 10)}`, String(m));
+  };
+
+  const applyFocus = (min: number) => {
+    if (isRunning || min < 1 || min > 180) return;
+    setFocusMin(min);
+    setSeconds(min * 60);
+    setIsBreak(false);
+    localStorage.setItem('pomodoro_focus_min', String(min));
+  };
+
+  const applyBreak = (min: number) => {
+    if (min < 1 || min > 30) return;
+    setBreakMin(min);
+    localStorage.setItem('pomodoro_break_min', String(min));
+  };
+
+  useEffect(() => {
+    if (!isRunning) return;
+    const timer = setInterval(() => {
+      setSeconds(prev => {
+        if (prev <= 1) {
+          setIsRunning(false);
+          if (!isBreak) {
+            setSessions(s => s + 1);
+            saveToday(todayMinutes + focusMin);
+            setIsBreak(true);
+            setSeconds(breakMin * 60);
+          } else {
+            setIsBreak(false);
+            setSeconds(focusMin * 60);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isRunning, isBreak, todayMinutes, focusMin, breakMin]);
+
+  const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  const total = isBreak ? breakMin * 60 : focusMin * 60;
+  const progress = (total - seconds) / total;
+
   return (
-    <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05] mb-5">
+    <div className="p-4 rounded-xl bg-[#1a1a27] border border-white/[0.05]">
+      <div className="flex items-center gap-2 mb-3">
+        <Timer className="w-4 h-4 text-emerald-400" />
+        <h3 className="text-sm font-semibold text-white">番茄钟</h3>
+        <button onClick={() => setShowSettings(!showSettings)}
+          className="ml-auto text-[10px] text-white/20 hover:text-white/50 transition-colors">
+          {showSettings ? '收起设置' : '设置'}
+        </button>
+        <span className="text-[10px] text-white/20">今日 {todayMinutes} 分钟</span>
+      </div>
+
+      {/* 设置面板 */}
+      {showSettings && (
+        <div className="mb-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.05] space-y-2.5">
+          {/* 专注时长 */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-white/30 w-12 flex-shrink-0">专注</span>
+            <div className="flex items-center gap-1">
+              {DURATIONS.map(d => (
+                <button key={d} onClick={() => { applyFocus(d); setCustomFocus(''); }} disabled={isRunning}
+                  className={`px-2 py-0.5 rounded text-[10px] transition-all disabled:opacity-40 ${focusMin === d && !customFocus ? 'bg-purple-500/20 text-purple-400 border border-purple-400/20' : 'bg-white/[0.04] text-white/30 hover:text-white/50'}`}>
+                  {d}
+                </button>
+              ))}
+              <input
+                type="number" min="1" max="180" placeholder="自定"
+                value={customFocus}
+                onChange={e => {
+                  setCustomFocus(e.target.value);
+                  const v = parseInt(e.target.value);
+                  if (v >= 1 && v <= 180) applyFocus(v);
+                }}
+                className="w-14 px-1.5 py-0.5 rounded text-[10px] bg-white/[0.04] border border-white/[0.06] text-white text-center placeholder:text-white/15 focus:outline-none focus:border-purple-400/30"
+              />
+              <span className="text-[10px] text-white/20">分</span>
+            </div>
+          </div>
+          {/* 休息时长 */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-white/30 w-12 flex-shrink-0">休息</span>
+            <div className="flex items-center gap-1">
+              {[3, 5, 10, 15].map(d => (
+                <button key={d} onClick={() => { applyBreak(d); setCustomBreak(''); }}
+                  className={`px-2 py-0.5 rounded text-[10px] transition-all ${breakMin === d && !customBreak ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-400/20' : 'bg-white/[0.04] text-white/30 hover:text-white/50'}`}>
+                  {d}
+                </button>
+              ))}
+              <input
+                type="number" min="1" max="30" placeholder="自定"
+                value={customBreak}
+                onChange={e => {
+                  setCustomBreak(e.target.value);
+                  const v = parseInt(e.target.value);
+                  if (v >= 1 && v <= 30) applyBreak(v);
+                }}
+                className="w-14 px-1.5 py-0.5 rounded text-[10px] bg-white/[0.04] border border-white/[0.06] text-white text-center placeholder:text-white/15 focus:outline-none focus:border-emerald-400/30"
+              />
+              <span className="text-[10px] text-white/20">分</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 当前状态条 */}
+      {!showSettings && (
+        <div className="flex items-center gap-3 mb-3 text-[10px] text-white/20">
+          <span>专注 {focusMin} 分钟</span>
+          <span>·</span>
+          <span>休息 {breakMin} 分钟</span>
+        </div>
+      )}
+
+      <div className="flex items-center gap-4">
+        <div className="relative w-16 h-16 flex-shrink-0">
+          <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
+            <circle cx="32" cy="32" r="28" fill="none"
+              stroke={isBreak ? '#34d399' : '#a78bfa'} strokeWidth="4"
+              strokeDasharray={`${progress * 175.9} 175.9`}
+              strokeLinecap="round" className="transition-all duration-1000" />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-lg font-bold text-white font-mono">{formatTime(seconds)}</span>
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="text-xs text-white/40 mb-1">{isBreak ? '休息时间' : '专注时间'}</div>
+          <div className="text-xs text-white/20 mb-2">已完成 {sessions} 个番茄</div>
+          <div className="flex gap-1.5">
+            <button onClick={() => setIsRunning(!isRunning)}
+              className={`px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 ${isRunning ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+              {isRunning ? <><Pause className="w-3 h-3" /> 暂停</> : <><Play className="w-3 h-3" /> 开始</>}
+            </button>
+            <button onClick={() => { setIsRunning(false); setIsBreak(false); setSeconds(focusMin * 60); }}
+              className="px-2 py-1.5 rounded-lg text-xs bg-white/[0.04] text-white/30 hover:text-white/60">
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewReminderCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
+  const [reminders, setReminders] = useState<Array<{ type: string; title: string; desc: string; action: string; urgency: string }>>([]);
+  const [dueCount, setDueCount] = useState(0);
+
+  useEffect(() => {
+    if (localStorage.getItem('is_guest') === 'true') return;
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    fetch('/api/agent/review-reminder', { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data) {
+          setReminders(d.data.reminders || []);
+          setDueCount(d.data.due_count || 0);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  if (reminders.length === 0) return null;
+
+  return (
+    <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/[0.08] to-red-500/[0.05] border border-amber-500/10 mb-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="w-4 h-4 text-amber-400" />
+        <h3 className="text-sm font-semibold text-white">学习提醒</h3>
+        {dueCount > 0 && (
+          <span className="ml-auto px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-medium">{dueCount} 待复习</span>
+        )}
+      </div>
+      <div className="space-y-2">
+        {reminders.map((r, i) => (
+          <div key={i} onClick={() => onNavigateModule(r.action as ModuleType)}
+            className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-white/[0.04] transition-colors group">
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${r.urgency === 'high' ? 'bg-red-400 animate-pulse' : r.urgency === 'normal' ? 'bg-amber-400' : 'bg-white/20'}`} />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-white/80 group-hover:text-white transition-colors">{r.title}</div>
+              <div className="text-[11px] text-white/25">{r.desc}</div>
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-white/10 group-hover:text-amber-400 transition-colors" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SuggestionCard({ recommendations, onNavigateModule }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
+  const categoryConfig: Record<string, { icon: typeof Lightbulb; color: string; bgColor: string; borderColor: string; label: string }> = {
+    weakness:  { icon: Zap, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', label: '薄弱' },
+    review:    { icon: Clock, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20', label: '复习' },
+    planning:  { icon: Target, color: 'text-blue-400', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20', label: '规划' },
+    strategy:  { icon: Brain, color: 'text-purple-400', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/20', label: '策略' },
+  };
+
+  const actionModuleMap: Record<string, ModuleType> = {
+    tutor: 'tutor', review: 'tutor', resources: 'resources', plan: 'path', assessment: 'assessment',
+  };
+
+  const items = recommendations.slice(0, 4);
+
+  return (
+    <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05]">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-white">今日建议</h3>
+        <span className="text-[10px] text-white/20 ml-auto">AI 学习规划师</span>
       </div>
-      {recommendations.length === 0 ? (
-        <p className="text-xs text-white/25 text-center py-4">暂无建议，多使用系统后会自动生成</p>
+      {items.length === 0 ? (
+        <p className="text-xs text-white/25 text-center py-6">暂无建议，多使用系统后会自动生成</p>
       ) : (
-        <div className="space-y-3">
-          {recommendations.slice(0, 3).map((item, i) => (
-            <div key={i} onClick={() => onNavigateModule('tutor', { topic: item.topic, autoPlan: false })} className="group flex items-start gap-3 cursor-pointer">
-              <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Lightbulb className="w-4 h-4 text-white/35" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-white/70 group-hover:text-white transition-colors">{item.topic}</div>
-                <div className="text-[11px] text-white/20 mt-0.5">{item.reason}</div>
-              </div>
-              <ArrowRight className="w-3.5 h-3.5 text-white/15 mt-1 group-hover:text-purple-400 transition-colors" />
-            </div>
-          ))}
+        <div className="grid grid-cols-4 gap-3">
+          {items.map((item, i) => {
+            const cat = categoryConfig[item.category || ''] || { icon: Lightbulb, color: 'text-white/50', bgColor: 'bg-white/[0.04]', borderColor: 'border-white/[0.08]', label: '建议' };
+            const Icon = cat.icon;
+            const targetModule = actionModuleMap[item.action || ''] || 'tutor';
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06, duration: 0.25 }}
+                onClick={() => onNavigateModule(targetModule, { topic: item.topic, autoPlan: false })}
+                className={`group p-4 rounded-xl border cursor-pointer hover:scale-[1.02] transition-all ${cat.borderColor} ${cat.bgColor}`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-7 h-7 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-3.5 h-3.5 ${cat.color}`} />
+                  </div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${cat.bgColor} ${cat.color} font-medium`}>{cat.label}</span>
+                </div>
+                <div className="text-sm text-white/80 group-hover:text-white transition-colors font-medium mb-1 truncate">{item.topic}</div>
+                <div className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{item.reason}</div>
+                {item.detail && <div className="text-[10px] text-white/15 mt-1 line-clamp-1">{item.detail}</div>}
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -751,6 +1005,16 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // 新用户引导检测
+  useEffect(() => {
+    if (localStorage.getItem('is_guest') === 'true') return;
+    const key = `onboarding_done_${localStorage.getItem('username') || 'default'}`;
+    if (!localStorage.getItem(key)) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   const loadActivityLogs = useCallback(() => {
     if (localStorage.getItem('is_guest') === 'true') return;
@@ -805,6 +1069,10 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
             reason: r.reason || '',
             resource_type: r.resource_type || r.type || '',
             priority: r.priority,
+            type: r.type || '',
+            category: r.category || '',
+            action: r.action || '',
+            detail: r.detail || '',
           })));
         }
         if (profileRes.status === 'fulfilled' && (profileRes.value as any)?.success) {
@@ -852,16 +1120,17 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
         <div className="px-8 pt-7 pb-8 max-w-[1200px] mx-auto">
           <Header profile={profile} stats={stats} />
           <QuickStartCard onNavigateModule={onNavigateModule} />
-          <StatCards profile={profile} resourceCount={resources.length} onNavigateModule={onNavigateModule} />
+          <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
 
-          <div className="flex gap-6">
+          <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
             <div className="flex-[7] min-w-0">
               <LatestAssessmentCard onNavigateModule={onNavigateModule} />
               <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
             </div>
-            <div className="flex-[3] min-w-0 space-y-5">
+            <div className="flex-[3] min-w-0 flex flex-col gap-5">
               <DashboardRadarChart profile={profile} />
-              <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
+              <PomodoroTimer />
+              <ReviewReminderCard onNavigateModule={onNavigateModule} />
             </div>
           </div>
         </div>
@@ -869,6 +1138,54 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
 
       <AnimatePresence>
         {previewResource && <ResourcePreview resource={previewResource} onClose={() => setPreviewResource(null)} />}
+      </AnimatePresence>
+
+      {/* 新用户引导 */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#1a1a27] border border-white/[0.08] rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">欢迎使用 AI 学习助手</h2>
+                <p className="text-sm text-white/40">3 步开始你的个性化学习之旅</p>
+              </div>
+              <div className="space-y-4 mb-6">
+                {[
+                  { step: '1', title: '构建学习画像', desc: '告诉我们你的专业和学习风格，AI 将为你定制方案', icon: Target, module: 'profile' as ModuleType },
+                  { step: '2', title: '导入学习数据', desc: '上传课程表、成绩或错题，让 AI 了解你的学习情况', icon: Upload, module: 'profile' as ModuleType },
+                  { step: '3', title: '生成学习资源', desc: 'AI 根据你的画像生成个性化文档、题库、视频等', icon: Brain, module: 'resources' as ModuleType },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.step} onClick={() => { setShowOnboarding(false); onNavigateModule(item.module); }}
+                      className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] cursor-pointer hover:border-purple-400/20 hover:bg-purple-500/5 transition-all group">
+                      <div className="w-10 h-10 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white group-hover:text-purple-300 transition-colors">{item.title}</div>
+                        <div className="text-xs text-white/30">{item.desc}</div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-white/10 group-hover:text-purple-400 transition-colors" />
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={() => {
+                const key = `onboarding_done_${localStorage.getItem('username') || 'default'}`;
+                localStorage.setItem(key, '1');
+                setShowOnboarding(false);
+              }} className="w-full py-2.5 text-sm text-white/30 hover:text-white/60 transition-colors">
+                跳过引导，我自己探索
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

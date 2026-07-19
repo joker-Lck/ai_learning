@@ -365,19 +365,85 @@ class TutorAgent:
             return {'skills': [], 'concepts': [], 'courses': [], 'stats': {}}
 
     def get_learning_recommendations(self, user_id: int, subject: str | None = None) -> list[dict]:
-        """基于记忆获取学习推荐"""
+        """专业学习规划师：综合分析薄弱点，提供个性化学习建议"""
         recommendations = []
         try:
+            from data.db_operations import profile_db
             from services.memory_service import memory_service
+
+            # ── 1. 收集多维度学习数据 ──
+            grades = []
+            error_notes = []
+            study_plans = []
+            profile = None
+
+            # 成绩数据
+            try:
+                if profile_db.connect():
+                    profile_db.cursor.execute(
+                        "SELECT course_name, score, credits, semester FROM student_grades WHERE user_id=? ORDER BY updated_at DESC LIMIT 30",
+                        (user_id,)
+                    )
+                    grades = [dict(r) for r in profile_db.cursor.fetchall()]
+                    profile_db.close()
+            except Exception:
+                pass
+
+            # 错题数据
+            try:
+                if profile_db.connect():
+                    profile_db.cursor.execute(
+                        "SELECT subject, chapter, question, error_reason, mastery, created_at FROM error_notes WHERE user_id=? ORDER BY created_at DESC LIMIT 50",
+                        (user_id,)
+                    )
+                    error_notes = [dict(r) for r in profile_db.cursor.fetchall()]
+                    profile_db.close()
+            except Exception:
+                pass
+
+            # 学习计划
+            try:
+                if profile_db.connect():
+                    profile_db.cursor.execute(
+                        "SELECT plan_title, plan_type, status, semester FROM study_plans WHERE user_id=? AND status='active' ORDER BY created_at DESC LIMIT 5",
+                        (user_id,)
+                    )
+                    study_plans = [dict(r) for r in profile_db.cursor.fetchall()]
+                    profile_db.close()
+            except Exception:
+                pass
+
+            # 学生画像
+            try:
+                if profile_db.connect():
+                    profile_db.cursor.execute(
+                        "SELECT profile_data FROM student_profiles WHERE user_id=? ORDER BY updated_at DESC LIMIT 1",
+                        (user_id,)
+                    )
+                    row = profile_db.cursor.fetchone()
+                    if row and row.get('profile_data'):
+                        profile = json.loads(row['profile_data']) if isinstance(row['profile_data'], str) else row['profile_data']
+                    profile_db.close()
+            except Exception:
+                pass
+
+            # ── 2. 分析薄弱点 ──
+            weak_analysis = self._analyze_weaknesses(grades, error_notes, profile)
+
+            # ── 3. 基于薄弱点生成针对性建议 ──
+            for weak in weak_analysis:
+                recommendations.append({
+                    'type': 'weakness',
+                    'topic': weak['subject'],
+                    'reason': weak['reason'],
+                    'priority': weak['priority'],
+                    'category': 'weakness',
+                    'action': weak.get('action', 'review'),
+                    'detail': weak.get('detail', ''),
+                })
+
+            # ── 4. 基于记忆系统推荐遗忘内容 ──
             with memory_service as ms:
-                user_context = self._build_user_context(ms, user_id, subject or '')
-                known = set(user_context.get('known_concepts', []))
-                if subject:
-                    related = ms.search_entities(user_id, subject, entity_type='concept', limit=10)
-                    for c in related:
-                        if c['entity_name'] not in known:
-                            recommendations.append({'type': 'concept', 'name': c['entity_name'],
-                                                    'reason': f"与{subject}相关的新概念", 'priority': c.get('importance', 0.5)})
                 semantic_memories = ms.search_semantic(user_id, subject or '', limit=20)
                 for mem in semantic_memories:
                     if mem.get('access_count', 0) > 0 and mem.get('last_accessed_at'):
@@ -389,13 +455,170 @@ class TutorAgent:
                                 continue
                         days = (datetime.now() - last_accessed).days
                         if days > 7:
-                            recommendations.append({'type': 'review', 'name': f"{mem['subject']} - {mem['predicate']}",
-                                                    'reason': f"已{days}天未复习，建议巩固", 'priority': 0.7})
-                recommendations.sort(key=lambda x: x.get('priority', 0), reverse=True)
-                return recommendations[:10]
+                            priority = min(0.95, 0.6 + days * 0.02)
+                            recommendations.append({
+                                'type': 'review',
+                                'topic': f"{mem['subject']} - {mem['predicate']}",
+                                'reason': f"已{days}天未复习，根据遗忘曲线建议巩固",
+                                'priority': priority,
+                                'category': 'review',
+                                'action': 'review',
+                                'detail': f"该知识点上次访问于{last_accessed.strftime('%m月%d日')}，间隔越久遗忘越多",
+                            })
+
+            # ── 5. 基于学习计划推荐 ──
+            if not study_plans:
+                recommendations.append({
+                    'type': 'plan',
+                    'topic': '制定学习计划',
+                    'reason': '暂无进行中的学习计划，有计划的学习效率更高',
+                    'priority': 0.6,
+                    'category': 'planning',
+                    'action': 'plan',
+                    'detail': '研究表明，有明确计划的学习者完成率提高40%',
+                })
+
+            # ── 6. 基于认知风格推荐学习策略 ──
+            if profile:
+                cognitive_style = profile.get('cognitive_style', '')
+                if '视觉' in cognitive_style:
+                    recommendations.append({
+                        'type': 'strategy',
+                        'topic': '视觉学习策略',
+                        'reason': '你是视觉型学习者，建议多用图表和思维导图',
+                        'priority': 0.5,
+                        'category': 'strategy',
+                        'action': 'resources',
+                        'detail': '使用颜色标注、流程图、概念图来辅助记忆',
+                    })
+                elif '听觉' in cognitive_style:
+                    recommendations.append({
+                        'type': 'strategy',
+                        'topic': '听觉学习策略',
+                        'reason': '你是听觉型学习者，建议多听讲解和讨论',
+                        'priority': 0.5,
+                        'category': 'strategy',
+                        'action': 'resources',
+                        'detail': '尝试录音回听、小组讨论、朗读笔记等方式',
+                    })
+                elif '动觉' in cognitive_style:
+                    recommendations.append({
+                        'type': 'strategy',
+                        'topic': '实践学习策略',
+                        'reason': '你是动觉型学习者，建议多做实操练习',
+                        'priority': 0.5,
+                        'category': 'strategy',
+                        'action': 'resources',
+                        'detail': '通过动手实验、项目实践、模拟演练来加深理解',
+                    })
+
+            # ── 7. 去重、排序、截取 ──
+            seen_topics = set()
+            unique_recs = []
+            for rec in recommendations:
+                key = rec.get('topic', '')
+                if key and key not in seen_topics:
+                    seen_topics.add(key)
+                    unique_recs.append(rec)
+
+            unique_recs.sort(key=lambda x: x.get('priority', 0), reverse=True)
+            return unique_recs[:8]
+
         except Exception as e:
             error(f"获取学习推荐失败: {e!s}")
             return []
+
+    def _analyze_weaknesses(self, grades: list, error_notes: list, profile: dict | None) -> list[dict]:
+        """综合分析学习薄弱点"""
+        weaknesses = []
+
+        # ── 基于成绩分析 ──
+        if grades:
+            subject_scores = {}
+            for g in grades:
+                name = g.get('course_name', '')
+                score = g.get('score', 0)
+                if name and score:
+                    if name not in subject_scores:
+                        subject_scores[name] = []
+                    subject_scores[name].append(score)
+
+            for subject, scores in subject_scores.items():
+                avg = sum(scores) / len(scores)
+                if avg < 60:
+                    weaknesses.append({
+                        'subject': subject,
+                        'reason': f"平均分仅{avg:.0f}分，严重低于及格线",
+                        'priority': 0.95,
+                        'action': 'tutor',
+                        'detail': f"共{len(scores)}次成绩记录，建议立即加强基础学习",
+                    })
+                elif avg < 75:
+                    weaknesses.append({
+                        'subject': subject,
+                        'reason': f"平均分{avg:.0f}分，有较大提升空间",
+                        'priority': 0.8,
+                        'action': 'tutor',
+                        'detail': f"建议针对薄弱章节进行专项练习",
+                    })
+
+        # ── 基于错题分析 ──
+        if error_notes:
+            subject_errors = {}
+            for e in error_notes:
+                subj = e.get('subject', '')
+                if subj:
+                    if subj not in subject_errors:
+                        subject_errors[subj] = {'total': 0, 'mastered': 0, 'reasons': []}
+                    subject_errors[subj]['total'] += 1
+                    if e.get('mastery') == 1:
+                        subject_errors[subj]['mastered'] += 1
+                    if e.get('error_reason'):
+                        subject_errors[subj]['reasons'].append(e['error_reason'])
+
+            for subj, data in subject_errors.items():
+                total = data['total']
+                mastered = data['mastered']
+                mastery_rate = mastered / total if total > 0 else 0
+
+                if total >= 3 and mastery_rate < 0.5:
+                    # 分析主要错误原因
+                    reason_counts = {}
+                    for r in data['reasons']:
+                        reason_counts[r] = reason_counts.get(r, 0) + 1
+                    top_reason = max(reason_counts, key=reason_counts.get) if reason_counts else '知识掌握不牢'
+
+                    weaknesses.append({
+                        'subject': subj,
+                        'reason': f"错题{total}道，掌握率仅{mastery_rate*100:.0f}%",
+                        'priority': 0.9,
+                        'action': 'tutor',
+                        'detail': f"主要问题：{top_reason}，建议系统复习",
+                    })
+                elif total >= 5:
+                    weaknesses.append({
+                        'subject': subj,
+                        'reason': f"累计错题{total}道，需持续关注",
+                        'priority': 0.7,
+                        'action': 'review',
+                        'detail': f"已掌握{mastered}道，还有{total - mastered}道需要巩固",
+                    })
+
+        # ── 基于画像薄弱点 ──
+        if profile:
+            weak_points = profile.get('weak_points', [])
+            for wp in weak_points[:3]:
+                # 避免与已有的重复
+                if not any(w['subject'] == wp for w in weaknesses):
+                    weaknesses.append({
+                        'subject': wp,
+                        'reason': '画像标记的薄弱领域',
+                        'priority': 0.65,
+                        'action': 'tutor',
+                        'detail': '建议定期复习巩固',
+                    })
+
+        return weaknesses
 
     def apply_memory_maintenance(self, user_id: int | None = None) -> dict:
         """应用记忆维护（遗忘曲线、清理等）"""

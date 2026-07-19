@@ -130,14 +130,39 @@ export default function DashboardScreen() {
         {/* 今日建议 */}
         {recommendations.length > 0 && (
           <Card title="今日建议" className="mb-4">
-            {recommendations.slice(0, 3).map((rec: any, idx: number) => (
-              <View key={idx} className="flex-row items-start mb-2">
-                <Text className="text-accent mr-2">•</Text>
-                <Text className="text-text-secondary text-sm flex-1">
-                  {rec.content || rec.title || JSON.stringify(rec)}
-                </Text>
-              </View>
-            ))}
+            <Text className="text-text-secondary text-[10px] mb-2">AI 学习规划师</Text>
+            {recommendations.slice(0, 4).map((rec: any, idx: number) => {
+              const categoryColors: Record<string, string> = {
+                weakness: 'text-red-400',
+                review: 'text-amber-400',
+                planning: 'text-blue-400',
+                strategy: 'text-purple-400',
+              };
+              const categoryLabels: Record<string, string> = {
+                weakness: '薄弱',
+                review: '复习',
+                planning: '规划',
+                strategy: '策略',
+              };
+              const textColor = categoryColors[rec.category] || 'text-accent';
+              const label = categoryLabels[rec.category] || '建议';
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  className="flex-row items-start mb-3 p-2 rounded-lg bg-white/[0.02]"
+                  onPress={() => router.push('/(tabs)/tutor')}
+                >
+                  <View className="mr-2 mt-0.5">
+                    <Text className={`text-xs font-medium ${textColor}`}>{label}</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-text-primary text-sm font-medium">{rec.topic || rec.name}</Text>
+                    <Text className="text-text-secondary text-[11px] mt-0.5">{rec.reason}</Text>
+                    {rec.detail ? <Text className="text-text-secondary text-[10px] mt-0.5 opacity-50">{rec.detail}</Text> : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </Card>
         )}
 

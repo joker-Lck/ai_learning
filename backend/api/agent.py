@@ -414,7 +414,7 @@ async def get_learning_recommendations(
     subject: str | None = Query(None),
     user: dict = Depends(get_current_user)
 ):
-    """获取基于记忆的学习推荐"""
+    """获取个性化学习建议（专业学习规划师）"""
     try:
         from services.tutor_agent import tutor_agent
         recommendations = tutor_agent.get_learning_recommendations(user['id'], subject)
@@ -1283,6 +1283,112 @@ async def delete_error_note(
     except Exception as e:
         error(f"delete-error-note 失败: {e}")
         return BaseResponse(success=False, message=str(e))
+
+
+@router.get("/review-due")
+async def get_review_due(user: dict = Depends(get_current_user)):
+    """获取待复习的错题（基于遗忘曲线调度）"""
+    try:
+        from datetime import datetime, timedelta
+        result = student_data_service.get_error_notes(user["id"], mastery=0)
+        notes = result.get("data", []) if result.get("success") else []
+        now = datetime.now()
+        review_intervals = [1, 3, 7, 14, 30]  # 遗忘曲线复习间隔（天）
+        due_notes = []
+        for note in notes:
+            created = note.get("created_at", "")
+            if not created:
+                continue
+            try:
+                created_dt = datetime.strptime(str(created)[:19], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                continue
+            days = (now - created_dt).days
+            # 判断是否到了某个复习间隔
+            for interval in review_intervals:
+                if days >= interval and days < interval * 2:
+                    due_notes.append({
+                        **note,
+                        "review_type": "spaced",
+                        "days_since": days,
+                        "next_interval": interval,
+                        "urgency": "high" if days >= interval * 1.5 else "normal",
+                    })
+                    break
+            else:
+                # 超过30天的标记为紧急
+                if days >= 30:
+                    due_notes.append({
+                        **note,
+                        "review_type": "overdue",
+                        "days_since": days,
+                        "next_interval": 30,
+                        "urgency": "high",
+                    })
+        due_notes.sort(key=lambda x: (0 if x["urgency"] == "high" else 1, -x["days_since"]))
+        return {"success": True, "data": {"due_notes": due_notes[:10], "total_due": len(due_notes)}}
+    except Exception as e:
+        error(f"获取待复习错题失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/review-reminder")
+async def get_review_reminder(user: dict = Depends(get_current_user)):
+    """获取学习提醒（错题复习 + 遗忘知识点）"""
+    try:
+        from datetime import datetime, timedelta
+        # 待复习错题
+        result = student_data_service.get_error_notes(user["id"], mastery=0)
+        notes = result.get("data", []) if result.get("success") else []
+        now = datetime.now()
+        review_intervals = [1, 3, 7, 14, 30]
+        due_count = 0
+        for note in notes:
+            created = note.get("created_at", "")
+            if not created:
+                continue
+            try:
+                created_dt = datetime.strptime(str(created)[:19], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                continue
+            days = (now - created_dt).days
+            for interval in review_intervals:
+                if days >= interval:
+                    due_count += 1
+                    break
+        # 学习计划提醒
+        plans = []
+        try:
+            if profile_db.connect():
+                profile_db.cursor.execute(
+                    "SELECT plan_title, plan_type FROM study_plans WHERE user_id=? AND status='active' LIMIT 3",
+                    (user["id"],)
+                )
+                plans = [dict(r) for r in profile_db.cursor.fetchall()]
+                profile_db.close()
+        except Exception:
+            pass
+        reminders = []
+        if due_count > 0:
+            reminders.append({
+                "type": "review",
+                "title": f"{due_count} 道错题待复习",
+                "desc": "根据遗忘曲线，现在是最佳复习时间",
+                "action": "profile",
+                "urgency": "high" if due_count >= 5 else "normal",
+            })
+        if not plans:
+            reminders.append({
+                "type": "plan",
+                "title": "暂无学习计划",
+                "desc": "制定计划让学习更有方向",
+                "action": "path",
+                "urgency": "low",
+            })
+        return {"success": True, "data": {"reminders": reminders, "due_count": due_count}}
+    except Exception as e:
+        error(f"获取学习提醒失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/generate-study-plan", response_model=BaseResponse)
