@@ -63,7 +63,7 @@ def _load_embedding_corpus():
             with open(edu_corpus, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
-                    if len(line) > 20:
+                    if len(line) > 15:
                         corpus.append(line)
         except Exception:
             pass
