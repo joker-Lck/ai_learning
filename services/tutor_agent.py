@@ -559,7 +559,7 @@ class TutorAgent:
                         'reason': f"平均分{avg:.0f}分，有较大提升空间",
                         'priority': 0.8,
                         'action': 'tutor',
-                        'detail': f"建议针对薄弱章节进行专项练习",
+                        'detail': "建议针对薄弱章节进行专项练习",
                     })
 
         # ── 基于错题分析 ──

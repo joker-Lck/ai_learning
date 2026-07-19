@@ -682,8 +682,9 @@ class StudentDataImportMixin:
                         image_b64 = self._pdf_to_image(content)
                         if image_b64:
                             # 使用增强视觉识别
-                            from services.enhanced_vision_service import enhanced_vision
                             import base64 as b64
+
+                            from services.enhanced_vision_service import enhanced_vision
                             image_bytes = b64.b64decode(image_b64)
                             vision_result = enhanced_vision.recognize_schedule(image_bytes)
 
@@ -838,7 +839,7 @@ class StudentDataImportMixin:
                     }
 
                 # 增强识别失败，降级到原流程
-                info(f"增强识别成绩未成功，降级到原流程")
+                info("增强识别成绩未成功，降级到原流程")
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
 
@@ -961,7 +962,7 @@ class StudentDataImportMixin:
                     }
 
                 # 增强识别失败，降级到原流程
-                info(f"增强识别错题未成功，降级到原流程")
+                info("增强识别错题未成功，降级到原流程")
                 image_b64 = _compress_image(content)
                 from services.spark_client import spark_client
 

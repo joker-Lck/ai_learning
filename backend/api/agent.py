@@ -1103,8 +1103,9 @@ async def upload_to_rag(
 
                 # 异步构建知识图谱（不阻塞响应）
                 try:
-                    from services.multi_hop_retriever import multi_hop_retriever
                     import threading
+
+                    from services.multi_hop_retriever import multi_hop_retriever
                     threading.Thread(
                         target=multi_hop_retriever.build_knowledge_graph,
                         args=(doc_id, subject or "综合", text),
@@ -2245,7 +2246,7 @@ async def stream_agent_status(session_id: str, user: dict = Depends(get_current_
                         yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
                 except asyncio.TimeoutError:
                     # 心跳
-                    yield f": heartbeat\n\n"
+                    yield ": heartbeat\n\n"
         finally:
             agent_coordinator.unregister_status_callback(callback)
 

@@ -210,8 +210,10 @@ class DocumentAnalysisService:
     def _ocr_pdf_with_ai(self, content: bytes, max_pages: int = 50) -> str:
         """用 AI 视觉模型识别扫描版 PDF（逐页渲染 + AI 识别）"""
         try:
-            import fitz
             import base64
+
+            import fitz
+
             from services.spark_client import spark_client
         except ImportError:
             error("[OCR] PyMuPDF 未安装")
