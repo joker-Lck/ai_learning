@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Users, Plus, LogIn, LogOut, Share2, MessageSquare,
   BarChart3, Copy, Check, Loader2, Search, Star, Activity,
-  ArrowRight, Database
+  ArrowRight, Database, Upload, TrendingUp, BookOpen, Trophy,
 } from 'lucide-react';
 
 interface Group {
@@ -41,6 +41,13 @@ interface ActivityItem {
   created_at: string;
 }
 
+interface MemberStats {
+  user_id: number;
+  role: string;
+  resource_count: number;
+  activity_count: number;
+}
+
 type Tab = 'groups' | 'detail' | 'create' | 'join';
 
 export default function CollaborationModule() {
@@ -52,6 +59,8 @@ export default function CollaborationModule() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [sharedResources, setSharedResources] = useState<SharedResource[]>([]);
   const [copied, setCopied] = useState(false);
+  const [memberStats, setMemberStats] = useState<MemberStats[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   // Create group form
   const [newName, setNewName] = useState('');
@@ -90,6 +99,7 @@ export default function CollaborationModule() {
         setTab('detail');
         fetchActivities(groupId);
         fetchSharedResources(groupId);
+        fetchLearningStats(groupId);
       }
     } catch (e) {
       console.error('获取小组详情失败:', e);
@@ -110,6 +120,44 @@ export default function CollaborationModule() {
       const data = await res.json();
       if (data.success) setSharedResources(data.data || []);
     } catch {}
+  };
+
+  const fetchLearningStats = async (groupId: number) => {
+    try {
+      const res = await fetch(`${API}/learning-stats/${groupId}`, { headers });
+      const data = await res.json();
+      if (data.success) setMemberStats(data.data?.members || []);
+    } catch {}
+  };
+
+  const handleUploadResource = async (file: File) => {
+    if (!selectedGroup) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadHeaders = { 'Authorization': `Bearer ${token}` };
+      const uploadRes = await fetch('/api/agent/upload-to-rag', {
+        method: 'POST', headers: uploadHeaders, body: formData,
+      });
+      const uploadData = await uploadRes.json();
+      if (uploadData.success) {
+        const results = uploadData.data?.results || [];
+        const docId = results[0]?.doc_id;
+        if (docId) {
+          await fetch(`${API}/share-resource`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ group_id: selectedGroup.id, resource_id: docId, resource_type: 'document' }),
+          });
+          fetchSharedResources(selectedGroup.id);
+          fetchActivities(selectedGroup.id);
+        }
+      }
+    } catch (e) {
+      console.error('上传失败:', e);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -383,11 +431,19 @@ export default function CollaborationModule() {
 
         {/* 共享资源 */}
         <div className="glass rounded-xl p-5">
-          <h4 className="text-white font-medium mb-3 flex items-center gap-2">
-            <Share2 className="w-4 h-4 text-green-400" /> 共享资源 ({sharedResources.length})
-          </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-white font-medium flex items-center gap-2">
+              <Share2 className="w-4 h-4 text-green-400" /> 共享资源 ({sharedResources.length})
+            </h4>
+            <label className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 cursor-pointer flex items-center gap-1.5 transition-colors">
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {uploading ? '上传中...' : '上传文件'}
+              <input type="file" className="hidden" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadResource(f); e.target.value = ''; }} />
+            </label>
+          </div>
           {sharedResources.length === 0 ? (
-            <p className="text-white/30 text-sm text-center py-4">暂无共享资源</p>
+            <p className="text-white/30 text-sm text-center py-4">暂无共享资源，点击上方按钮上传</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {sharedResources.map((r, i) => (
@@ -400,6 +456,54 @@ export default function CollaborationModule() {
             </div>
           )}
         </div>
+
+        {/* 成员学习对比 */}
+        {memberStats.length > 0 && (
+          <div className="glass rounded-xl p-5">
+            <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-amber-400" /> 学习进度对比
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {memberStats.map((s, i) => {
+                const maxRes = Math.max(...memberStats.map(m => m.resource_count), 1);
+                const maxAct = Math.max(...memberStats.map(m => m.activity_count), 1);
+                return (
+                  <div key={i} className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <div>
+                        <span className="text-white/80 text-sm font-medium">用户 #{s.user_id}</span>
+                        {s.role === 'admin' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">组长</span>}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-white/40 flex items-center gap-1"><BookOpen className="w-3 h-3" /> 生成资源</span>
+                          <span className="text-white/60">{s.resource_count}</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-white/[0.06]">
+                          <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${(s.resource_count / maxRes) * 100}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-white/40 flex items-center gap-1"><Activity className="w-3 h-3" /> 学习活动</span>
+                          <span className="text-white/60">{s.activity_count}</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-white/[0.06]">
+                          <div className="h-full rounded-full bg-cyan-500 transition-all" style={{ width: `${(s.activity_count / maxAct) * 100}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
