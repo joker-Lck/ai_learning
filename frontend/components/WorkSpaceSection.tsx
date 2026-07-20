@@ -802,53 +802,6 @@ function PomodoroTimer() {
   );
 }
 
-function ReviewReminderCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
-  const [reminders, setReminders] = useState<Array<{ type: string; title: string; desc: string; action: string; urgency: string }>>([]);
-  const [dueCount, setDueCount] = useState(0);
-
-  useEffect(() => {
-    if (localStorage.getItem('is_guest') === 'true') return;
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-    fetch('/api/agent/review-reminder', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success && d.data) {
-          setReminders(d.data.reminders || []);
-          setDueCount(d.data.due_count || 0);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  if (reminders.length === 0) return null;
-
-  return (
-    <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/[0.08] to-red-500/[0.05] border border-amber-500/10 mb-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Bell className="w-4 h-4 text-amber-400" />
-        <h3 className="text-sm font-semibold text-white">学习提醒</h3>
-        {dueCount > 0 && (
-          <span className="ml-auto px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-medium">{dueCount} 待复习</span>
-        )}
-      </div>
-      <div className="space-y-2">
-        {reminders.map((r, i) => (
-          <div key={i} onClick={() => onNavigateModule(r.action as ModuleType)}
-            className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-white/[0.04] transition-colors group">
-            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${r.urgency === 'high' ? 'bg-red-400 animate-pulse' : r.urgency === 'normal' ? 'bg-amber-400' : 'bg-white/20'}`} />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-white/80 group-hover:text-white transition-colors">{r.title}</div>
-              <div className="text-[11px] text-white/25">{r.desc}</div>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-white/10 group-hover:text-amber-400 transition-colors" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function SuggestionCard({ recommendations, onNavigateModule }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const categoryConfig: Record<string, { icon: typeof Lightbulb; color: string; bgColor: string; borderColor: string; label: string }> = {
     weakness:  { icon: Zap, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', label: '薄弱' },
@@ -1130,7 +1083,6 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
             <div className="flex-[3] min-w-0 flex flex-col gap-5">
               <DashboardRadarChart profile={profile} />
               <PomodoroTimer />
-              <ReviewReminderCard onNavigateModule={onNavigateModule} />
             </div>
           </div>
         </div>

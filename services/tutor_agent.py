@@ -466,7 +466,49 @@ class TutorAgent:
                                 'detail': f"该知识点上次访问于{last_accessed.strftime('%m月%d日')}，间隔越久遗忘越多",
                             })
 
-            # ── 5. 基于学习计划推荐 ──
+            # ── 5. 基于遗忘曲线的错题复习提醒 ──
+            review_intervals = [1, 3, 7, 14, 30]
+            due_subjects = {}
+            for note in error_notes:
+                if note.get('mastery') == 1:
+                    continue
+                created = note.get('created_at', '')
+                if not created:
+                    continue
+                try:
+                    created_dt = datetime.strptime(str(created)[:19], '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    continue
+                days = (now - created_dt).days
+                subj = note.get('subject', '')
+                for interval in review_intervals:
+                    if days >= interval and days < interval * 2:
+                        if subj not in due_subjects:
+                            due_subjects[subj] = {'count': 0, 'max_days': 0}
+                        due_subjects[subj]['count'] += 1
+                        due_subjects[subj]['max_days'] = max(due_subjects[subj]['max_days'], days)
+                        break
+                if days >= 30 and subj:
+                    if subj not in due_subjects:
+                        due_subjects[subj] = {'count': 0, 'max_days': 0}
+                    due_subjects[subj]['count'] += 1
+                    due_subjects[subj]['max_days'] = max(due_subjects[subj]['max_days'], days)
+
+            total_due = sum(d['count'] for d in due_subjects.values())
+            if total_due > 0:
+                top_subjects = sorted(due_subjects.items(), key=lambda x: x[1]['count'], reverse=True)[:3]
+                subject_list = '、'.join(s[0] for s in top_subjects)
+                recommendations.append({
+                    'type': 'review',
+                    'topic': f'{total_due}道错题待复习',
+                    'reason': f'涉及{subject_list}，现在是最佳复习时间',
+                    'priority': min(0.95, 0.7 + total_due * 0.02),
+                    'category': 'review',
+                    'action': 'profile',
+                    'detail': '根据遗忘曲线，及时复习可将记忆保留率提升至90%以上',
+                })
+
+            # ── 6. 基于学习计划推荐 ──
             if not study_plans:
                 recommendations.append({
                     'type': 'plan',
@@ -478,7 +520,7 @@ class TutorAgent:
                     'detail': '研究表明，有明确计划的学习者完成率提高40%',
                 })
 
-            # ── 6. 基于认知风格推荐学习策略 ──
+            # ── 7. 基于认知风格推荐学习策略 ──
             if profile:
                 cognitive_style = profile.get('cognitive_style', '')
                 if '视觉' in cognitive_style:
@@ -512,7 +554,7 @@ class TutorAgent:
                         'detail': '通过动手实验、项目实践、模拟演练来加深理解',
                     })
 
-            # ── 7. 去重、排序、截取 ──
+            # ── 8. 去重、排序、截取 ──
             seen_topics = set()
             unique_recs = []
             for rec in recommendations:
