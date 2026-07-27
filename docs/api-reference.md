@@ -83,6 +83,14 @@ Content-Type: application/json
 | GET | /bilibili/recommend | 获取推荐视频 |
 | GET | /bilibili/cover | 封面图片代理 |
 
+### 图书资源（国家图书馆 + 鸠摩搜书）
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| GET | /books/search | 搜索图书 |
+| GET | /books/recommend | 获取推荐图书 |
+| GET | /books/cover | 封面图片代理 |
+
 ### 学习路径
 
 | 方法 | 端点 | 功能 |

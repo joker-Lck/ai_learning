@@ -2265,67 +2265,55 @@ async def stream_agent_status(session_id: str, user: dict = Depends(get_current_
 
 
 # ═══════════════════════════════════════════
-#  Bilibili 视频 API
+#  Bilibili 视频 API（带 WBI 签名的真实搜索）
 # ═══════════════════════════════════════════
 
+import hashlib
+import time
+import urllib.parse
+
 import httpx
-import re
 
-# 精选学习视频 BV ID 列表（按分类整理）
-BILIBILI_VIDEO_DB = {
-    "深度学习": [
-        "BV1c5yrBcEEX",  # 黑马程序员 神经网络与深度学习
-        "BV1Fzszz4Ek7",  # 黑马程序员 机器学习
-        "BV1L4411v7fB",  # 人工智能深度学习
-    ],
-    "Python": [
-        "BV1U2WmzfEqp",  # Python语言进阶
-        "BV1ReshzoEgG",  # Python数据分析
-        "BV1h1VbzHER2",  # AI大模型开发
-    ],
-    "RAG与Agent": [
-        "BV1yjz5BLEoY",  # RAG与Agent智能体实战
-        "BV1GByoBfE73",  # NLP自然语言处理
-    ],
-    "计算机视觉": [
-        "BV1Fo4y1d7JL",  # AI-OpenCV图像处理
-        "BV1Rz4y1R7Mb",  # 图像与视觉处理
-    ],
-    "前端开发": [
-        "BV1x4411V77Z",  # 前端开发入门
-        "BV1aE411T7qY",  # Vue.js入门
-    ],
-    "数据分析": [
-        "BV1ReshzoEgG",  # Python数据分析
-        "BV1iK4y1e7rG",  # 数据可视化
-    ],
-}
+# WBI 签名混淆表
+MIXIN_KEY_ENC_TAB = [
+    46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
+    27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13,
+    37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4,
+    22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52,
+]
 
-# 关键词到分类的映射
-KEYWORD_CATEGORY_MAP = {
-    "深度学习": "深度学习",
-    "神经网络": "深度学习",
-    "pytorch": "深度学习",
-    "机器学习": "深度学习",
-    "python": "Python",
-    "数据分析": "数据分析",
-    "rag": "RAG与Agent",
-    "agent": "RAG与Agent",
-    "智能体": "RAG与Agent",
-    "langchain": "RAG与Agent",
-    "opencv": "计算机视觉",
-    "图像": "计算机视觉",
-    "cv": "计算机视觉",
-    "前端": "前端开发",
-    "vue": "前端开发",
-    "react": "前端开发",
-    "javascript": "前端开发",
-}
+# 缓存 WBI key
+_wbi_cache = {"img_key": "", "sub_key": "", "expire": 0}
 
 
-async def fetch_video_info(bvid: str) -> dict | None:
-    """通过 BV 号获取视频详细信息"""
-    url = f"https://api.bilibili.com/x/web-interface/view?bvid={bvid}"
+def _get_mixin_key(raw: str) -> str:
+    """从原始 key 生成混淆 key"""
+    return "".join(raw[i] for i in MIXIN_KEY_ENC_TAB)[:32]
+
+
+def _sign_wbi(params: dict, img_key: str, sub_key: str) -> dict:
+    """WBI 签名"""
+    mixin_key = _get_mixin_key(img_key + sub_key)
+    curr_time = round(time.time())
+    params["wts"] = curr_time
+    # 按 key 排序
+    params = dict(sorted(params.items()))
+    # 过滤特殊字符
+    query = urllib.parse.urlencode(params)
+    w_rid = hashlib.md5((query + mixin_key).encode()).hexdigest()
+    params["w_rid"] = w_rid
+    return params
+
+
+async def _get_wbi_keys() -> tuple[str, str]:
+    """获取 WBI 签名所需的 img_key 和 sub_key"""
+    global _wbi_cache
+
+    # 缓存有效则直接返回
+    if _wbi_cache["expire"] > time.time() and _wbi_cache["img_key"]:
+        return _wbi_cache["img_key"], _wbi_cache["sub_key"]
+
+    url = "https://api.bilibili.com/x/web-interface/nav"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Referer": "https://www.bilibili.com",
@@ -2334,106 +2322,168 @@ async def fetch_video_info(bvid: str) -> dict | None:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url, headers=headers)
             data = resp.json()
-        if data.get("code") != 0:
-            return None
-        d = data.get("data", {})
-        pic = d.get("pic", "")
-        if pic and not pic.startswith("http"):
-            pic = "https:" + pic
-        # 确保使用 https
-        if pic.startswith("http://"):
-            pic = pic.replace("http://", "https://")
-        stat = d.get("stat", {})
-        duration_sec = d.get("duration", 0)
-        minutes = duration_sec // 60
-        seconds = duration_sec % 60
-        return {
-            "bvid": bvid,
-            "aid": d.get("aid", 0),
-            "title": d.get("title", ""),
-            "description": d.get("desc", "")[:200],
-            "pic": pic,
-            "author": d.get("owner", {}).get("name", ""),
-            "mid": d.get("owner", {}).get("mid", 0),
-            "play": stat.get("view", 0),
-            "danmaku": stat.get("danmaku", 0),
-            "duration": f"{minutes}:{seconds:02d}",
-            "pubdate": d.get("pubdate", 0),
-            "tag": "",
-            "url": f"https://www.bilibili.com/video/{bvid}",
+
+        wbi_img = data.get("data", {}).get("wbi_img", {})
+        img_url = wbi_img.get("img_url", "")
+        sub_url = wbi_img.get("sub_url", "")
+
+        # 从 URL 中提取 key（去掉路径和后缀）
+        img_key = img_url.rsplit("/", 1)[-1].split(".")[0] if img_url else ""
+        sub_key = sub_url.rsplit("/", 1)[-1].split(".")[0] if sub_url else ""
+
+        # 缓存 30 分钟
+        _wbi_cache = {
+            "img_key": img_key,
+            "sub_key": sub_key,
+            "expire": time.time() + 1800,
         }
+
+        return img_key, sub_key
     except Exception as e:
-        error(f"获取视频信息失败 [{bvid}]: {e}")
-        return None
+        error(f"获取 WBI key 失败: {e}")
+        return "", ""
+
+
+async def bilibili_search(keyword: str, page: int = 1, page_size: int = 20, order: str = "totalrank") -> dict:
+    """调用 Bilibili 搜索 API（带 WBI 签名）"""
+    img_key, sub_key = await _get_wbi_keys()
+
+    params = {
+        "search_type": "video",
+        "keyword": keyword,
+        "page": str(page),
+        "page_size": str(page_size),
+        "order": order,
+    }
+
+    if img_key and sub_key:
+        params = _sign_wbi(params, img_key, sub_key)
+
+    url = "https://api.bilibili.com/x/web-interface/wbi/search/type"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.bilibili.com",
+        "Origin": "https://www.bilibili.com",
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(url, params=params, headers=headers)
+        return resp.json()
 
 
 @router.get("/bilibili/search", response_model=BaseResponse)
 async def search_bilibili_videos(
     keyword: str = Query(..., description="搜索关键词"),
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(12, ge=1, le=50, description="每页数量"),
+    page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     order: str = Query("totalrank", description="排序方式: totalrank/click/pubdate/dm"),
     duration: int = Query(0, description="时长筛选: 0-全部"),
     user: dict = Depends(get_current_user),
 ):
     """
-    搜索 Bilibili 视频资源（基于精选视频库）
+    搜索 Bilibili 视频资源（真实搜索，带 WBI 签名）
 
     返回视频列表，包含标题、封面、简介、播放量等信息
     """
     try:
         info(f"用户 {user['id']} 搜索 Bilibili 视频: {keyword}")
 
-        # 根据关键词匹配分类
-        keyword_lower = keyword.lower()
-        matched_bvids = []
+        data = await bilibili_search(keyword, page, page_size, order)
 
-        # 精确匹配分类
-        for cat_key, bvids in BILIBILI_VIDEO_DB.items():
-            if cat_key in keyword or keyword in cat_key:
-                matched_bvids.extend(bvids)
+        if data.get("code") != 0:
+            error(f"Bilibili API 错误: {data.get('message', '未知错误')}")
+            return BaseResponse(
+                success=False,
+                message=f"Bilibili 搜索失败: {data.get('message', '未知错误')}",
+                data=None,
+            )
 
-        # 关键词映射匹配
-        for kw, category in KEYWORD_CATEGORY_MAP.items():
-            if kw in keyword_lower:
-                matched_bvids.extend(BILIBILI_VIDEO_DB.get(category, []))
+        results = data.get("data", {}).get("result", [])
+        total = data.get("data", {}).get("numResults", 0)
 
-        # 如果没有匹配，返回所有视频
-        if not matched_bvids:
-            for bvids in BILIBILI_VIDEO_DB.values():
-                matched_bvids.extend(bvids)
-
-        # 去重
-        matched_bvids = list(dict.fromkeys(matched_bvids))
-
-        # 分页
-        start = (page - 1) * page_size
-        end = start + page_size
-        page_bvids = matched_bvids[start:end]
-
-        # 并发获取视频信息
+        # 格式化视频数据
         videos = []
-        tasks = [fetch_video_info(bvid) for bvid in page_bvids]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        for result in results:
-            if isinstance(result, dict):
-                videos.append(result)
+        for item in results:
+            pic = item.get("pic", "")
+            if pic and not pic.startswith("http"):
+                pic = "https:" + pic
+            if pic.startswith("http://"):
+                pic = pic.replace("http://", "https://")
+
+            # 清理 HTML 标签
+            title = item.get("title", "").replace('<em class="keyword">', "").replace("</em>", "")
+
+            # 时长格式化
+            duration_str = item.get("duration", "")
+            if ":" not in str(duration_str):
+                try:
+                    secs = int(duration_str)
+                    duration_str = f"{secs // 60}:{secs % 60:02d}"
+                except (ValueError, TypeError):
+                    duration_str = str(duration_str)
+
+            videos.append({
+                "bvid": item.get("bvid", ""),
+                "aid": item.get("aid", 0),
+                "title": title,
+                "description": item.get("description", "")[:200],
+                "pic": pic,
+                "author": item.get("author", ""),
+                "mid": item.get("mid", 0),
+                "play": item.get("play", 0),
+                "danmaku": item.get("video_review", 0) or item.get("danmaku", 0),
+                "duration": duration_str,
+                "pubdate": item.get("pubdate", 0),
+                "tag": item.get("tag", ""),
+                "url": f"https://www.bilibili.com/video/{item.get('bvid', '')}",
+            })
 
         return BaseResponse(
             success=True,
             message="搜索成功",
             data={
                 "videos": videos,
-                "total": len(matched_bvids),
+                "total": total,
                 "page": page,
                 "page_size": page_size,
                 "keyword": keyword,
             },
         )
 
+    except httpx.TimeoutException:
+        error("Bilibili API 请求超时")
+        return BaseResponse(success=False, message="搜索超时，请稍后重试", data=None)
     except Exception as e:
         error(f"Bilibili 搜索异常: {e}")
         return BaseResponse(success=False, message=f"搜索失败: {str(e)}", data=None)
+
+
+# 精选推荐视频（静态数据，避免 BV 号失效）
+RECOMMEND_VIDEOS = {
+    "深度学习": [
+        {"bvid": "BV1c5yrBcEEX", "title": "黑马程序员AI大模型《神经网络与深度学习》全套视频课程", "author": "黑马程序员", "play": 1560000, "danmaku": 9800, "duration": "48:30:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "涵盖Pytorch深度学习框架、BP神经网络、CNN图像分类算法及RNN文本生成算法", "tags": ["深度学习", "Pytorch", "神经网络"]},
+        {"bvid": "BV1Fzszz4Ek7", "title": "黑马程序员机器学习算法与实战", "author": "黑马程序员", "play": 520000, "danmaku": 3200, "duration": "32:15:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "机器学习经典算法讲解与实战应用", "tags": ["机器学习", "算法"]},
+        {"bvid": "BV1L4411v7fB", "title": "深度学习与神经网络基础教程", "author": "人工智能学习", "play": 280000, "danmaku": 1500, "duration": "25:00:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "从零开始学习深度学习与神经网络", "tags": ["深度学习", "神经网络"]},
+    ],
+    "Python": [
+        {"bvid": "BV1U2WmzfEqp", "title": "Python语言进阶与高级特性", "author": "黑马程序员", "play": 890000, "danmaku": 5600, "duration": "28:40:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "Python高级特性、装饰器、生成器、上下文管理器等", "tags": ["Python", "进阶"]},
+        {"bvid": "BV1ReshzoEgG", "title": "Python数据分析全套教程", "author": "黑马程序员", "play": 2100000, "danmaku": 12000, "duration": "42:15:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "Linux、MySQL、Numpy、Pandas、Matplotlib数据处理", "tags": ["Python", "数据分析", "Pandas"]},
+    ],
+    "RAG与Agent": [
+        {"bvid": "BV1yjz5BLEoY", "title": "大模型RAG与Agent智能体项目实战", "author": "黑马程序员", "play": 450000, "danmaku": 2800, "duration": "36:20:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "基于LangChain的RAG和Agent智能体开发实战", "tags": ["RAG", "Agent", "LangChain"]},
+        {"bvid": "BV1GByoBfE73", "title": "NLP自然语言处理实战教程", "author": "AI学习", "play": 320000, "danmaku": 1900, "duration": "22:10:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "自然语言处理核心技术与应用", "tags": ["NLP", "自然语言处理"]},
+    ],
+    "计算机视觉": [
+        {"bvid": "BV1Fo4y1d7JL", "title": "AI-OpenCV图像处理实战", "author": "AI学习", "play": 180000, "danmaku": 1200, "duration": "18:30:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "OpenCV图像处理与计算机视觉入门", "tags": ["OpenCV", "计算机视觉"]},
+    ],
+    "前端开发": [
+        {"bvid": "BV1x4411V77Z", "title": "前端开发入门到精通", "author": "前端学习", "play": 650000, "danmaku": 4100, "duration": "35:00:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "HTML、CSS、JavaScript前端基础", "tags": ["前端", "HTML", "CSS", "JavaScript"]},
+        {"bvid": "BV1aE411T7qY", "title": "Vue.js从入门到项目实战", "author": "前端学习", "play": 420000, "danmaku": 2600, "duration": "28:00:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "Vue.js框架核心概念与项目实战", "tags": ["Vue", "前端", "框架"]},
+    ],
+    "数据分析": [
+        {"bvid": "BV1iK4y1e7rG", "title": "数据可视化与分析实战", "author": "数据学习", "play": 290000, "danmaku": 1700, "duration": "20:00:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "数据可视化工具与分析方法", "tags": ["数据分析", "可视化"]},
+    ],
+}
 
 
 @router.get("/bilibili/recommend", response_model=BaseResponse)
@@ -2443,38 +2493,37 @@ async def get_recommend_videos(
     user: dict = Depends(get_current_user),
 ):
     """
-    获取推荐视频列表
+    获取推荐视频列表（静态精选数据）
 
     返回精选学习视频，支持按分类筛选
     """
     try:
         info(f"用户 {user['id']} 获取推荐视频: {category}")
 
-        # 获取对应分类的 BV ID
         if category == "all":
-            bvids = []
-            for cat_bvids in BILIBILI_VIDEO_DB.values():
-                bvids.extend(cat_bvids)
-            bvids = list(dict.fromkeys(bvids))[:limit]
+            videos = []
+            for cat_videos in RECOMMEND_VIDEOS.values():
+                videos.extend(cat_videos)
         else:
-            bvids = BILIBILI_VIDEO_DB.get(category, [])[:limit]
+            videos = RECOMMEND_VIDEOS.get(category, [])
 
-        # 并发获取视频信息
-        tasks = [fetch_video_info(bvid) for bvid in bvids]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        videos = []
-        for result in results:
-            if isinstance(result, dict):
-                videos.append(result)
+        # 去重并限制数量
+        seen = set()
+        unique_videos = []
+        for v in videos:
+            if v["bvid"] not in seen:
+                seen.add(v["bvid"])
+                # 补充 url 字段
+                v["url"] = f"https://www.bilibili.com/video/{v['bvid']}"
+                unique_videos.append(v)
 
         return BaseResponse(
             success=True,
             message="获取成功",
             data={
-                "videos": videos,
+                "videos": unique_videos[:limit],
                 "category": category,
-                "categories": list(BILIBILI_VIDEO_DB.keys()),
+                "categories": list(RECOMMEND_VIDEOS.keys()),
             },
         )
 
@@ -2502,6 +2551,387 @@ async def proxy_bilibili_cover(
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Referer": "https://www.bilibili.com",
+        }
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, headers=headers)
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="图片获取失败")
+
+        from fastapi.responses import Response
+        return Response(
+            content=resp.content,
+            media_type=resp.headers.get("content-type", "image/jpeg"),
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"封面代理异常: {e}")
+        raise HTTPException(status_code=500, detail="图片代理失败")
+
+
+# ═══════════════════════════════════════════
+#  图书资源 API（国家数字图书馆 + 鸠摩搜书）
+# ═══════════════════════════════════════════
+
+# 精选图书数据库
+BOOK_DB = {
+    "人工智能": [
+        {
+            "title": "深度学习",
+            "author": "Ian Goodfellow / Yoshua Bengio / Aaron Courville",
+            "isbn": "9787115463975",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s29472112.jpg",
+            "description": "深度学习领域经典教材，全面介绍深度学习的基础理论和实践技术。",
+            "publisher": "人民邮电出版社",
+            "year": "2017",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["深度学习", "神经网络", "AI"],
+        },
+        {
+            "title": "机器学习",
+            "author": "周志华",
+            "isbn": "9787302423287",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s27245962.jpg",
+            "description": "西瓜书，机器学习入门经典教材，涵盖各类主流算法。",
+            "publisher": "清华大学出版社",
+            "year": "2016",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["机器学习", "算法", "数据挖掘"],
+        },
+        {
+            "title": "统计学习方法",
+            "author": "李航",
+            "isbn": "9787302517474",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s33710076.jpg",
+            "description": "系统介绍统计学习方法，包括感知机、SVM、决策树、HMM等。",
+            "publisher": "清华大学出版社",
+            "year": "2019",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["统计学习", "机器学习", "算法"],
+        },
+        {
+            "title": "Python机器学习",
+            "author": "Sebastian Raschka",
+            "isbn": "9787115478184",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s29654316.jpg",
+            "description": "使用Python和scikit-learn实践机器学习算法。",
+            "publisher": "人民邮电出版社",
+            "year": "2018",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["Python", "机器学习", "scikit-learn"],
+        },
+    ],
+    "自然语言处理": [
+        {
+            "title": "自然语言处理入门",
+            "author": "何晗",
+            "isbn": "9787115526274",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s33554178.jpg",
+            "description": "HanLP作者出品，NLP入门实战指南。",
+            "publisher": "人民邮电出版社",
+            "year": "2020",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["NLP", "自然语言处理", "HanLP"],
+        },
+        {
+            "title": "动手学深度学习",
+            "author": "李沐 / 阿斯顿·张",
+            "isbn": "9787115526274",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s33646480.jpg",
+            "description": "基于PyTorch的深度学习实战教程，含代码和视频。",
+            "publisher": "人民邮电出版社",
+            "year": "2021",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["深度学习", "PyTorch", "实战"],
+        },
+    ],
+    "计算机科学": [
+        {
+            "title": "算法导论",
+            "author": "Thomas H. Cormen",
+            "isbn": "9787111407010",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s25648004.jpg",
+            "description": "计算机算法领域最权威的教材之一。",
+            "publisher": "机械工业出版社",
+            "year": "2013",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["算法", "数据结构", "计算机科学"],
+        },
+        {
+            "title": "深入理解计算机系统",
+            "author": "Randal E. Bryant",
+            "isbn": "9787111544937",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s29195878.jpg",
+            "description": "CSAPP，从程序员角度理解计算机系统。",
+            "publisher": "机械工业出版社",
+            "year": "2016",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["计算机系统", "操作系统", "体系结构"],
+        },
+    ],
+    "数据分析": [
+        {
+            "title": "利用Python进行数据分析",
+            "author": "Wes McKinney",
+            "isbn": "9787111603726",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s33475306.jpg",
+            "description": "Pandas创始人出品，数据分析必备。",
+            "publisher": "机械工业出版社",
+            "year": "2018",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["Python", "Pandas", "数据分析"],
+        },
+        {
+            "title": "数据科学入门",
+            "author": "Joel Grus",
+            "isbn": "9787115453600",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s29654316.jpg",
+            "description": "用Python学习数据科学基础知识。",
+            "publisher": "人民邮电出版社",
+            "year": "2016",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["数据科学", "Python", "统计"],
+        },
+    ],
+    "大模型与RAG": [
+        {
+            "title": "大语言模型",
+            "author": "赵鑫 / 李军毅",
+            "isbn": "9787115621689",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s34681704.jpg",
+            "description": "系统介绍大语言模型的原理、训练与应用。",
+            "publisher": "人民邮电出版社",
+            "year": "2024",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["大模型", "LLM", "Transformer"],
+        },
+        {
+            "title": "LangChain编程入门",
+            "author": "黄佳",
+            "isbn": "9787115638472",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s34710458.jpg",
+            "description": "基于LangChain构建LLM应用，涵盖RAG和Agent。",
+            "publisher": "人民邮电出版社",
+            "year": "2024",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["LangChain", "RAG", "Agent"],
+        },
+    ],
+    "前端开发": [
+        {
+            "title": "JavaScript高级程序设计",
+            "author": "Matt Frisbie",
+            "isbn": "9787115545381",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s33710076.jpg",
+            "description": "红宝书，前端开发者必读经典。",
+            "publisher": "人民邮电出版社",
+            "year": "2020",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["JavaScript", "前端", "Web"],
+        },
+        {
+            "title": "Vue.js设计与实现",
+            "author": "霍春阳",
+            "isbn": "9787115583857",
+            "cover": "https://img1.doubanio.com/view/subject/l/public/s34108698.jpg",
+            "description": "深入理解Vue.js框架的设计思想和实现原理。",
+            "publisher": "人民邮电出版社",
+            "year": "2022",
+            "nlc_url": "https://read.nlc.cn/thematiceData/toMoreBookList",
+            "jiumo_url": "https://www.jiumodiary.com/",
+            "tags": ["Vue", "前端", "框架"],
+        },
+    ],
+}
+
+# 关键词到分类的映射
+BOOK_KEYWORD_MAP = {
+    "深度学习": "人工智能",
+    "机器学习": "人工智能",
+    "神经网络": "人工智能",
+    "pytorch": "人工智能",
+    "tensorflow": "人工智能",
+    "nlp": "自然语言处理",
+    "自然语言": "自然语言处理",
+    "大模型": "大模型与RAG",
+    "llm": "大模型与RAG",
+    "langchain": "大模型与RAG",
+    "rag": "大模型与RAG",
+    "agent": "大模型与RAG",
+    "算法": "计算机科学",
+    "数据结构": "计算机科学",
+    "操作系统": "计算机科学",
+    "计算机": "计算机科学",
+    "数据分析": "数据分析",
+    "pandas": "数据分析",
+    "python": "数据分析",
+    "数据科学": "数据分析",
+    "前端": "前端开发",
+    "javascript": "前端开发",
+    "vue": "前端开发",
+    "react": "前端开发",
+    "typescript": "前端开发",
+}
+
+
+@router.get("/books/search", response_model=BaseResponse)
+async def search_books(
+    keyword: str = Query(..., description="搜索关键词"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(12, ge=1, le=50, description="每页数量"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    搜索图书资源（基于精选书库）
+
+    返回图书列表，包含封面、简介、国图和鸠摩搜书链接
+    """
+    try:
+        info(f"用户 {user['id']} 搜索图书: {keyword}")
+
+        keyword_lower = keyword.lower()
+        matched_books = []
+
+        # 精确匹配分类
+        for cat_key, books in BOOK_DB.items():
+            if cat_key in keyword or keyword in cat_key:
+                matched_books.extend(books)
+
+        # 关键词映射匹配
+        for kw, category in BOOK_KEYWORD_MAP.items():
+            if kw in keyword_lower:
+                matched_books.extend(BOOK_DB.get(category, []))
+
+        # 标题/作者模糊匹配
+        if not matched_books:
+            for books in BOOK_DB.values():
+                for book in books:
+                    if (keyword_lower in book["title"].lower() or
+                        keyword_lower in book["author"].lower() or
+                        any(keyword_lower in tag.lower() for tag in book.get("tags", []))):
+                        matched_books.append(book)
+
+        # 如果没有匹配，返回所有图书
+        if not matched_books:
+            for books in BOOK_DB.values():
+                matched_books.extend(books)
+
+        # 去重（按 title）
+        seen = set()
+        unique_books = []
+        for book in matched_books:
+            if book["title"] not in seen:
+                seen.add(book["title"])
+                unique_books.append(book)
+
+        # 分页
+        total = len(unique_books)
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_books = unique_books[start:end]
+
+        return BaseResponse(
+            success=True,
+            message="搜索成功",
+            data={
+                "books": page_books,
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "keyword": keyword,
+            },
+        )
+
+    except Exception as e:
+        error(f"图书搜索异常: {e}")
+        return BaseResponse(success=False, message=f"搜索失败: {str(e)}", data=None)
+
+
+@router.get("/books/recommend", response_model=BaseResponse)
+async def get_recommend_books(
+    category: str = Query("all", description="分类: all/人工智能/自然语言处理/计算机科学/数据分析/大模型与RAG/前端开发"),
+    limit: int = Query(8, ge=1, le=20, description="返回数量"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    获取推荐图书列表
+
+    返回精选图书，支持按分类筛选
+    """
+    try:
+        info(f"用户 {user['id']} 获取推荐图书: {category}")
+
+        if category == "all":
+            books = []
+            for cat_books in BOOK_DB.values():
+                books.extend(cat_books)
+        else:
+            books = BOOK_DB.get(category, [])
+
+        # 去重并限制数量
+        seen = set()
+        unique_books = []
+        for book in books:
+            if book["title"] not in seen:
+                seen.add(book["title"])
+                unique_books.append(book)
+        unique_books = unique_books[:limit]
+
+        return BaseResponse(
+            success=True,
+            message="获取成功",
+            data={
+                "books": unique_books,
+                "category": category,
+                "categories": list(BOOK_DB.keys()),
+            },
+        )
+
+    except Exception as e:
+        error(f"获取推荐图书异常: {e}")
+        return BaseResponse(success=False, message=f"获取失败: {str(e)}", data=None)
+
+
+@router.get("/books/cover")
+async def proxy_book_cover(
+    url: str = Query(..., description="图书封面图片 URL"),
+):
+    """
+    代理图书封面图片，解决跨域问题
+    """
+    try:
+        # 安全校验：只允许豆瓣和常见图书封面 CDN
+        allowed_domains = ["doubanio.com", "douban.com", "img.com", "amazon.com", "nlc.cn"]
+        if not any(domain in url for domain in allowed_domains):
+            raise HTTPException(status_code=400, detail="仅支持图书封面图片")
+
+        # 确保使用 https
+        if url.startswith("http://"):
+            url = url.replace("http://", "https://")
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://book.douban.com",
         }
 
         async with httpx.AsyncClient(timeout=10.0) as client:

@@ -76,7 +76,7 @@ function VideoCard({ video, index }: { video: BilibiliVideo; index: number }) {
   const getCoverUrl = (pic: string) => {
     if (!pic) return '';
     // 使用后端代理
-    return `/api/bilibili/cover?url=${encodeURIComponent(pic)}`;
+    return `/api/agent/bilibili/cover?url=${encodeURIComponent(pic)}`;
   };
 
   return (
@@ -301,22 +301,36 @@ export default function VideoResourceModule() {
         const res: any = await api.searchBilibiliVideos(keyword.trim(), page, pageSize, order, duration);
 
         if (res.success && res.data) {
-          setVideos(res.data.videos || []);
+          const videoList = res.data.videos || [];
+          setVideos(videoList);
           setTotal(res.data.total || 0);
           setHasSearched(true);
+          if (videoList.length === 0) {
+            setError('未找到相关视频，请尝试其他关键词');
+          }
         } else {
           setError(res.message || '搜索失败');
           setVideos([]);
+          setHasSearched(true);
         }
       } catch (err: any) {
         setError(err.message || '网络错误');
         setVideos([]);
+        setHasSearched(true);
       } finally {
         setLoading(false);
       }
     },
     [keyword, order, duration]
   );
+
+  // 返回推荐
+  const handleBackToRecommend = () => {
+    setHasSearched(false);
+    setKeyword('');
+    setError('');
+    loadRecommendVideos('all');
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -438,7 +452,16 @@ export default function VideoResourceModule() {
       {/* 搜索结果 */}
       {!loading && hasSearched && (
         <div className="space-y-6">
-          <ResultStats total={total} keyword={searchKeyword} />
+          <div className="flex items-center justify-between">
+            <ResultStats total={total} keyword={searchKeyword} />
+            <button
+              onClick={handleBackToRecommend}
+              className="px-4 py-2 rounded-lg glass-button text-sm text-white/50 hover:text-white transition-colors flex items-center gap-2"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              返回推荐
+            </button>
+          </div>
 
           {videos.length > 0 ? (
             <>
@@ -457,8 +480,14 @@ export default function VideoResourceModule() {
           ) : (
             <div className="flex flex-col items-center justify-center py-16 space-y-4">
               <Search className="w-12 h-12 text-white/15" />
-              <p className="text-sm text-white/40">未找到相关视频</p>
-              <p className="text-xs text-white/25">尝试更换关键词或调整筛选条件</p>
+              <p className="text-sm text-white/40">{error || '未找到相关视频'}</p>
+              <p className="text-xs text-white/25">尝试更换关键词或返回推荐</p>
+              <button
+                onClick={handleBackToRecommend}
+                className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors text-sm"
+              >
+                查看推荐视频
+              </button>
             </div>
           )}
         </div>

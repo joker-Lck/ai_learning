@@ -602,6 +602,25 @@ class ApiClient {
     });
     return this.request(`/agent/bilibili/recommend?${params}`);
   }
+
+  // ==================== 图书资源 API ====================
+
+  async searchBooks(keyword: string, page = 1, pageSize = 12) {
+    const params = new URLSearchParams({
+      keyword,
+      page: String(page),
+      page_size: String(pageSize),
+    });
+    return this.request(`/agent/books/search?${params}`);
+  }
+
+  async getBookRecommend(category = 'all', limit = 8) {
+    const params = new URLSearchParams({
+      category,
+      limit: String(limit),
+    });
+    return this.request(`/agent/books/recommend?${params}`);
+  }
 }
 
 export const api = new ApiClient();

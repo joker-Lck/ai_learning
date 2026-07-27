@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Brain, FileText, GitBranch, FileCode, Video, Sparkles, Code, BookOpen,
+  Brain, FileText, GitBranch, FileCode, Video, Sparkles, Code, BookOpen, Library,
   Loader2, CheckCircle, ChevronDown, ChevronUp, Maximize2, Play,
 } from 'lucide-react';
 import { useState, memo, useEffect, useRef } from 'react';
@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import type { ResourceItem } from './types';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import VideoResourceModule from './VideoResourceModule';
+import BookResourceModule from './BookResourceModule';
 
 interface ResourcesModuleProps {
   subject: string;
@@ -290,7 +291,7 @@ function getRecommendedTypes(subj: string): string[] {
   return ['document', 'quiz'];
 }
 
-type ResourceTab = 'ai' | 'video';
+type ResourceTab = 'ai' | 'video' | 'book';
 
 export default memo(function ResourcesModule({
   subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
@@ -335,10 +336,24 @@ export default memo(function ResourcesModule({
           <Play className="w-4 h-4" />
           视频资源
         </button>
+        <button
+          onClick={() => setActiveTab('book')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'book'
+              ? 'bg-purple-500/20 text-purple-400 border border-purple-400/30'
+              : 'text-white/40 hover:text-white/60'
+          }`}
+        >
+          <Library className="w-4 h-4" />
+          图书资源
+        </button>
       </div>
 
       {/* 视频资源标签页 */}
       {activeTab === 'video' && <VideoResourceModule />}
+
+      {/* 图书资源标签页 */}
+      {activeTab === 'book' && <BookResourceModule />}
 
       {/* AI 资源生成标签页 */}
       {activeTab === 'ai' && (
