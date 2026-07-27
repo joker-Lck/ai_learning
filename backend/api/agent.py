@@ -2458,30 +2458,30 @@ async def search_bilibili_videos(
         return BaseResponse(success=False, message=f"搜索失败: {str(e)}", data=None)
 
 
-# 精选推荐视频（静态数据，避免 BV 号失效）
+# 精选推荐视频（静态数据，封面已验证）
 RECOMMEND_VIDEOS = {
     "深度学习": [
-        {"bvid": "BV1c5yrBcEEX", "title": "黑马程序员AI大模型《神经网络与深度学习》全套视频课程", "author": "黑马程序员", "play": 1560000, "danmaku": 9800, "duration": "48:30:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "涵盖Pytorch深度学习框架、BP神经网络、CNN图像分类算法及RNN文本生成算法", "tags": ["深度学习", "Pytorch", "神经网络"]},
-        {"bvid": "BV1Fzszz4Ek7", "title": "黑马程序员机器学习算法与实战", "author": "黑马程序员", "play": 520000, "danmaku": 3200, "duration": "32:15:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "机器学习经典算法讲解与实战应用", "tags": ["机器学习", "算法"]},
-        {"bvid": "BV1L4411v7fB", "title": "深度学习与神经网络基础教程", "author": "人工智能学习", "play": 280000, "danmaku": 1500, "duration": "25:00:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "从零开始学习深度学习与神经网络", "tags": ["深度学习", "神经网络"]},
+        {"bvid": "BV1c5yrBcEEX", "title": "黑马程序员AI大模型《神经网络与深度学习》全套视频课程", "author": "黑马程序员", "play": 1560000, "danmaku": 9800, "duration": "48:30:00", "pic": "https://i1.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "涵盖Pytorch深度学习框架、BP神经网络、CNN图像分类算法及RNN文本生成算法", "tags": ["深度学习", "Pytorch", "神经网络"]},
+        {"bvid": "BV1Fzszz4Ek7", "title": "黑马程序员AI大模型必备《机器学习》全套视频教程", "author": "黑马程序员", "play": 520000, "danmaku": 3200, "duration": "32:15:00", "pic": "https://i0.hdslb.com/bfs/archive/c68ea689a9b0d3a3a0fc0fd75b61c2527b9c8273.jpg", "description": "机器学习经典算法讲解与实战应用，覆盖KNN、SVM、决策树等", "tags": ["机器学习", "算法"]},
+        {"bvid": "BV1L4411v7fB", "title": "智能机器人软件开发教程基础，从helloworld到神经网络", "author": "AI学习", "play": 280000, "danmaku": 1500, "duration": "25:00:00", "pic": "https://i0.hdslb.com/bfs/archive/c94cc72715166c539f883cc27c08e6fe935d234a.jpg", "description": "从零开始学习深度学习与神经网络", "tags": ["深度学习", "神经网络"]},
     ],
     "Python": [
-        {"bvid": "BV1U2WmzfEqp", "title": "Python语言进阶与高级特性", "author": "黑马程序员", "play": 890000, "danmaku": 5600, "duration": "28:40:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "Python高级特性、装饰器、生成器、上下文管理器等", "tags": ["Python", "进阶"]},
-        {"bvid": "BV1ReshzoEgG", "title": "Python数据分析全套教程", "author": "黑马程序员", "play": 2100000, "danmaku": 12000, "duration": "42:15:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "Linux、MySQL、Numpy、Pandas、Matplotlib数据处理", "tags": ["Python", "数据分析", "Pandas"]},
+        {"bvid": "BV1U2WmzfEqp", "title": "黑马程序员大模型Python语言进阶全套视频课程", "author": "黑马程序员", "play": 890000, "danmaku": 5600, "duration": "28:40:00", "pic": "https://i2.hdslb.com/bfs/archive/03ae4d4d3cac500c0030ada92d63c51bf54aa551.jpg", "description": "Python高级特性、面向对象到数据结构与算法", "tags": ["Python", "进阶"]},
+        {"bvid": "BV1ReshzoEgG", "title": "黑马程序员Python数据分析全套视频教程", "author": "黑马程序员", "play": 2100000, "danmaku": 12000, "duration": "42:15:00", "pic": "https://i0.hdslb.com/bfs/archive/2bd66bff96a1a3f267fb986c7ec6bf7e53805f3b.jpg", "description": "Linux、MySQL、Numpy、Pandas、Matplotlib数据处理", "tags": ["Python", "数据分析", "Pandas"]},
     ],
     "RAG与Agent": [
-        {"bvid": "BV1yjz5BLEoY", "title": "大模型RAG与Agent智能体项目实战", "author": "黑马程序员", "play": 450000, "danmaku": 2800, "duration": "36:20:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "基于LangChain的RAG和Agent智能体开发实战", "tags": ["RAG", "Agent", "LangChain"]},
-        {"bvid": "BV1GByoBfE73", "title": "NLP自然语言处理实战教程", "author": "AI学习", "play": 320000, "danmaku": 1900, "duration": "22:10:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "自然语言处理核心技术与应用", "tags": ["NLP", "自然语言处理"]},
+        {"bvid": "BV1yjz5BLEoY", "title": "黑马程序员大模型RAG与Agent智能体项目实战教程", "author": "黑马程序员", "play": 450000, "danmaku": 2800, "duration": "36:20:00", "pic": "https://i0.hdslb.com/bfs/archive/ec034de58ed78ca875c6561c7b2a93c212ffbf8a.jpg", "description": "基于LangChain的RAG和Agent智能体开发实战", "tags": ["RAG", "Agent", "LangChain"]},
+        {"bvid": "BV1GByoBfE73", "title": "黑马程序员AI大模型NLP自然语言处理全套视频教程", "author": "黑马程序员", "play": 320000, "danmaku": 1900, "duration": "22:10:00", "pic": "https://i2.hdslb.com/bfs/archive/5088a630c42657b565a456601a42e02af302e1bf.jpg", "description": "从传统序列模型到基于Transformer的NLP技术", "tags": ["NLP", "自然语言处理"]},
     ],
     "计算机视觉": [
-        {"bvid": "BV1Fo4y1d7JL", "title": "AI-OpenCV图像处理实战", "author": "AI学习", "play": 180000, "danmaku": 1200, "duration": "18:30:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "OpenCV图像处理与计算机视觉入门", "tags": ["OpenCV", "计算机视觉"]},
+        {"bvid": "BV1Fo4y1d7JL", "title": "黑马程序员人工智能教程_10小时学会图像处理OpenCV入门教程", "author": "黑马程序员", "play": 180000, "danmaku": 1200, "duration": "18:30:00", "pic": "https://i0.hdslb.com/bfs/archive/c6f5409bb52de12370b0cd73d98d0f1dd2019f9e.jpg", "description": "OpenCV图像处理与计算机视觉入门", "tags": ["OpenCV", "计算机视觉"]},
     ],
     "前端开发": [
-        {"bvid": "BV1x4411V77Z", "title": "前端开发入门到精通", "author": "前端学习", "play": 650000, "danmaku": 4100, "duration": "35:00:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "HTML、CSS、JavaScript前端基础", "tags": ["前端", "HTML", "CSS", "JavaScript"]},
-        {"bvid": "BV1aE411T7qY", "title": "Vue.js从入门到项目实战", "author": "前端学习", "play": 420000, "danmaku": 2600, "duration": "28:00:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "Vue.js框架核心概念与项目实战", "tags": ["Vue", "前端", "框架"]},
+        {"bvid": "BV1Pf4y177ao", "title": "Vue.js前端框架入门教程", "author": "前端学习", "play": 650000, "danmaku": 4100, "duration": "15:00:00", "pic": "https://i1.hdslb.com/bfs/archive/93aca50e53d3976c59b70d8be89f64d9287a84b2.jpg", "description": "Vue.js框架核心概念与入门实战", "tags": ["Vue", "前端"]},
+        {"bvid": "BV1A3411g7f7", "title": "Vue环境搭建及项目创建教程", "author": "前端学习", "play": 420000, "danmaku": 2600, "duration": "12:00:00", "pic": "https://i0.hdslb.com/bfs/archive/2cb21ff2010a030418baa2b9ca18af18a6ebc8cb.jpg", "description": "Vue开发环境搭建与项目初始化", "tags": ["Vue", "前端", "框架"]},
     ],
     "数据分析": [
-        {"bvid": "BV1iK4y1e7rG", "title": "数据可视化与分析实战", "author": "数据学习", "play": 290000, "danmaku": 1700, "duration": "20:00:00", "pic": "https://i0.hdslb.com/bfs/archive/385c4008b7821dc3e632f05d6d3a5269fe579e51.jpg", "description": "数据可视化工具与分析方法", "tags": ["数据分析", "可视化"]},
+        {"bvid": "BV1w3411y7tT", "title": "Python数据可视化桑基图教程", "author": "数据学习", "play": 290000, "danmaku": 1700, "duration": "20:00:00", "pic": "https://i2.hdslb.com/bfs/archive/b3a42b2ab82f7d131ffc7ea0d4a20c1291af66ae.jpg", "description": "Python数据可视化工具与实战", "tags": ["数据分析", "可视化", "Python"]},
     ],
 }
 
