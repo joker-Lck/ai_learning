@@ -68,7 +68,7 @@ function timeAgo(timestamp: number): string {
 }
 
 /** 视频卡片组件 */
-function VideoCard({ video, index }: { video: BilibiliVideo; index: number }) {
+function VideoCard({ video, index, onVideoClick }: { video: BilibiliVideo; index: number; onVideoClick?: (video: BilibiliVideo) => void }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -79,13 +79,18 @@ function VideoCard({ video, index }: { video: BilibiliVideo; index: number }) {
     return `/api/agent/bilibili/cover?url=${encodeURIComponent(pic)}`;
   };
 
+  const handleClick = () => {
+    onVideoClick?.(video);
+    window.open(video.url, '_blank');
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
       className="group glass-card overflow-hidden hover:border-purple-400/30 transition-all duration-300 cursor-pointer"
-      onClick={() => window.open(video.url, '_blank')}
+      onClick={handleClick}
     >
       {/* 封面区域 */}
       <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-purple-500/10 to-pink-500/10">
@@ -267,6 +272,25 @@ export default function VideoResourceModule() {
 
   const pageSize = 12;
   const totalPages = Math.ceil(total / pageSize);
+
+  // 记录视频浏览活动
+  const logVideoView = (video: BilibiliVideo) => {
+    try {
+      const username = localStorage.getItem('username') || 'guest';
+      const logsKey = `activity_logs_${username}`;
+      const logs = JSON.parse(localStorage.getItem(logsKey) || '[]');
+      logs.unshift({
+        id: `video-${Date.now()}`,
+        type: 'video_view',
+        action: `观看了视频《${video.title}》`,
+        detail: video.tag || video.author,
+        category: activeCategory !== 'all' ? activeCategory : (video.tag || '其他'),
+        time: new Date().toISOString(),
+      });
+      localStorage.setItem(logsKey, JSON.stringify(logs.slice(0, 100)));
+      window.dispatchEvent(new Event('activity-updated'));
+    } catch {}
+  };
 
   // 加载推荐视频
   useEffect(() => {
@@ -467,7 +491,7 @@ export default function VideoResourceModule() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {videos.map((video, idx) => (
-                  <VideoCard key={video.bvid} video={video} index={idx} />
+                  <VideoCard key={video.bvid} video={video} index={idx} onVideoClick={logVideoView} />
                 ))}
               </div>
 
@@ -548,7 +572,7 @@ export default function VideoResourceModule() {
             ) : videos.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {videos.map((video, idx) => (
-                  <VideoCard key={video.bvid} video={video} index={idx} />
+                  <VideoCard key={video.bvid} video={video} index={idx} onVideoClick={logVideoView} />
                 ))}
               </div>
             ) : (

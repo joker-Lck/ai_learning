@@ -897,6 +897,8 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
   const typeConfig: Record<string, { icon: typeof UserCheck; color: string; label: string; moduleId: ModuleType }> = {
     resource:          { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '学习资源', moduleId: 'resources' },
     resource_generate: { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '学习资源', moduleId: 'resources' },
+    video_view:        { icon: Brain, color: 'bg-purple-500/15 text-purple-400', label: '视频学习', moduleId: 'resources' },
+    book_view:         { icon: Brain, color: 'bg-blue-500/15 text-blue-400', label: '图书查阅', moduleId: 'resources' },
     path:              { icon: Router, color: 'bg-emerald-500/15 text-emerald-400', label: '学习路径', moduleId: 'path' },
     assess:            { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '学习画像', moduleId: 'profile' },
     assessment:        { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '学习画像', moduleId: 'profile' },

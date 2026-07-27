@@ -30,7 +30,7 @@ const BOOK_CATEGORIES = [
 ];
 
 /** 图书卡片组件 */
-function BookCard({ book, index }: { book: Book; index: number }) {
+function BookCard({ book, index, onBookClick }: { book: Book; index: number; onBookClick?: (book: Book, source: 'nlc' | 'jiumo') => void }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -42,6 +42,11 @@ function BookCard({ book, index }: { book: Book; index: number }) {
       return cover;
     }
     return `/api/agent/books/cover?url=${encodeURIComponent(cover)}`;
+  };
+
+  const handleLinkClick = (e: React.MouseEvent, source: 'nlc' | 'jiumo') => {
+    e.stopPropagation();
+    onBookClick?.(book, source);
   };
 
   return (
@@ -117,7 +122,7 @@ function BookCard({ book, index }: { book: Book; index: number }) {
               href={book.nlc_url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => handleLinkClick(e, 'nlc')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors text-xs"
             >
               <Library className="w-3 h-3" />
@@ -127,7 +132,7 @@ function BookCard({ book, index }: { book: Book; index: number }) {
               href={book.jiumo_url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => handleLinkClick(e, 'jiumo')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors text-xs"
             >
               <Globe className="w-3 h-3" />
@@ -231,6 +236,26 @@ export default function BookResourceModule() {
 
   const pageSize = 12;
   const totalPages = Math.ceil(total / pageSize);
+
+  // 记录图书浏览活动
+  const logBookView = (book: Book, source: 'nlc' | 'jiumo') => {
+    try {
+      const username = localStorage.getItem('username') || 'guest';
+      const logsKey = `activity_logs_${username}`;
+      const logs = JSON.parse(localStorage.getItem(logsKey) || '[]');
+      const sourceLabel = source === 'nlc' ? '国家图书馆' : '鸠摩搜书';
+      logs.unshift({
+        id: `book-${Date.now()}`,
+        type: 'book_view',
+        action: `查阅了图书《${book.title}》(${sourceLabel})`,
+        detail: book.tags?.join(', ') || book.author,
+        category: activeCategory !== 'all' ? activeCategory : (book.tags?.[0] || '其他'),
+        time: new Date().toISOString(),
+      });
+      localStorage.setItem(logsKey, JSON.stringify(logs.slice(0, 100)));
+      window.dispatchEvent(new Event('activity-updated'));
+    } catch {}
+  };
 
   // 加载推荐图书
   useEffect(() => {
@@ -382,7 +407,7 @@ export default function BookResourceModule() {
             <>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {books.map((book, idx) => (
-                  <BookCard key={book.isbn} book={book} index={idx} />
+                  <BookCard key={book.isbn} book={book} index={idx} onBookClick={logBookView} />
                 ))}
               </div>
 
@@ -457,7 +482,7 @@ export default function BookResourceModule() {
             ) : books.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {books.map((book, idx) => (
-                  <BookCard key={book.isbn} book={book} index={idx} />
+                  <BookCard key={book.isbn} book={book} index={idx} onBookClick={logBookView} />
                 ))}
               </div>
             ) : (
