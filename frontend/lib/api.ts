@@ -581,6 +581,27 @@ class ApiClient {
       body: { query, strategy, subject, limit },
     });
   }
+
+  // ==================== Bilibili 视频搜索 API ====================
+
+  async searchBilibiliVideos(keyword: string, page = 1, pageSize = 12, order = 'totalrank', duration = 0) {
+    const params = new URLSearchParams({
+      keyword,
+      page: String(page),
+      page_size: String(pageSize),
+      order,
+      duration: String(duration),
+    });
+    return this.request(`/agent/bilibili/search?${params}`);
+  }
+
+  async getBilibiliRecommend(category = 'all', limit = 8) {
+    const params = new URLSearchParams({
+      category,
+      limit: String(limit),
+    });
+    return this.request(`/agent/bilibili/recommend?${params}`);
+  }
 }
 
 export const api = new ApiClient();

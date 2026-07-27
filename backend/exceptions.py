@@ -30,9 +30,9 @@ class AIServiceError(AppException):
 
 
 class ResourceGenerationError(AppException):
-    """资源生成异常"""
+    """学习资源生成异常"""
 
-    def __init__(self, resource_type: str, message: str = "资源生成失败"):
+    def __init__(self, resource_type: str, message: str = "学习资源生成失败"):
         super().__init__(
             message=f"{resource_type}: {message}",
             code="RESOURCE_GEN_ERROR",

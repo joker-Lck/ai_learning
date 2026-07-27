@@ -861,7 +861,7 @@ function SuggestionCard({ recommendations, onNavigateModule }: { recommendations
 function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const quickItems = [
     { label: 'AI 问答', icon: Lightbulb, bg: 'bg-amber-500/15', border: 'border-amber-400/30 hover:border-amber-400/50', iconBg: 'bg-amber-500/10', iconText: 'text-amber-400', labelText: 'text-amber-300', moduleId: 'tutor' as ModuleType },
-    { label: '资源生成', icon: Brain, bg: 'bg-cyan-500/15', border: 'border-cyan-400/30 hover:border-cyan-400/50', iconBg: 'bg-cyan-500/10', iconText: 'text-cyan-400', labelText: 'text-cyan-300', moduleId: 'resources' as ModuleType },
+    { label: '学习资源', icon: Brain, bg: 'bg-cyan-500/15', border: 'border-cyan-400/30 hover:border-cyan-400/50', iconBg: 'bg-cyan-500/10', iconText: 'text-cyan-400', labelText: 'text-cyan-300', moduleId: 'resources' as ModuleType },
     { label: '学习路径', icon: Router, bg: 'bg-blue-500/15', border: 'border-blue-400/30 hover:border-blue-400/50', iconBg: 'bg-blue-500/10', iconText: 'text-blue-400', labelText: 'text-blue-300', moduleId: 'path' as ModuleType },
     { label: '学习画像', icon: BarChart3, bg: 'bg-emerald-500/15', border: 'border-emerald-400/30 hover:border-emerald-400/50', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-400', labelText: 'text-emerald-300', moduleId: 'profile' as ModuleType },
     { label: '学习小组', icon: Users, bg: 'bg-violet-500/15', border: 'border-violet-400/30 hover:border-violet-400/50', iconBg: 'bg-violet-500/10', iconText: 'text-violet-400', labelText: 'text-violet-300', moduleId: 'collaboration' as ModuleType },
@@ -895,8 +895,8 @@ function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType
 
 function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const typeConfig: Record<string, { icon: typeof UserCheck; color: string; label: string; moduleId: ModuleType }> = {
-    resource:          { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '资源生成', moduleId: 'resources' },
-    resource_generate: { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '资源生成', moduleId: 'resources' },
+    resource:          { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '学习资源', moduleId: 'resources' },
+    resource_generate: { icon: Brain, color: 'bg-cyan-500/15 text-cyan-400', label: '学习资源', moduleId: 'resources' },
     path:              { icon: Router, color: 'bg-emerald-500/15 text-emerald-400', label: '学习路径', moduleId: 'path' },
     assess:            { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '学习画像', moduleId: 'profile' },
     assessment:        { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '学习画像', moduleId: 'profile' },

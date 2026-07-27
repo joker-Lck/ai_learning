@@ -300,7 +300,7 @@ export function useDashboard() {
     }));
   };
 
-  // ── 资源生成状态 ──
+  // ── 学习资源状态 ──
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['document', 'quiz', 'mindmap']);
@@ -312,7 +312,7 @@ export function useDashboard() {
   const [resourceTotal, setResourceTotal] = useState(0);
   const [resourceDone, setResourceDone] = useState(0);
 
-  // 资源生成后同步保存到 localStorage + 记录活动日志
+  // 学习资源后同步保存到 localStorage + 记录活动日志
   useEffect(() => {
     if (resources.length === 0) return;
     try {
@@ -439,7 +439,7 @@ export function useDashboard() {
   const goToPreviousStep = () => { if (currentStep > 0) setCurrentStep(prev => prev - 1); };
   const goToNextStep = () => { if (currentStep < PROFILE_DIMENSIONS.length - 1) setCurrentStep(prev => prev + 1); };
 
-  // ── 资源生成处理 ──
+  // ── 学习资源处理 ──
   const getTypeName = (type: string) => {
     const names: Record<string, string> = { 
       mindmap: '思维导图', 
@@ -504,11 +504,11 @@ export function useDashboard() {
       es.onerror = () => {
         es.close();
         setResourceLoading(false);
-        alert('资源生成连接中断，请重试');
+        alert('学习资源连接中断，请重试');
       };
     } catch (error: any) {
       setResourceLoading(false);
-      alert('资源生成失败：' + (error.message || '网络错误'));
+      alert('学习资源失败：' + (error.message || '网络错误'));
     }
   };
 

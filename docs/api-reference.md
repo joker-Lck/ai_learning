@@ -66,7 +66,7 @@ Content-Type: application/json
 | POST | /generate-study-plan | 生成学习计划 |
 | GET | /get-study-plans | 获取学习计划 |
 
-### 资源生成
+### 学习资源
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
@@ -74,6 +74,14 @@ Content-Type: application/json
 | GET | /list-resources | 获取资源列表 |
 | POST | /save-resource | 保存资源 |
 | POST | /export-resource | 导出资源 |
+
+### Bilibili 视频资源
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| GET | /bilibili/search | 搜索 Bilibili 视频 |
+| GET | /bilibili/recommend | 获取推荐视频 |
+| GET | /bilibili/cover | 封面图片代理 |
 
 ### 学习路径
 
@@ -175,12 +183,12 @@ Content-Type: application/json
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
-| GET | /generate-resources-real | SSE 资源生成 |
+| GET | /generate-resources-real | SSE 学习资源 |
 | POST | /tutor | SSE 智能辅导 |
 | POST | /safety-check | 内容安全检查 |
 | POST | /fact-verify | 事实验证 |
 
-### SSE 资源生成
+### SSE 学习资源
 
 ```http
 GET /api/stream/generate-resources-real?subject=数据结构&topic=二叉树&resource_types=document,mindmap&difficulty=intermediate

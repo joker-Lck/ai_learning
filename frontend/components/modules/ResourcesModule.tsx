@@ -2,12 +2,13 @@
 
 import {
   Brain, FileText, GitBranch, FileCode, Video, Sparkles, Code, BookOpen,
-  Loader2, CheckCircle, ChevronDown, ChevronUp, Maximize2,
+  Loader2, CheckCircle, ChevronDown, ChevronUp, Maximize2, Play,
 } from 'lucide-react';
 import { useState, memo, useEffect, useRef } from 'react';
 import api from '@/lib/api';
 import type { ResourceItem } from './types';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+import VideoResourceModule from './VideoResourceModule';
 
 interface ResourcesModuleProps {
   subject: string;
@@ -289,12 +290,15 @@ function getRecommendedTypes(subj: string): string[] {
   return ['document', 'quiz'];
 }
 
+type ResourceTab = 'ai' | 'video';
+
 export default memo(function ResourcesModule({
   subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
   difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
   resourceProgress, resourceCurrentType, resourceTotal, resourceDone,
 }: ResourcesModuleProps) {
   const lastAutoRef = useRef('');
+  const [activeTab, setActiveTab] = useState<ResourceTab>('ai');
 
   // 学科变化时智能推荐资源类型（仅当用户未手动选择过时）
   useEffect(() => {
@@ -307,7 +311,39 @@ export default memo(function ResourcesModule({
 
   return (
     <div className="space-y-8">
-      <h3 className="text-3xl font-bold text-white">多智能体资源生成</h3>
+      {/* 标签页切换 */}
+      <div className="flex items-center gap-1 p-1 glass rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('ai')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'ai'
+              ? 'bg-purple-500/20 text-purple-400 border border-purple-400/30'
+              : 'text-white/40 hover:text-white/60'
+          }`}
+        >
+          <Brain className="w-4 h-4" />
+          AI 资源生成
+        </button>
+        <button
+          onClick={() => setActiveTab('video')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'video'
+              ? 'bg-purple-500/20 text-purple-400 border border-purple-400/30'
+              : 'text-white/40 hover:text-white/60'
+          }`}
+        >
+          <Play className="w-4 h-4" />
+          视频资源
+        </button>
+      </div>
+
+      {/* 视频资源标签页 */}
+      {activeTab === 'video' && <VideoResourceModule />}
+
+      {/* AI 资源生成标签页 */}
+      {activeTab === 'ai' && (
+        <div className="space-y-8">
+          <h3 className="text-3xl font-bold text-white">AI 资源生成</h3>
 
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-6">
@@ -417,6 +453,8 @@ export default memo(function ResourcesModule({
           {resources.map((resource, idx) => (
             <ResourceCard key={idx} resource={resource} getTypeName={getTypeName} />
           ))}
+        </div>
+      )}
         </div>
       )}
     </div>

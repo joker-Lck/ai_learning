@@ -1,4 +1,4 @@
-# 多智能体系统设计
+﻿# 多智能体系统设计
 
 ## 智能体角色
 
@@ -7,7 +7,7 @@
 | Agent | 角色 | 职责 | 模型 |
 |-------|------|------|------|
 | **ProfileAgent** | 画像师 | 9 维度对话式画像构建 | mimo-v2.5-pro |
-| **ResourceAgent** | 讲师 | 7 种类型资源生成 | mimo-v2.5-pro |
+| **ResourceAgent** | 讲师 | 7 种类型学习资源 | mimo-v2.5-pro |
 | **PathAgent** | 导师 | 学习路径规划 | mimo-v2.5-pro |
 | **TutorAgent** | 辅导员 | 多轮对话答疑 + 记忆增强 | mimo-v2.5-pro |
 | **AssessmentAgent** | 评估师 | 多维度学习效果评估 | mimo-v2.5-pro |
@@ -42,7 +42,7 @@
 | TASK_REQUEST | Coordinator → Agent | 任务分发 |
 | TASK_RESULT | Agent → Coordinator | 任务结果 |
 | PROFILE_UPDATE | ProfileAgent → All | 画像更新通知 |
-| RESOURCE_READY | ResourceAgent → All | 资源生成完成 |
+| RESOURCE_READY | ResourceAgent → All | 学习资源完成 |
 | NEGOTIATION | Agent ↔ Agent | 协商决策 |
 | STATUS_UPDATE | Agent → Coordinator | 状态更新 |
 | ERROR_REPORT | Agent → Coordinator | 错误报告 |

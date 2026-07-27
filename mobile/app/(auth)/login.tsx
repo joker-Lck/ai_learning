@@ -49,7 +49,7 @@ export default function LoginScreen() {
             AI学习智能体
           </Text>
           <Text className="text-text-secondary text-sm mt-2 text-center">
-            基于多智能体的个性化学习资源生成系统
+            基于多智能体的个性化学习资源系统
           </Text>
         </View>
 

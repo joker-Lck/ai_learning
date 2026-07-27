@@ -93,7 +93,7 @@ export default function DashboardScreen() {
           <View className="flex-row flex-wrap gap-3">
             {[
               { label: 'AI 问答', icon: '💬', route: '/(tabs)/tutor' },
-              { label: '资源生成', icon: '📚', route: '/(tabs)/resources' },
+              { label: '学习资源', icon: '📚', route: '/(tabs)/resources' },
               { label: '学生画像', icon: '👤', route: '/(tabs)/profile' },
               { label: '知识库', icon: '📖', route: '/(tabs)/profile' },
             ].map((item) => (

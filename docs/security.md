@@ -1,4 +1,4 @@
-# 安全机制
+﻿# 安全机制
 
 ## 认证与授权
 
@@ -106,7 +106,7 @@ verified = confidence ≥ 0.7
 | RateLimitError | 429 | 请求过于频繁 |
 | DatabaseError | 500 | 数据库操作异常 |
 | AIServiceError | 502 | AI 服务调用失败 |
-| ResourceGenerationError | 500 | 资源生成异常 |
+| ResourceGenerationError | 500 | 学习资源异常 |
 | AppException | 可配置 | 业务基础异常 |
 
 ## 源文件

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -12,7 +12,7 @@ import {
 const menuItems = [
   { path: '/dashboard', label: '工作台', icon: LayoutDashboard, module: null },
   { path: '/dashboard?module=profile', label: '学生画像', icon: Target, module: 'profile' },
-  { path: '/dashboard?module=resources', label: '资源生成', icon: Brain, module: 'resources' },
+  { path: '/dashboard?module=resources', label: '学习资源', icon: Brain, module: 'resources' },
   { path: '/dashboard?module=path', label: '学习路径', icon: Router, module: 'path' },
   { path: '/dashboard?module=tutor', label: '智能辅导', icon: Lightbulb, module: 'tutor' },
   { path: '/dashboard?module=assessment', label: '效果评估', icon: TrendingUp, module: 'assessment' },

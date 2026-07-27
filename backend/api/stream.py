@@ -208,7 +208,7 @@ async def stream_generate_resources_real(
 
                 except Exception as e:
                     elapsed = round(time.time() - t0, 1)
-                    error(f"资源生成异常 [{rtype}]: {e}")
+                    error(f"学习资源生成异常 [{rtype}]: {e}")
                     yield _sse({
                         "type": "resource_error",
                         "resource_type": rtype,
@@ -219,7 +219,7 @@ async def stream_generate_resources_real(
             yield _sse({
                 "type": "complete",
                 "progress": 100,
-                "message": f"✅ 全部 {total} 种资源生成完成!"
+                "message": f"✅ 全部 {total} 种学习资源生成完成!"
             })
 
         async def wrapped_generator():

@@ -1,7 +1,8 @@
 """
 学习智能体 API - 多智能体系统接口
-包括学生画像、资源生成、路径规划、智能辅导、效果评估
+包括学生画像、学习资源、路径规划、智能辅导、效果评估
 """
+import asyncio
 import json
 from typing import Any
 
@@ -536,6 +537,7 @@ async def get_latest_assessment(user: dict = Depends(require_auth)):
                     (user_id,)
                 )
                 row = assessment_db.cursor.fetchone()
+                row = dict(row) if row else None
                 if row and row.get("course_data"):
                     try:
                         courses = json.loads(row["course_data"])
@@ -553,8 +555,8 @@ async def get_latest_assessment(user: dict = Depends(require_auth)):
                     "SELECT course_name, score, credits FROM grades WHERE user_id=? ORDER BY updated_at DESC LIMIT 20",
                     (user_id,)
                 )
-                for row in assessment_db.cursor.fetchall():
-                    grades.append({"course": row["course_name"], "score": row["score"], "credits": row.get("credits")})
+                for row in [dict(r) for r in assessment_db.cursor.fetchall()]:
+                    grades.append({"course": row.get("course_name", ""), "score": row.get("score", 0), "credits": row.get("credits")})
                 assessment_db.close()
         except Exception:
             pass
@@ -568,8 +570,8 @@ async def get_latest_assessment(user: dict = Depends(require_auth)):
                     "SELECT subject, question, error_reason, mastery FROM error_notes WHERE user_id=? ORDER BY created_at DESC LIMIT 20",
                     (user_id,)
                 )
-                for row in assessment_db.cursor.fetchall():
-                    error_notes.append({"subject": row["subject"], "question": row["question"][:50], "mastery": row.get("mastery", 0)})
+                for row in [dict(r) for r in assessment_db.cursor.fetchall()]:
+                    error_notes.append({"subject": row.get("subject", ""), "question": row.get("question", "")[:50], "mastery": row.get("mastery", 0)})
                     if row.get("subject") and row["subject"] not in weak_points:
                         weak_points.append(row["subject"])
                 assessment_db.close()
@@ -890,7 +892,8 @@ async def list_resources(
         resource_db.cursor.execute(sql, params)
         rows = resource_db.cursor.fetchall()
 
-        # 解析 JSON 字段
+        # 解析 JSON 字段 (sqlite3.Row 不支持 .get()，先转 dict)
+        rows = [dict(row) for row in rows]
         for row in rows:
             if row.get("content_data"):
                 try:
@@ -2259,3 +2262,266 @@ async def stream_agent_status(session_id: str, user: dict = Depends(get_current_
             "X-Accel-Buffering": "no",
         }
     )
+
+
+# ═══════════════════════════════════════════
+#  Bilibili 视频 API
+# ═══════════════════════════════════════════
+
+import httpx
+import re
+
+# 精选学习视频 BV ID 列表（按分类整理）
+BILIBILI_VIDEO_DB = {
+    "深度学习": [
+        "BV1c5yrBcEEX",  # 黑马程序员 神经网络与深度学习
+        "BV1Fzszz4Ek7",  # 黑马程序员 机器学习
+        "BV1L4411v7fB",  # 人工智能深度学习
+    ],
+    "Python": [
+        "BV1U2WmzfEqp",  # Python语言进阶
+        "BV1ReshzoEgG",  # Python数据分析
+        "BV1h1VbzHER2",  # AI大模型开发
+    ],
+    "RAG与Agent": [
+        "BV1yjz5BLEoY",  # RAG与Agent智能体实战
+        "BV1GByoBfE73",  # NLP自然语言处理
+    ],
+    "计算机视觉": [
+        "BV1Fo4y1d7JL",  # AI-OpenCV图像处理
+        "BV1Rz4y1R7Mb",  # 图像与视觉处理
+    ],
+    "前端开发": [
+        "BV1x4411V77Z",  # 前端开发入门
+        "BV1aE411T7qY",  # Vue.js入门
+    ],
+    "数据分析": [
+        "BV1ReshzoEgG",  # Python数据分析
+        "BV1iK4y1e7rG",  # 数据可视化
+    ],
+}
+
+# 关键词到分类的映射
+KEYWORD_CATEGORY_MAP = {
+    "深度学习": "深度学习",
+    "神经网络": "深度学习",
+    "pytorch": "深度学习",
+    "机器学习": "深度学习",
+    "python": "Python",
+    "数据分析": "数据分析",
+    "rag": "RAG与Agent",
+    "agent": "RAG与Agent",
+    "智能体": "RAG与Agent",
+    "langchain": "RAG与Agent",
+    "opencv": "计算机视觉",
+    "图像": "计算机视觉",
+    "cv": "计算机视觉",
+    "前端": "前端开发",
+    "vue": "前端开发",
+    "react": "前端开发",
+    "javascript": "前端开发",
+}
+
+
+async def fetch_video_info(bvid: str) -> dict | None:
+    """通过 BV 号获取视频详细信息"""
+    url = f"https://api.bilibili.com/x/web-interface/view?bvid={bvid}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.bilibili.com",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, headers=headers)
+            data = resp.json()
+        if data.get("code") != 0:
+            return None
+        d = data.get("data", {})
+        pic = d.get("pic", "")
+        if pic and not pic.startswith("http"):
+            pic = "https:" + pic
+        # 确保使用 https
+        if pic.startswith("http://"):
+            pic = pic.replace("http://", "https://")
+        stat = d.get("stat", {})
+        duration_sec = d.get("duration", 0)
+        minutes = duration_sec // 60
+        seconds = duration_sec % 60
+        return {
+            "bvid": bvid,
+            "aid": d.get("aid", 0),
+            "title": d.get("title", ""),
+            "description": d.get("desc", "")[:200],
+            "pic": pic,
+            "author": d.get("owner", {}).get("name", ""),
+            "mid": d.get("owner", {}).get("mid", 0),
+            "play": stat.get("view", 0),
+            "danmaku": stat.get("danmaku", 0),
+            "duration": f"{minutes}:{seconds:02d}",
+            "pubdate": d.get("pubdate", 0),
+            "tag": "",
+            "url": f"https://www.bilibili.com/video/{bvid}",
+        }
+    except Exception as e:
+        error(f"获取视频信息失败 [{bvid}]: {e}")
+        return None
+
+
+@router.get("/bilibili/search", response_model=BaseResponse)
+async def search_bilibili_videos(
+    keyword: str = Query(..., description="搜索关键词"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(12, ge=1, le=50, description="每页数量"),
+    order: str = Query("totalrank", description="排序方式: totalrank/click/pubdate/dm"),
+    duration: int = Query(0, description="时长筛选: 0-全部"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    搜索 Bilibili 视频资源（基于精选视频库）
+
+    返回视频列表，包含标题、封面、简介、播放量等信息
+    """
+    try:
+        info(f"用户 {user['id']} 搜索 Bilibili 视频: {keyword}")
+
+        # 根据关键词匹配分类
+        keyword_lower = keyword.lower()
+        matched_bvids = []
+
+        # 精确匹配分类
+        for cat_key, bvids in BILIBILI_VIDEO_DB.items():
+            if cat_key in keyword or keyword in cat_key:
+                matched_bvids.extend(bvids)
+
+        # 关键词映射匹配
+        for kw, category in KEYWORD_CATEGORY_MAP.items():
+            if kw in keyword_lower:
+                matched_bvids.extend(BILIBILI_VIDEO_DB.get(category, []))
+
+        # 如果没有匹配，返回所有视频
+        if not matched_bvids:
+            for bvids in BILIBILI_VIDEO_DB.values():
+                matched_bvids.extend(bvids)
+
+        # 去重
+        matched_bvids = list(dict.fromkeys(matched_bvids))
+
+        # 分页
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_bvids = matched_bvids[start:end]
+
+        # 并发获取视频信息
+        videos = []
+        tasks = [fetch_video_info(bvid) for bvid in page_bvids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, dict):
+                videos.append(result)
+
+        return BaseResponse(
+            success=True,
+            message="搜索成功",
+            data={
+                "videos": videos,
+                "total": len(matched_bvids),
+                "page": page,
+                "page_size": page_size,
+                "keyword": keyword,
+            },
+        )
+
+    except Exception as e:
+        error(f"Bilibili 搜索异常: {e}")
+        return BaseResponse(success=False, message=f"搜索失败: {str(e)}", data=None)
+
+
+@router.get("/bilibili/recommend", response_model=BaseResponse)
+async def get_recommend_videos(
+    category: str = Query("all", description="分类: all/深度学习/Python/RAG与Agent/计算机视觉/前端开发/数据分析"),
+    limit: int = Query(8, ge=1, le=20, description="返回数量"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    获取推荐视频列表
+
+    返回精选学习视频，支持按分类筛选
+    """
+    try:
+        info(f"用户 {user['id']} 获取推荐视频: {category}")
+
+        # 获取对应分类的 BV ID
+        if category == "all":
+            bvids = []
+            for cat_bvids in BILIBILI_VIDEO_DB.values():
+                bvids.extend(cat_bvids)
+            bvids = list(dict.fromkeys(bvids))[:limit]
+        else:
+            bvids = BILIBILI_VIDEO_DB.get(category, [])[:limit]
+
+        # 并发获取视频信息
+        tasks = [fetch_video_info(bvid) for bvid in bvids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        videos = []
+        for result in results:
+            if isinstance(result, dict):
+                videos.append(result)
+
+        return BaseResponse(
+            success=True,
+            message="获取成功",
+            data={
+                "videos": videos,
+                "category": category,
+                "categories": list(BILIBILI_VIDEO_DB.keys()),
+            },
+        )
+
+    except Exception as e:
+        error(f"获取推荐视频异常: {e}")
+        return BaseResponse(success=False, message=f"获取失败: {str(e)}", data=None)
+
+
+@router.get("/bilibili/cover")
+async def proxy_bilibili_cover(
+    url: str = Query(..., description="Bilibili 封面图片 URL"),
+):
+    """
+    代理 Bilibili 封面图片，解决跨域问题
+    """
+    try:
+        # 安全校验：只允许 Bilibili CDN
+        if "hdslb.com" not in url and "bilibili.com" not in url:
+            raise HTTPException(status_code=400, detail="仅支持 Bilibili 图片")
+
+        # 确保使用 https
+        if url.startswith("http://"):
+            url = url.replace("http://", "https://")
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://www.bilibili.com",
+        }
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, headers=headers)
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="图片获取失败")
+
+        from fastapi.responses import Response
+        return Response(
+            content=resp.content,
+            media_type=resp.headers.get("content-type", "image/jpeg"),
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"封面代理异常: {e}")
+        raise HTTPException(status_code=500, detail="图片代理失败")

@@ -135,8 +135,8 @@ async def lifespan(app: FastAPI):
 
 # ── FastAPI 实例 ──
 app = FastAPI(
-    title="基于多智能体的个性化学习资源生成系统",
-    description="多智能体协同架构，为学生提供个性化学习资源生成服务",
+    title="基于多智能体的个性化学习资源系统",
+    description="多智能体协同架构，为学生提供个性化学习资源服务",
     version=APP_VERSION,
     lifespan=lifespan,
     docs_url="/api/docs" if DEBUG else None,
@@ -296,11 +296,11 @@ async def health_check():
 @app.get("/api/info", tags=["系统"])
 async def system_info():
     return {
-        "name": "基于多智能体的个性化学习资源生成系统",
+        "name": "基于多智能体的个性化学习资源系统",
         "version": APP_VERSION,
         "features": [
             "对话式学生画像构建 (8维度)",
-            "多智能体协同资源生成 (7种类型)",
+            "多智能体协同学习资源 (7种类型)",
             "个性化学习路径规划",
             "智能辅导 (多模态答疑)",
             "学习效果评估",

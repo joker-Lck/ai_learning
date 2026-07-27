@@ -1,4 +1,4 @@
-# 基于多智能体的个性化学习资源生成系统
+# 基于多智能体的个性化学习学习资源系统
 
 <p align="center">
   <b>AI-Powered Personalized Learning Resource Generation System</b><br>
@@ -45,7 +45,7 @@
 
 ## 项目简介
 
-本系统是一个面向高等教育场景的**个性化学习资源生成平台**，采用**多智能体协同架构**，基于 **MiMo 大模型** 驱动，为学生提供智能化的学习支持服务。
+本系统是一个面向高等教育场景的**个性化学习学习资源平台**，采用**多智能体协同架构**，基于 **MiMo 大模型** 驱动，为学生提供智能化的学习支持服务。
 
 ### 解决的核心问题
 
@@ -502,7 +502,11 @@ RAG_SIMILARITY_THRESHOLD=0.8                                # RAG 相似度阈�
 - 图片文件优先 OCR 提取，失败降级到多模态视觉识别
 - 识别期间切换 Tab 不中断进程
 
-### 3. 资源生成模块
+### 3. 学习资源模块
+
+学习资源模块分为「AI 资源生成」和「视频资源」两个标签页。
+
+#### AI 资源生成
 
 根据学生画像和选择的参数，MiMo 生成个性化学习资源。
 
@@ -513,6 +517,17 @@ RAG_SIMILARITY_THRESHOLD=0.8                                # RAG 相似度阈�
 - 难度级别（初级/中级/高级）
 
 **生成流程**：SSE 流式输出，5 个阶段实时推送进度。
+
+#### 视频资源（Bilibili）
+
+集成 Bilibili 视频资源，支持在线搜索和分类浏览。
+
+**功能特性**：
+- **智能搜索**：输入关键词匹配精选学习视频库
+- **分类浏览**：深度学习、Python、RAG与Agent、计算机视觉、前端开发、数据分析
+- **视频卡片**：封面图、标题、作者、播放量、弹幕数、时长
+- **封面代理**：后端代理加载 Bilibili 封面图片，解决跨域问题
+- **热门搜索**：预置 Python教程、机器学习、深度学习等快捷标签
 
 ### 4. 学习路径模块
 
@@ -598,7 +613,7 @@ AssessmentAgent ──► 异步评估 ──► 返回用户
 | `TASK_REQUEST` | Coordinator → Agent | 任务分发 |
 | `TASK_RESULT` | Agent → Coordinator | 任务结果 |
 | `PROFILE_UPDATE` | ProfileAgent → All | 画像更新通知 |
-| `RESOURCE_READY` | ResourceAgent → All | 资源生成完成 |
+| `RESOURCE_READY` | ResourceAgent → All | 学习资源完成 |
 | `NEGOTIATION` | Agent ↔ Agent | 协商决策 |
 | `STATUS_UPDATE` | Agent → Coordinator | 状态更新 |
 | `ERROR_REPORT` | Agent → Coordinator | 错误报告 |
@@ -947,7 +962,7 @@ CREATE TABLE memory_metadata (
 |------|------|
 | 工作台 | 统计卡片、最近资源、今日建议、协同动态 |
 | 智能辅导 | 聊天界面、SSE 流式输出、学科选择 |
-| 资源生成 | 7 种类型选择、难度配置、MiMo 生成 |
+| 学习资源 | 7 种类型选择、难度配置、MiMo 生成 |
 | 学生画像 | 9 维度画像、课程表、成绩、错题 |
 | 学习路径 | 路径可视化、进度跟踪 |
 | 效果评估 | 多维度评分、改进建议 |
@@ -1029,7 +1044,7 @@ verified = confidence ≥ 0.7
 | `RateLimitError` | 429 | 请求过于频繁 |
 | `DatabaseError` | 500 | 数据库操作异常 |
 | `AIServiceError` | 502 | AI 服务调用失败 |
-| `ResourceGenerationError` | 500 | 资源生成异常 |
+| `ResourceGenerationError` | 500 | 学习资源异常 |
 | `AppException` | 可配置 | 业务基础异常 |
 
 ---
@@ -1129,7 +1144,7 @@ cd frontend && npm install && npm run build && npm start
 │   │   ├── page.tsx                # 首页
 │   │   ├── dashboard/              # 工作台
 │   │   ├── tutor/                  # 智能辅导
-│   │   ├── resources/              # 资源生成
+│   │   ├── resources/              # 学习资源
 │   │   ├── assessment/             # 效果评估
 │   │   ├── learning-path/          # 学习路径
 │   │   └── profile/                # 学生画像
@@ -1177,7 +1192,7 @@ cd frontend && npm install && npm run build && npm start
 | 指标 | 数值 | 说明 |
 |------|------|------|
 | 画像构建 | <2s | MiMo 单次对话 |
-| 资源生成 | 3-90s | 取决于资源类型和复杂度 |
+| 学习资源 | 3-90s | 取决于资源类型和复杂度 |
 | SSE 延迟 | <200ms | 首字节时间 |
 | 内容安全检查 | <100ms | AC 自动机 O(n) |
 | API 响应 (P95) | <2s | 不含 AI 生成 |
@@ -1197,7 +1212,7 @@ cd frontend && npm install && npm run build && npm start
 - 资源类型智能推荐：根据学科关键词自动勾选资源类型
 - AI 追问按钮：辅导回答下方"再解释/举例子/换角度"快捷追问
 - 新用户引导流程：首次访问 3 步引导遮罩
-- 学习路径→资源生成联动：路径结果一键生成配套资源
+- 学习路径→学习资源联动：路径结果一键生成配套资源
 - 番茄钟计时器：可自定义专注/休息时长，今日学习统计
 - 错题录入优化：两步式极简表单 + 拍照识别入口
 - 工作台布局重构：今日建议横置 4 宫格，替代原统计卡片行

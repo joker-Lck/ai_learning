@@ -1,5 +1,35 @@
 # 版本变更日志
 
+## v8.2.0 (2026-07-27) — Bilibili 视频资源整合
+
+### 新增 — 学习资源模块升级
+- **模块重命名**：「资源生成」统一更名为「学习资源」
+- **标签页设计**：学习资源模块分为「AI 资源生成」和「视频资源」两个标签页
+- **Bilibili 视频搜索**
+  - 后端 `/api/agent/bilibili/search` 接口，基于精选视频库匹配
+  - 关键词智能匹配：自动识别学科分类（深度学习/Python/RAG/前端等）
+  - 返回视频标题、封面、简介、播放量、弹幕数、时长等完整信息
+- **Bilibili 推荐视频**
+  - 后端 `/api/agent/bilibili/recommend` 接口，支持按分类筛选
+  - 分类体系：深度学习、Python、RAG与Agent、计算机视觉、前端开发、数据分析
+  - 页面加载时自动获取推荐视频
+- **视频卡片 UI**
+  - 响应式网格布局（1~4列自适应）
+  - 封面图片通过后端代理加载，解决跨域问题
+  - 播放量、弹幕数、发布时间统计展示
+  - 悬停播放按钮动画效果
+- **封面图片代理**
+  - `/api/agent/bilibili/cover` 接口，代理 Bilibili CDN 图片
+  - 安全校验：仅允许 hdslb.com/bilibili.com 域名
+  - 24 小时缓存策略
+- **热门搜索标签**：预置 Python教程、机器学习、深度学习等快捷搜索
+
+### 优化 — 文档更新
+- 全部文档和 README 中「资源生成」统一更新为「学习资源」
+- 系统标题更新为「基于多智能体的个性化学习资源系统」
+
+---
+
 ## v8.1.0 (2026-07-19) — 用户体验全面升级
 
 ### 新增 — 学习规划师与智能提醒
@@ -33,7 +63,7 @@
   - 首次访问显示引导遮罩（3 步：构建画像→导入数据→生成资源）
   - 每步可点击跳转对应模块，"跳过引导"按钮
   - localStorage 记录完成状态，不重复显示
-- **学习路径→资源生成联动**
+- **学习路径→学习资源联动**
   - PathModule 路径结果底部新增"为这条路径生成配套资源"按钮
   - 点击跳转资源模块并预填学习目标
 
@@ -70,7 +100,7 @@
 - `frontend/components/modules/ProfileModule.tsx` — 两步式错题表单、成绩趋势折线图、Camera 图标
 - `frontend/components/modules/ResourcesModule.tsx` — 资源类型智能推荐
 - `frontend/components/modules/TutorModule.tsx` — AI 追问按钮
-- `frontend/components/modules/PathModule.tsx` — 资源生成联动按钮
+- `frontend/components/modules/PathModule.tsx` — 学习资源联动按钮
 - `frontend/components/DashboardContent.tsx` — PathModule 传递 onNavigateModule
 - `mobile/app/(tabs)/index.tsx` — 今日建议分类标签
 - `data/collaboration_db.py` — 修复函数名拼写
@@ -233,7 +263,7 @@
 - 移动端 App（React Native + Expo）
   - 工作台仪表盘
   - 学生画像模块（含雷达图）
-  - 资源生成模块（7 种类型）
+  - 学习资源模块（7 种类型）
   - 学习路径模块
   - 智能辅导模块（SSE 流式）
   - 效果评估模块

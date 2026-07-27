@@ -85,7 +85,7 @@ export default function ProfileScreen() {
         <Card title="设置" className="mb-6">
           <TouchableOpacity
             className="flex-row items-center justify-between py-3 border-b border-border"
-            onPress={() => Alert.alert('关于', 'AI学习智能体 v1.0.0\n基于多智能体的个性化学习资源生成系统')}
+            onPress={() => Alert.alert('关于', 'AI学习智能体 v1.0.0\n基于多智能体的个性化学习资源系统')}
           >
             <Text className="text-text-primary">关于</Text>
             <Text className="text-text-muted">v1.0.0</Text>
