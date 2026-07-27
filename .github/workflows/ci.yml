@@ -42,7 +42,7 @@ jobs:
           echo "MIMO_API_KEY=test_api_key" >> .env
           echo "MIMO_BASE_URL=https://api.xiaomimimo.com/v1" >> .env
       - name: Initialize test databases
-        run: python scripts/init_databases_v7.2.py
+        run: python scripts/init_databases.py
         env:
           PYTHONPATH: ${{ github.workspace }}
       - name: Run tests

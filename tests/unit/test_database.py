@@ -10,7 +10,7 @@ class TestDatabaseInit:
         """初始化脚本可以导入"""
         import importlib
         spec = importlib.util.spec_from_file_location(
-            "init_databases", "scripts/init_databases_v7.2.py"
+            "init_databases", "scripts/init_databases.py"
         )
         assert spec is not None
 

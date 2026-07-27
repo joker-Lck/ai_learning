@@ -344,7 +344,7 @@ cp .env.example .env
 **步骤 4：初始化数据库**
 
 ```bash
-python scripts/init_databases_v7.2.py
+python scripts/init_databases.py
 ```
 
 预期输出：
@@ -1097,7 +1097,7 @@ makensis installer.nsi
 ```bash
 # 后端
 pip install -r backend/requirements.txt
-python scripts/init_databases_v7.2.py
+python scripts/init_databases.py
 python scripts/init_admin.py
 uvicorn backend.main:app --host 0.0.0.0 --port 8000
 

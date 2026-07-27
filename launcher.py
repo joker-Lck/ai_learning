@@ -105,7 +105,7 @@ def init_sqlite():
 
 def init_databases():
     """初始化数据库表"""
-    init_script = BASE_DIR / "scripts" / "init_databases_v7.2.py"
+    init_script = BASE_DIR / "scripts" / "init_databases.py"
     if not init_script.exists():
         log("数据库初始化脚本不存在，跳过", "WARN")
         return True

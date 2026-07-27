@@ -1,4 +1,4 @@
-﻿# 部署指南
+# 部署指南
 
 ## 方式一：本地开发
 
@@ -29,7 +29,7 @@ cp .env.example .env
 # 编辑 .env，填写 MiMo API 配置
 
 # 4. 初始化数据库
-python scripts/init_databases_v7.2.py
+python scripts/init_databases.py
 
 # 5. 创建管理员账户
 python scripts/init_admin.py

@@ -91,7 +91,7 @@ if not exist "%ROOT%.env" (
 :: 6. Initialize databases
 echo [6/7] Initializing databases...
 set "PYTHONPATH=%ROOT%"
-"%ROOT%.venv\Scripts\python.exe" scripts\init_databases_v7.2.py
+"%ROOT%.venv\Scripts\python.exe" scripts\init_databases.py
 if errorlevel 1 (
     echo [WARN] Database initialization had issues (may already exist)
 ) else (
