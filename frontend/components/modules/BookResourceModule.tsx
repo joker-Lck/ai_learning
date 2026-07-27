@@ -34,9 +34,13 @@ function BookCard({ book, index }: { book: Book; index: number }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  // 处理封面 URL
+  // 处理封面 URL（优先使用代理，失败后直接加载）
   const getCoverUrl = (cover: string) => {
     if (!cover) return '';
+    // 豆瓣图片可以直接加载，无需代理
+    if (cover.includes('doubanio.com')) {
+      return cover;
+    }
     return `/api/agent/books/cover?url=${encodeURIComponent(cover)}`;
   };
 
@@ -60,7 +64,7 @@ function BookCard({ book, index }: { book: Book; index: number }) {
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageError(true)}
               loading="lazy"
-              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
             />
           ) : null}
 
