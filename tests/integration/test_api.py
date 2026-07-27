@@ -93,9 +93,9 @@ class TestAgentEndpoints:
 class TestStreamEndpoints:
     """流式端点"""
 
-    def test_content_safety(self, client):
+    def test_content_safety(self, client, auth_headers):
         """内容安全检查"""
         resp = client.post("/api/stream/check-content-safety", json={
             "content": "正常的学习内容"
-        })
+        }, headers=auth_headers)
         assert resp.status_code in [200, 404]
