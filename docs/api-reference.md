@@ -91,12 +91,21 @@ Content-Type: application/json
 | GET | /books/recommend | 获取推荐图书 |
 | GET | /books/cover | 封面图片代理 |
 
-### 学习路径
+### 学习路径与规划
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
 | POST | /plan-path | 规划学习路径 |
 | POST | /update-path-progress | 更新路径进度 |
+| POST | /generate-study-plan | 生成学习计划 |
+| GET | /get-study-plans | 获取历史计划 |
+
+### 学习行为追踪（前端 localStorage）
+
+| 活动类型 | 说明 | 存储字段 |
+|----------|------|----------|
+| video_view | 视频浏览记录 | type, action, category, time |
+| book_view | 图书查阅记录 | type, action, category, time, source |
 
 ### 智能辅导
 
