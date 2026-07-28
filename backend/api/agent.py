@@ -3031,6 +3031,14 @@ async def quiz_submit(
             except Exception as save_err:
                 warning(f"自动保存错题失败: {save_err}")
 
+        # BKT 知识追踪更新
+        if knowledge_point:
+            try:
+                from services.knowledge_tracer import knowledge_tracer
+                knowledge_tracer.update(knowledge_point, result.get("is_correct", False), question_type)
+            except Exception as bkt_err:
+                warning(f"BKT更新失败: {bkt_err}")
+
         return BaseResponse(success=True, data=result)
     except Exception as e:
         error(f"提交答案失败: {e}")
@@ -3147,7 +3155,7 @@ async def quiz_adaptive(
         bank_questions = quiz_dao.get_from_bank(subject=subject, count=bank_cap)
         bank_take = min(len(bank_questions), bank_cap)
 
-        # 2. 剩余由AI生成
+        # 2. 剩余由AI生成（使用自适应难度引擎）
         need = count - bank_take
         weak_topics = quiz_dao.get_weak_topics(user_id, limit=5)
 
@@ -3157,7 +3165,17 @@ async def quiz_adaptive(
             for t in weak_topics:
                 weak_info += f"- {t['knowledge_point']}：正确率 {t['accuracy']}%\n"
 
-        prompt = f"""请为{subject}学科生成 {need} 道练习题。
+        # 使用自适应难度引擎构建 prompt
+        try:
+            from services.adaptive_difficulty import adaptive_difficulty
+            from services.knowledge_tracer import knowledge_tracer
+            mastery_data = {kp: s.mastery for kp, s in knowledge_tracer.states.items()}
+            if mastery_data:
+                prompt = adaptive_difficulty.build_adaptive_prompt(subject, mastery_data, need, weak_info)
+            else:
+                raise ValueError("无BKT数据")
+        except Exception:
+            prompt = f"""请为{subject}学科生成 {need} 道练习题。
 {weak_info}
 要求：题型包含选择题(type="multiple_choice")、判断题(type="judge")、填空题(type="fill_blank")。
 选择题options格式：["A. xxx", "B. xxx", "C. xxx", "D. xxx"]，answer填字母如"A"。

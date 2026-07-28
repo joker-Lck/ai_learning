@@ -2,6 +2,7 @@
 智能辅导智能体 - 多模态答疑解惑（集成记忆增强）
 提供文字解答、图解说明、短视频讲解等多样化形式
 集成无限长时记忆架构：短期/情景/语义/实体记忆 + 遗忘机制
+集成算法增强层：Query理解、个性化Prompt、上下文压缩、质量评分、引用标注
 """
 
 import json
@@ -38,6 +39,17 @@ class TutorAgent:
         question = input_data.get("question", "")
         subject = input_data.get("subject", "综合")
         session_id = input_data.get("session_id", "default")
+
+        # ── 查询预处理（QueryProcessor）──
+        try:
+            from services.query_processor import query_processor
+            processed_query = query_processor.process(question)
+            question = processed_query.corrected  # 使用纠错后的查询
+            if processed_query.entities.get("subject") and subject == "综合":
+                subject = processed_query.entities["subject"]
+            debug(f"[QueryProcessor] intent={processed_query.intent}, entities={processed_query.entities}")
+        except Exception as e:
+            debug(f"QueryProcessor 降级: {e}")
 
         # ── Self-RAG 前置判断 ──
         try:
@@ -90,12 +102,61 @@ class TutorAgent:
                 original_context = input_data.get("context", "")
                 merged_context = f"{original_context}\n\n{enhanced_context}".strip()
 
+                # 5.5 上下文压缩（ContextCompressor）
+                try:
+                    from services.context_compressor import context_compressor
+                    if len(merged_context) > 3000:
+                        compressed = context_compressor.compress(
+                            [{"role": "user", "content": question},
+                             {"role": "assistant", "content": merged_context}]
+                        )
+                        if compressed.compressed:
+                            merged_context = context_compressor.format_for_prompt(compressed)
+                except Exception as e:
+                    debug(f"上下文压缩跳过: {e}")
+
                 # 6. 获取画像并生成回答
                 profile = self._get_user_profile(user_id)
                 answer_data = self._generate_multimodal_answer(
                     question, subject, merged_context, profile,
                     input_data.get("preferred_format", "all")
                 )
+
+                # 6.1 答案质量快速评分（AnswerQualityScorer）
+                answer_text_raw = answer_data.get('text_answer', {})
+                if isinstance(answer_text_raw, dict):
+                    answer_text_raw = answer_text_raw.get('summary', str(answer_text_raw))
+                try:
+                    from services.answer_quality_scorer import answer_quality_scorer
+                    quality = answer_quality_scorer.score(question, str(answer_text_raw), merged_context[:2000])
+                    answer_data['quality_score'] = {
+                        "total": quality.total,
+                        "dimensions": quality.dimensions,
+                        "flags": quality.flags,
+                        "suggestion": quality.suggestion,
+                    }
+                    # 低分且无更好结果时才触发 LLM 反思
+                    answer_data['_needs_llm_review'] = quality.needs_llm_review
+                    debug(f"[QualityScorer] score={quality.total}, flags={quality.flags}")
+                except Exception as e:
+                    debug(f"QualityScorer 降级: {e}")
+
+                # 6.2 引用标注（CitationAnnotator）
+                try:
+                    from services.citation_annotator import citation_annotator
+                    rag_docs = relevant_memories.get('rag_docs', [])
+                    if rag_docs and answer_text_raw:
+                        citation_result = citation_annotator.annotate(str(answer_text_raw), rag_docs)
+                        if citation_result.citation_count > 0:
+                            if isinstance(answer_data.get('text_answer'), dict):
+                                answer_data['text_answer']['summary'] = citation_result.annotated_text
+                            answer_data['citations'] = {
+                                "count": citation_result.citation_count,
+                                "sources": citation_result.source_map,
+                            }
+                            debug(f"[CitationAnnotator] {citation_result.citation_count}处引用")
+                except Exception as e:
+                    debug(f"CitationAnnotator 降级: {e}")
 
                 # 6.5 反思验证：评估答案质量，低分触发二次检索重新生成
                 try:
@@ -705,7 +766,7 @@ class TutorAgent:
         }
 
         if "text" in formats_to_generate:
-            text_answer = self._generate_text_answer(question, subject, context, cognitive_style)
+            text_answer = self._generate_text_answer(question, subject, context, cognitive_style, profile)
             if text_answer:
                 answer_data["text_answer"] = text_answer
                 answer_data["formats"].append("text")
@@ -725,21 +786,18 @@ class TutorAgent:
         return answer_data
 
     def _generate_text_answer(self, question: str, subject: str,
-                             context: str, cognitive_style: str) -> dict:
-        """生成文字解答"""
-        prompt = f"""请详细回答以下{subject}课程的问题。
+                             context: str, cognitive_style: str,
+                             profile: dict = None) -> dict:
+        """生成文字解答（集成个性化 Prompt）"""
+        base_prompt = f"""请详细回答以下{subject}课程的问题。
 
 问题: {question}
 {f'上下文: {context}' if context else ''}
 
-学习者认知风格: {cognitive_style}
-
 要求:
 1. 给出准确、清晰的答案
 2. 分步骤解释,逻辑清晰
-3. 针对{cognitive_style}型学习者优化表达方式
-4. 标注关键概念和公式
-5. 长度适中,约300-500字
+3. 标注关键概念和公式
 
 输出JSON格式:
 {{
@@ -749,8 +807,25 @@ class TutorAgent:
     "common_mistakes": ["常见错误1", "常见错误2"],
     "tips": ["学习建议1", "学习建议2"]
 }}"""
+
+        # 个性化 Prompt
         try:
-            response = qa_service.call_ai(prompt, max_tokens=1500)
+            from services.prompt_personalizer import prompt_personalizer
+            if profile:
+                personalized = prompt_personalizer.personalize(
+                    base_prompt, profile, intent="explanation", context=context[:1500]
+                )
+                prompt = personalized.prompt
+                max_tokens = personalized.max_tokens
+            else:
+                prompt = base_prompt
+                max_tokens = 1500
+        except Exception:
+            prompt = base_prompt
+            max_tokens = 1500
+
+        try:
+            response = qa_service.call_ai(prompt, max_tokens=max_tokens)
             return safe_parse_json(response)
         except Exception as e:
             error(f"生成文字解答失败: {e!s}")

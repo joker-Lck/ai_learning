@@ -1,5 +1,29 @@
 # 版本变更日志
 
+## v8.6.0 (2026-07-28) — AI 算法增强层（8 大算法模块）
+
+### 新增 — 大模型输入前处理
+- **QueryProcessor** — 查询预处理层：意图识别（6种）、实体识别（学科术语词典）、指代消解、拼写纠错、策略建议
+- **PromptPersonalizer** — 个性化 Prompt 调度器：根据认知风格选择回答结构、根据知识水平调整难度用语、根据薄弱点注入重点提醒、根据意图调整 temperature
+- **ContextCompressor** — 智能上下文压缩：滑动窗口 + 规则摘要，超出 token 预算时自动压缩旧对话为关键词列表
+
+### 新增 — 大模型输出后处理
+- **AnswerQualityScorer** — 答案质量快速评分：5 维度（完整性/结构化/相关性/置信度/有据性）纯规则评估，毫秒级完成，低分才触发 LLM 反思，节省 80%+ LLM 调用
+- **CitationAnstrator** — 答案引用标注：Jaccard 相似度匹配，自动标注哪些内容来自知识库、哪些来自 LLM 生成
+
+### 新增 — 独立算法模块
+- **BayesianKnowledgeTracer** — 贝叶斯知识追踪（BKT）：概率论建模每个知识点的掌握概率，区分题型猜对概率，与做题系统联动实时更新
+- **AdaptiveDifficultyEngine** — 自适应难度引擎：三区模型（补救/巩固/拓展），基于 BKT 掌握概率动态分配题量
+- **AdaptivePathPlanner** — 自适应路径排序：基于知识图谱拓扑 + 掌握度动态调整学习步骤优先级
+
+### 集成点
+- `tutor_agent.py`：QueryProcessor 入口预处理、ContextCompressor 上下文压缩、PromptPersonalizer 个性化生成、AnswerQualityScorer 质量评分、CitationAnnotator 引用标注
+- `agent.py` quiz_submit：BKT 知识追踪实时更新
+- `agent.py` quiz_adaptive：AdaptiveDifficultyEngine 自适应出题 prompt
+- `path_agent.py`：AdaptivePathPlanner 路径动态重排
+
+---
+
 ## v8.5.0 (2026-07-28) — 间隔重复系统、题库复用与模块精简
 
 ### 新增 — SM-2 间隔重复系统

@@ -41,6 +41,19 @@ class PathAgent:
             # AI规划学习路径
             path_data = self._generate_learning_path(profile, resources, learning_goal)
 
+            # 自适应路径排序（基于掌握度重排步骤）
+            steps = path_data.get("steps", [])
+            try:
+                from services.adaptive_path import adaptive_path
+                from services.knowledge_tracer import knowledge_tracer
+                mastery = {kp: s.mastery for kp, s in knowledge_tracer.states.items()}
+                if mastery and steps:
+                    steps = adaptive_path.replan(steps, mastery)
+                    path_data["steps"] = steps
+                    info(f"自适应路径重排完成, {len(steps)}步")
+            except Exception as e:
+                debug(f"自适应路径排序跳过: {e}")
+
             # 确保返回格式符合前端期望
             result_path = {
                 "goal": learning_goal or path_data.get("path_name", "学习路径"),
