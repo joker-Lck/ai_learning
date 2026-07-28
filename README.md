@@ -477,9 +477,8 @@ RAG_SIMILARITY_THRESHOLD=0.8                                # RAG 相似度阈�
 | 今日建议 | 专业学习规划师：薄弱点/复习/规划/策略 4 宫格 | `GET /api/agent/learning-recommendations` |
 | 继续学习 | 最近资源列表，点击预览 | `GET /api/agent/list-resources` |
 | 学习评估 | 综合评分 + 维度分析 | `GET /api/agent/latest-assessment` |
-| 雷达图 | 6 维度学习能力可视化 | AI 评定 / 规则计算 |
-| 番茄钟 | 可自定义专注/休息时长，今日学习统计 | localStorage |
-| 学习提醒 | 错题复习推送 + 学习计划检查 | `GET /api/agent/review-reminder` |
+| 雷达图 | 9 维度学习能力可视化 | AI 评定 / 规则计算 |
+| 学习提醒 | 待复习错题推送（SM-2间隔重复） | `GET /api/agent/review-due` |
 | 协同动态 | 智能体活动日志实时流 | `GET /api/agent/activity-logs` |
 | 新用户引导 | 首次访问 3 步引导遮罩 | localStorage |
 
@@ -1233,8 +1232,6 @@ cd frontend && npm install && npm run build && npm start
 - AI 追问按钮：辅导回答下方"再解释/举例子/换角度"快捷追问
 - 新用户引导流程：首次访问 3 步引导遮罩
 - 学习路径→学习资源联动：路径结果一键生成配套资源
-- 番茄钟计时器：可自定义专注/休息时长，今日学习统计
-- 错题录入优化：两步式极简表单 + 拍照识别入口
 - 工作台布局重构：今日建议横置 4 宫格，替代原统计卡片行
 
 **修复**：

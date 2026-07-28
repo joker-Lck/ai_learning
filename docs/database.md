@@ -11,7 +11,8 @@
 | 数据库文件 | 用途 | 核心表 |
 |-----------|------|--------|
 | **ai_auth.db** | 认证与用户管理 | users, sessions |
-| **ai_profiles.db** | 学生画像存储 | student_profiles, course_schedules, student_grades, error_notes, study_plans, question_bank |
+| **ai_profiles.db** | 学生画像存储 | student_profiles, course_schedules, student_grades, error_notes, study_plans |
+| **ai_assessments.db** | 学习效果评估 | learning_assessments, assessment_dimensions, learning_activities, quiz_sessions, quiz_answers, question_bank |
 | **ai_resources.db** | 学习资源管理 | learning_resources, resource_safety_logs |
 | **ai_paths.db** | 学习路径规划 | learning_paths, path_progress |
 | **ai_tutor.db** | 智能辅导对话 | tutor_sessions, tutor_messages, tutor_knowledge_refs |

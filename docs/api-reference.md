@@ -218,8 +218,10 @@ Content-Type: application/json
 | POST | /tutor | SSE 智能辅导 |
 | POST | /quiz/adaptive | SSE 自适应出题（v8.5 新增） |
 | POST | /plan-path | SSE 学习路径生成（v8.5 新增） |
-| POST | /safety-check | 内容安全检查 |
-| POST | /fact-verify | 事实验证 |
+| POST | /check-content-safety | 内容安全检查 |
+| POST | /verify-fact | 事实验证 |
+| POST | /add-citations | 添加引用 |
+| POST | /cross-validate | 交叉验证 |
 
 ### SSE 学习资源
 
