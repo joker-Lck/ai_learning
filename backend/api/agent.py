@@ -16,7 +16,7 @@ from backend.schemas.request_models import (
     TutorQueryRequest,
 )
 from core.logger import error, info, warning
-from data.dao import get_activity_dao, get_resource_dao
+from data.dao import get_activity_dao, get_analytics_dao, get_quiz_dao, get_resource_dao
 from services.agent_coordinator import agent_coordinator
 from services.assessment_agent import AssessmentAgent
 from services.document_analysis_service import document_analysis_service
@@ -76,7 +76,10 @@ async def get_student_profile(user: dict = Depends(require_auth)):
         return BaseResponse(
             success=result["success"],
             message=result["message"],
-            data=result.get("profile")
+            data={
+                "profile": result.get("profile"),
+                "has_profile": result.get("message") == "获取已有画像",
+            }
         )
 
     except Exception as e:
@@ -595,28 +598,42 @@ async def get_latest_assessment(user: dict = Depends(require_auth)):
         # 知识基础 — 基于成绩平均分
         if grades:
             avg_score = sum(g["score"] for g in grades if g.get("score")) / max(len([g for g in grades if g.get("score")]), 1)
-            dimensions["knowledge_base"] = round(min(avg_score / 20, 5), 1)  # 100分→5分
+            dimensions["knowledge_base"] = round(min(avg_score / 20, 5), 1)
         else:
             dimensions["knowledge_base"] = 0
+
+        # 认知风格 — 基于画像数据
+        dimensions["cognitive_style"] = 3.0  # 默认中等，有画像时从画像读取
 
         # 学习目标 — 基于课程数
         dimensions["learning_goals"] = round(min(len(courses) / 3, 5), 1) if courses else 0
 
-        # 记忆能力 — 基于问答数量
-        dimensions["memory_ability"] = round(min(qa_count / 5, 5), 1)
+        # 兴趣领域 — 基于问答学科多样性
+        qa_subjects = set()
+        for qa in recent_qa:
+            if qa.get("subject"):
+                qa_subjects.add(qa["subject"])
+        dimensions["interest_areas"] = round(min(len(qa_subjects) / 2, 5), 1) if qa_subjects else 0
 
-        # 自控力 — 基于错题订正率
+        # 资源偏好 — 基于活动类型多样性
+        dimensions["preferred_resources"] = round(min(qa_count / 5, 5), 1)
+
+        # 学习历史 — 基于问答数量
+        dimensions["learning_history"] = round(min(qa_count / 5, 5), 1)
+
+        # 薄弱环节 — 基于错题订正率（反向：订正越多分越高）
         mastered = len([e for e in error_notes if e.get("mastery") == 1])
         if error_notes:
-            dimensions["self_control"] = round(mastered / len(error_notes) * 5, 1)
+            dimensions["weak_points"] = round(mastered / len(error_notes) * 5, 1)
         else:
-            dimensions["self_control"] = 0
+            dimensions["weak_points"] = 3.0
 
-        # 专注度 — 基于问答频率
-        dimensions["focus"] = round(min(qa_count / 3, 5), 1) if qa_count > 0 else 0
+        # 学习广度 — 基于数据丰富度
+        data_count = (1 if qa_count > 0 else 0) + (1 if courses else 0) + (1 if grades else 0) + (1 if error_notes else 0)
+        dimensions["learning_breadth"] = round(min(data_count * 1.25, 5), 1)
 
-        # 学习深度 — 基于错题分析
-        dimensions["learning_depth"] = round(min(len(error_notes) / 4, 5), 1)
+        # 学习阶段 — 基于课程数和成绩
+        dimensions["learning_stage"] = round(min((len(courses) + len(grades)) / 6, 5), 1)
 
         # 综合等级
         avg_dim = sum(dimensions.values()) / max(len(dimensions), 1)
@@ -1290,49 +1307,37 @@ async def delete_error_note(
 
 
 @router.get("/review-due")
-async def get_review_due(user: dict = Depends(get_current_user)):
-    """获取待复习的错题（基于遗忘曲线调度）"""
+async def get_review_due(
+    subject: str = Query(None),
+    limit: int = Query(10, ge=1, le=50),
+    user: dict = Depends(get_current_user),
+):
+    """获取待复习的错题（基于 SM-2 间隔重复调度）"""
     try:
-        from datetime import datetime, timedelta
-        result = student_data_service.get_error_notes(user["id"], mastery=0)
+        result = student_data_service.get_due_notes(user["id"], subject=subject, limit=limit)
         notes = result.get("data", []) if result.get("success") else []
-        now = datetime.now()
-        review_intervals = [1, 3, 7, 14, 30]  # 遗忘曲线复习间隔（天）
-        due_notes = []
-        for note in notes:
-            created = note.get("created_at", "")
-            if not created:
-                continue
-            try:
-                created_dt = datetime.strptime(str(created)[:19], "%Y-%m-%d %H:%M:%S")
-            except Exception:
-                continue
-            days = (now - created_dt).days
-            # 判断是否到了某个复习间隔
-            for interval in review_intervals:
-                if days >= interval and days < interval * 2:
-                    due_notes.append({
-                        **note,
-                        "review_type": "spaced",
-                        "days_since": days,
-                        "next_interval": interval,
-                        "urgency": "high" if days >= interval * 1.5 else "normal",
-                    })
-                    break
-            else:
-                # 超过30天的标记为紧急
-                if days >= 30:
-                    due_notes.append({
-                        **note,
-                        "review_type": "overdue",
-                        "days_since": days,
-                        "next_interval": 30,
-                        "urgency": "high",
-                    })
-        due_notes.sort(key=lambda x: (0 if x["urgency"] == "high" else 1, -x["days_since"]))
-        return {"success": True, "data": {"due_notes": due_notes[:10], "total_due": len(due_notes)}}
+        total_due = len(notes)
+        return {"success": True, "data": {"due_notes": notes, "total_due": total_due}}
     except Exception as e:
         error(f"获取待复习错题失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/review-submit")
+async def submit_review_result(
+    input_data: dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """提交复习结果（更新间隔重复调度）"""
+    try:
+        note_id = input_data.get("note_id")
+        is_correct = input_data.get("is_correct", False)
+        if not note_id:
+            return BaseResponse(success=False, message="缺少 note_id")
+        result = student_data_service.update_review_result(user["id"], note_id, is_correct)
+        return BaseResponse(success=result["success"], message=result.get("message"), data=result.get("data"))
+    except Exception as e:
+        error(f"提交复习结果失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1340,26 +1345,9 @@ async def get_review_due(user: dict = Depends(get_current_user)):
 async def get_review_reminder(user: dict = Depends(get_current_user)):
     """获取学习提醒（错题复习 + 遗忘知识点）"""
     try:
-        from datetime import datetime, timedelta
-        # 待复习错题
-        result = student_data_service.get_error_notes(user["id"], mastery=0)
-        notes = result.get("data", []) if result.get("success") else []
-        now = datetime.now()
-        review_intervals = [1, 3, 7, 14, 30]
-        due_count = 0
-        for note in notes:
-            created = note.get("created_at", "")
-            if not created:
-                continue
-            try:
-                created_dt = datetime.strptime(str(created)[:19], "%Y-%m-%d %H:%M:%S")
-            except Exception:
-                continue
-            days = (now - created_dt).days
-            for interval in review_intervals:
-                if days >= interval:
-                    due_count += 1
-                    break
+        # 待复习错题（基于 next_review 调度）
+        due_result = student_data_service.get_due_notes(user["id"], limit=50)
+        due_count = len(due_result.get("data", [])) if due_result.get("success") else 0
         # 学习计划提醒
         plans = []
         try:
@@ -2955,3 +2943,438 @@ async def proxy_book_cover(
     except Exception as e:
         error(f"封面代理异常: {e}")
         raise HTTPException(status_code=500, detail="图片代理失败")
+
+# ==================== 在线做题 API ====================
+
+
+@router.post("/quiz/start")
+async def quiz_start(
+    input_data: dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """开始答题会话"""
+    try:
+        user_id = user["id"]
+        subject = input_data.get("subject")
+        topic = input_data.get("topic")
+        mode = input_data.get("mode", "practice")
+        resource_id = input_data.get("resource_id")
+        questions = input_data.get("questions", [])
+
+        if not questions:
+            return BaseResponse(success=False, message="没有题目")
+
+        quiz_dao = get_quiz_dao()
+        session_id = quiz_dao.create_session(
+            user_id, subject, topic, len(questions),
+            resource_id=resource_id, mode=mode
+        )
+        if not session_id:
+            return BaseResponse(success=False, message="创建答题会话失败")
+
+        return BaseResponse(success=True, data={
+            "session_id": session_id,
+            "total_questions": len(questions),
+            "questions": questions,
+        })
+    except Exception as e:
+        error(f"开始答题失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/quiz/submit")
+async def quiz_submit(
+    input_data: dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """提交单题答案"""
+    try:
+        user_id = user["id"]
+        session_id = input_data.get("session_id")
+        question_index = input_data.get("question_index")
+        question_type = input_data.get("question_type", "multiple_choice")
+        question_text = input_data.get("question_text", "")
+        options = input_data.get("options")
+        correct_answer = input_data.get("correct_answer", "")
+        user_answer = input_data.get("user_answer", "")
+        explanation = input_data.get("explanation")
+        knowledge_point = input_data.get("knowledge_point")
+        difficulty = input_data.get("difficulty")
+        time_spent = input_data.get("time_spent", 0)
+
+        quiz_dao = get_quiz_dao()
+        result = quiz_dao.submit_answer(
+            session_id, user_id, question_index, question_type,
+            question_text, options, correct_answer, user_answer,
+            explanation, knowledge_point, difficulty, time_spent
+        )
+        # 答错自动保存到错题本
+        if not result.get("is_correct") and question_text.strip():
+            try:
+                session_info = quiz_dao.get_session_detail(session_id, user_id)
+                subject = (session_info.get("subject") or "综合") if session_info else "综合"
+                existing = student_data_service.get_error_notes(user_id)
+                dup = any(
+                    n.get("question", "").strip() == question_text.strip()
+                    for n in (existing.get("data") or [])
+                )
+                if not dup:
+                    student_data_service.save_error_note(user_id, {
+                        "subject": subject,
+                        "chapter": knowledge_point or "",
+                        "question": question_text,
+                        "my_answer": user_answer,
+                        "correct_answer": correct_answer,
+                        "error_reason": explanation or "",
+                        "tags": [knowledge_point] if knowledge_point else [],
+                    })
+            except Exception as save_err:
+                warning(f"自动保存错题失败: {save_err}")
+
+        return BaseResponse(success=True, data=result)
+    except Exception as e:
+        error(f"提交答案失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/quiz/finish")
+async def quiz_finish(
+    input_data: dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """结束答题会话"""
+    try:
+        user_id = user["id"]
+        session_id = input_data.get("session_id")
+
+        quiz_dao = get_quiz_dao()
+        session = quiz_dao.finish_session(session_id, user_id)
+        if not session:
+            return BaseResponse(success=False, message="结束答题失败")
+
+        act_dao = get_activity_dao()
+        act_dao.record(user_id, "quiz", {
+            "session_id": session_id,
+            "subject": session.get("subject"),
+            "score": session.get("score"),
+        })
+
+        detail = quiz_dao.get_session_detail(session_id, user_id)
+        return BaseResponse(success=True, data=detail)
+    except Exception as e:
+        error(f"结束答题失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/quiz/history")
+async def quiz_history(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: dict = Depends(require_auth),
+):
+    """获取答题历史"""
+    try:
+        quiz_dao = get_quiz_dao()
+        history = quiz_dao.get_history(user["id"], limit, offset)
+        return BaseResponse(success=True, data={"sessions": history})
+    except Exception as e:
+        error(f"获取答题历史失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/quiz/session/{session_id}")
+async def quiz_session_detail(
+    session_id: int,
+    user: dict = Depends(require_auth),
+):
+    """获取单次答题详情"""
+    try:
+        quiz_dao = get_quiz_dao()
+        detail = quiz_dao.get_session_detail(session_id, user["id"])
+        if not detail:
+            return BaseResponse(success=False, message="会话不存在")
+        return BaseResponse(success=True, data=detail)
+    except Exception as e:
+        error(f"获取答题详情失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/quiz/stats")
+async def quiz_stats(
+    subject: str = Query(None),
+    user: dict = Depends(require_auth),
+):
+    """获取答题统计"""
+    try:
+        quiz_dao = get_quiz_dao()
+        stats = quiz_dao.get_stats(user["id"], subject)
+        return BaseResponse(success=True, data=stats)
+    except Exception as e:
+        error(f"获取答题统计失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/quiz/weak-topics")
+async def quiz_weak_topics(
+    limit: int = Query(10, ge=1, le=50),
+    user: dict = Depends(require_auth),
+):
+    """获取薄弱知识点"""
+    try:
+        quiz_dao = get_quiz_dao()
+        topics = quiz_dao.get_weak_topics(user["id"], limit)
+        return BaseResponse(success=True, data={"weak_topics": topics})
+    except Exception as e:
+        error(f"获取薄弱知识点失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/quiz/adaptive")
+async def quiz_adaptive(
+    input_data: dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """自适应出题（优先从题库取题，不足时AI生成并存入题库）"""
+    try:
+        user_id = user["id"]
+        subject = input_data.get("subject") or "综合"
+        count = input_data.get("count", 10)
+
+        quiz_dao = get_quiz_dao()
+
+        # 1. 从题库取题（最多占60%，确保用户总能遇到新题）
+        bank_cap = max(1, int(count * 0.6))
+        bank_questions = quiz_dao.get_from_bank(subject=subject, count=bank_cap)
+        bank_take = min(len(bank_questions), bank_cap)
+
+        # 2. 剩余由AI生成
+        need = count - bank_take
+        weak_topics = quiz_dao.get_weak_topics(user_id, limit=5)
+
+        weak_info = ""
+        if weak_topics:
+            weak_info = "学生薄弱知识点：\n"
+            for t in weak_topics:
+                weak_info += f"- {t['knowledge_point']}：正确率 {t['accuracy']}%\n"
+
+        prompt = f"""请为{subject}学科生成 {need} 道练习题。
+{weak_info}
+要求：题型包含选择题(type="multiple_choice")、判断题(type="judge")、填空题(type="fill_blank")。
+选择题options格式：["A. xxx", "B. xxx", "C. xxx", "D. xxx"]，answer填字母如"A"。
+判断题options留空数组，answer填"true"或"false"。
+填空题options留空数组，answer填答案文本。
+
+只输出JSON，不要输出其他内容：
+{{"questions":[{{"id":1,"type":"multiple_choice","question":"...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A","explanation":"...","difficulty":"easy","knowledge_point":"..."}}]}}"""
+
+        from services.spark_client import spark_client
+        from core.json_utils import safe_parse_json
+
+        questions = []
+        for attempt in range(2):
+            try:
+                result = await asyncio.to_thread(spark_client.standard, prompt)
+                info(f"AI出题尝试{attempt+1}: 返回长度={len(result) if result else 0}")
+                quiz_data = safe_parse_json(result)
+                if quiz_data and isinstance(quiz_data, dict):
+                    questions = quiz_data.get("questions", [])
+                    if questions:
+                        info(f"AI出题成功: {len(questions)}题")
+                        break
+            except Exception as e:
+                warning(f"AI出题尝试{attempt+1}异常: {e}")
+
+        # 3. AI生成的题存入题库
+        if questions:
+            saved = quiz_dao.save_to_bank(subject, questions)
+            info(f"AI出题存入题库 {saved} 题")
+
+        # 4. 合并题库题和AI题
+        all_questions = bank_questions[:bank_take] + questions
+        if not all_questions:
+            return BaseResponse(success=False, message="AI 出题失败，请重试")
+
+        return BaseResponse(success=True, data={"questions": all_questions[:count], "source": "mixed" if bank_take else "ai"})
+    except Exception as e:
+        error(f"自适应出题失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/quiz/import-bank")
+async def quiz_import_bank(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_auth),
+):
+    """导入题库文件（JSON 格式）"""
+    try:
+        content = await file.read()
+        text = content.decode("utf-8")
+        data = json.loads(text)
+
+        questions = data if isinstance(data, list) else data.get("questions", [])
+        if not questions:
+            return BaseResponse(success=False, message="题库文件中没有找到题目")
+
+        return BaseResponse(success=True, data={"questions": questions, "count": len(questions)})
+    except json.JSONDecodeError:
+        return BaseResponse(success=False, message="JSON 格式错误")
+    except Exception as e:
+        error(f"导入题库失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 学情分析 API ====================
+
+
+@router.get("/analytics/overview")
+async def analytics_overview(user: dict = Depends(require_auth)):
+    """学情分析总览"""
+    try:
+        user_id = user["id"]
+        res_dao = get_resource_dao()
+        act_dao = get_activity_dao()
+        quiz_dao = get_quiz_dao()
+
+        stats = {
+            "resource_count": res_dao.count_by_user(user_id),
+            "activity_count": act_dao.count_by_user(user_id),
+            "login_days": act_dao.get_login_days(user_id),
+            "total_study_seconds": act_dao.get_total_study_seconds(user_id),
+        }
+
+        quiz_stats = quiz_dao.get_stats(user_id)
+        stats["quiz_sessions"] = quiz_stats.get("total_sessions", 0)
+        stats["quiz_questions"] = quiz_stats.get("total_questions", 0)
+        stats["quiz_avg_score"] = quiz_stats.get("avg_score", 0)
+
+        return BaseResponse(success=True, data=stats)
+    except Exception as e:
+        error(f"获取学情总览失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/analytics/subject-breakdown")
+async def analytics_subject_breakdown(user: dict = Depends(require_auth)):
+    """按学科聚合分析"""
+    try:
+        dao = get_analytics_dao()
+        subjects = dao.get_subject_breakdown(user["id"])
+
+        quiz_dao = get_quiz_dao()
+        quiz_stats = quiz_dao.get_stats(user["id"])
+        quiz_by_subject = {s["subject"]: s for s in quiz_stats.get("by_subject", [])}
+
+        for s in subjects:
+            qs = quiz_by_subject.get(s["subject"], {})
+            s["quiz_sessions"] = qs.get("sessions", 0)
+            s["quiz_avg_score"] = qs.get("avg_score", 0)
+
+        return BaseResponse(success=True, data={"subjects": subjects})
+    except Exception as e:
+        error(f"获取学科分布失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/analytics/resource-type-breakdown")
+async def analytics_resource_type_breakdown(user: dict = Depends(require_auth)):
+    """按资源类型聚合分析"""
+    try:
+        dao = get_analytics_dao()
+        types = dao.get_resource_type_breakdown(user["id"])
+        return BaseResponse(success=True, data={"types": types})
+    except Exception as e:
+        error(f"获取资源类型分布失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/analytics/study-trend")
+async def analytics_study_trend(
+    days: int = Query(30, ge=7, le=365),
+    user: dict = Depends(require_auth),
+):
+    """学习时间趋势"""
+    try:
+        dao = get_analytics_dao()
+        trend = dao.get_study_trend(user["id"], days)
+        return BaseResponse(success=True, data={"trend": trend})
+    except Exception as e:
+        error(f"获取学习趋势失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/analytics/quiz-trend")
+async def analytics_quiz_trend(
+    days: int = Query(30, ge=7, le=365),
+    user: dict = Depends(require_auth),
+):
+    """做题正确率趋势"""
+    try:
+        dao = get_analytics_dao()
+        trend = dao.get_quiz_trend(user["id"], days)
+        return BaseResponse(success=True, data={"trend": trend})
+    except Exception as e:
+        error(f"获取做题趋势失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/analytics/knowledge-mastery")
+async def analytics_knowledge_mastery(user: dict = Depends(require_auth)):
+    """知识点掌握度"""
+    try:
+        dao = get_analytics_dao()
+        mastery = dao.get_knowledge_mastery(user["id"])
+        return BaseResponse(success=True, data={"knowledge": mastery})
+    except Exception as e:
+        error(f"获取知识点掌握度失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/analytics/weekly-report")
+async def analytics_weekly_report(user: dict = Depends(require_auth)):
+    """周报数据"""
+    try:
+        dao = get_analytics_dao()
+        report = dao.get_weekly_report(user["id"])
+        return BaseResponse(success=True, data=report)
+    except Exception as e:
+        error(f"获取周报失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 画像评估做题 API ====================
+
+
+@router.get("/profile/assessment-quiz")
+async def get_profile_assessment_quiz(user: dict = Depends(require_auth)):
+    """获取画像评估固定题目"""
+    try:
+        profile_agent_inst = ProfileAgent()
+        questions = profile_agent_inst.get_assessment_quiz()
+        return BaseResponse(success=True, data={"questions": questions})
+    except Exception as e:
+        error(f"获取评估题目失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/profile/submit-assessment")
+async def submit_profile_assessment(
+    input_data: dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
+    """提交画像评估答案，生成学生画像"""
+    try:
+        user_id = user["id"]
+        answers = input_data.get("answers", {})
+        # 转换 key 为 int
+        answers_int = {int(k): v for k, v in answers.items()}
+
+        profile_agent_inst = ProfileAgent()
+        result = profile_agent_inst.process_assessment_answers(user_id, answers_int)
+
+        # 记录活动
+        act_dao = get_activity_dao()
+        act_dao.record(user_id, "profile_assessment", {"answers_count": len(answers_int)})
+
+        return BaseResponse(success=result.get("success", True), data=result)
+    except Exception as e:
+        error(f"提交评估答案失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

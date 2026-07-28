@@ -145,16 +145,18 @@ class StudentDataService:
     # ==================== 错题记录 ====================
 
     def save_error_note(self, user_id: int, note: dict) -> dict:
-        """添加一条错题"""
+        """添加一条错题（自动设置首次复习时间）"""
         try:
             profile_db.connect()
-            sql = """INSERT INTO error_notes (user_id, subject, chapter, question, my_answer, correct_answer, error_reason, tags)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
+            from datetime import datetime, timedelta
+            next_review = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+            sql = """INSERT INTO error_notes (user_id, subject, chapter, question, my_answer, correct_answer, error_reason, tags, next_review, review_interval, ease_factor)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 2.5)"""
             tags_json = json.dumps(note.get('tags', []), ensure_ascii=False) if note.get('tags') else None
             profile_db.cursor.execute(sql, (
                 user_id, note['subject'], note.get('chapter'),
                 note['question'], note.get('my_answer'), note.get('correct_answer'),
-                note.get('error_reason'), tags_json
+                note.get('error_reason'), tags_json, next_review
             ))
             profile_db.conn.commit()
             note_id = profile_db.cursor.lastrowid
@@ -217,6 +219,112 @@ class StudentDataService:
         except Exception as e:
             error(f"删除错题失败: {e}")
             return {"success": False, "message": str(e)}
+        finally:
+            profile_db.close()
+
+    def update_review_result(self, user_id: int, note_id: int, is_correct: bool) -> dict:
+        """
+        更新复习结果（SM-2 间隔重复算法）
+
+        做对：延长复习间隔，间隔 = 上次间隔 * ease_factor
+        做错：重置间隔为1天，降低 ease_factor
+
+        间隔序列示例（ease_factor=2.5）：
+        做对: 1天 → 3天 → 7天 → 17天 → 42天 ...
+        做错: 重置为1天，重新开始
+        """
+        try:
+            from datetime import datetime, timedelta
+            profile_db.connect()
+
+            # 获取当前记录
+            profile_db.cursor.execute(
+                "SELECT review_count, ease_factor, review_interval FROM error_notes WHERE id = ? AND user_id = ?",
+                (note_id, user_id)
+            )
+            row = profile_db.cursor.fetchone()
+            if not row:
+                return {"success": False, "message": "错题不存在"}
+
+            row = dict(row)
+            review_count = (row.get("review_count") or 0) + 1
+            ease = row.get("ease_factor") or 2.5
+            interval = row.get("review_interval") or 1
+
+            now = datetime.now()
+
+            if is_correct:
+                # 做对：延长间隔
+                if review_count == 1:
+                    new_interval = 1  # 首次复习做对 → 1天后再来
+                elif review_count == 2:
+                    new_interval = 3  # 第二次做对 → 3天后
+                else:
+                    new_interval = round(interval * ease)  # 之后乘以 ease_factor
+                # ease_factor 最低 1.3
+                ease = max(1.3, ease + 0.1)
+                next_review = (now + timedelta(days=new_interval)).strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                # 做错：重置间隔，降低 ease
+                new_interval = 1
+                ease = max(1.3, ease - 0.2)
+                next_review = (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+
+            profile_db.cursor.execute("""
+                UPDATE error_notes
+                SET review_count = ?, last_review = ?, next_review = ?,
+                    ease_factor = ?, review_interval = ?
+                WHERE id = ? AND user_id = ?
+            """, (review_count, now.strftime("%Y-%m-%d %H:%M:%S"), next_review,
+                  round(ease, 2), new_interval, note_id, user_id))
+            profile_db.conn.commit()
+
+            info(f"错题 {note_id} 复习结果: {'做对' if is_correct else '做错'}, "
+                 f"下次复习: {next_review}, 间隔: {new_interval}天, ease: {round(ease, 2)}")
+
+            return {
+                "success": True,
+                "data": {
+                    "review_count": review_count,
+                    "next_review": next_review,
+                    "interval_days": new_interval,
+                    "ease_factor": round(ease, 2),
+                }
+            }
+        except Exception as e:
+            error(f"更新复习结果失败: {e}")
+            return {"success": False, "message": str(e)}
+        finally:
+            profile_db.close()
+
+    def get_due_notes(self, user_id: int, subject: str | None = None, limit: int = 10) -> dict:
+        """获取到期待复习的错题（next_review <= 当前时间）"""
+        try:
+            from datetime import datetime
+            profile_db.connect()
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            conditions = ["user_id = ?", "mastery = 0", "next_review IS NOT NULL", "next_review <= ?"]
+            params: list = [user_id, now]
+            if subject:
+                conditions.append("subject = ?")
+                params.append(subject)
+            sql = f"""SELECT * FROM error_notes
+                      WHERE {' AND '.join(conditions)}
+                      ORDER BY next_review ASC, review_count ASC
+                      LIMIT ?"""
+            params.append(limit)
+            profile_db.cursor.execute(sql, params)
+            rows = [dict(r) for r in profile_db.cursor.fetchall()]
+            for r in rows:
+                if r.get('tags') and isinstance(r['tags'], str):
+                    r['tags'] = json.loads(r['tags'])
+                for k in ('created_at', 'last_review', 'next_review'):
+                    if r.get(k):
+                        r[k] = str(r[k])
+            return {"success": True, "data": rows}
+        except Exception as e:
+            error(f"获取待复习错题失败: {e}")
+            return {"success": False, "data": []}
         finally:
             profile_db.close()
 

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,7 +52,12 @@ export default function LoginPage() {
         api.setToken(token);
         localStorage.setItem('user_info', JSON.stringify(user));
         login(user, token);
-        window.location.href = '/dashboard';
+        // 检查是否是新注册用户
+        const isNew = sessionStorage.getItem('new_user_register') === '1';
+        sessionStorage.removeItem('new_user_register');
+        sessionStorage.removeItem('new_user_name');
+        sessionStorage.removeItem('new_user_pass');
+        window.location.href = isNew ? '/assessment-quiz' : '/dashboard';
         return;
       } else if (res.success !== false) {
         const fallbackToken = 'local_' + Date.now();
@@ -82,10 +87,43 @@ export default function LoginPage() {
     setLoading(true); setError('');
     try {
       const res: any = await api.register(regUsername, regPassword, regEmail || undefined);
-      if (res.success) { setIsLogin(true); setError(''); setUsername(regUsername); }
+      if (res.success) {
+        // 注册成功，标记为新用户，切换到登录视图
+        sessionStorage.setItem('new_user_register', '1');
+        setIsLogin(true);
+        setUsername(regUsername);
+        setPassword('');
+        setError('注册成功，正在自动登录...');
+        // 延迟确保数据库写入完成
+        setTimeout(() => {
+          handleLoginAuto(regUsername, regPassword);
+        }, 800);
+      }
       else { setError(res.message || '注册失败'); }
     } catch (err: any) { setError(err.message || '网络错误'); }
     finally { setLoading(false); }
+  };
+
+  const handleLoginAuto = async (u: string, p: string) => {
+    setLoading(true); setError('');
+    localStorage.removeItem('is_guest');
+    try {
+      const res: any = await api.login(u, p);
+      if (res.success && res.token) {
+        api.setToken(res.token);
+        localStorage.setItem('user_info', JSON.stringify(res.user));
+        login(res.user, res.token);
+        sessionStorage.removeItem('new_user_register');
+        window.location.href = '/assessment-quiz';
+        return;
+      }
+      setError(res.message || '自动登录失败，请手动输入密码登录');
+      setPassword('');
+    } catch {
+      setError('自动登录失败，请手动输入密码登录');
+      setPassword('');
+    }
+    setLoading(false);
   };
 
   const handleGuest = async () => {

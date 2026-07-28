@@ -11,6 +11,7 @@ interface PathModuleProps {
   pathLoading: boolean;
   learningPath: LearningPath | null;
   handlePlanPath: () => void;
+  pathStreamContent?: string;
   studyPlans: StudyPlan[];
   planLoading: boolean;
   handleGeneratePlan: (data: { plan_type: string; custom_goal?: string; exam_date?: string; exam_subjects?: string[] }) => Promise<any>;
@@ -18,7 +19,7 @@ interface PathModuleProps {
 }
 
 export default memo(function PathModule({
-  learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath,
+  learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath, pathStreamContent,
   studyPlans, planLoading, handleGeneratePlan, onNavigateModule,
 }: PathModuleProps) {
   const [planType, setPlanType] = useState('weekly');
@@ -133,9 +134,14 @@ export default memo(function PathModule({
             </h4>
 
             {pathLoading && (
-              <div className="border border-white/[0.06] rounded-lg p-6 text-center bg-white/[0.02]">
-                <Loader2 className="w-6 h-6 text-amber-400 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-white/40">正在生成学习路径...</p>
+              <div className="border border-white/[0.06] rounded-lg p-6 bg-white/[0.02]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+                  <p className="text-sm text-amber-400">正在生成学习路径...</p>
+                </div>
+                {pathStreamContent && (
+                  <pre className="text-xs text-white/30 max-h-40 overflow-auto whitespace-pre-wrap font-mono border-t border-white/[0.04] pt-3">{pathStreamContent.slice(-500)}</pre>
+                )}
               </div>
             )}
 

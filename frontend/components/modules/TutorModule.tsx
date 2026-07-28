@@ -1,7 +1,7 @@
 'use client';
 
 import { Send, Lightbulb, Loader2, Mic, MicOff, MessageCircle, HelpCircle, RefreshCw } from 'lucide-react';
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { TutorMessage } from './types';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
@@ -45,6 +45,7 @@ export default memo(function TutorModule({
   question, setQuestion, tutorSubject, setTutorSubject,
   tutorLoading, tutorMessages, handleAskTutor, streamingContent,
 }: TutorModuleProps) {
+  const [voiceError, setVoiceError] = useState('');
   const {
     isListening,
     transcript,
@@ -53,10 +54,13 @@ export default memo(function TutorModule({
   } = useVoiceInput({
     lang: 'zh-CN',
     onResult: (text) => {
+      setVoiceError('');
       setQuestion(text);
     },
     onError: (err) => {
       console.error('Voice error:', err);
+      setVoiceError(err);
+      setTimeout(() => setVoiceError(''), 5000);
     },
   });
 
@@ -224,6 +228,11 @@ export default memo(function TutorModule({
           <div className="flex items-center gap-2 text-red-400 text-sm animate-pulse">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
             正在聆听，请说话...
+          </div>
+        )}
+        {voiceError && (
+          <div className="flex items-center gap-2 text-amber-400 text-sm">
+            <span>⚠️ {voiceError}</span>
           </div>
         )}
         <div>

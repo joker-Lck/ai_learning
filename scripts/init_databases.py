@@ -124,11 +124,17 @@ def init_profile_database():
                 error_reason TEXT,
                 tags TEXT,
                 mastery INTEGER DEFAULT 0,
+                review_count INTEGER DEFAULT 0,
+                last_review TIMESTAMP,
+                next_review TIMESTAMP,
+                ease_factor REAL DEFAULT 2.5,
+                review_interval INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_error_user ON error_notes(user_id);
             CREATE INDEX IF NOT EXISTS idx_error_subject ON error_notes(user_id, subject);
             CREATE INDEX IF NOT EXISTS idx_error_mastery ON error_notes(user_id, mastery);
+            CREATE INDEX IF NOT EXISTS idx_error_next_review ON error_notes(user_id, next_review);
 
             CREATE TABLE IF NOT EXISTS study_plans (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -325,6 +331,62 @@ def init_assessments_database():
             );
             CREATE INDEX IF NOT EXISTS idx_activities_user ON learning_activities(user_id);
             CREATE INDEX IF NOT EXISTS idx_activities_type ON learning_activities(activity_type);
+
+            CREATE TABLE IF NOT EXISTS quiz_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                resource_id INTEGER,
+                subject TEXT,
+                topic TEXT,
+                total_questions INTEGER NOT NULL,
+                correct_count INTEGER DEFAULT 0,
+                score REAL DEFAULT 0,
+                duration_seconds INTEGER DEFAULT 0,
+                mode TEXT DEFAULT 'practice',
+                status TEXT DEFAULT 'in_progress',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_quiz_sessions_user ON quiz_sessions(user_id);
+            CREATE INDEX IF NOT EXISTS idx_quiz_sessions_subject ON quiz_sessions(subject);
+            CREATE INDEX IF NOT EXISTS idx_quiz_sessions_status ON quiz_sessions(status);
+
+            CREATE TABLE IF NOT EXISTS quiz_answers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                question_index INTEGER NOT NULL,
+                question_type TEXT,
+                question_text TEXT NOT NULL,
+                options TEXT,
+                correct_answer TEXT NOT NULL,
+                user_answer TEXT,
+                is_correct INTEGER DEFAULT 0,
+                explanation TEXT,
+                knowledge_point TEXT,
+                difficulty TEXT,
+                time_spent_seconds INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_quiz_answers_session ON quiz_answers(session_id);
+            CREATE INDEX IF NOT EXISTS idx_quiz_answers_user ON quiz_answers(user_id);
+            CREATE INDEX IF NOT EXISTS idx_quiz_answers_kp ON quiz_answers(knowledge_point);
+
+            CREATE TABLE IF NOT EXISTS question_bank (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject TEXT NOT NULL,
+                question_type TEXT NOT NULL,
+                question_text TEXT NOT NULL,
+                options TEXT,
+                correct_answer TEXT NOT NULL,
+                explanation TEXT,
+                knowledge_point TEXT,
+                difficulty TEXT DEFAULT 'medium',
+                use_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_qbank_subject ON question_bank(subject);
+            CREATE INDEX IF NOT EXISTS idx_qbank_kp ON question_bank(knowledge_point);
         """)
         conn.commit()
         print("  [OK] 学习评估数据库初始化完成!")

@@ -4,13 +4,13 @@ import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
-  CalendarDays, BarChart3, AlertCircle, Plus, Trash2, Check, X,
-  ChevronDown, Edit3, Save, Upload, Minus, Search, Pencil, Camera,
+  CalendarDays, BarChart3, Plus, Check, X,
+  ChevronDown, Edit3, Save, Upload, Minus, Pencil, Camera,
 } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { PROFILE_DIMENSIONS } from './constants';
 import type {
-  DimensionChat, ProfileData, ProfileTab, CourseItem, GradeItem, ErrorNote,
+  DimensionChat, ProfileData, ProfileTab, CourseItem,
 } from './types';
 import { computeRadarData, type RadarDimension } from '@/lib/radar';
 
@@ -32,28 +32,14 @@ interface ProfileModuleProps {
   courses: CourseItem[];
   courseLoading: boolean;
   handleSaveCourses: (semester: string, courses: CourseItem[]) => Promise<void>;
-  grades: GradeItem[];
-  gradeLoading: boolean;
-  handleSaveGrades: (semester: string, grades: GradeItem[]) => Promise<void>;
-  errorNotes: ErrorNote[];
-  errorLoading: boolean;
-  handleAddErrorNote: (note: Omit<ErrorNote, 'id'>) => Promise<any>;
-  handleToggleMastery: (noteId: number, currentMastery: number) => Promise<void>;
-  handleDeleteErrorNote: (noteId: number) => Promise<void>;
   handleUpdateProfileField: (field: string, value: any) => Promise<any>;
   handleImportCourses: (file: File) => Promise<CourseItem[]>;
-  handleImportGrades: (file: File) => Promise<GradeItem[]>;
-  handleImportErrors: (file: File) => Promise<Omit<ErrorNote, 'id'>[]>;
   handleConfirmImportCourses: (data: CourseItem[]) => Promise<void>;
-  handleConfirmImportGrades: (data: GradeItem[]) => Promise<void>;
-  handleConfirmImportErrors: (data: Omit<ErrorNote, 'id'>[]) => Promise<void>;
 }
 
 const TABS: { key: ProfileTab; label: string; icon: any }[] = [
   { key: 'profile', label: '画像', icon: User },
   { key: 'schedule', label: '课程表', icon: CalendarDays },
-  { key: 'grades', label: '成绩', icon: BarChart3 },
-  { key: 'errors', label: '错题本', icon: AlertCircle },
 ];
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -108,7 +94,9 @@ function getCourseHeight(start: string, end: string): number {
 const PROFILE_DISPLAY = [
   { key: 'major', label: '专业', icon: GraduationCap, color: 'from-purple-500 to-purple-400', fmt: (v: any) => v || '未填写' },
   { key: 'grade_level', label: '年级', icon: User, color: 'from-purple-400 to-purple-300', fmt: (v: any) => v || '未填写' },
-  { key: 'cognitive_style', label: '认知风格', icon: Brain, color: 'from-purple-500 to-purple-400', fmt: (v: any) => v || '未评估' },
+  { key: 'cognitive_style', label: '认知风格', icon: Brain, color: 'from-purple-500 to-purple-400', fmt: (v: any) => {
+    if (!v) return '未评估'; if (Array.isArray(v)) return v.join('、'); return v;
+  }},
   { key: 'knowledge_base', label: '知识基础', icon: BookOpen, color: 'from-purple-400 to-purple-300', fmt: (v: any) => {
     if (!v) return '未评估'; if (typeof v === 'string') return v;
     if (v.level) return `水平: ${v.level}${v.topics?.length ? ' · ' + v.topics.join('、') : ''}`;
@@ -118,8 +106,11 @@ const PROFILE_DISPLAY = [
     if (!v) return '未设定'; if (Array.isArray(v)) return v.join('、'); if (typeof v === 'string') return v; return JSON.stringify(v);
   }},
   { key: 'interest_areas', label: '兴趣领域', icon: Sparkles, color: 'from-purple-400 to-purple-300', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '未填写' },
-  { key: 'weak_points', label: '薄弱环节', icon: Lightbulb, color: 'from-purple-500 to-purple-400', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '暂无' },
-  { key: 'preferred_resources', label: '偏好资源', icon: Trophy, color: 'from-purple-400 to-purple-300', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '未设定' },
+  { key: 'learning_history', label: '学习历史', icon: Clock, color: 'from-indigo-500 to-indigo-400', fmt: (v: any) => {
+    if (!v) return '暂无'; if (Array.isArray(v)) return v.length > 0 ? `${v.length} 条记录` : '暂无'; return String(v);
+  }},
+  { key: 'weak_points', label: '薄弱环节', icon: Lightbulb, color: 'from-amber-500 to-amber-400', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '暂无' },
+  { key: 'preferred_resources', label: '偏好资源', icon: Trophy, color: 'from-emerald-500 to-emerald-400', fmt: (v: any) => Array.isArray(v) && v.length ? v.join('、') : '未设定' },
 ];
 
 // ==================== 主组件 ====================
@@ -165,12 +156,6 @@ export default memo(function ProfileModule(props: ProfileModuleProps) {
       </div>
       <div style={{ display: profileTab === 'schedule' ? 'block' : 'none' }}>
         <ScheduleTabContent courses={props.courses} loading={props.courseLoading} semester={currentSemester} onSave={props.handleSaveCourses} onImport={props.handleImportCourses} onConfirmImport={props.handleConfirmImportCourses} />
-      </div>
-      <div style={{ display: profileTab === 'grades' ? 'block' : 'none' }}>
-        <GradesTabContent grades={props.grades} loading={props.gradeLoading} semester={currentSemester} onSave={props.handleSaveGrades} onImport={props.handleImportGrades} onConfirmImport={props.handleConfirmImportGrades} />
-      </div>
-      <div style={{ display: profileTab === 'errors' ? 'block' : 'none' }}>
-        <ErrorsTabContent notes={props.errorNotes} loading={props.errorLoading} onAdd={props.handleAddErrorNote} onToggleMastery={props.handleToggleMastery} onDelete={props.handleDeleteErrorNote} onImport={props.handleImportErrors} onConfirmImport={props.handleConfirmImportErrors} />
       </div>
     </div>
   );
@@ -407,11 +392,14 @@ const ProfileRadarChart = memo(function ProfileRadarChart({ profileData }: { pro
     if (aiScores) {
       return [
         { dimension: '知识基础', value: aiScores.knowledge_base || 3, fullMark: 5 },
+        { dimension: '认知风格', value: aiScores.cognitive_style || 3, fullMark: 5 },
         { dimension: '学习目标', value: aiScores.learning_goals || 3, fullMark: 5 },
-        { dimension: '记忆能力', value: aiScores.memory_ability || 3, fullMark: 5 },
-        { dimension: '自控力', value: aiScores.self_control || 3, fullMark: 5 },
-        { dimension: '专注度', value: aiScores.focus || 3, fullMark: 5 },
-        { dimension: '学习深度', value: aiScores.learning_depth || 3, fullMark: 5 },
+        { dimension: '兴趣领域', value: aiScores.interest_areas || 3, fullMark: 5 },
+        { dimension: '资源偏好', value: aiScores.preferred_resources || 3, fullMark: 5 },
+        { dimension: '学习历史', value: aiScores.learning_history || 3, fullMark: 5 },
+        { dimension: '薄弱环节', value: aiScores.weak_points || 3, fullMark: 5 },
+        { dimension: '学习广度', value: aiScores.learning_breadth || 3, fullMark: 5 },
+        { dimension: '学习阶段', value: aiScores.learning_stage || 3, fullMark: 5 },
       ];
     }
     return computeRadarData(profileData);
@@ -425,12 +413,12 @@ const ProfileRadarChart = memo(function ProfileRadarChart({ profileData }: { pro
         </div>
         <div>
           <h4 className="text-base font-semibold text-white">学习能力雷达图</h4>
-          <p className="text-[11px] text-white/35">6 维度综合评估 · 基于画像数据动态计算</p>
+          <p className="text-[11px] text-white/35">9 维度综合评估 · 基于画像数据动态计算</p>
         </div>
       </div>
-      <div className="w-full" style={{ height: 280 }}>
+      <div className="w-full" style={{ height: 320 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="72%" data={radarData}>
+          <RadarChart cx="50%" cy="50%" outerRadius="68%" data={radarData}>
             <PolarGrid stroke="rgba(255,255,255,0.08)" />
             <PolarAngleAxis
               dataKey="dimension"
@@ -469,7 +457,7 @@ const ProfileRadarChart = memo(function ProfileRadarChart({ profileData }: { pro
           <div key={d.dimension} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.03]">
             <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
             <span className="text-[11px] text-white/40 flex-1">{d.dimension}</span>
-            <span className="text-xs font-medium text-purple-400">{d.value}</span>
+            <span className="text-xs font-medium text-purple-400">{d.value}/5</span>
           </div>
         ))}
       </div>
@@ -525,7 +513,7 @@ function ProfileEditView({ profileData, onUpdate }: { profileData: ProfileData; 
     setSaving(true);
     try {
       let value: any = editValue.trim();
-      if (['weak_points', 'interest_areas', 'preferred_resources', 'learning_goals'].includes(key)) {
+      if (['weak_points', 'interest_areas', 'preferred_resources', 'learning_goals', 'learning_history', 'cognitive_style'].includes(key)) {
         value = value ? value.split(/[,，、;；]/).map((s: string) => s.trim()).filter(Boolean) : [];
       } else if (key === 'knowledge_base' && value) {
         const parts = value.split(/[：:]/);
@@ -732,408 +720,6 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
               ))}
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ==================== 成绩 Tab (按学科分组) ====================
-
-function GradesTabContent({ grades, loading, semester, onSave, onImport, onConfirmImport }: { grades: GradeItem[]; loading: boolean; semester: string; onSave: (s: string, g: GradeItem[]) => Promise<void>; onImport: (f: File) => Promise<GradeItem[]>; onConfirmImport: (data: GradeItem[]) => Promise<void> }) {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<GradeItem>({ semester, course_name: '', score: null, credits: null, grade_type: 'overall' });
-  const [sortBy, setSortBy] = useState<'name' | 'score' | 'date'>('name');
-  const [search, setSearch] = useState('');
-
-  const addGrade = async () => {
-    if (!form.course_name.trim()) return;
-    await onSave(semester, [...grades, { ...form }]);
-    setForm({ semester, course_name: '', score: null, credits: null, grade_type: 'overall' });
-    setShowForm(false);
-  };
-  const removeGrade = async (idx: number) => { await onSave(semester, grades.filter((_, i) => i !== idx)); };
-
-  const gradedOnly = grades.filter(g => g.score !== null);
-  const avgScore = gradedOnly.length ? (gradedOnly.reduce((s, g) => s + (g.score || 0), 0) / gradedOnly.length).toFixed(1) : '--';
-
-  const getScoreColor = (s: number | null) => {
-    if (s === null) return 'text-white/30';
-    if (s >= 90) return 'text-green-400';
-    if (s >= 80) return 'text-purple-400';
-    if (s >= 70) return 'text-amber-400';
-    if (s >= 60) return 'text-orange-400';
-    return 'text-red-400';
-  };
-  const getScoreBg = (s: number | null) => {
-    if (s === null) return 'bg-white/[0.03]';
-    if (s >= 90) return 'bg-green-500/10';
-    if (s >= 80) return 'bg-purple-500/10';
-    if (s >= 70) return 'bg-amber-500/10';
-    if (s >= 60) return 'bg-orange-500/10';
-    return 'bg-red-500/10';
-  };
-
-  // 搜索过滤
-  const q = search.trim().toLowerCase();
-  const searched = q ? grades.filter(g =>
-    g.course_name.toLowerCase().includes(q) ||
-    (g.grade_type && GRADE_TYPES.find(t => t.value === g.grade_type)?.label.toLowerCase().includes(q)) ||
-    (g.exam_date && g.exam_date.includes(q))
-  ) : grades;
-
-  // 按学科分组 + 排序
-  const grouped: Record<string, GradeItem[]> = {};
-  searched.forEach(g => { (grouped[g.course_name] ||= []).push(g); });
-  const sortedGroups = Object.entries(grouped).sort((a, b) => {
-    if (sortBy === 'name') return a[0].localeCompare(b[0]);
-    if (sortBy === 'score') {
-      const avgA = a[1].filter(g => g.score !== null).reduce((s, g) => s + (g.score || 0), 0) / (a[1].filter(g => g.score !== null).length || 1);
-      const avgB = b[1].filter(g => g.score !== null).reduce((s, g) => s + (g.score || 0), 0) / (b[1].filter(g => g.score !== null).length || 1);
-      return avgB - avgA;
-    }
-    return (b[1][b[1].length - 1]?.exam_date || '').localeCompare(a[1][a[1].length - 1]?.exam_date || '');
-  });
-
-  return (
-    <div className="space-y-3">
-      {/* 搜索栏 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索课程名称、考试类型..."
-          className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30 transition-colors" />
-        {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50"><X className="w-3.5 h-3.5" /></button>}
-      </div>
-
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-white/40">{semester} 成绩</p>
-          {gradedOnly.length > 0 && <span className="text-sm font-bold text-purple-400">均分 {avgScore}</span>}
-          {q && <span className="text-xs text-white/30">找到 {searched.length} 条</span>}
-        </div>
-        <div className="flex items-center gap-2">
-          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="上传成绩" previewType="grades" />
-          <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-            className="px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-xs text-white/60 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
-            <option value="name">按学科</option>
-            <option value="score">按均分</option>
-            <option value="date">按时间</option>
-          </select>
-          <button onClick={() => setShowForm(!showForm)}
-            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${showForm ? 'bg-red-500/20 text-red-400' : 'bg-purple-500/20 text-purple-400'}`}>
-            {showForm ? <><Minus className="w-3.5 h-3.5" /> 收起</> : <><Plus className="w-3.5 h-3.5" /> 录入</>}
-          </button>
-        </div>
-      </div>
-
-      {showForm && (
-        <div className="border border-white/[0.06] rounded-lg p-4 space-y-3 border-purple-400/10 bg-white/[0.02]">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <input value={form.course_name} onChange={e => setForm(p => ({ ...p, course_name: e.target.value }))} placeholder="课程名称 *"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/[0.12]" />
-            <input type="number" min="0" max="100" value={form.score ?? ''} onChange={e => setForm(p => ({ ...p, score: e.target.value ? Number(e.target.value) : null }))} placeholder="成绩"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
-            <input type="number" min="0" step="0.5" value={form.credits ?? ''} onChange={e => setForm(p => ({ ...p, credits: e.target.value ? Number(e.target.value) : null }))} placeholder="学分"
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
-            <select value={form.grade_type} onChange={e => setForm(p => ({ ...p, grade_type: e.target.value }))}
-              className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
-              {GRADE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
-          <button onClick={addGrade} disabled={loading || !form.course_name.trim()}
-            className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center gap-1 disabled:opacity-40">
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} 添加
-          </button>
-        </div>
-      )}
-
-      {/* 成绩趋势折线图 */}
-      {gradedOnly.length >= 2 && (() => {
-        const CHART_COLORS = ['#a78bfa', '#34d399', '#fbbf24', '#f87171', '#60a5fa', '#f472b6', '#fb923c', '#2dd4bf'];
-        const subjects = Array.from(new Set(gradedOnly.map(g => g.course_name))).slice(0, 5);
-        const chartData = gradedOnly
-          .filter(g => subjects.includes(g.course_name))
-          .sort((a, b) => (a.exam_date || '').localeCompare(b.exam_date || ''))
-          .map((g, i) => ({ name: g.exam_date || `#${i + 1}`, [g.course_name]: g.score }));
-
-        // 合并同日期数据
-        const merged: Record<string, any> = {};
-        for (const d of chartData) {
-          if (!merged[d.name]) merged[d.name] = { name: d.name };
-          Object.assign(merged[d.name], d);
-        }
-        const data = Object.values(merged);
-
-        return (
-          <div className="border border-white/[0.06] rounded-lg p-4 bg-white/[0.02]">
-            <div className="flex items-center gap-2 mb-3">
-              <BarChart3 className="w-4 h-4 text-purple-400" />
-              <span className="text-sm font-medium text-white/60">成绩趋势</span>
-            </div>
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} />
-                <Tooltip
-                  contentStyle={{ background: '#1a1a27', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {subjects.map((subj, i) => (
-                  <Line key={subj} type="monotone" dataKey={subj} stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                    strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        );
-      })()}
-
-      {grades.length === 0 ? (
-        <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
-          <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>暂无成绩，点击「录入」或「上传成绩」开始</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {sortedGroups.map(([courseName, items]) => {
-            const groupGraded = items.filter(g => g.score !== null);
-            const groupAvg = groupGraded.length ? (groupGraded.reduce((s, g) => s + (g.score || 0), 0) / groupGraded.length).toFixed(1) : '--';
-            return (
-              <div key={courseName} className="border border-white/[0.06] rounded-lg overflow-hidden bg-white/[0.02]">
-                <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06]">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-purple-400" />
-                    <span className="font-semibold text-sm text-white">{courseName}</span>
-                    <span className="text-xs text-white/30">{items.length} 条记录</span>
-                  </div>
-                  <span className={`text-sm font-bold ${getScoreColor(Number(groupAvg))}`}>{groupAvg !== '--' ? `${groupAvg} 分` : ''}</span>
-                </div>
-                <div className="divide-y divide-white/[0.03]">
-                  {items.map((g, gi) => {
-                    const globalIdx = grades.indexOf(g);
-                    return (
-                      <div key={gi} className={`flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] ${getScoreBg(g.score)}`}>
-                        <div className="flex-1 flex items-center gap-3">
-                          <span className={`px-2 py-0.5 rounded text-xs border ${g.grade_type === 'exam' ? 'bg-amber-500/10 border-amber-400/20 text-amber-400' : g.grade_type === 'quiz' ? 'bg-blue-500/10 border-blue-400/20 text-blue-400' : g.grade_type === 'homework' ? 'bg-green-500/10 border-green-400/20 text-green-400' : 'bg-white/[0.04] border-white/[0.08] text-white/40'}`}>
-                            {GRADE_TYPES.find(t => t.value === g.grade_type)?.label || '总评'}
-                          </span>
-                          {g.exam_date && <span className="text-xs text-white/25">{g.exam_date}</span>}
-                        </div>
-                        <span className={`text-lg font-bold ${getScoreColor(g.score)} min-w-[48px] text-right`}>{g.score ?? '--'}</span>
-                        {g.credits !== null && g.credits !== undefined && <span className="text-xs text-white/30 min-w-[32px]">{g.credits} 学分</span>}
-                        <button onClick={() => removeGrade(globalIdx)} className="p-1 text-white/15 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ==================== 错题本 Tab (按学科分组) ====================
-
-function ErrorsTabContent({ notes, loading, onAdd, onToggleMastery, onDelete, onImport, onConfirmImport }: { notes: ErrorNote[]; loading: boolean; onAdd: (n: Omit<ErrorNote, 'id'>) => Promise<any>; onToggleMastery: (id: number, m: number) => Promise<void>; onDelete: (id: number) => Promise<void>; onImport: (f: File) => Promise<Omit<ErrorNote, 'id'>[]>; onConfirmImport: (data: Omit<ErrorNote, 'id'>[]) => Promise<void> }) {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ subject: '', chapter: '', question: '', my_answer: '', correct_answer: '', error_reason: '', tags: '' });
-  const [filterSubject, setFilterSubject] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'subject'>('date');
-  const [showMastered, setShowMastered] = useState(true);
-  const [search, setSearch] = useState('');
-
-  const handleSubmit = async () => {
-    if (!form.subject.trim() || !form.question.trim()) return;
-    await onAdd({ ...form, tags: form.tags ? form.tags.split(/[,，、]/).map(t => t.trim()).filter(Boolean) : [] });
-    setForm({ subject: '', chapter: '', question: '', my_answer: '', correct_answer: '', error_reason: '', tags: '' });
-    setShowForm(false);
-  };
-
-  const subjects = Array.from(new Set(notes.map(n => n.subject))).filter(Boolean);
-  const subjectFiltered = filterSubject ? notes.filter(n => n.subject === filterSubject) : notes;
-
-  // 搜索过滤
-  const q = search.trim().toLowerCase();
-  const filtered = q ? subjectFiltered.filter(n =>
-    n.question.toLowerCase().includes(q) ||
-    n.subject.toLowerCase().includes(q) ||
-    (n.chapter && n.chapter.toLowerCase().includes(q)) ||
-    (n.error_reason && n.error_reason.toLowerCase().includes(q)) ||
-    (n.tags && n.tags.some(t => t.toLowerCase().includes(q)))
-  ) : subjectFiltered;
-
-  // 按学科分组
-  const grouped: Record<string, ErrorNote[]> = {};
-  filtered.forEach(n => { (grouped[n.subject || '未分类'] ||= []).push(n); });
-  Object.values(grouped).forEach(arr => arr.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')));
-  const sortedGroups = Object.entries(grouped).sort((a, b) => sortBy === 'subject' ? a[0].localeCompare(b[0]) : (b[1][0]?.created_at || '').localeCompare(a[1][0]?.created_at || ''));
-
-  const totalUnmastered = filtered.filter(n => !n.mastery).length;
-  const totalMastered = filtered.filter(n => n.mastery).length;
-
-  return (
-    <div className="space-y-3">
-      {/* 搜索栏 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索题目、学科、章节、错因、标签..."
-          className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30 transition-colors" />
-        {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50"><X className="w-3.5 h-3.5" /></button>}
-      </div>
-
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-white/40">错题 {notes.length} 道</p>
-          <span className="text-xs text-green-400/60">已掌握 {totalMastered}</span>
-          <span className="text-xs text-amber-400/60">待巩固 {totalUnmastered}</span>
-          {q && <span className="text-xs text-white/30">找到 {filtered.length} 条</span>}
-        </div>
-        <div className="flex items-center gap-2">
-          <FileImporter onImport={onImport} onConfirm={onConfirmImport} label="拍照/上传识别" previewType="errors" />
-          {subjects.length > 0 && (
-            <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)}
-              className="px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-xs text-white/60 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
-              <option value="">全部学科</option>
-              {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          )}
-          <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-            className="px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-xs text-white/60 focus:outline-none [&>option]:bg-[#0f1a30] [&>option]:text-white">
-            <option value="date">按时间</option>
-            <option value="subject">按学科</option>
-          </select>
-          <button onClick={() => setShowForm(!showForm)}
-            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${showForm ? 'bg-red-500/20 text-red-400' : 'bg-purple-500/20 text-purple-400'}`}>
-            {showForm ? <><Minus className="w-3.5 h-3.5" /> 收起</> : <><Plus className="w-3.5 h-3.5" /> 添加错题</>}
-          </button>
-        </div>
-      </div>
-
-      {showForm && <ErrorNoteForm form={form} setForm={setForm} onSubmit={handleSubmit} />}
-
-      {filtered.length === 0 ? (
-        <div className="border border-white/[0.06] rounded-lg p-6 text-center text-white/30 bg-white/[0.02]">
-          <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>{filterSubject ? `${filterSubject} 暂无错题` : '暂无错题，点击"添加错题"或"上传错题"开始'}</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {sortedGroups.map(([subject, items]) => {
-            const unmastered = items.filter(n => !n.mastery);
-            const mastered = items.filter(n => n.mastery);
-            return (
-              <div key={subject} className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                  <div className="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-400 to-blue-500" />
-                  <span className="text-sm font-semibold text-white">{subject}</span>
-                  <span className="text-xs text-white/30">{items.length} 道</span>
-                  {unmastered.length > 0 && <span className="text-xs text-amber-400/50">待巩固 {unmastered.length}</span>}
-                </div>
-                {unmastered.map(n => <ErrorNoteCard key={n.id} note={n} onToggleMastery={onToggleMastery} onDelete={onDelete} />)}
-                {showMastered && mastered.length > 0 && (
-                  <>
-                    {mastered.length > 0 && unmastered.length > 0 && (
-                      <button onClick={() => setShowMastered(false)} className="text-xs text-white/20 hover:text-white/40 ml-3 flex items-center gap-1">
-                        <Check className="w-3 h-3" /> 已掌握 {mastered.length} 道（点击隐藏）
-                      </button>
-                    )}
-                    {mastered.map(n => <ErrorNoteCard key={n.id} note={n} onToggleMastery={onToggleMastery} onDelete={onDelete} />)}
-                  </>
-                )}
-                {!showMastered && mastered.length > 0 && unmastered.length > 0 && (
-                  <button onClick={() => setShowMastered(true)} className="text-xs text-white/20 hover:text-white/40 ml-3 flex items-center gap-1">
-                    <ChevronDown className="w-3 h-3" /> 展开已掌握 {mastered.length} 道
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ErrorNoteForm({ form, setForm, onSubmit }: { form: any; setForm: (f: any) => void; onSubmit: () => void }) {
-  const [showDetail, setShowDetail] = useState(false);
-  const hasDetail = form.chapter || form.my_answer || form.correct_answer || form.error_reason || form.tags;
-
-  return (
-    <div className="border border-purple-400/10 rounded-lg p-4 space-y-3 bg-white/[0.02]">
-      {/* 核心必填：学科 + 题目，一行搞定 */}
-      <div className="flex gap-2">
-        <input value={form.subject} onChange={e => setForm((p: any) => ({ ...p, subject: e.target.value }))} placeholder="学科 *"
-          className="w-28 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30 flex-shrink-0" />
-        <input value={form.question} onChange={e => setForm((p: any) => ({ ...p, question: e.target.value }))} placeholder="题目内容 *"
-          className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-400/30" />
-        <button onClick={onSubmit} disabled={!form.subject.trim() || !form.question.trim()}
-          className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:opacity-90 flex items-center gap-1 disabled:opacity-40 flex-shrink-0">
-          <Plus className="w-4 h-4" /> 添加
-        </button>
-      </div>
-
-      {/* 可选详情：默认折叠 */}
-      <div>
-        <button onClick={() => setShowDetail(!showDetail)}
-          className="text-xs text-white/25 hover:text-white/50 flex items-center gap-1 transition-colors">
-          <ChevronDown className={`w-3 h-3 transition-transform ${showDetail ? 'rotate-180' : ''}`} />
-          {showDetail ? '收起详情' : '补充详情（可选）'}
-          {!showDetail && hasDetail && <span className="w-1.5 h-1.5 rounded-full bg-purple-400/60 ml-1" />}
-        </button>
-        {showDetail && (
-          <div className="mt-3 space-y-2.5">
-            <div className="grid grid-cols-2 gap-2">
-              <input value={form.chapter} onChange={e => setForm((p: any) => ({ ...p, chapter: e.target.value }))} placeholder="章节"
-                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
-              <input value={form.tags} onChange={e => setForm((p: any) => ({ ...p, tags: e.target.value }))} placeholder="标签（逗号分隔）"
-                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <textarea value={form.my_answer} onChange={e => setForm((p: any) => ({ ...p, my_answer: e.target.value }))} placeholder="我的答案" rows={2}
-                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
-              <textarea value={form.correct_answer} onChange={e => setForm((p: any) => ({ ...p, correct_answer: e.target.value }))} placeholder="正确答案" rows={2}
-                className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
-            </div>
-            <textarea value={form.error_reason} onChange={e => setForm((p: any) => ({ ...p, error_reason: e.target.value }))} placeholder="错误原因分析" rows={2}
-              className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-white/20 focus:outline-none resize-none" />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ErrorNoteCard({ note, onToggleMastery, onDelete }: { note: ErrorNote; onToggleMastery: (id: number, m: number) => Promise<void>; onDelete: (id: number) => Promise<void> }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className={`border border-white/[0.06] rounded-lg overflow-hidden transition-colors bg-white/[0.02] ${note.mastery ? 'opacity-50' : ''}`}>
-      <div className="flex items-start gap-3 p-3 cursor-pointer hover:bg-white/[0.02]" onClick={() => setExpanded(!expanded)}>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            {note.chapter && <span className="text-xs text-white/30">{note.chapter}</span>}
-            {note.tags?.map((t, i) => <span key={i} className="px-1.5 py-0.5 bg-amber-400/10 text-amber-400 rounded text-xs">{t}</span>)}
-          </div>
-          <p className="text-sm text-white/80 line-clamp-2">{note.question}</p>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={e => { e.stopPropagation(); onToggleMastery(note.id!, note.mastery || 0); }}
-            className={`p-1.5 rounded-lg transition-colors ${note.mastery ? 'bg-green-500/20 text-green-400' : 'bg-white/[0.04] text-white/30 hover:text-green-400'}`}>
-            <Check className="w-3.5 h-3.5" />
-          </button>
-          <button onClick={e => { e.stopPropagation(); onDelete(note.id!); }} className="p-1.5 text-white/20 hover:text-red-400 rounded-lg transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-      {expanded && (
-        <div className="px-3 pb-3 space-y-2 border-t border-white/[0.04] pt-2">
-          {note.my_answer && <div><span className="text-xs text-red-400/70">我的答案：</span><p className="text-sm text-white/60">{note.my_answer}</p></div>}
-          {note.correct_answer && <div><span className="text-xs text-green-400/70">正确答案：</span><p className="text-sm text-white/60">{note.correct_answer}</p></div>}
-          {note.error_reason && <div><span className="text-xs text-amber-400/70">错误原因：</span><p className="text-sm text-white/60">{note.error_reason}</p></div>}
-          {note.created_at && <p className="text-xs text-white/20">{note.created_at}</p>}
         </div>
       )}
     </div>

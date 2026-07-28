@@ -1,6 +1,6 @@
 // 共享类型定义
 
-export type ModuleType = 'profile' | 'resources' | 'path' | 'tutor' | 'assessment' | 'rag' | 'collaboration' | null;
+export type ModuleType = 'profile' | 'resources' | 'path' | 'tutor' | 'assessment' | 'rag' | 'collaboration' | 'quiz' | 'analytics' | null;
 
 export interface NavigationContext {
   subject?: string;
@@ -9,6 +9,7 @@ export interface NavigationContext {
   tutorSubject?: string;
   autoPlan?: boolean;
   autoGenerate?: boolean;
+  mode?: string;
 }
 
 export interface DimensionChat {
@@ -19,7 +20,7 @@ export interface DimensionChat {
 
 export interface ProfileData {
   knowledge_base: any;
-  cognitive_style: string;
+  cognitive_style: string | string[];
   learning_goals: any;
   weak_points: string[];
   learning_history: any[];
@@ -203,4 +204,64 @@ export interface PlanTask {
   type: string;  // 复习/预习/练习/备考
 }
 
-export type ProfileTab = 'profile' | 'schedule' | 'grades' | 'errors';
+export type ProfileTab = 'profile' | 'schedule';
+
+// ==================== 在线做题类型 ====================
+
+export interface QuizQuestion {
+  id: number;
+  type: 'multiple_choice' | 'fill_blank' | 'judge';
+  question: string;
+  options?: string[];
+  answer: string;
+  explanation?: string;
+  difficulty?: string;
+  knowledge_point?: string;
+}
+
+export interface QuizSession {
+  id: number;
+  subject?: string;
+  topic?: string;
+  total_questions: number;
+  correct_count: number;
+  score: number;
+  duration_seconds: number;
+  mode: string;
+  status: string;
+  created_at?: string;
+  completed_at?: string;
+  answers?: QuizAnswer[];
+}
+
+export interface QuizAnswer {
+  id: number;
+  session_id: number;
+  question_index: number;
+  question_type: string;
+  question_text: string;
+  options?: string[];
+  correct_answer: string;
+  user_answer?: string;
+  is_correct: boolean;
+  explanation?: string;
+  knowledge_point?: string;
+  difficulty?: string;
+  time_spent_seconds?: number;
+}
+
+export interface QuizStats {
+  total_sessions: number;
+  total_questions: number;
+  total_correct: number;
+  avg_score: number;
+  by_subject: Array<{ subject: string; sessions: number; avg_score: number; questions: number; correct: number }>;
+  by_difficulty: Array<{ difficulty: string; total: number; correct: number }>;
+}
+
+export interface WeakTopic {
+  knowledge_point: string;
+  total: number;
+  correct: number;
+  accuracy: number;
+}

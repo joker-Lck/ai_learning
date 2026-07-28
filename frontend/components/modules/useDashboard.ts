@@ -78,7 +78,7 @@ export function useDashboard() {
       // 尝试从 API 加载
       api.getProfile().then((res: any) => {
         if (res.success && res.data) {
-          const p = res.data;
+          const p = res.data.profile || res.data;
           if (p.major || p.cognitive_style || (p.knowledge_base && p.knowledge_base !== '{}')) {
             setProfileData(p);
             localStorage.setItem(localKey, JSON.stringify(p));
@@ -216,7 +216,7 @@ export function useDashboard() {
 
   useEffect(() => {
     if (isGuest) return;
-    if (activeModule === 'profile' && profileTab === 'errors') loadErrorNotes();
+    if (activeModule === 'profile') loadErrorNotes();
   }, [activeModule, profileTab]);
 
   const handleAddErrorNote = async (note: Omit<ErrorNote, 'id'>) => {
@@ -349,6 +349,7 @@ export function useDashboard() {
   const [learningGoal, setLearningGoal] = useState('');
   const [pathLoading, setPathLoading] = useState(false);
   const [learningPath, setLearningPath] = useState<LearningPath | null>(null);
+  const [pathStreamContent, setPathStreamContent] = useState('');
 
   // ── 智能辅导状态 ──
   const [question, setQuestion] = useState('');
@@ -512,30 +513,31 @@ export function useDashboard() {
     }
   };
 
-  // ── 学习路径处理 ──
+  // ── 学习路径处理（流式）──
   const handlePlanPath = async () => {
     setPathLoading(true);
+    setPathStreamContent('');
     try {
-      const response: any = await api.planPath({ learning_goal: learningGoal });
-      if (response?.success && response?.data) {
-        setLearningPath(response.data.path || response.data);
-
-        // 记录活动日志
-        try {
-          const logs = JSON.parse(localStorage.getItem(getActivityLogsKey()) || '[]');
-          logs.unshift({
-            id: `path-${Date.now()}`,
-            type: 'path',
-            action: '生成了学习路径',
-            detail: learningGoal,
-            time: new Date().toISOString(),
-          });
-          localStorage.setItem(getActivityLogsKey(), JSON.stringify(logs.slice(0, 50)));
-          window.dispatchEvent(new Event('activity-updated'));
-        } catch {}
-      } else {
-        alert(response?.message || '路径生成失败，请重试');
-      }
+      await api.planPathStream(
+        { learning_goal: learningGoal },
+        (delta) => setPathStreamContent(prev => prev + delta),
+        (path) => {
+          setLearningPath(path);
+          try {
+            const logs = JSON.parse(localStorage.getItem(getActivityLogsKey()) || '[]');
+            logs.unshift({
+              id: `path-${Date.now()}`,
+              type: 'path',
+              action: '生成了学习路径',
+              detail: learningGoal,
+              time: new Date().toISOString(),
+            });
+            localStorage.setItem(getActivityLogsKey(), JSON.stringify(logs.slice(0, 50)));
+            window.dispatchEvent(new Event('activity-updated'));
+          } catch {}
+        },
+        (err) => alert(err || '路径生成失败'),
+      );
     } catch (error: any) {
       alert('路径生成失败：' + (error.message || '网络错误'));
     } finally {
@@ -786,6 +788,12 @@ export function useDashboard() {
     return { success: true, data: updatedProfile };
   };
 
+  // 错题巩固：从错题本直接跳转到做题模块
+  const handleStartErrorReview = useCallback((subject?: string, count?: number) => {
+    // 通过 URL 参数传递 review 模式配置
+    router.push(`/dashboard?module=quiz&mode=review&subject=${encodeURIComponent(subject || '')}&count=${count || 10}`, { scroll: false });
+  }, [router]);
+
   return useMemo(() => ({
     user, isGuest, activeModule, setActiveModule,
     // 画像
@@ -800,13 +808,14 @@ export function useDashboard() {
     errorNotes, errorLoading, handleAddErrorNote, handleToggleMastery, handleDeleteErrorNote,
     handleImportCourses, handleImportGrades, handleImportErrors,
     handleConfirmImportCourses, handleConfirmImportGrades, handleConfirmImportErrors,
+    handleStartErrorReview,
     studyPlans, planLoading, handleGeneratePlan,
     // 资源
     subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
     difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
     resourceProgress, resourceCurrentType, resourceTotal, resourceDone,
     // 路径
-    learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath,
+    learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath, pathStreamContent,
     // 辅导
     question, setQuestion, tutorSubject, setTutorSubject, tutorLoading, tutorMessages, handleAskTutor, streamingContent,
     // 评估
@@ -829,11 +838,12 @@ export function useDashboard() {
     errorNotes, errorLoading, handleAddErrorNote, handleToggleMastery, handleDeleteErrorNote,
     handleImportCourses, handleImportGrades, handleImportErrors,
     handleConfirmImportCourses, handleConfirmImportGrades, handleConfirmImportErrors,
+    handleStartErrorReview,
     studyPlans, planLoading, handleGeneratePlan,
     subject, setSubject, topic, setTopic, selectedTypes, setSelectedTypes,
     difficulty, setDifficulty, resourceLoading, resources, handleGenerateResources, getTypeName,
     resourceProgress, resourceCurrentType, resourceTotal, resourceDone,
-    learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath,
+    learningGoal, setLearningGoal, pathLoading, learningPath, handlePlanPath, pathStreamContent,
     question, setQuestion, tutorSubject, setTutorSubject, tutorLoading, tutorMessages, handleAskTutor, streamingContent,
     assessLoading, assessment, assessTab, setAssessTab, handleAssess,
     analysisFiles, setAnalysisFiles, analysisDragOver, setAnalysisDragOver,

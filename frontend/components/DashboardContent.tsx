@@ -17,6 +17,8 @@ import TutorModule from './modules/TutorModule';
 import AssessmentModule from './modules/AssessmentModule';
 import RagKnowledgeModule from './modules/RagKnowledgeModule';
 import CollaborationModule from './modules/CollaborationModule';
+import QuizModule from './modules/QuizModule';
+import AnalyticsModule from './modules/AnalyticsModule';
 import WorkSpaceSection from './WorkSpaceSection';
 
 // 页面过渡动画 — 阻尼感
@@ -194,16 +196,10 @@ export default function DashboardContent() {
             goToNextStep={d.goToNextStep} profileTab={d.profileTab} setProfileTab={d.setProfileTab}
             currentSemester={d.currentSemester} setCurrentSemester={d.setCurrentSemester}
             semesters={d.semesters} courses={d.courses} courseLoading={d.courseLoading}
-            handleSaveCourses={d.handleSaveCourses} grades={d.grades} gradeLoading={d.gradeLoading}
-            handleSaveGrades={d.handleSaveGrades} errorNotes={d.errorNotes}
-            errorLoading={d.errorLoading} handleAddErrorNote={d.handleAddErrorNote}
-            handleToggleMastery={d.handleToggleMastery} handleDeleteErrorNote={d.handleDeleteErrorNote}
+            handleSaveCourses={d.handleSaveCourses}
             handleUpdateProfileField={d.handleUpdateProfileField}
-            handleImportCourses={d.handleImportCourses} handleImportGrades={d.handleImportGrades}
-            handleImportErrors={d.handleImportErrors}
+            handleImportCourses={d.handleImportCourses}
             handleConfirmImportCourses={d.handleConfirmImportCourses}
-            handleConfirmImportGrades={d.handleConfirmImportGrades}
-            handleConfirmImportErrors={d.handleConfirmImportErrors}
           />
         );
       case 'resources':
@@ -223,7 +219,8 @@ export default function DashboardContent() {
           <PathModule
             learningGoal={d.learningGoal} setLearningGoal={d.setLearningGoal}
             learningPath={d.learningPath} pathLoading={d.pathLoading}
-            handlePlanPath={d.handlePlanPath} studyPlans={d.studyPlans}
+            handlePlanPath={d.handlePlanPath} pathStreamContent={d.pathStreamContent}
+            studyPlans={d.studyPlans}
             planLoading={d.planLoading} handleGeneratePlan={d.handleGeneratePlan}
             onNavigateModule={navigateToModule}
           />
@@ -257,6 +254,10 @@ export default function DashboardContent() {
         return <RagKnowledgeModule />;
       case 'collaboration':
         return <CollaborationModule />;
+      case 'quiz':
+        return <QuizModule />;
+      case 'analytics':
+        return <AnalyticsModule />;
       default:
         return null;
     }

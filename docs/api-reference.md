@@ -193,8 +193,22 @@ Content-Type: application/json
 | GET | /dashboard/stats | 工作台统计 |
 | GET | /activity-logs | 活动日志 |
 | GET | /learning-recommendations | 个性化学习推荐（v8.1 升级：专业学习规划师） |
-| GET | /review-due | 待复习错题（v8.1 新增，遗忘曲线调度） |
-| GET | /review-reminder | 综合学习提醒（v8.1 新增，错题复习+计划检查） |
+| GET | /review-due | 待复习错题（v8.5 升级：SM-2 间隔重复调度） |
+| GET | /review-reminder | 综合学习提醒（v8.5 升级：基于 next_review 调度） |
+| POST | /review-submit | 提交复习结果（v8.5 新增，更新间隔重复调度） |
+
+### 在线做题
+
+| 方法 | 端点 | 功能 |
+|------|------|------|
+| POST | /quiz/start | 开始答题会话 |
+| POST | /quiz/submit | 提交单题答案（v8.5 升级：答错自动保存错题本） |
+| POST | /quiz/finish | 结束答题会话 |
+| GET | /quiz/history | 答题历史 |
+| GET | /quiz/stats | 答题统计 |
+| GET | /quiz/weak-topics | 薄弱知识点 |
+| POST | /quiz/adaptive | 自适应出题（v8.5 升级：题库复用，最多60%来自题库） |
+| POST | /quiz/import-bank | 导入题库文件 |
 
 ## 流式接口 `/api/stream`
 
@@ -202,6 +216,8 @@ Content-Type: application/json
 |------|------|------|
 | GET | /generate-resources-real | SSE 学习资源 |
 | POST | /tutor | SSE 智能辅导 |
+| POST | /quiz/adaptive | SSE 自适应出题（v8.5 新增） |
+| POST | /plan-path | SSE 学习路径生成（v8.5 新增） |
 | POST | /safety-check | 内容安全检查 |
 | POST | /fact-verify | 事实验证 |
 

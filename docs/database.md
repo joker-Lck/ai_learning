@@ -11,7 +11,7 @@
 | 数据库文件 | 用途 | 核心表 |
 |-----------|------|--------|
 | **ai_auth.db** | 认证与用户管理 | users, sessions |
-| **ai_profiles.db** | 学生画像存储 | student_profiles, course_schedules, student_grades, error_notes, study_plans |
+| **ai_profiles.db** | 学生画像存储 | student_profiles, course_schedules, student_grades, error_notes, study_plans, question_bank |
 | **ai_resources.db** | 学习资源管理 | learning_resources, resource_safety_logs |
 | **ai_paths.db** | 学习路径规划 | learning_paths, path_progress |
 | **ai_tutor.db** | 智能辅导对话 | tutor_sessions, tutor_messages, tutor_knowledge_refs |
@@ -106,16 +106,38 @@ CREATE TABLE student_grades (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
--- 错题本
+-- 错题本（v8.5 升级：新增间隔重复字段）
 CREATE TABLE error_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     subject TEXT,
+    chapter TEXT,
     question TEXT NOT NULL,
-    answer TEXT,
-    analysis TEXT,
-    mastery INTEGER DEFAULT 0,   -- 0-100 掌握度
-    tags TEXT,                    -- JSON
+    my_answer TEXT,
+    correct_answer TEXT,
+    error_reason TEXT,
+    mastery INTEGER DEFAULT 0,       -- 0=未掌握, 1=已掌握
+    tags TEXT,                        -- JSON
+    review_count INTEGER DEFAULT 0,  -- 复习次数
+    last_review TEXT,                 -- 上次复习时间
+    next_review TEXT,                 -- 下次复习时间（SM-2 调度）
+    ease_factor REAL DEFAULT 2.5,    -- 简易度因子
+    review_interval INTEGER DEFAULT 1, -- 当前复习间隔（天）
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- 题库（v8.5 新增：AI 出过的题自动存入）
+CREATE TABLE question_bank (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject TEXT NOT NULL,
+    question_type TEXT NOT NULL,
+    question_text TEXT NOT NULL,
+    options TEXT,                     -- JSON
+    correct_answer TEXT NOT NULL,
+    explanation TEXT,
+    knowledge_point TEXT,
+    difficulty TEXT DEFAULT 'medium',
+    use_count INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
 

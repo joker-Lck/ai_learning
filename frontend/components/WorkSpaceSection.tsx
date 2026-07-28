@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, memo, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Router, Lightbulb, TrendingUp,
@@ -8,7 +9,8 @@ import {
   FileText, Video, BarChart3,
   ArrowRight, Clock, Zap, Users, ChevronRight,
   Sparkles, Target, X, GitBranch, FileCode, Code, BookOpen,
-  Maximize2, Loader2, Timer, Play, Pause, RotateCcw, Upload,
+  Maximize2, Loader2, Upload,
+  CheckSquare, PieChart,
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import type { ModuleType, NavigationContext } from './modules/types';
@@ -109,11 +111,14 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
         const s = res.data.scores;
         const scores = {
           knowledge_base: s.knowledge_base || 3,
+          cognitive_style: s.cognitive_style || 3,
           learning_goals: s.learning_goals || 3,
-          memory_ability: s.memory_ability || 3,
-          self_control: s.self_control || 3,
-          focus: s.focus || 3,
-          learning_depth: s.learning_depth || 3,
+          interest_areas: s.interest_areas || 3,
+          preferred_resources: s.preferred_resources || 3,
+          learning_history: s.learning_history || 3,
+          weak_points: s.weak_points || 3,
+          learning_breadth: s.learning_breadth || 3,
+          learning_stage: s.learning_stage || 3,
         };
         setAiScores(scores);
         setAiReasoning(s.reasoning || '');
@@ -131,11 +136,14 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
     if (aiScores) {
       return [
         { dimension: '知识基础', value: aiScores.knowledge_base, fullMark: 5 },
+        { dimension: '认知风格', value: aiScores.cognitive_style, fullMark: 5 },
         { dimension: '学习目标', value: aiScores.learning_goals, fullMark: 5 },
-        { dimension: '记忆能力', value: aiScores.memory_ability, fullMark: 5 },
-        { dimension: '自控力', value: aiScores.self_control, fullMark: 5 },
-        { dimension: '专注度', value: aiScores.focus, fullMark: 5 },
-        { dimension: '学习深度', value: aiScores.learning_depth, fullMark: 5 },
+        { dimension: '兴趣领域', value: aiScores.interest_areas, fullMark: 5 },
+        { dimension: '资源偏好', value: aiScores.preferred_resources, fullMark: 5 },
+        { dimension: '学习历史', value: aiScores.learning_history, fullMark: 5 },
+        { dimension: '薄弱环节', value: aiScores.weak_points, fullMark: 5 },
+        { dimension: '学习广度', value: aiScores.learning_breadth, fullMark: 5 },
+        { dimension: '学习阶段', value: aiScores.learning_stage, fullMark: 5 },
       ];
     }
     return computeRadarData(profile);
@@ -157,9 +165,9 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
           {evaluating ? '评定中...' : 'AI 评定'}
         </button>
       </div>
-      <div style={{ height: 200 }}>
+      <div style={{ height: 240 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
+          <RadarChart cx="50%" cy="50%" outerRadius="65%" data={data}>
             <PolarGrid stroke="rgba(255,255,255,0.06)" />
             <PolarAngleAxis dataKey="dimension" tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 11 }} />
             <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
@@ -494,7 +502,15 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
 
   const dimLabels: Record<string, string> = {
     knowledge_base: '知识基础',
+    cognitive_style: '认知风格',
     learning_goals: '学习目标',
+    interest_areas: '兴趣领域',
+    preferred_resources: '资源偏好',
+    learning_history: '学习历史',
+    weak_points: '薄弱环节',
+    learning_breadth: '学习广度',
+    learning_stage: '学习阶段',
+    // 兼容旧版
     memory_ability: '记忆能力',
     self_control: '自控力',
     focus: '专注度',
@@ -553,7 +569,7 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
           </div>
         </div>
 
-        {/* 6 维度进度条 */}
+        {/* 9 维度进度条 */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
           {Object.entries(data.dimensions).map(([key, val]) => (
             <div key={key} className="flex items-center gap-2">
@@ -626,182 +642,6 @@ function RecentGeneratedList({ resources, onPreview }: { resources: ApiResource[
   );
 }
 
-function PomodoroTimer() {
-  const DURATIONS = [15, 25, 30, 45, 60];
-  const [focusMin, setFocusMin] = useState(() => {
-    const saved = localStorage.getItem('pomodoro_focus_min');
-    return saved ? Number(saved) : 25;
-  });
-  const [breakMin, setBreakMin] = useState(() => {
-    const saved = localStorage.getItem('pomodoro_break_min');
-    return saved ? Number(saved) : 5;
-  });
-  const [customFocus, setCustomFocus] = useState('');
-  const [customBreak, setCustomBreak] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
-  const [seconds, setSeconds] = useState(focusMin * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isBreak, setIsBreak] = useState(false);
-  const [sessions, setSessions] = useState(0);
-  const [todayMinutes, setTodayMinutes] = useState(0);
-
-  useEffect(() => {
-    const key = `pomodoro_${new Date().toISOString().slice(0, 10)}`;
-    const saved = localStorage.getItem(key);
-    if (saved) setTodayMinutes(Number(saved));
-  }, []);
-
-  const saveToday = (m: number) => {
-    setTodayMinutes(m);
-    localStorage.setItem(`pomodoro_${new Date().toISOString().slice(0, 10)}`, String(m));
-  };
-
-  const applyFocus = (min: number) => {
-    if (isRunning || min < 1 || min > 180) return;
-    setFocusMin(min);
-    setSeconds(min * 60);
-    setIsBreak(false);
-    localStorage.setItem('pomodoro_focus_min', String(min));
-  };
-
-  const applyBreak = (min: number) => {
-    if (min < 1 || min > 30) return;
-    setBreakMin(min);
-    localStorage.setItem('pomodoro_break_min', String(min));
-  };
-
-  useEffect(() => {
-    if (!isRunning) return;
-    const timer = setInterval(() => {
-      setSeconds(prev => {
-        if (prev <= 1) {
-          setIsRunning(false);
-          if (!isBreak) {
-            setSessions(s => s + 1);
-            saveToday(todayMinutes + focusMin);
-            setIsBreak(true);
-            setSeconds(breakMin * 60);
-          } else {
-            setIsBreak(false);
-            setSeconds(focusMin * 60);
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isRunning, isBreak, todayMinutes, focusMin, breakMin]);
-
-  const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-  const total = isBreak ? breakMin * 60 : focusMin * 60;
-  const progress = (total - seconds) / total;
-
-  return (
-    <div className="p-4 rounded-xl bg-[#1a1a27] border border-white/[0.05]">
-      <div className="flex items-center gap-2 mb-3">
-        <Timer className="w-4 h-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-white">番茄钟</h3>
-        <button onClick={() => setShowSettings(!showSettings)}
-          className="ml-auto text-[10px] text-white/20 hover:text-white/50 transition-colors">
-          {showSettings ? '收起设置' : '设置'}
-        </button>
-        <span className="text-[10px] text-white/20">今日 {todayMinutes} 分钟</span>
-      </div>
-
-      {/* 设置面板 */}
-      {showSettings && (
-        <div className="mb-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.05] space-y-2.5">
-          {/* 专注时长 */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-white/30 w-12 flex-shrink-0">专注</span>
-            <div className="flex items-center gap-1">
-              {DURATIONS.map(d => (
-                <button key={d} onClick={() => { applyFocus(d); setCustomFocus(''); }} disabled={isRunning}
-                  className={`px-2 py-0.5 rounded text-[10px] transition-all disabled:opacity-40 ${focusMin === d && !customFocus ? 'bg-purple-500/20 text-purple-400 border border-purple-400/20' : 'bg-white/[0.04] text-white/30 hover:text-white/50'}`}>
-                  {d}
-                </button>
-              ))}
-              <input
-                type="number" min="1" max="180" placeholder="自定"
-                value={customFocus}
-                onChange={e => {
-                  setCustomFocus(e.target.value);
-                  const v = parseInt(e.target.value);
-                  if (v >= 1 && v <= 180) applyFocus(v);
-                }}
-                className="w-14 px-1.5 py-0.5 rounded text-[10px] bg-white/[0.04] border border-white/[0.06] text-white text-center placeholder:text-white/15 focus:outline-none focus:border-purple-400/30"
-              />
-              <span className="text-[10px] text-white/20">分</span>
-            </div>
-          </div>
-          {/* 休息时长 */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-white/30 w-12 flex-shrink-0">休息</span>
-            <div className="flex items-center gap-1">
-              {[3, 5, 10, 15].map(d => (
-                <button key={d} onClick={() => { applyBreak(d); setCustomBreak(''); }}
-                  className={`px-2 py-0.5 rounded text-[10px] transition-all ${breakMin === d && !customBreak ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-400/20' : 'bg-white/[0.04] text-white/30 hover:text-white/50'}`}>
-                  {d}
-                </button>
-              ))}
-              <input
-                type="number" min="1" max="30" placeholder="自定"
-                value={customBreak}
-                onChange={e => {
-                  setCustomBreak(e.target.value);
-                  const v = parseInt(e.target.value);
-                  if (v >= 1 && v <= 30) applyBreak(v);
-                }}
-                className="w-14 px-1.5 py-0.5 rounded text-[10px] bg-white/[0.04] border border-white/[0.06] text-white text-center placeholder:text-white/15 focus:outline-none focus:border-emerald-400/30"
-              />
-              <span className="text-[10px] text-white/20">分</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 当前状态条 */}
-      {!showSettings && (
-        <div className="flex items-center gap-3 mb-3 text-[10px] text-white/20">
-          <span>专注 {focusMin} 分钟</span>
-          <span>·</span>
-          <span>休息 {breakMin} 分钟</span>
-        </div>
-      )}
-
-      <div className="flex items-center gap-4">
-        <div className="relative w-16 h-16 flex-shrink-0">
-          <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
-            <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
-            <circle cx="32" cy="32" r="28" fill="none"
-              stroke={isBreak ? '#34d399' : '#a78bfa'} strokeWidth="4"
-              strokeDasharray={`${progress * 175.9} 175.9`}
-              strokeLinecap="round" className="transition-all duration-1000" />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-lg font-bold text-white font-mono">{formatTime(seconds)}</span>
-          </div>
-        </div>
-        <div className="flex-1">
-          <div className="text-xs text-white/40 mb-1">{isBreak ? '休息时间' : '专注时间'}</div>
-          <div className="text-xs text-white/20 mb-2">已完成 {sessions} 个番茄</div>
-          <div className="flex gap-1.5">
-            <button onClick={() => setIsRunning(!isRunning)}
-              className={`px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 ${isRunning ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-              {isRunning ? <><Pause className="w-3 h-3" /> 暂停</> : <><Play className="w-3 h-3" /> 开始</>}
-            </button>
-            <button onClick={() => { setIsRunning(false); setIsBreak(false); setSeconds(focusMin * 60); }}
-              className="px-2 py-1.5 rounded-lg text-xs bg-white/[0.04] text-white/30 hover:text-white/60">
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function SuggestionCard({ recommendations, onNavigateModule }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
   const categoryConfig: Record<string, { icon: typeof Lightbulb; color: string; bgColor: string; borderColor: string; label: string }> = {
     weakness:  { icon: Zap, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', label: '薄弱' },
@@ -864,12 +704,14 @@ function QuickStartCard({ onNavigateModule }: { onNavigateModule: (m: ModuleType
     { label: '学习资源', icon: Brain, bg: 'bg-cyan-500/15', border: 'border-cyan-400/30 hover:border-cyan-400/50', iconBg: 'bg-cyan-500/10', iconText: 'text-cyan-400', labelText: 'text-cyan-300', moduleId: 'resources' as ModuleType },
     { label: '学习路径', icon: Router, bg: 'bg-blue-500/15', border: 'border-blue-400/30 hover:border-blue-400/50', iconBg: 'bg-blue-500/10', iconText: 'text-blue-400', labelText: 'text-blue-300', moduleId: 'path' as ModuleType },
     { label: '学习画像', icon: BarChart3, bg: 'bg-emerald-500/15', border: 'border-emerald-400/30 hover:border-emerald-400/50', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-400', labelText: 'text-emerald-300', moduleId: 'profile' as ModuleType },
+    { label: '在线做题', icon: CheckSquare, bg: 'bg-amber-500/15', border: 'border-amber-400/30 hover:border-amber-400/50', iconBg: 'bg-amber-500/10', iconText: 'text-amber-400', labelText: 'text-amber-300', moduleId: 'quiz' as ModuleType },
+    { label: '学情分析', icon: PieChart, bg: 'bg-indigo-500/15', border: 'border-indigo-400/30 hover:border-indigo-400/50', iconBg: 'bg-indigo-500/10', iconText: 'text-indigo-400', labelText: 'text-indigo-300', moduleId: 'analytics' as ModuleType },
     { label: '学习小组', icon: Users, bg: 'bg-violet-500/15', border: 'border-violet-400/30 hover:border-violet-400/50', iconBg: 'bg-violet-500/10', iconText: 'text-violet-400', labelText: 'text-violet-300', moduleId: 'collaboration' as ModuleType },
     { label: '知识库', icon: Database, bg: 'bg-rose-500/15', border: 'border-rose-400/30 hover:border-rose-400/50', iconBg: 'bg-rose-500/10', iconText: 'text-rose-400', labelText: 'text-rose-300', moduleId: 'rag' as ModuleType },
   ];
   return (
     <div className="mb-6">
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         {quickItems.map((item, i) => {
           const Icon = item.icon;
           return (
@@ -904,6 +746,7 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
     assessment:        { icon: TrendingUp, color: 'bg-amber-500/15 text-amber-400', label: '学习画像', moduleId: 'profile' },
     tutor:             { icon: Lightbulb, color: 'bg-pink-500/15 text-pink-400', label: '智能辅导', moduleId: 'tutor' },
     tutor_query:       { icon: Lightbulb, color: 'bg-pink-500/15 text-pink-400', label: '智能辅导', moduleId: 'tutor' },
+    quiz:              { icon: CheckSquare, color: 'bg-amber-500/15 text-amber-400', label: '在线做题', moduleId: 'quiz' },
     profile:           { icon: UserCheck, color: 'bg-purple-500/15 text-purple-400', label: '学习画像', moduleId: 'profile' },
     session:           { icon: Clock, color: 'bg-white/10 text-white/40', label: '页面浏览', moduleId: 'profile' },
   };
@@ -953,6 +796,7 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
    ═══════════════════════════════════════════ */
 
 export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSectionProps) {
+  const router = useRouter();
   const [previewResource, setPreviewResource] = useState<ApiResource | null>(null);
   const [resources, setResources] = useState<ApiResource[]>([]);
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -961,6 +805,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [dueCount, setDueCount] = useState(0);
 
   // 新用户引导检测
   useEffect(() => {
@@ -1007,11 +852,12 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
     const loadAll = async () => {
       setLoading(true);
       try {
-        const [resRes, recRes, profileRes, statsRes] = await Promise.allSettled([
+        const [resRes, recRes, profileRes, statsRes, dueRes] = await Promise.allSettled([
           api.getResources({ limit: 12 }),
           api.getLearningRecommendations(),
           api.getProfile(),
           api.getDashboardStats(),
+          api.getReviewDue(undefined, 50),
         ]);
 
         if (resRes.status === 'fulfilled' && (resRes.value as any)?.success) {
@@ -1031,10 +877,14 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
           })));
         }
         if (profileRes.status === 'fulfilled' && (profileRes.value as any)?.success) {
-          setProfile((profileRes.value as any).data || null);
+          const pData = (profileRes.value as any).data;
+          setProfile(pData?.profile || pData || null);
         }
         if (statsRes.status === 'fulfilled' && (statsRes.value as any)?.success) {
           setStats((statsRes.value as any).data || null);
+        }
+        if (dueRes.status === 'fulfilled' && (dueRes.value as any)?.success) {
+          setDueCount((dueRes.value as any).data?.total_due || 0);
         }
       } catch {}
 
@@ -1075,6 +925,30 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
         <div className="px-8 pt-7 pb-8 max-w-[1200px] mx-auto">
           <Header profile={profile} stats={stats} />
           <QuickStartCard onNavigateModule={onNavigateModule} />
+
+          {/* 待复习提醒 */}
+          {dueCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-5 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 flex items-center justify-between cursor-pointer hover:bg-amber-500/10 transition-colors"
+              onClick={() => router.push('/dashboard?module=quiz&mode=review', { scroll: false })}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-white">{dueCount} 道错题待复习</div>
+                  <div className="text-xs text-white/40">根据遗忘曲线，现在是最佳复习时间</div>
+                </div>
+              </div>
+              <div className="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 text-sm font-medium hover:bg-amber-500/30 transition-colors">
+                开始复习
+              </div>
+            </motion.div>
+          )}
+
           <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
 
           <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
@@ -1084,7 +958,6 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
             </div>
             <div className="flex-[3] min-w-0 flex flex-col gap-5">
               <DashboardRadarChart profile={profile} />
-              <PomodoroTimer />
             </div>
           </div>
         </div>

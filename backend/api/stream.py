@@ -526,3 +526,210 @@ async def stream_tutor_query(
             "Content-Encoding": "identity",
         },
     )
+
+
+# ── 流式自适应出题 ──
+
+@router.post("/quiz/adaptive")
+async def stream_quiz_adaptive(
+    input_data: dict[str, Any],
+    user: dict = Depends(require_auth),
+):
+    """
+    流式自适应出题 — 先从题库取，不足时AI流式生成
+
+    请求体: { "subject": "数学", "count": 10 }
+    SSE 事件:
+      data: {"type": "progress", "message": "正在从题库查找..."}
+      data: {"type": "questions", "questions": [...], "source": "bank"}
+      data: {"type": "complete", "questions": [...], "source": "mixed"}
+      data: {"type": "error", "message": "..."}
+    """
+    from data.dao import get_quiz_dao
+    from core.json_utils import safe_parse_json
+
+    subject = input_data.get("subject") or "综合"
+    count = input_data.get("count", 10)
+    user_id = user.get("id", 0)
+
+    def _sse(data: dict) -> str:
+        return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    async def event_generator():
+        quiz_dao = get_quiz_dao()
+
+        # 1. 从题库取题（最多占60%，确保用户总能遇到新题）
+        yield _sse({"type": "progress", "message": "正在从题库查找..."})
+        bank_cap = max(1, int(count * 0.6))
+        bank_questions = quiz_dao.get_from_bank(subject=subject, count=bank_cap)
+        bank_take = min(len(bank_questions), bank_cap)
+
+        # 2. 剩余由AI流式生成
+        need = count - bank_take
+        if bank_take > 0:
+            yield _sse({"type": "progress", "message": f"题库复用 {bank_take} 题，AI 补充生成 {need} 题..."})
+        else:
+            yield _sse({"type": "progress", "message": f"AI 生成 {need} 道新题..."})
+
+        weak_topics = quiz_dao.get_weak_topics(user_id, limit=5)
+        weak_info = ""
+        if weak_topics:
+            weak_info = "学生薄弱知识点：\n"
+            for t in weak_topics:
+                weak_info += f"- {t['knowledge_point']}：正确率 {t['accuracy']}%\n"
+
+        prompt = f"""请为{subject}学科生成 {need} 道练习题。
+{weak_info}
+要求：题型包含选择题(type="multiple_choice")、判断题(type="judge")、填空题(type="fill_blank")。
+选择题options格式：["A. xxx", "B. xxx", "C. xxx", "D. xxx"]，answer填字母如"A"。
+判断题options留空数组，answer填"true"或"false"。
+填空题options留空数组，answer填答案文本。
+
+只输出JSON，不要输出其他内容：
+{{"questions":[{{"id":1,"type":"multiple_choice","question":"...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A","explanation":"...","difficulty":"easy","knowledge_point":"..."}}]}}"""
+
+        try:
+            full_text = ""
+            for chunk in qa_service.call_ai_stream(prompt, max_tokens=2500):
+                full_text += chunk
+                yield _sse({"type": "delta", "content": chunk})
+
+            # 解析AI返回的JSON
+            quiz_data = safe_parse_json(full_text)
+            ai_questions = []
+            if quiz_data and isinstance(quiz_data, dict):
+                ai_questions = quiz_data.get("questions", [])
+
+            if ai_questions:
+                saved = quiz_dao.save_to_bank(subject, ai_questions)
+                info(f"流式出题存入题库 {saved} 题")
+
+            all_questions = bank_questions[:bank_take] + ai_questions
+            yield _sse({"type": "questions", "questions": all_questions[:count], "source": "mixed" if bank_take else "ai"})
+            yield _sse({"type": "complete"})
+        except Exception as e:
+            error(f"流式出题失败: {e}")
+            if bank_take:
+                yield _sse({"type": "questions", "questions": bank_questions[:bank_take], "source": "bank"})
+                yield _sse({"type": "complete"})
+            else:
+                yield _sse({"type": "error", "message": f"出题失败: {e}"})
+
+    async def wrapped_generator():
+        async for event in sse_generator.wrap_with_heartbeat(event_generator()):
+            yield event
+
+    return StreamingResponse(
+        wrapped_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no", "Content-Encoding": "identity"},
+    )
+
+
+# ── 流式学习路径生成 ──
+
+@router.post("/plan-path")
+async def stream_plan_path(
+    input_data: dict[str, Any],
+    user: dict = Depends(get_current_user),
+):
+    """
+    流式学习路径生成 — SSE逐字推送
+
+    请求体: { "learning_goal": "掌握Python数据分析" }
+    SSE 事件:
+      data: {"type": "delta", "content": "增量文本"}
+      data: {"type": "complete", "path": {...}}
+      data: {"type": "error", "message": "..."}
+    """
+    learning_goal = input_data.get("learning_goal", "").strip()
+    if not learning_goal:
+        raise HTTPException(status_code=400, detail="学习目标不能为空")
+
+    user_id = user.get("id", 0)
+
+    def _sse(data: dict) -> str:
+        return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    async def event_generator():
+        from services.profile_agent import ProfileAgent
+        from core.json_utils import safe_parse_json
+
+        profile_agent = ProfileAgent()
+        profile_result = profile_agent.get_or_build_profile(user_id)
+        profile = profile_result.get("profile", {})
+
+        cognitive_style = profile.get("cognitive_style", "visual")
+        weak_points = profile.get("weak_points", [])
+        preferred_resources = profile.get("preferred_resources", ["document"])
+
+        prompt = f"""你是一个专业的学习规划师。请为学生规划一个个性化的学习路径。
+
+学习目标: {learning_goal}
+学生特征:
+- 认知风格: {cognitive_style}
+- 薄弱点: {', '.join(weak_points[:3]) if weak_points else '无'}
+- 资源偏好: {', '.join(preferred_resources[:3])}
+
+请严格按照以下JSON格式输出学习路径：
+{{
+  "path_name": "路径名称",
+  "estimated_hours": 总时长数字,
+  "total_steps": 步骤数,
+  "steps": [
+    {{
+      "step_id": 1,
+      "title": "步骤标题",
+      "description": "详细描述",
+      "learning_objective": "学习目标",
+      "estimated_time": 预计分钟数,
+      "resource_type": "document/mindmap/quiz/video/animation/code_case",
+      "prerequisites": []
+    }}
+  ]
+}}
+
+要求: 生成4-8个具体的学习步骤，每个步骤20-60分钟，总时长2-6小时。只输出JSON。"""
+
+        try:
+            full_text = ""
+            for chunk in qa_service.call_ai_stream(prompt, max_tokens=2500):
+                full_text += chunk
+                yield _sse({"type": "delta", "content": chunk})
+
+            # 解析路径JSON
+            path_data = safe_parse_json(full_text)
+            if path_data and isinstance(path_data, dict):
+                steps = path_data.get("steps", [])
+                result_path = {
+                    "goal": learning_goal,
+                    "total_steps": path_data.get("total_steps", len(steps)),
+                    "estimated_duration": f"{path_data.get('estimated_hours', 0)}小时",
+                    "steps": [
+                        {
+                            "step_number": s.get("step_id", i + 1),
+                            "title": s.get("title", f"步骤 {i + 1}"),
+                            "description": s.get("description", s.get("learning_objective", "")),
+                            "estimated_time": f"{s.get('estimated_time', 30)}分钟",
+                            "prerequisites": s.get("prerequisites", []),
+                            "resources": [s.get("resource_type", "")] if s.get("resource_type") else [],
+                        }
+                        for i, s in enumerate(steps)
+                    ],
+                }
+                yield _sse({"type": "complete", "path": result_path})
+            else:
+                yield _sse({"type": "complete", "path": {"goal": learning_goal, "total_steps": 0, "estimated_duration": "0小时", "steps": []}})
+        except Exception as e:
+            error(f"流式路径生成失败: {e}")
+            yield _sse({"type": "error", "message": f"路径生成失败: {e}"})
+
+    async def wrapped_generator():
+        async for event in sse_generator.wrap_with_heartbeat(event_generator()):
+            yield event
+
+    return StreamingResponse(
+        wrapped_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no", "Content-Encoding": "identity"},
+    )

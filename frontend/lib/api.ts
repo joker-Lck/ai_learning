@@ -230,6 +230,22 @@ class ApiClient {
     return this.request('/agent/delete-error-note', { method: 'POST', body: { note_id: noteId } });
   }
 
+  // ── 间隔重复复习 ──
+  async getReviewDue(subject?: string, limit = 10) {
+    const params = new URLSearchParams();
+    if (subject) params.set('subject', subject);
+    params.set('limit', String(limit));
+    return this.request(`/agent/review-due?${params}`);
+  }
+
+  async submitReviewResult(noteId: number, isCorrect: boolean) {
+    return this.request('/agent/review-submit', { method: 'POST', body: { note_id: noteId, is_correct: isCorrect } });
+  }
+
+  async getReviewReminder() {
+    return this.request('/agent/review-reminder');
+  }
+
   // ── 学习计划 ──
   async generateStudyPlan(data: { semester: string; plan_type: string; custom_goal?: string; exam_date?: string; exam_subjects?: string[] }) {
     return this.request('/agent/generate-study-plan', { method: 'POST', body: data, timeout: 60000 });
@@ -459,6 +475,128 @@ class ApiClient {
     }
   }
 
+  async quizAdaptiveStream(
+    data: { subject?: string; count?: number },
+    onDelta: (chunk: string) => void,
+    onQuestions: (questions: any[], source: string) => void,
+    onDone: () => void,
+    onError: (error: string) => void,
+  ) {
+    const token = this.getToken();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+    try {
+      const response = await fetch(`${API_BASE}/stream/quiz/adaptive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `请求失败 (${response.status})`);
+      }
+
+      const body = response.body;
+      if (!body) throw new Error('Response body is null');
+
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const evt = JSON.parse(line.slice(6));
+            switch (evt.type) {
+              case 'progress': break;
+              case 'delta': onDelta(evt.content); break;
+              case 'questions': onQuestions(evt.questions, evt.source); break;
+              case 'complete': onDone(); break;
+              case 'error': onError(evt.message); return;
+            }
+          } catch { /* skip */ }
+        }
+      }
+      onDone();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      onError(err.name === 'AbortError' ? '出题超时，请稍后重试' : (err.message || '网络错误'));
+    }
+  }
+
+  async planPathStream(
+    data: { learning_goal: string },
+    onDelta: (chunk: string) => void,
+    onDone: (path: any) => void,
+    onError: (error: string) => void,
+  ) {
+    const token = this.getToken();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+    try {
+      const response = await fetch(`${API_BASE}/stream/plan-path`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `请求失败 (${response.status})`);
+      }
+
+      const body = response.body;
+      if (!body) throw new Error('Response body is null');
+
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const evt = JSON.parse(line.slice(6));
+            switch (evt.type) {
+              case 'delta': onDelta(evt.content); break;
+              case 'complete': onDone(evt.path); break;
+              case 'error': onError(evt.message); return;
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      onError(err.name === 'AbortError' ? '路径生成超时，请稍后重试' : (err.message || '网络错误'));
+    }
+  }
+
   async generateCoursewareStream(
     topic: string,
     requirements: string,
@@ -620,6 +758,92 @@ class ApiClient {
       limit: String(limit),
     });
     return this.request(`/agent/books/recommend?${params}`);
+  }
+
+  // ==================== 在线做题 API ====================
+
+  async quizStart(data: { subject?: string; topic?: string; mode?: string; resource_id?: number; questions: any[] }) {
+    return this.request('/agent/quiz/start', { method: 'POST', body: data });
+  }
+
+  async quizSubmit(data: {
+    session_id: number; question_index: number; question_type: string;
+    question_text: string; options?: string[]; correct_answer: string;
+    user_answer: string; explanation?: string; knowledge_point?: string;
+    difficulty?: string; time_spent?: number;
+  }) {
+    return this.request('/agent/quiz/submit', { method: 'POST', body: data });
+  }
+
+  async quizFinish(sessionId: number) {
+    return this.request('/agent/quiz/finish', { method: 'POST', body: { session_id: sessionId } });
+  }
+
+  async quizHistory(limit = 20, offset = 0) {
+    return this.request(`/agent/quiz/history?limit=${limit}&offset=${offset}`);
+  }
+
+  async quizSessionDetail(sessionId: number) {
+    return this.request(`/agent/quiz/session/${sessionId}`);
+  }
+
+  async quizStats(subject?: string) {
+    const q = subject ? `?subject=${encodeURIComponent(subject)}` : '';
+    return this.request(`/agent/quiz/stats${q}`);
+  }
+
+  async quizWeakTopics(limit = 10) {
+    return this.request(`/agent/quiz/weak-topics?limit=${limit}`);
+  }
+
+  async quizAdaptive(data: { subject?: string; count?: number }) {
+    return this.request('/agent/quiz/adaptive', { method: 'POST', body: data, timeout: 120000 });
+  }
+
+  async quizImportBank(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.upload('/agent/quiz/import-bank', formData);
+  }
+
+  // ==================== 学情分析 API ====================
+
+  async analyticsOverview() {
+    return this.request('/agent/analytics/overview');
+  }
+
+  async analyticsSubjectBreakdown() {
+    return this.request('/agent/analytics/subject-breakdown');
+  }
+
+  async analyticsResourceTypeBreakdown() {
+    return this.request('/agent/analytics/resource-type-breakdown');
+  }
+
+  async analyticsStudyTrend(days = 30) {
+    return this.request(`/agent/analytics/study-trend?days=${days}`);
+  }
+
+  async analyticsQuizTrend(days = 30) {
+    return this.request(`/agent/analytics/quiz-trend?days=${days}`);
+  }
+
+  async analyticsKnowledgeMastery() {
+    return this.request('/agent/analytics/knowledge-mastery');
+  }
+
+  async analyticsWeeklyReport() {
+    return this.request('/agent/analytics/weekly-report');
+  }
+
+  // ==================== 画像评估做题 API ====================
+
+  async getProfileAssessmentQuiz() {
+    return this.request('/agent/profile/assessment-quiz');
+  }
+
+  async submitProfileAssessment(answers: Record<number, string>) {
+    return this.request('/agent/profile/submit-assessment', { method: 'POST', body: { answers }, timeout: 60000 });
   }
 }
 

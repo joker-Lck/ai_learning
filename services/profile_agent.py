@@ -378,3 +378,164 @@ class ProfileAgent:
         except Exception as e:
             error(f"更新画像字段失败: {e}")
             return {"success": False, "message": str(e)}
+
+    def get_assessment_quiz(self) -> list[dict]:
+        """返回固定的画像评估题目（15题，覆盖9个维度）"""
+        return [
+            # 知识基础 (knowledge_base)
+            {"id": 1, "type": "multiple_choice", "dimension": "knowledge_base",
+             "question": "你目前对编程的掌握程度如何？",
+             "options": ["A. 完全零基础", "B. 了解基本概念（变量、循环）", "C. 能独立完成简单项目", "D. 有丰富开发经验"],
+             "mapping": {"A": "入门", "B": "初级", "C": "中级", "D": "高级"}},
+            {"id": 2, "type": "multiple_choice", "dimension": "knowledge_base",
+             "question": "以下哪个概念你最熟悉？",
+             "options": ["A. 数据结构与算法", "B. Web 前后端开发", "C. 机器学习/深度学习", "D. 都不太熟悉"],
+             "mapping": {"A": "计算机基础扎实", "B": "工程实践能力强", "C": "AI/ML方向", "D": "需要全面学习"}},
+            {"id": 3, "type": "multiple_choice", "dimension": "knowledge_base",
+             "question": "你能独立阅读英文技术文档吗？",
+             "options": ["A. 完全不行", "B. 借助翻译工具可以", "C. 大部分能读懂", "D. 没有问题"],
+             "mapping": {"A": "入门", "B": "初级", "C": "中级", "D": "高级"}},
+
+            # 认知风格 (cognitive_style)
+            {"id": 4, "type": "multiple_choice", "dimension": "cognitive_style",
+             "question": "你更喜欢哪种学习方式？",
+             "options": ["A. 看视频/图解", "B. 听讲解/讨论", "C. 动手实践/写代码", "D. 阅读文档/书籍"],
+             "mapping": {"A": "视觉型", "B": "听觉型", "C": "动觉型", "D": "阅读型"}},
+            {"id": 5, "type": "multiple_choice", "dimension": "cognitive_style",
+             "question": "遇到新知识时，你倾向于？",
+             "options": ["A. 先看整体框架再深入细节", "B. 先动手试试再总结规律", "C. 找人讨论交流", "D. 一步步按教程来"],
+             "mapping": {"A": "全局型", "B": "探索型", "C": "社交型", "D": "顺序型"}},
+
+            # 学习目标 (learning_goals)
+            {"id": 6, "type": "multiple_choice", "dimension": "learning_goals",
+             "question": "你目前最主要的学习目标是什么？",
+             "options": ["A. 通过课程考试", "B. 找工作/实习", "C. 完成项目/毕设", "D. 个人兴趣/提升"],
+             "mapping": {"A": "考试导向", "B": "就业导向", "C": "项目导向", "D": "兴趣导向"}},
+            {"id": 7, "type": "multiple_choice", "dimension": "learning_goals",
+             "question": "你希望在多长时间内达到目标？",
+             "options": ["A. 1个月内", "B. 1-3个月", "C. 3-6个月", "D. 不着急，长期学习"],
+             "mapping": {"A": "短期冲刺", "B": "中期规划", "C": "稳步提升", "D": "长期积累"}},
+
+            # 兴趣领域 (interest_areas)
+            {"id": 8, "type": "multiple_choice", "dimension": "interest_areas",
+             "question": "你对以下哪个方向最感兴趣？",
+             "options": ["A. 人工智能/机器学习", "B. Web/App 开发", "C. 数据分析/可视化", "D. 网络安全/系统"],
+             "mapping": {"A": "AI/ML", "B": "软件开发", "C": "数据科学", "D": "系统安全"}},
+            {"id": 9, "type": "multiple_choice", "dimension": "interest_areas",
+             "question": "你最喜欢什么类型的项目？",
+             "options": ["A. 做出好看的产品界面", "B. 解决复杂算法问题", "C. 分析数据发现规律", "D. 搭建稳定可靠的系统"],
+             "mapping": {"A": "前端/设计", "B": "算法", "C": "数据分析", "D": "后端/架构"}},
+
+            # 资源偏好 (preferred_resources)
+            {"id": 10, "type": "multiple_choice", "dimension": "preferred_resources",
+             "question": "你最常使用的学习资源是？",
+             "options": ["A. 视频课程（B站/MOOC）", "B. 技术博客/文档", "C. 练习平台（力扣/牛客）", "D. AI 工具（ChatGPT等）"],
+             "mapping": {"A": "视频课程", "B": "文档博客", "C": "刷题平台", "D": "AI辅助"}},
+
+            # 学习历史 (learning_history)
+            {"id": 11, "type": "multiple_choice", "dimension": "learning_history",
+             "question": "你每天大概花多少时间学习？",
+             "options": ["A. 不到1小时", "B. 1-2小时", "C. 2-4小时", "D. 4小时以上"],
+             "mapping": {"A": "轻度", "B": "中度", "C": "较重度", "D": "重度"}},
+            {"id": 12, "type": "multiple_choice", "dimension": "learning_history",
+             "question": "你目前学过几门编程相关课程？",
+             "options": ["A. 0-1门", "B. 2-3门", "C. 4-6门", "D. 7门以上"],
+             "mapping": {"A": "入门阶段", "B": "基础阶段", "C": "进阶阶段", "D": "丰富经验"}},
+
+            # 易错点偏好 (weak_points)
+            {"id": 13, "type": "multiple_choice", "dimension": "weak_points",
+             "question": "你在学习中最常遇到的困难是？",
+             "options": ["A. 理论概念抽象难懂", "B. 代码实现不知从何下手", "C. 调试排错花很长时间", "D. 学了容易忘"],
+             "mapping": {"A": "理论薄弱", "B": "实践薄弱", "C": "调试能力弱", "D": "记忆巩固弱"}},
+
+            # 专业/年级
+            {"id": 14, "type": "multiple_choice", "dimension": "major",
+             "question": "你的专业方向是？",
+             "options": ["A. 计算机/软件工程", "B. 数据科学/统计", "C. 电子信息/自动化", "D. 其他专业"],
+             "mapping": {"A": "计算机科学与技术", "B": "数据科学", "C": "电子信息工程", "D": "其他"}},
+            {"id": 15, "type": "multiple_choice", "dimension": "grade_level",
+             "question": "你目前的年级是？",
+             "options": ["A. 大一", "B. 大二", "C. 大三", "D. 大四/研究生"],
+             "mapping": {"A": "大一", "B": "大二", "C": "大三", "D": "大四及以上"}},
+        ]
+
+    def process_assessment_answers(self, user_id: int, answers: dict[int, str]) -> dict:
+        """
+        处理画像评估做题答案，生成学生画像
+
+        Args:
+            user_id: 用户ID
+            answers: {question_id: "A"/"B"/"C"/"D"} 答案映射
+
+        Returns:
+            构建的画像数据
+        """
+        quiz = {q["id"]: q for q in self.get_assessment_quiz()}
+        profile: dict = {
+            "knowledge_base": {"level": "初级", "details": []},
+            "cognitive_style": [],
+            "learning_goals": [],
+            "weak_points": [],
+            "learning_history": [],
+            "interest_areas": [],
+            "preferred_resources": [],
+            "major": "",
+            "grade_level": "",
+            "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+        for qid, answer in answers.items():
+            q = quiz.get(qid)
+            if not q:
+                continue
+            dim = q["dimension"]
+            value = q.get("mapping", {}).get(answer, answer)
+
+            if dim == "knowledge_base":
+                if isinstance(profile["knowledge_base"], dict):
+                    profile["knowledge_base"]["details"].append(value)
+                    # 取最高级别
+                    levels = {"入门": 1, "初级": 2, "中级": 3, "高级": 4}
+                    current = levels.get(profile["knowledge_base"]["level"], 1)
+                    answer_level = levels.get(value, 1)
+                    if answer_level > current:
+                        profile["knowledge_base"]["level"] = value
+            elif dim == "cognitive_style":
+                if value not in profile["cognitive_style"]:
+                    profile["cognitive_style"].append(value)
+            elif dim == "learning_goals":
+                if value not in profile["learning_goals"]:
+                    profile["learning_goals"].append(value)
+            elif dim == "weak_points":
+                if value not in profile["weak_points"]:
+                    profile["weak_points"].append(value)
+            elif dim == "learning_history":
+                if value not in profile["learning_history"]:
+                    profile["learning_history"].append(value)
+            elif dim == "interest_areas":
+                if value not in profile["interest_areas"]:
+                    profile["interest_areas"].append(value)
+            elif dim == "preferred_resources":
+                if value not in profile["preferred_resources"]:
+                    profile["preferred_resources"].append(value)
+            elif dim == "major":
+                profile["major"] = value
+            elif dim == "grade_level":
+                profile["grade_level"] = value
+
+        # 生成总结
+        interests = "、".join(profile["interest_areas"][:3]) if profile["interest_areas"] else "待探索"
+        goals = "、".join(profile["learning_goals"][:2]) if profile["learning_goals"] else "待明确"
+        level = profile["knowledge_base"]["level"] if isinstance(profile["knowledge_base"], dict) else "初级"
+        profile["summary"] = f"{level}水平，兴趣方向：{interests}，学习目标：{goals}"
+
+        # 保存画像
+        profile_id = self._save_profile(user_id, profile, [])
+        info(f"画像评估完成: user={user_id}, dimensions={len([v for v in profile.values() if v])}")
+
+        return {
+            "success": True,
+            "profile": profile,
+            "profile_id": profile_id,
+            "message": "画像评估完成"
+        }
