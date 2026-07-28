@@ -1,4 +1,4 @@
-﻿"""
+"""
 数据库配置模块 - SQLite 版本
 9个独立 .db 文件，与原 MySQL 架构一一对应
 """
@@ -117,16 +117,3 @@ def get_qa_db_config():
 def get_accounts_db_config():
     """获取账号数据库配置（向后兼容，返回auth数据库配置）"""
     return get_auth_db_config()
-
-
-def get_redis_config():
-    """获取Redis配置"""
-    return {
-        "host": os.getenv("REDIS_HOST", "localhost"),
-        "port": int(os.getenv("REDIS_PORT", "6379")),
-        "db": int(os.getenv("REDIS_DB", "0")),
-        "password": os.getenv("REDIS_PASSWORD", None),
-        "socket_timeout": 5,
-        "socket_connect_timeout": 5,
-        "retry_on_timeout": True,
-    }

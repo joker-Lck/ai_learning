@@ -3,11 +3,8 @@ FastAPI 应用入口 — 企业级配置
 多模态 AI 教学智能体 - 后端 API 服务
 """
 import os
-import sys
 import time
 import uuid
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -39,7 +36,7 @@ from core.logger import (
 )
 
 # ── 配置 ──
-APP_VERSION = os.getenv("APP_VERSION", "7.2.0")
+APP_VERSION = os.getenv("APP_VERSION", "7.4.0")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 FastAPI 依赖注入 — 企业级安全配置
 JWT 认证、请求上下文注入、权限校验
 """
@@ -11,7 +11,6 @@ from fastapi import Depends, Header, HTTPException, Request
 from data.data_manager import CacheManager
 
 # ── JWT 配置 ──
-_jwt_env = os.getenv("JWT_SECRET")
 _jwt_env = os.getenv("JWT_SECRET")
 if not _jwt_env or _jwt_env == "your_random_secret_key_here_at_least_32_chars":
     raise RuntimeError(

@@ -4,7 +4,7 @@ import json
 import re
 import sqlite3
 
-from core.logger import error, info, warning
+from core.logger import debug, error, info, warning
 
 
 class MultiHopRetriever:
