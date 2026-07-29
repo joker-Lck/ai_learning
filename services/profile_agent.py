@@ -262,7 +262,7 @@ class ProfileAgent:
     def _create_empty_profile(self) -> dict:
         """创建空画像模板"""
         return {
-            "knowledge_base": {"level": "beginner", "topics": []},
+            "knowledge_base": "",
             "cognitive_style": "",
             "learning_goals": [],
             "weak_points": [],
