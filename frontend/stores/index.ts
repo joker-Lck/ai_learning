@@ -50,6 +50,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem(`activity_logs_${username}`);
       localStorage.removeItem(`generated_resources_${username}`);
       localStorage.removeItem(`profile_${username}`);
+      localStorage.removeItem(`radar_ai_scores_${username}`);
     }
     api.setToken(null);
     set({ user: null, token: null, isLoggedIn: false, isGuest: false });

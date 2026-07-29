@@ -381,6 +381,19 @@ function getAiRadarScores(): Record<string, number> | null {
 
 const ProfileRadarChart = memo(function ProfileRadarChart({ profileData }: { profileData: ProfileData | null }) {
   const [aiScores, setAiScores] = useState<Record<string, number> | null>(null);
+  const [currentUsername, setCurrentUsername] = useState('');
+
+  // 用户切换时清除旧缓存
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('user_info');
+      const username = stored ? JSON.parse(stored).username : '';
+      if (username && username !== currentUsername) {
+        setCurrentUsername(username);
+        setAiScores(getAiRadarScores());
+      }
+    } catch {}
+  });
 
   useEffect(() => {
     setAiScores(getAiRadarScores());
@@ -388,7 +401,7 @@ const ProfileRadarChart = memo(function ProfileRadarChart({ profileData }: { pro
     const handler = () => setAiScores(getAiRadarScores());
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
-  }, []);
+  }, [currentUsername]);
 
   const radarData = useMemo(() => {
     if (aiScores) {

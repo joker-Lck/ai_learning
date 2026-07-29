@@ -86,6 +86,7 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
   const [aiScores, setAiScores] = useState<Record<string, number> | null>(null);
   const [aiReasoning, setAiReasoning] = useState('');
   const [evaluating, setEvaluating] = useState(false);
+  const [currentUsername, setCurrentUsername] = useState('');
 
   const getRadarCacheKey = () => {
     try {
@@ -94,6 +95,19 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
       return `radar_ai_scores_${username}`;
     } catch { return 'radar_ai_scores_default'; }
   };
+
+  // 用户切换时清除旧缓存
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('user_info');
+      const username = stored ? JSON.parse(stored).username : '';
+      if (username && username !== currentUsername) {
+        setCurrentUsername(username);
+        setAiScores(null);
+        setAiReasoning('');
+      }
+    } catch {}
+  });
 
   // 尝试从缓存读取 AI 评分
   useEffect(() => {
