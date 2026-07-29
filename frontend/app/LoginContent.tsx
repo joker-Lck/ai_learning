@@ -54,12 +54,18 @@ export default function LoginPage() {
         api.setToken(token);
         localStorage.setItem('user_info', JSON.stringify(user));
         login(user, token);
-        // 检查是否是新注册用户
-        const isNew = sessionStorage.getItem('new_user_register') === '1';
         sessionStorage.removeItem('new_user_register');
         sessionStorage.removeItem('new_user_name');
         sessionStorage.removeItem('new_user_pass');
-        window.location.href = isNew ? '/assessment-quiz' : '/dashboard';
+
+        // 检查是否已有画像，决定跳转目标
+        try {
+          const profileRes: any = await api.getProfile();
+          const hasProfile = profileRes?.success && profileRes?.data?.has_profile;
+          window.location.href = hasProfile ? '/dashboard' : '/assessment-quiz';
+        } catch {
+          window.location.href = '/dashboard';
+        }
         return;
       } else {
         setError(res.message || '登录失败，请检查用户名和密码');
