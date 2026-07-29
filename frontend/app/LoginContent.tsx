@@ -83,11 +83,9 @@ export default function LoginPage() {
         if (res.token) {
           // 后端返回了 token，直接登录
           localStorage.removeItem('is_guest');
-          useAuthStore.getState().login(
-            { id: res.user?.id || 0, username: regUsername, role: 'user' },
-            res.token
-          );
-          router.push('/dashboard');
+          localStorage.setItem('user_info', JSON.stringify({ id: res.user?.id || 0, username: regUsername, role: 'user' }));
+          localStorage.setItem('auth_token', res.token);
+          window.location.href = '/dashboard';
         } else {
           // 兜底：手动调用登录
           sessionStorage.setItem('new_user_register', '1');
