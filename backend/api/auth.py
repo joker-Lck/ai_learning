@@ -82,7 +82,16 @@ async def register(request: Request, req: RegisterRequest):
         if not result["success"]:
             return AuthResponse(success=False, message=result["message"], error=result["message"])
 
-        return AuthResponse(success=True, message=result["message"])
+        # 注册成功后自动登录，返回 token
+        user_id = result.get("user_id", 0)
+        token = create_token(user_id, req.username, "user")
+
+        return AuthResponse(
+            success=True,
+            message=result["message"],
+            user=UserInfo(id=user_id, username=req.username, role="user"),
+            token=token,
+        )
     except Exception as e:
         error(f"注册失败: {e}")
         return AuthResponse(success=False, message="注册失败，请稍后重试", error=str(e))

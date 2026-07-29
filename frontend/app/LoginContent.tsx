@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
@@ -16,6 +17,7 @@ import { FullBackground } from '@/components/shared/BackgroundEffects';
 
 export default function LoginPage() {
   const { login, setGuest } = useAuthStore();
+  const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -88,16 +90,24 @@ export default function LoginPage() {
     try {
       const res: any = await api.register(regUsername, regPassword, regEmail || undefined);
       if (res.success) {
-        // 注册成功，标记为新用户，切换到登录视图
-        sessionStorage.setItem('new_user_register', '1');
-        setIsLogin(true);
-        setUsername(regUsername);
-        setPassword('');
-        setError('注册成功，正在自动登录...');
-        // 延迟确保数据库写入完成
-        setTimeout(() => {
-          handleLoginAuto(regUsername, regPassword);
-        }, 800);
+        // 注册成功后自动登录
+        if (res.token) {
+          // 后端返回了 token，直接登录
+          localStorage.removeItem('is_guest');
+          useAuthStore.getState().login(
+            { id: res.user?.id || 0, username: regUsername, role: 'user' },
+            res.token
+          );
+          router.push('/dashboard');
+        } else {
+          // 兜底：手动调用登录
+          sessionStorage.setItem('new_user_register', '1');
+          setIsLogin(true);
+          setUsername(regUsername);
+          setPassword('');
+          setError('注册成功，正在自动登录...');
+          setTimeout(() => { handleLoginAuto(regUsername, regPassword); }, 800);
+        }
       }
       else { setError(res.message || '注册失败'); }
     } catch (err: any) { setError(err.message || '网络错误'); }
