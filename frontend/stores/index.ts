@@ -51,6 +51,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem(`generated_resources_${username}`);
       localStorage.removeItem(`profile_${username}`);
       localStorage.removeItem(`radar_ai_scores_${username}`);
+      localStorage.removeItem(`onboarding_done_${username}`);
+      // 清理所有学期的课程/成绩缓存
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith(`courses_${username}_`) || k.startsWith(`grades_${username}_`))) {
+          localStorage.removeItem(k);
+        }
+      }
     }
     api.setToken(null);
     set({ user: null, token: null, isLoggedIn: false, isGuest: false });

@@ -832,7 +832,9 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   // 新用户引导检测
   useEffect(() => {
     if (localStorage.getItem('is_guest') === 'true') return;
-    const key = `onboarding_done_${localStorage.getItem('username') || 'default'}`;
+    let username = 'default';
+    try { const s = localStorage.getItem('user_info'); if (s) username = JSON.parse(s).username || 'default'; } catch {}
+    const key = `onboarding_done_${username}`;
     if (!localStorage.getItem(key)) {
       setShowOnboarding(true);
     }
@@ -1026,8 +1028,9 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
                 })}
               </div>
               <button onClick={() => {
-                const key = `onboarding_done_${localStorage.getItem('username') || 'default'}`;
-                localStorage.setItem(key, '1');
+                let u = 'default';
+                try { const s = localStorage.getItem('user_info'); if (s) u = JSON.parse(s).username || 'default'; } catch {}
+                localStorage.setItem(`onboarding_done_${u}`, '1');
                 setShowOnboarding(false);
               }} className="w-full py-2.5 text-sm text-white/30 hover:text-white/60 transition-colors">
                 跳过引导，我自己探索

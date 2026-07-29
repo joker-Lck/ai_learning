@@ -85,7 +85,8 @@ export default function LoginPage() {
           localStorage.removeItem('is_guest');
           localStorage.setItem('user_info', JSON.stringify({ id: res.user?.id || 0, username: regUsername, role: 'user' }));
           localStorage.setItem('auth_token', res.token);
-          window.location.href = '/dashboard';
+          sessionStorage.setItem('new_user_register', '1');
+          window.location.href = '/assessment-quiz';
         } else {
           // 兜底：手动调用登录
           sessionStorage.setItem('new_user_register', '1');

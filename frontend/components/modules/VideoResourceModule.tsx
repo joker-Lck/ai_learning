@@ -276,7 +276,8 @@ export default function VideoResourceModule() {
   // 记录视频浏览活动
   const logVideoView = (video: BilibiliVideo) => {
     try {
-      const username = localStorage.getItem('username') || 'guest';
+      let username = 'guest';
+      try { const s = localStorage.getItem('user_info'); if (s) username = JSON.parse(s).username || 'guest'; } catch {}
       const logsKey = `activity_logs_${username}`;
       const logs = JSON.parse(localStorage.getItem(logsKey) || '[]');
       logs.unshift({
