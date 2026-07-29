@@ -9,7 +9,7 @@ import {
   FileText, Video, BarChart3,
   ArrowRight, Clock, Zap, Users, ChevronRight,
   Sparkles, Target, X, GitBranch, FileCode, Code, BookOpen,
-  Maximize2, Loader2, Upload,
+  Maximize2, Loader2, Upload, GraduationCap,
   CheckSquare, PieChart,
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
@@ -828,17 +828,19 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [dueCount, setDueCount] = useState(0);
+  const [hasProfile, setHasProfile] = useState(true); // 默认true，加载后更新
 
-  // 新用户引导检测
+  // 新用户引导检测 + 画像评估强制检查
   useEffect(() => {
     if (localStorage.getItem('is_guest') === 'true') return;
     let username = 'default';
     try { const s = localStorage.getItem('user_info'); if (s) username = JSON.parse(s).username || 'default'; } catch {}
     const key = `onboarding_done_${username}`;
-    if (!localStorage.getItem(key)) {
+    // 没完成过引导，或没有画像 → 强制显示
+    if (!localStorage.getItem(key) || !hasProfile) {
       setShowOnboarding(true);
     }
-  }, []);
+  }, [hasProfile]);
 
   const loadActivityLogs = useCallback(() => {
     if (localStorage.getItem('is_guest') === 'true') return;
@@ -903,6 +905,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
         if (profileRes.status === 'fulfilled' && (profileRes.value as any)?.success) {
           const pData = (profileRes.value as any).data;
           setProfile(pData?.profile || pData || null);
+          setHasProfile(!!pData?.has_profile);
         }
         if (statsRes.status === 'fulfilled' && (statsRes.value as any)?.success) {
           setStats((statsRes.value as any).data || null);
@@ -991,38 +994,38 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
         {previewResource && <ResourcePreview resource={previewResource} onClose={() => setPreviewResource(null)} />}
       </AnimatePresence>
 
-      {/* 新用户引导 */}
+      {/* 新用户引导 + 画像评估强制拦截 */}
       <AnimatePresence>
         {showOnboarding && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md">
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md"
+            style={{ pointerEvents: 'all' }}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               className="bg-[#1a1a27] border border-white/[0.08] rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-8 h-8 text-white" />
+                  <GraduationCap className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-xl font-bold text-white mb-2">欢迎使用 AI 学习助手</h2>
-                <p className="text-sm text-white/40">3 步开始你的个性化学习之旅</p>
+                <p className="text-sm text-white/40">请先完成学习能力评估，AI 将为你生成个性化学习方案</p>
               </div>
               <div className="space-y-4 mb-6">
                 {[
-                  { step: '1', title: '构建学习画像', desc: '告诉我们你的专业和学习风格，AI 将为你定制方案', icon: Target, module: 'profile' as ModuleType },
-                  { step: '2', title: '导入学习数据', desc: '上传课程表、成绩或错题，让 AI 了解你的学习情况', icon: Upload, module: 'profile' as ModuleType },
-                  { step: '3', title: '生成学习资源', desc: 'AI 根据你的画像生成个性化文档、题库、视频等', icon: Brain, module: 'resources' as ModuleType },
+                  { step: '1', title: '学习能力评估', desc: '回答 15 道题，了解你的知识基础和学习风格', icon: Target },
+                  { step: '2', title: '生成学习画像', desc: 'AI 根据评估结果生成 9 维度学习画像', icon: Brain },
+                  { step: '3', title: '个性化学习', desc: '基于画像推荐学习路径、资源和练习题', icon: Sparkles },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
-                    <div key={item.step} onClick={() => { setShowOnboarding(false); onNavigateModule(item.module); }}
-                      className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] cursor-pointer hover:border-purple-400/20 hover:bg-purple-500/5 transition-all group">
+                    <div key={item.step}
+                      className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                       <div className="w-10 h-10 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center flex-shrink-0">
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-white group-hover:text-purple-300 transition-colors">{item.title}</div>
+                        <div className="text-sm font-medium text-white">{item.title}</div>
                         <div className="text-xs text-white/30">{item.desc}</div>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-white/10 group-hover:text-purple-400 transition-colors" />
                     </div>
                   );
                 })}
@@ -1031,10 +1034,11 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
                 let u = 'default';
                 try { const s = localStorage.getItem('user_info'); if (s) u = JSON.parse(s).username || 'default'; } catch {}
                 localStorage.setItem(`onboarding_done_${u}`, '1');
-                setShowOnboarding(false);
-              }} className="w-full py-2.5 text-sm text-white/30 hover:text-white/60 transition-colors">
-                跳过引导，我自己探索
+                window.location.href = '/assessment-quiz';
+              }} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-violet-500 text-white font-semibold text-sm hover:from-purple-600 hover:to-violet-600 transition-all">
+                开始评估
               </button>
+              <p className="text-center text-[11px] text-white/20 mt-3">完成后即可使用全部功能</p>
             </motion.div>
           </motion.div>
         )}
