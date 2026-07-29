@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, memo } from 'react';
-import { Router, Loader2, Clock, Zap, CalendarDays, BookOpen, Sparkles } from 'lucide-react';
+import { Router, Loader2, Clock, CalendarDays, BookOpen, Sparkles, Zap } from 'lucide-react';
 import type { LearningPath, StudyPlan } from './types';
 import type { ModuleType, NavigationContext } from './types';
 
@@ -25,15 +25,15 @@ export default memo(function PathModule({
   const [planType, setPlanType] = useState('weekly');
   const [examDate, setExamDate] = useState('');
   const [examSubjects, setExamSubjects] = useState('');
-  const [currentPlan, setCurrentPlan] = useState<StudyPlan | null>(null);
   const [generated, setGenerated] = useState(false);
+  const [planResult, setPlanResult] = useState<any>(null);
 
   const loading = pathLoading || planLoading;
 
-  // 同时生成路径和规划
   const handleGenerateAll = async () => {
     if (!learningGoal.trim()) return;
     setGenerated(true);
+    setPlanResult(null);
 
     // 并行触发
     handlePlanPath();
@@ -43,11 +43,11 @@ export default memo(function PathModule({
       planData.exam_subjects = examSubjects.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
     }
     const result = await handleGeneratePlan(planData);
-    if (result) setCurrentPlan({ ...result, plan_type: planType, semester: '' });
+    if (result) setPlanResult(result);
   };
 
-  const display = currentPlan?.plan_data || studyPlans[0]?.plan_data;
-  const typeLabels: Record<string, string> = { weekly: '周计划', exam: '备考计划', custom: '自定义计划' };
+  // 从多个来源取计划数据
+  const plan = planResult || studyPlans[0]?.plan_data || null;
 
   const presets = [
     { label: '帮我制定一周的学习安排', type: 'weekly' },
@@ -68,9 +68,8 @@ export default memo(function PathModule({
         </div>
       </div>
 
-      {/* 统一输入区 */}
+      {/* 输入区 */}
       <div className="border border-white/[0.06] rounded-lg p-5 bg-white/[0.02] space-y-4">
-        {/* 学习目标 */}
         <div>
           <label className="block text-sm font-medium text-white/60 mb-2">学习目标</label>
           <input
@@ -83,7 +82,6 @@ export default memo(function PathModule({
           />
         </div>
 
-        {/* 快捷预设 */}
         <div className="flex flex-wrap gap-2">
           {presets.map(p => (
             <button key={p.type} onClick={() => { setPlanType(p.type); setLearningGoal(p.label); }}
@@ -93,7 +91,6 @@ export default memo(function PathModule({
           ))}
         </div>
 
-        {/* 备考补充 */}
         {planType === 'exam' && (
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -109,7 +106,6 @@ export default memo(function PathModule({
           </div>
         )}
 
-        {/* 生成按钮 */}
         <button
           onClick={handleGenerateAll}
           disabled={loading || !learningGoal.trim()}
@@ -123,149 +119,140 @@ export default memo(function PathModule({
         </button>
       </div>
 
-      {/* 结果展示 */}
+      {/* 结果：路径 + 规划合并展示 */}
       {generated && (
-        <div className="space-y-8">
-          {/* 学习路径结果 */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-amber-400" />
-              学习路径
-            </h4>
-
-            {pathLoading && (
-              <div className="border border-white/[0.06] rounded-lg p-6 bg-white/[0.02]">
-                <div className="flex items-center gap-2 mb-3">
-                  <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
-                  <p className="text-sm text-amber-400">正在生成学习路径...</p>
-                </div>
-                {pathStreamContent && (
-                  <pre className="text-xs text-white/30 max-h-40 overflow-auto whitespace-pre-wrap font-mono border-t border-white/[0.04] pt-3">{pathStreamContent.slice(-500)}</pre>
-                )}
+        <div className="space-y-6">
+          {/* 加载状态 */}
+          {loading && (
+            <div className="border border-white/[0.06] rounded-lg p-6 bg-white/[0.02]">
+              <div className="flex items-center gap-2 mb-3">
+                <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                <p className="text-sm text-purple-400">AI 正在规划学习路径和计划...</p>
               </div>
-            )}
+              {pathStreamContent && (
+                <pre className="text-xs text-white/30 max-h-32 overflow-auto whitespace-pre-wrap font-mono border-t border-white/[0.04] pt-3">{pathStreamContent.slice(-400)}</pre>
+              )}
+            </div>
+          )}
 
-            {learningPath && (
-              <div className="border border-white/[0.06] rounded-lg p-4 bg-white/[0.02] border-amber-400/20">
-                <h4 className="font-bold text-amber-400 mb-3">{learningPath.goal}</h4>
-                <div className="text-sm text-white/60 mb-3">
-                  预计时长: {learningPath.estimated_duration} | 步骤数: {learningPath.total_steps}
-                </div>
-                <div className="space-y-3">
-                  {learningPath.steps.map((step, idx) => (
-                    <div key={idx} className="border border-white/[0.06] rounded-lg p-3 bg-white/[0.02]">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-semibold text-[10px]">
-                          {step.step_number}
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-white text-sm">{step.title}</div>
-                          <div className="text-xs text-white/50">{step.description}</div>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-white/35">
-                          <Clock className="w-3.5 h-3.5" /> {step.estimated_time}
-                        </div>
-                      </div>
-                      {step.prerequisites.length > 0 && (
-                        <div className="text-[11px] text-white/25 ml-8">前置知识: {step.prerequisites.join(', ')}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {onNavigateModule && (
-                  <button
-                    onClick={() => onNavigateModule('resources', { topic: learningPath.goal, autoPlan: true })}
-                    className="w-full mt-3 py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/20 text-purple-400 rounded-lg hover:from-purple-500/30 hover:to-pink-500/30 flex items-center justify-center gap-2 text-sm font-medium transition-all"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    为这条路径生成配套资源
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 学习规划结果 */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-purple-400" />
-              学习规划
-            </h4>
-
-            {planLoading && (
-              <div className="border border-white/[0.06] rounded-lg p-6 text-center bg-white/[0.02]">
-                <Loader2 className="w-6 h-6 text-purple-400 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-white/40">正在生成学习计划...</p>
-              </div>
-            )}
-
-            {display && !planLoading && (
-              <div className="space-y-3">
-                <div className="bg-purple-500/10 rounded-xl p-4 border border-purple-400/15">
-                  <h4 className="font-bold text-white mb-1">{display.title}</h4>
-                  <p className="text-sm text-white/50">{display.summary}</p>
-                  {display.focus_areas?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {display.focus_areas.map((f: string, i: number) => <span key={i} className="px-2 py-0.5 bg-purple-400/10 text-purple-400 rounded-full text-xs">{f}</span>)}
+          {/* 路径步骤 + 计划合并卡片 */}
+          {(learningPath || plan) && !loading && (
+            <div className="border border-white/[0.06] rounded-xl bg-white/[0.02] overflow-hidden">
+              {/* 标题区 */}
+              <div className="px-6 py-4 bg-gradient-to-r from-amber-500/5 to-purple-500/5 border-b border-white/[0.06]">
+                <h4 className="font-bold text-white text-lg">{learningPath?.goal || plan?.title || learningGoal}</h4>
+                <div className="flex items-center gap-4 mt-1 text-sm text-white/50">
+                  {learningPath && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {learningPath.estimated_duration}</span>}
+                  {learningPath && <span>{learningPath.total_steps} 个步骤</span>}
+                  {plan?.focus_areas?.length > 0 && (
+                    <div className="flex gap-1.5 ml-2">
+                      {plan.focus_areas.slice(0, 3).map((f: string, i: number) => (
+                        <span key={i} className="px-2 py-0.5 bg-purple-400/10 text-purple-400 rounded-full text-xs">{f}</span>
+                      ))}
                     </div>
                   )}
                 </div>
+              </div>
 
-                {display.raw_text && !display.daily_plans?.length && (
-                  <div className="border border-white/[0.06] rounded-lg p-4 bg-white/[0.02]">
-                    <div className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">
-                      {display.raw_text.replace(/```json\s*/g, '').replace(/```\s*/g, '')}
-                    </div>
+              {/* 路径步骤 */}
+              {learningPath && learningPath.steps.length > 0 && (
+                <div className="px-6 py-4 border-b border-white/[0.04]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <BookOpen className="w-4 h-4 text-amber-400" />
+                    <span className="text-sm font-semibold text-white">学习路径</span>
                   </div>
-                )}
+                  <div className="space-y-2">
+                    {learningPath.steps.map((step, idx) => (
+                      <div key={idx} className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                        <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-semibold text-[10px] shrink-0 mt-0.5">
+                          {step.step_number}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-white text-sm">{step.title}</div>
+                          <div className="text-xs text-white/50 mt-0.5">{step.description}</div>
+                          {step.prerequisites.length > 0 && (
+                            <div className="text-[11px] text-white/25 mt-1">前置: {step.prerequisites.join(', ')}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-white/35 shrink-0">
+                          <Clock className="w-3 h-3" /> {step.estimated_time}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                {display.daily_plans?.map((dp: any, i: number) => (
-                  <div key={i} className="border border-white/[0.06] rounded-lg overflow-hidden bg-white/[0.02]">
-                    <div className="px-4 py-2 bg-white/[0.03] border-b border-white/[0.06] flex items-center justify-between">
-                      <span className="text-sm font-semibold text-white">{dp.day}</span>
-                      <span className="text-xs text-white/30">{dp.tasks?.length || 0} 项任务</span>
-                    </div>
-                    <div className="p-3 space-y-2">
-                      {dp.tasks?.map((t: any, j: number) => (
-                        <div key={j} className="flex items-center gap-3 px-3 py-2 bg-white/[0.02] rounded-lg">
-                          <span className="text-xs text-purple-400 font-mono shrink-0 w-16">{t.time}</span>
-                          <span className="px-1.5 py-0.5 bg-white/[0.04] rounded text-[10px] text-white/35 shrink-0">{t.type}</span>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm text-white">{t.subject}</span>
-                            <span className="text-xs text-white/40 ml-2">{t.task}</span>
+              {/* 学习计划 */}
+              {plan && (
+                <div className="px-6 py-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CalendarDays className="w-4 h-4 text-purple-400" />
+                    <span className="text-sm font-semibold text-white">学习规划</span>
+                    {plan.summary && <span className="text-xs text-white/30 ml-2">{plan.summary}</span>}
+                  </div>
+
+                  {/* 有结构化每日计划 */}
+                  {plan.daily_plans?.length > 0 && (
+                    <div className="space-y-2">
+                      {plan.daily_plans.map((dp: any, i: number) => (
+                        <div key={i} className="border border-white/[0.04] rounded-lg overflow-hidden">
+                          <div className="px-3 py-2 bg-white/[0.02] border-b border-white/[0.04] flex items-center justify-between">
+                            <span className="text-xs font-semibold text-white">{dp.day}</span>
+                            <span className="text-[10px] text-white/25">{dp.tasks?.length || 0} 项</span>
+                          </div>
+                          <div className="p-2 space-y-1">
+                            {dp.tasks?.map((t: any, j: number) => (
+                              <div key={j} className="flex items-center gap-2 px-2 py-1.5 text-xs">
+                                <span className="text-purple-400 font-mono shrink-0 w-14">{t.time}</span>
+                                <span className="px-1.5 py-0.5 bg-white/[0.04] rounded text-[10px] text-white/30 shrink-0">{t.type}</span>
+                                <span className="text-white/80 flex-1">{t.subject}</span>
+                                <span className="text-white/40">{t.task}</span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                ))}
+                  )}
 
-                {display.tips?.length > 0 && (
-                  <div className="border border-white/[0.06] rounded-lg p-4 bg-white/[0.02]">
-                    <p className="text-sm font-medium text-white/50 mb-2">学习建议</p>
-                    <ul className="space-y-1">
-                      {display.tips.map((tip: string, i: number) => <li key={i} className="text-xs text-white/45 flex items-start gap-2"><span className="text-purple-400 mt-0.5">•</span>{tip}</li>)}
-                    </ul>
-                  </div>
-                )}
-
-                {studyPlans.length > 1 && (
-                  <div className="border border-white/[0.06] rounded-lg p-4 bg-white/[0.02]">
-                    <p className="text-sm font-medium text-white/50 mb-2">历史计划</p>
-                    <div className="space-y-1">
-                      {studyPlans.slice(1).map((p, i) => (
-                        <button key={i} onClick={() => setCurrentPlan(p)}
-                          className="w-full text-left px-3 py-2 hover:bg-white/[0.03] rounded-lg flex items-center justify-between">
-                          <span className="text-xs text-white/50">{p.plan_data?.title || typeLabels[p.plan_type] || p.plan_type}</span>
-                          <span className="text-[10px] text-white/20">{p.created_at?.slice(0, 10)}</span>
-                        </button>
-                      ))}
+                  {/* 无结构化数据，显示原始文本 */}
+                  {plan.raw_text && !plan.daily_plans?.length && (
+                    <div className="text-sm text-white/60 whitespace-pre-wrap leading-relaxed bg-white/[0.02] rounded-lg p-4">
+                      {plan.raw_text.replace(/```json\s*/g, '').replace(/```\s*/g, '')}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                  )}
+
+                  {/* 学习建议 */}
+                  {plan.tips?.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-white/[0.04]">
+                      <p className="text-xs font-medium text-white/40 mb-2">学习建议</p>
+                      <ul className="space-y-1">
+                        {plan.tips.map((tip: string, i: number) => (
+                          <li key={i} className="text-xs text-white/45 flex items-start gap-2">
+                            <Zap className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />{tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 生成配套资源按钮 */}
+              {onNavigateModule && learningPath && (
+                <div className="px-6 pb-4">
+                  <button
+                    onClick={() => onNavigateModule('resources', { topic: learningPath.goal, autoPlan: true })}
+                    className="w-full py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/20 text-purple-400 rounded-lg hover:from-purple-500/30 hover:to-pink-500/30 flex items-center justify-center gap-2 text-sm font-medium transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    为这条路径生成配套资源
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
