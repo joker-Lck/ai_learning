@@ -368,7 +368,9 @@ function SemesterSelector({ current, semesters, onChange }: { current: string; s
 
 function getAiRadarScores(): Record<string, number> | null {
   try {
-    const cached = localStorage.getItem('radar_ai_scores');
+    const stored = localStorage.getItem('user_info');
+    const username = stored ? JSON.parse(stored).username : 'default';
+    const cached = localStorage.getItem(`radar_ai_scores_${username}`);
     if (cached) {
       const parsed = JSON.parse(cached);
       if (Date.now() - parsed.ts < 86400000) return parsed.scores;

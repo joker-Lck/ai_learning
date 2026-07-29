@@ -76,11 +76,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     const token = localStorage.getItem('auth_token');
     if (token) {
+      // 从 JWT 解析用户信息
+      let user = { id: 0, username: '用户', role: 'user' };
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        user = { id: payload.user_id || 0, username: payload.username || '用户', role: payload.role || 'user' };
+      } catch {}
+      // 优先使用 localStorage 中的完整信息
+      try {
+        const stored = localStorage.getItem('user_info');
+        if (stored) user = JSON.parse(stored);
+      } catch {}
       set({
         token,
         isLoggedIn: true,
         isGuest: false,
-        user: { id: 0, username: '用户', role: 'user' },
+        user,
       });
     }
   },

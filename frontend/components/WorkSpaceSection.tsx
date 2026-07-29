@@ -87,10 +87,18 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
   const [aiReasoning, setAiReasoning] = useState('');
   const [evaluating, setEvaluating] = useState(false);
 
+  const getRadarCacheKey = () => {
+    try {
+      const stored = localStorage.getItem('user_info');
+      const username = stored ? JSON.parse(stored).username : 'default';
+      return `radar_ai_scores_${username}`;
+    } catch { return 'radar_ai_scores_default'; }
+  };
+
   // 尝试从缓存读取 AI 评分
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('radar_ai_scores');
+      const cached = localStorage.getItem(getRadarCacheKey());
       if (cached) {
         const parsed = JSON.parse(cached);
         // 缓存 24 小时有效
@@ -122,7 +130,7 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
         };
         setAiScores(scores);
         setAiReasoning(s.reasoning || '');
-        localStorage.setItem('radar_ai_scores', JSON.stringify({ scores, reasoning: s.reasoning, ts: Date.now() }));
+        localStorage.setItem(getRadarCacheKey(), JSON.stringify({ scores, reasoning: s.reasoning, ts: Date.now() }));
       }
     } catch (e) {
       console.error('AI 评定失败:', e);
