@@ -46,7 +46,7 @@ class PathAgent:
             try:
                 from services.adaptive_path import adaptive_path
                 from services.knowledge_tracer import knowledge_tracer
-                mastery = {kp: s.mastery for kp, s in knowledge_tracer.states.items()}
+                mastery = {kp: s.mastery for kp, s in knowledge_tracer._get_user_states(user_id).items()}
                 if mastery and steps:
                     steps = adaptive_path.replan(steps, mastery)
                     path_data["steps"] = steps

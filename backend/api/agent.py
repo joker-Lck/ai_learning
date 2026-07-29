@@ -3035,7 +3035,7 @@ async def quiz_submit(
         if knowledge_point:
             try:
                 from services.knowledge_tracer import knowledge_tracer
-                knowledge_tracer.update(knowledge_point, result.get("is_correct", False), question_type)
+                knowledge_tracer.update(knowledge_point, result.get("is_correct", False), question_type, user_id=user_id)
             except Exception as bkt_err:
                 warning(f"BKT更新失败: {bkt_err}")
 
@@ -3169,7 +3169,7 @@ async def quiz_adaptive(
         try:
             from services.adaptive_difficulty import adaptive_difficulty
             from services.knowledge_tracer import knowledge_tracer
-            mastery_data = {kp: s.mastery for kp, s in knowledge_tracer.states.items()}
+            mastery_data = {kp: s.mastery for kp, s in knowledge_tracer._get_user_states(user_id).items()}
             if mastery_data:
                 prompt = adaptive_difficulty.build_adaptive_prompt(subject, mastery_data, need, weak_info)
             else:
