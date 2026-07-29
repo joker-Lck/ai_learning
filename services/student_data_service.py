@@ -284,6 +284,7 @@ class StudentDataService:
 
             return {
                 "success": True,
+                "message": "复习结果已更新",
                 "data": {
                     "review_count": review_count,
                     "next_review": next_review,
