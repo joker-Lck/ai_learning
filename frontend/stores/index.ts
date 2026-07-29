@@ -2,6 +2,7 @@
  * Zustand 全局状态管理
  */
 import { create } from 'zustand';
+import api from '@/lib/api';
 
 // ==================== 认证状态 ====================
 
@@ -33,6 +34,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('auth_token', token);
     localStorage.removeItem('is_guest');
     localStorage.setItem('user_info', JSON.stringify(user));
+    api.setToken(token);
     set({ user, token, isLoggedIn: true, isGuest: false });
   },
 
@@ -49,6 +51,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem(`generated_resources_${username}`);
       localStorage.removeItem(`profile_${username}`);
     }
+    api.setToken(null);
     set({ user: null, token: null, isLoggedIn: false, isGuest: false });
   },
 
@@ -76,6 +79,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     const token = localStorage.getItem('auth_token');
     if (token) {
+      api.setToken(token);
       // 从 JWT 解析用户信息
       let user = { id: 0, username: '用户', role: 'user' };
       try {

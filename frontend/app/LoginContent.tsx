@@ -61,22 +61,11 @@ export default function LoginPage() {
         sessionStorage.removeItem('new_user_pass');
         window.location.href = isNew ? '/assessment-quiz' : '/dashboard';
         return;
-      } else if (res.success !== false) {
-        const fallbackToken = 'local_' + Date.now();
-        const fallbackUser = { id: 1, username, role: 'user' };
-        api.setToken(fallbackToken);
-        localStorage.setItem('user_info', JSON.stringify(fallbackUser));
-        login(fallbackUser, fallbackToken);
-        window.location.href = '/dashboard';
-        return;
-      } else { setError(res.message || '登录失败'); }
+      } else {
+        setError(res.message || '登录失败，请检查用户名和密码');
+      }
     } catch (err: any) {
-      const fallbackToken = 'local_' + Date.now();
-      const fallbackUser = { id: 1, username, role: 'user' };
-      api.setToken(fallbackToken);
-      localStorage.setItem('user_info', JSON.stringify(fallbackUser));
-      login(fallbackUser, fallbackToken);
-      window.location.href = '/dashboard';
+      setError(err.message || '网络错误，请检查后端服务是否启动');
     }
     setLoading(false);
   };
