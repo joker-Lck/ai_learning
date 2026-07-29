@@ -28,7 +28,7 @@ const dimensionLabels: Record<string, string> = {
 };
 
 export default function AssessmentQuizPage() {
-  const { token } = useAuthStore();
+  const { token, restoreAuth } = useAuthStore();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
@@ -38,9 +38,18 @@ export default function AssessmentQuizPage() {
   const [currentStep, setCurrentStep] = useState(0); // 0: quiz, 1: result
 
   useEffect(() => {
+    // 从 localStorage 恢复认证状态
+    restoreAuth();
+  }, []);
+
+  useEffect(() => {
     if (!token) {
-      window.location.href = '/';
-      return;
+      // 尝试从 localStorage 直接读取
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      if (!stored) {
+        window.location.href = '/';
+        return;
+      }
     }
     // 检查是否已有画像，有则直接跳转
     checkExistingProfile();
