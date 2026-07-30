@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识图谱 — 基于多智能体的个性化学习资源系统</title>
+<script src="https://unpkg.com/cytoscape@3.30.4/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1419; color: #e8eaed; overflow: hidden; height: 100vh; }
+
+/* 顶栏 */
+.topbar { position: fixed; top: 0; left: 0; right: 0; height: 48px; background: #1a1f2e; border-bottom: 1px solid #2d3548; display: flex; align-items: center; padding: 0 16px; z-index: 100; gap: 12px; }
+.topbar h1 { font-size: 15px; font-weight: 600; color: #8ab4f8; white-space: nowrap; }
+.search-box { flex: 1; max-width: 320px; position: relative; }
+.search-box input { width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid #2d3548; background: #0f1419; color: #e8eaed; font-size: 13px; outline: none; }
+.search-box input:focus { border-color: #8ab4f8; }
+.search-results { position: absolute; top: 100%; left: 0; right: 0; background: #1a1f2e; border: 1px solid #2d3548; border-radius: 6px; max-height: 300px; overflow-y: auto; display: none; z-index: 200; }
+.search-results.active { display: block; }
+.search-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #2d3548; }
+.search-item:hover { background: #2d3548; }
+.search-item .type-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; margin-right: 6px; }
+
+/* 工具栏 */
+.toolbar { display: flex; gap: 6px; align-items: center; }
+.toolbar select, .toolbar button { padding: 5px 10px; border-radius: 5px; border: 1px solid #2d3548; background: #1a1f2e; color: #e8eaed; font-size: 12px; cursor: pointer; }
+.toolbar button:hover { background: #2d3548; }
+.toolbar button.active { background: #8ab4f8; color: #0f1419; }
+
+/* 主容器 */
+.main { display: flex; height: calc(100vh - 48px); margin-top: 48px; }
+
+/* 左侧过滤面板 */
+.filter-panel { width: 220px; background: #1a1f2e; border-right: 1px solid #2d3548; overflow-y: auto; padding: 12px; flex-shrink: 0; }
+.filter-panel h3 { font-size: 12px; color: #9aa0a6; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+.filter-group { margin-bottom: 16px; }
+.filter-item { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; cursor: pointer; }
+.filter-item input[type="checkbox"] { accent-color: #8ab4f8; }
+.filter-item .color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.filter-item .count { color: #9aa0a6; font-size: 11px; margin-left: auto; }
+
+/* 图谱容器 */
+#cy { flex: 1; background: #0f1419; }
+
+/* 右侧详情面板 */
+.detail-panel { width: 300px; background: #1a1f2e; border-left: 1px solid #2d3548; overflow-y: auto; padding: 16px; flex-shrink: 0; transition: width 0.2s; }
+.detail-panel.hidden { width: 0; padding: 0; overflow: hidden; }
+.detail-panel h2 { font-size: 16px; margin-bottom: 4px; }
+.detail-panel .node-type { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-bottom: 8px; }
+.detail-panel .file-path { font-size: 12px; color: #9aa0a6; word-break: break-all; margin-bottom: 8px; }
+.detail-panel .desc { font-size: 13px; color: #bdc1c6; margin-bottom: 12px; line-height: 1.5; }
+.detail-panel .connections { margin-top: 12px; }
+.detail-panel .conn-title { font-size: 12px; color: #9aa0a6; margin-bottom: 6px; }
+.detail-panel .conn-item { padding: 4px 0; font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.detail-panel .conn-item:hover { color: #8ab4f8; }
+.detail-panel .conn-arrow { color: #9aa0a6; font-size: 11px; }
+.detail-panel .conn-type { color: #9aa0a6; font-size: 10px; background: #2d3548; padding: 1px 4px; border-radius: 3px; }
+
+/* 统计面板 */
+.stats-panel { margin-top: 16px; border-top: 1px solid #2d3548; padding-top: 12px; }
+.stats-panel h3 { font-size: 12px; color: #9aa0a6; margin-bottom: 8px; }
+.stat-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+.stat-label { color: #9aa0a6; }
+.stat-value { color: #e8eaed; font-weight: 500; }
+
+/* 提示 */
+.empty-hint { color: #9aa0a6; font-size: 13px; text-align: center; padding: 40px 20px; line-height: 1.8; }
+
+/* 图例 */
+.legend { border-top: 1px solid #2d3548; padding-top: 12px; margin-top: 12px; }
+.legend h3 { font-size: 12px; color: #9aa0a6; margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 2px 0; color: #bdc1c6; }
+.legend-line { width: 20px; height: 2px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>知识图谱</h1>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="搜索节点..." autocomplete="off">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+  <div class="toolbar">
+    <select id="layoutSelect">
+      <option value="dagre">层次布局</option>
+      <option value="cose">力导向布局</option>
+      <option value="circle">环形布局</option>
+      <option value="breadthfirst">广度优先</option>
+    </select>
+    <button id="btnFit" title="适应画面">适应</button>
+    <button id="btnReset" title="重置视图">重置</button>
+    <button id="btnExport" title="导出PNG">导出</button>
+    <button id="btnToggleFilter" title="显示/隐藏过滤面板">过滤</button>
+    <button id="btnToggleDetail" title="显示/隐藏详情面板">详情</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="filter-panel" id="filterPanel">
+    <h3>节点类型</h3>
+    <div class="filter-group" id="nodeFilters"></div>
+    <h3>关系类型</h3>
+    <div class="filter-group" id="edgeFilters"></div>
+    <div class="legend">
+      <h3>关系图例</h3>
+      <div id="edgeLegend"></div>
+    </div>
+  </div>
+  <div id="cy"></div>
+  <div class="detail-panel" id="detailPanel">
+    <div class="empty-hint">点击节点查看详情<br>支持搜索、过滤和多种布局</div>
+  </div>
+</div>
+
+<script>
+// ── 配色方案 ──
+const TYPE_STYLES = {
+  agent:          { color: '#e74c3c', shape: 'hexagon',       size: 55, label: '智能体' },
+  service:        { color: '#3498db', shape: 'roundrectangle', size: 48, label: '服务' },
+  infra:          { color: '#1abc9c', shape: 'roundrectangle', size: 45, label: '基础设施' },
+  database:       { color: '#2ecc71', shape: 'round-rectangle', size: 50, label: '数据库' },
+  table:          { color: '#27ae60', shape: 'rectangle',      size: 38, label: '数据表' },
+  endpoint:       { color: '#f39c12', shape: 'diamond',        size: 42, label: 'API端点' },
+  page:           { color: '#9b59b6', shape: 'roundrectangle', size: 48, label: '前端页面' },
+  component:      { color: '#8e44ad', shape: 'ellipse',        size: 40, label: '前端组件' },
+  config:         { color: '#95a5a6', shape: 'rectangle',      size: 35, label: '配置文件' },
+  prompt:         { color: '#e67e22', shape: 'star',           size: 42, label: 'Prompt模板' },
+  data_layer:     { color: '#00bcd4', shape: 'roundrectangle', size: 45, label: '数据层' },
+};
+
+const EDGE_COLORS = {
+  imports:           '#5c6bc0',
+  depends_on:        '#e74c3c',
+  uses_database:     '#2ecc71',
+  contains_table:    '#27ae60',
+  communicates_via:  '#1abc9c',
+  calls_endpoint:    '#f39c12',
+  calls_service:     '#ff7043',
+  routes_to:         '#9b59b6',
+  uses_prompt:       '#e67e22',
+  uses_data_layer:   '#00bcd4',
+  configured_by:     '#95a5a6',
+  coordinates:       '#ef5350',
+};
+
+const EDGE_LABELS = {
+  imports:           '导入',
+  depends_on:        '依赖',
+  uses_database:     '使用数据库',
+  contains_table:    '包含表',
+  communicates_via:  '消息通信',
+  calls_endpoint:    '调用端点',
+  calls_service:     '调用服务',
+  routes_to:         '路由到',
+  uses_prompt:       '使用Prompt',
+  uses_data_layer:   '使用数据层',
+  configured_by:     '配置',
+  coordinates:       '协调',
+};
+
+let cy;
+let graphData;
+let activeNodeTypes = new Set();
+let activeEdgeTypes = new Set();
+
+// ── 加载数据 ──
+async function loadData() {
+  try {
+    const resp = await fetch('graph-data.json');
+    graphData = await resp.json();
+  } catch (e) {
+    // 尝试相对路径
+    try {
+      const resp = await fetch('./graph-data.json');
+      graphData = await resp.json();
+    } catch (e2) {
+      document.getElementById('cy').innerHTML = '<div style="color:#e74c3c;padding:40px;text-align:center;font-size:16px;">无法加载 graph-data.json<br><br>请确保文件与本HTML在同一目录下<br>并使用 HTTP 服务器打开（不要直接双击）<br><br>启动方式: <code>python -m http.server 8080</code><br>然后访问: <code>http://localhost:8080/knowledge-graph.html</code></div>';
+      return;
+    }
+  }
+  initFilters();
+  initGraph();
+  initSearch();
+  initToolbar();
+  updateStats();
+}
+
+// ── 初始化过滤器 ──
+function initFilters() {
+  const nodeTypes = {};
+  const edgeTypes = {};
+
+  graphData.nodes.forEach(n => { nodeTypes[n.type] = (nodeTypes[n.type] || 0) + 1; });
+  graphData.edges.forEach(e => { edgeTypes[e.type] = (edgeTypes[e.type] || 0) + 1; });
+
+  const nfDiv = document.getElementById('nodeFilters');
+  Object.entries(nodeTypes).sort((a,b) => b[1]-a[1]).forEach(([type, count]) => {
+    const style = TYPE_STYLES[type] || { color: '#666', label: type };
+    activeNodeTypes.add(type);
+    nfDiv.innerHTML += `<label class="filter-item"><input type="checkbox" data-type="${type}" data-group="node" checked><span class="color-dot" style="background:${style.color}"></span><span>${style.label || type}</span><span class="count">${count}</span></label>`;
+  });
+
+  const efDiv = document.getElementById('edgeFilters');
+  const legendDiv = document.getElementById('edgeLegend');
+  Object.entries(edgeTypes).sort((a,b) => b[1]-a[1]).forEach(([type, count]) => {
+    activeEdgeTypes.add(type);
+    const color = EDGE_COLORS[type] || '#666';
+    const label = EDGE_LABELS[type] || type;
+    efDiv.innerHTML += `<label class="filter-item"><input type="checkbox" data-type="${type}" data-group="edge" checked><span>${label}</span><span class="count">${count}</span></label>`;
+    legendDiv.innerHTML += `<div class="legend-item"><span class="legend-line" style="background:${color}"></span><span>${label} (${count})</span></div>`;
+  });
+
+  // 绑定事件
+  nfDiv.addEventListener('change', (e) => {
+    if (e.target.dataset.group === 'node') {
+      if (e.target.checked) activeNodeTypes.add(e.target.dataset.type);
+      else activeNodeTypes.delete(e.target.dataset.type);
+      applyFilters();
+    }
+  });
+  efDiv.addEventListener('change', (e) => {
+    if (e.target.dataset.group === 'edge') {
+      if (e.target.checked) activeEdgeTypes.add(e.target.dataset.type);
+      else activeEdgeTypes.delete(e.target.dataset.type);
+      applyFilters();
+    }
+  });
+}
+
+// ── 初始化图谱 ──
+function initGraph() {
+  const elements = [];
+
+  graphData.nodes.forEach(n => {
+    const style = TYPE_STYLES[n.type] || { color: '#666', shape: 'ellipse', size: 40 };
+    elements.push({
+      group: 'nodes',
+      data: {
+        id: n.id,
+        label: n.label,
+        type: n.type,
+        file: n.file || '',
+        description: n.description || '',
+        color: style.color,
+        width: style.size,
+        height: style.size,
+      }
+    });
+  });
+
+  graphData.edges.forEach(e => {
+    elements.push({
+      group: 'edges',
+      data: {
+        id: `${e.source}_${e.target}_${e.type}`,
+        source: e.source,
+        target: e.target,
+        type: e.type,
+        color: EDGE_COLORS[e.type] || '#666',
+      }
+    });
+  });
+
+  cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: elements,
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'background-color': 'data(color)',
+          'label': 'data(label)',
+          'color': '#e8eaed',
+          'text-valign': 'bottom',
+          'text-halign': 'center',
+          'font-size': '10px',
+          'width': 'data(width)',
+          'height': 'data(height)',
+          'text-margin-y': 5,
+          'text-wrap': 'ellipsis',
+          'text-max-width': '80px',
+          'border-width': 2,
+          'border-color': 'data(color)',
+          'border-opacity': 0.3,
+          'background-opacity': 0.85,
+          'text-outline-color': '#0f1419',
+          'text-outline-width': 2,
+        }
+      },
+      {
+        selector: 'node[type="agent"]',
+        style: { 'shape': 'hexagon', 'font-size': '12px', 'font-weight': 'bold', 'text-outline-width': 3 }
+      },
+      {
+        selector: 'node[type="database"]',
+        style: { 'shape': 'round-rectangle' }
+      },
+      {
+        selector: 'node[type="endpoint"]',
+        style: { 'shape': 'diamond' }
+      },
+      {
+        selector: 'node[type="prompt"]',
+        style: { 'shape': 'star' }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'width': 1.5,
+          'line-color': 'data(color)',
+          'target-arrow-color': 'data(color)',
+          'target-arrow-shape': 'triangle',
+          'arrow-scale': 0.6,
+          'curve-style': 'bezier',
+          'opacity': 0.5,
+        }
+      },
+      {
+        selector: 'edge[type="coordinates"]',
+        style: { 'line-style': 'dashed', 'width': 2, 'opacity': 0.7 }
+      },
+      {
+        selector: 'edge[type="communicates_via"]',
+        style: { 'line-style': 'dotted', 'width': 2, 'opacity': 0.7 }
+      },
+      {
+        selector: '.highlighted',
+        style: { 'opacity': 1, 'border-width': 3, 'border-color': '#8ab4f8', 'border-opacity': 1 }
+      },
+      {
+        selector: '.highlighted-edge',
+        style: { 'opacity': 1, 'width': 3 }
+      },
+      {
+        selector: '.faded',
+        style: { 'opacity': 0.1 }
+      },
+      {
+        selector: '.search-match',
+        style: { 'border-width': 4, 'border-color': '#fdd835', 'border-opacity': 1, 'opacity': 1 }
+      },
+    ],
+    layout: {
+      name: 'dagre',
+      rankDir: 'TB',
+      nodeSep: 40,
+      rankSep: 60,
+      animate: true,
+      animationDuration: 500,
+    },
+    minZoom: 0.1,
+    maxZoom: 5,
+    wheelSensitivity: 0.3,
+  });
+
+  // 点击事件
+  cy.on('tap', 'node', (evt) => showNodeDetail(evt.target));
+  cy.on('tap', (evt) => {
+    if (evt.target === cy) clearHighlight();
+  });
+  // 双击展开邻居
+  cy.on('dbltap', 'node', (evt) => highlightNeighbors(evt.target));
+}
+
+// ── 应用过滤 ──
+function applyFilters() {
+  cy.nodes().forEach(n => {
+    n.style('display', activeNodeTypes.has(n.data('type')) ? 'element' : 'none');
+  });
+  cy.edges().forEach(e => {
+    const srcVisible = activeNodeTypes.has(cy.getElementById(e.data('source')).data('type'));
+    const tgtVisible = activeNodeTypes.has(cy.getElementById(e.data('target')).data('type'));
+    e.style('display', activeEdgeTypes.has(e.data('type')) && srcVisible && tgtVisible ? 'element' : 'none');
+  });
+  updateStats();
+}
+
+// ── 搜索 ──
+function initSearch() {
+  const input = document.getElementById('searchInput');
+  const results = document.getElementById('searchResults');
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { results.classList.remove('active'); return; }
+
+    const matches = graphData.nodes.filter(n =>
+      n.label.toLowerCase().includes(q) ||
+      (n.description || '').toLowerCase().includes(q) ||
+      (n.file || '').toLowerCase().includes(q)
+    ).slice(0, 20);
+
+    if (matches.length === 0) {
+      results.innerHTML = '<div class="search-item">无匹配结果</div>';
+    } else {
+      results.innerHTML = matches.map(n => {
+        const style = TYPE_STYLES[n.type] || { color: '#666', label: n.type };
+        return `<div class="search-item" data-id="${n.id}"><span class="type-badge" style="background:${style.color}">${style.label}</span>${n.label}<span style="color:#9aa0a6;font-size:11px;margin-left:4px">${n.description ? n.description.slice(0, 30) : ''}</span></div>`;
+      }).join('');
+    }
+    results.classList.add('active');
+  });
+
+  results.addEventListener('click', (e) => {
+    const item = e.target.closest('.search-item');
+    if (!item || !item.dataset.id) return;
+    const node = cy.getElementById(item.dataset.id);
+    if (node.length) {
+      cy.animate({ fit: { eles: node, padding: 100 }, duration: 400 });
+      highlightNode(node);
+      showNodeDetail(node);
+    }
+    results.classList.remove('active');
+    input.value = '';
+  });
+
+  // 回车搜索
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const q = input.value.trim().toLowerCase();
+      if (!q) return;
+      const matches = cy.nodes().filter(n =>
+        n.data('label').toLowerCase().includes(q) ||
+        (n.data('description') || '').toLowerCase().includes(q)
+      );
+      if (matches.length > 0) {
+        cy.elements().removeClass('search-match highlighted faded');
+        matches.addClass('search-match');
+        cy.animate({ fit: { eles: matches, padding: 100 }, duration: 400 });
+      }
+      results.classList.remove('active');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-box')) results.classList.remove('active');
+  });
+}
+
+// ── 高亮 ──
+function highlightNode(node) {
+  cy.elements().removeClass('highlighted highlighted-edge faded');
+  const neighborhood = node.closedNeighborhood();
+  cy.elements().addClass('faded');
+  neighborhood.removeClass('faded');
+  node.addClass('highlighted');
+  neighborhood.edges().addClass('highlighted-edge');
+}
+
+function highlightNeighbors(node) {
+  cy.elements().removeClass('highlighted highlighted-edge faded');
+  const neighborhood = node.closedNeighborhood();
+  cy.elements().addClass('faded');
+  neighborhood.removeClass('faded');
+  neighborhood.nodes().not(node).addClass('highlighted');
+  neighborhood.edges().addClass('highlighted-edge');
+  cy.animate({ fit: { eles: neighborhood, padding: 80 }, duration: 400 });
+}
+
+function clearHighlight() {
+  cy.elements().removeClass('highlighted highlighted-edge faded search-match');
+}
+
+// ── 节点详情 ──
+function showNodeDetail(node) {
+  const panel = document.getElementById('detailPanel');
+  const data = node.data();
+  const style = TYPE_STYLES[data.type] || { color: '#666', label: data.type };
+
+  highlightNode(node);
+
+  // 收集连接
+  const incomers = node.incomers('edge');
+  const outgoers = node.outgoers('edge');
+
+  let connHtml = '';
+  if (incomers.length > 0) {
+    connHtml += '<div class="conn-title">入边 (' + incomers.filter('edge').length + ')</div>';
+    incomers.filter('edge').forEach(e => {
+      const src = e.source();
+      const srcStyle = TYPE_STYLES[src.data('type')] || { color: '#666' };
+      connHtml += `<div class="conn-item" data-id="${src.id()}"><span class="color-dot" style="background:${srcStyle.color};width:8px;height:8px;border-radius:50%;display:inline-block"></span><span>${src.data('label')}</span><span class="conn-arrow">→</span><span class="conn-type">${EDGE_LABELS[e.data('type')] || e.data('type')}</span></div>`;
+    });
+  }
+  if (outgoers.length > 0) {
+    connHtml += '<div class="conn-title" style="margin-top:8px">出边 (' + outgoers.filter('edge').length + ')</div>';
+    outgoers.filter('edge').forEach(e => {
+      const tgt = e.target();
+      const tgtStyle = TYPE_STYLES[tgt.data('type')] || { color: '#666' };
+      connHtml += `<div class="conn-item" data-id="${tgt.id()}"><span class="color-dot" style="background:${tgtStyle.color};width:8px;height:8px;border-radius:50%;display:inline-block"></span><span>${tgt.data('label')}</span><span class="conn-arrow">→</span><span class="conn-type">${EDGE_LABELS[e.data('type')] || e.data('type')}</span></div>`;
+    });
+  }
+
+  panel.innerHTML = `
+    <h2>${data.label}</h2>
+    <span class="node-type" style="background:${style.color}">${style.label}</span>
+    ${data.file ? `<div class="file-path">${data.file}</div>` : ''}
+    ${data.description ? `<div class="desc">${data.description}</div>` : ''}
+    <div class="connections">${connHtml || '<div style="color:#9aa0a6;font-size:12px">无连接</div>'}</div>
+  `;
+
+  // 点击连接项跳转
+  panel.querySelectorAll('.conn-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const targetNode = cy.getElementById(item.dataset.id);
+      if (targetNode.length) {
+        cy.animate({ fit: { eles: targetNode, padding: 100 }, duration: 400 });
+        showNodeDetail(targetNode);
+      }
+    });
+  });
+}
+
+// ── 工具栏 ──
+function initToolbar() {
+  document.getElementById('layoutSelect').addEventListener('change', (e) => {
+    const layoutName = e.target.value;
+    const options = {
+      dagre: { name: 'dagre', rankDir: 'TB', nodeSep: 40, rankSep: 60, animate: true, animationDuration: 500 },
+      cose: { name: 'cose', animate: true, animationDuration: 500, nodeRepulsion: 8000, idealEdgeLength: 100 },
+      circle: { name: 'circle', animate: true, animationDuration: 500 },
+      breadthfirst: { name: 'breadthfirst', animate: true, animationDuration: 500, directed: true, spacingFactor: 1.5 },
+    };
+    cy.layout(options[layoutName]).run();
+  });
+
+  document.getElementById('btnFit').addEventListener('click', () => cy.fit(undefined, 30));
+  document.getElementById('btnReset').addEventListener('click', () => { clearHighlight(); cy.fit(undefined, 30); });
+  document.getElementById('btnExport').addEventListener('click', () => {
+    const png = cy.png({ bg: '#0f1419', full: true, scale: 2 });
+    const link = document.createElement('a');
+    link.href = png;
+    link.download = 'knowledge-graph.png';
+    link.click();
+  });
+  document.getElementById('btnToggleFilter').addEventListener('click', () => {
+    document.getElementById('filterPanel').classList.toggle('hidden');
+    setTimeout(() => cy.resize(), 200);
+  });
+  document.getElementById('btnToggleDetail').addEventListener('click', () => {
+    document.getElementById('detailPanel').classList.toggle('hidden');
+    setTimeout(() => cy.resize(), 200);
+  });
+}
+
+// ── 统计 ──
+function updateStats() {
+  const visibleNodes = cy.nodes().filter(n => n.style('display') !== 'none').length;
+  const visibleEdges = cy.edges().filter(e => e.style('display') !== 'none').length;
+  // 在filterPanel底部添加统计
+  let statsDiv = document.getElementById('liveStats');
+  if (!statsDiv) {
+    statsDiv = document.createElement('div');
+    statsDiv.id = 'liveStats';
+    statsDiv.className = 'stats-panel';
+    document.getElementById('filterPanel').appendChild(statsDiv);
+  }
+  statsDiv.innerHTML = `<h3>当前视图</h3><div class="stat-row"><span class="stat-label">可见节点</span><span class="stat-value">${visibleNodes}</span></div><div class="stat-row"><span class="stat-label">可见边</span><span class="stat-value">${visibleEdges}</span></div><div class="stat-row"><span class="stat-label">总节点</span><span class="stat-value">${graphData.nodes.length}</span></div><div class="stat-row"><span class="stat-label">总边</span><span class="stat-value">${graphData.edges.length}</span></div>`;
+}
+
+// ── 隐藏filterPanel/hidden ──
+const style = document.createElement('style');
+style.textContent = '.filter-panel.hidden { width: 0; padding: 0; overflow: hidden; }';
+document.head.appendChild(style);
+
+// ── 启动 ──
+loadData();
+</script>
+</body>
+</html>

@@ -1,0 +1,3773 @@
+{
+  "nodes": [
+    {
+      "id": "db:ai_auth",
+      "type": "database",
+      "label": "ai_auth",
+      "file": "data/databases/ai_auth.db",
+      "description": "认证与用户管理"
+    },
+    {
+      "id": "db:ai_profiles",
+      "type": "database",
+      "label": "ai_profiles",
+      "file": "data/databases/ai_profiles.db",
+      "description": "学生画像、成绩、错题、课表"
+    },
+    {
+      "id": "db:ai_resources",
+      "type": "database",
+      "label": "ai_resources",
+      "file": "data/databases/ai_resources.db",
+      "description": "学习资源与安全日志"
+    },
+    {
+      "id": "db:ai_paths",
+      "type": "database",
+      "label": "ai_paths",
+      "file": "data/databases/ai_paths.db",
+      "description": "学习路径与进度"
+    },
+    {
+      "id": "db:ai_tutor",
+      "type": "database",
+      "label": "ai_tutor",
+      "file": "data/databases/ai_tutor.db",
+      "description": "辅导会话与知识引用"
+    },
+    {
+      "id": "db:ai_assessments",
+      "type": "database",
+      "label": "ai_assessments",
+      "file": "data/databases/ai_assessments.db",
+      "description": "评估、活动、测验、题库"
+    },
+    {
+      "id": "db:ai_agents",
+      "type": "database",
+      "label": "ai_agents",
+      "file": "data/databases/ai_agents.db",
+      "description": "智能体协作日志与任务"
+    },
+    {
+      "id": "db:ai_rag_knowledge",
+      "type": "database",
+      "label": "ai_rag_knowledge",
+      "file": "data/databases/ai_rag_knowledge.db",
+      "description": "RAG知识库、FTS5索引、实体图谱"
+    },
+    {
+      "id": "db:ai_memory",
+      "type": "database",
+      "label": "ai_memory",
+      "file": "data/databases/ai_memory.db",
+      "description": "四层记忆系统(短期/情景/语义/实体)"
+    },
+    {
+      "id": "db:retrieval_eval",
+      "type": "database",
+      "label": "retrieval_eval",
+      "file": "data/databases/retrieval_eval.db",
+      "description": "检索效果评估"
+    },
+    {
+      "id": "table:ai_auth.users",
+      "type": "table",
+      "label": "users",
+      "file": "scripts/init_databases.py",
+      "description": "ai_auth.users",
+      "database": "ai_auth"
+    },
+    {
+      "id": "table:ai_auth.sessions",
+      "type": "table",
+      "label": "sessions",
+      "file": "scripts/init_databases.py",
+      "description": "ai_auth.sessions",
+      "database": "ai_auth"
+    },
+    {
+      "id": "table:ai_profiles.student_profiles",
+      "type": "table",
+      "label": "student_profiles",
+      "file": "scripts/init_databases.py",
+      "description": "ai_profiles.student_profiles",
+      "database": "ai_profiles"
+    },
+    {
+      "id": "table:ai_profiles.course_schedules",
+      "type": "table",
+      "label": "course_schedules",
+      "file": "scripts/init_databases.py",
+      "description": "ai_profiles.course_schedules",
+      "database": "ai_profiles"
+    },
+    {
+      "id": "table:ai_profiles.student_grades",
+      "type": "table",
+      "label": "student_grades",
+      "file": "scripts/init_databases.py",
+      "description": "ai_profiles.student_grades",
+      "database": "ai_profiles"
+    },
+    {
+      "id": "table:ai_profiles.error_notes",
+      "type": "table",
+      "label": "error_notes",
+      "file": "scripts/init_databases.py",
+      "description": "ai_profiles.error_notes",
+      "database": "ai_profiles"
+    },
+    {
+      "id": "table:ai_profiles.study_plans",
+      "type": "table",
+      "label": "study_plans",
+      "file": "scripts/init_databases.py",
+      "description": "ai_profiles.study_plans",
+      "database": "ai_profiles"
+    },
+    {
+      "id": "table:ai_resources.learning_resources",
+      "type": "table",
+      "label": "learning_resources",
+      "file": "scripts/init_databases.py",
+      "description": "ai_resources.learning_resources",
+      "database": "ai_resources"
+    },
+    {
+      "id": "table:ai_resources.resource_safety_logs",
+      "type": "table",
+      "label": "resource_safety_logs",
+      "file": "scripts/init_databases.py",
+      "description": "ai_resources.resource_safety_logs",
+      "database": "ai_resources"
+    },
+    {
+      "id": "table:ai_paths.learning_paths",
+      "type": "table",
+      "label": "learning_paths",
+      "file": "scripts/init_databases.py",
+      "description": "ai_paths.learning_paths",
+      "database": "ai_paths"
+    },
+    {
+      "id": "table:ai_paths.path_progress",
+      "type": "table",
+      "label": "path_progress",
+      "file": "scripts/init_databases.py",
+      "description": "ai_paths.path_progress",
+      "database": "ai_paths"
+    },
+    {
+      "id": "table:ai_tutor.tutor_sessions",
+      "type": "table",
+      "label": "tutor_sessions",
+      "file": "scripts/init_databases.py",
+      "description": "ai_tutor.tutor_sessions",
+      "database": "ai_tutor"
+    },
+    {
+      "id": "table:ai_tutor.tutor_messages",
+      "type": "table",
+      "label": "tutor_messages",
+      "file": "scripts/init_databases.py",
+      "description": "ai_tutor.tutor_messages",
+      "database": "ai_tutor"
+    },
+    {
+      "id": "table:ai_tutor.tutor_knowledge_refs",
+      "type": "table",
+      "label": "tutor_knowledge_refs",
+      "file": "scripts/init_databases.py",
+      "description": "ai_tutor.tutor_knowledge_refs",
+      "database": "ai_tutor"
+    },
+    {
+      "id": "table:ai_assessments.learning_assessments",
+      "type": "table",
+      "label": "learning_assessments",
+      "file": "scripts/init_databases.py",
+      "description": "ai_assessments.learning_assessments",
+      "database": "ai_assessments"
+    },
+    {
+      "id": "table:ai_assessments.assessment_dimensions",
+      "type": "table",
+      "label": "assessment_dimensions",
+      "file": "scripts/init_databases.py",
+      "description": "ai_assessments.assessment_dimensions",
+      "database": "ai_assessments"
+    },
+    {
+      "id": "table:ai_assessments.learning_activities",
+      "type": "table",
+      "label": "learning_activities",
+      "file": "scripts/init_databases.py",
+      "description": "ai_assessments.learning_activities",
+      "database": "ai_assessments"
+    },
+    {
+      "id": "table:ai_assessments.quiz_sessions",
+      "type": "table",
+      "label": "quiz_sessions",
+      "file": "scripts/init_databases.py",
+      "description": "ai_assessments.quiz_sessions",
+      "database": "ai_assessments"
+    },
+    {
+      "id": "table:ai_assessments.quiz_answers",
+      "type": "table",
+      "label": "quiz_answers",
+      "file": "scripts/init_databases.py",
+      "description": "ai_assessments.quiz_answers",
+      "database": "ai_assessments"
+    },
+    {
+      "id": "table:ai_assessments.question_bank",
+      "type": "table",
+      "label": "question_bank",
+      "file": "scripts/init_databases.py",
+      "description": "ai_assessments.question_bank",
+      "database": "ai_assessments"
+    },
+    {
+      "id": "table:ai_agents.agent_collaboration_logs",
+      "type": "table",
+      "label": "agent_collaboration_logs",
+      "file": "scripts/init_databases.py",
+      "description": "ai_agents.agent_collaboration_logs",
+      "database": "ai_agents"
+    },
+    {
+      "id": "table:ai_agents.agent_tasks",
+      "type": "table",
+      "label": "agent_tasks",
+      "file": "scripts/init_databases.py",
+      "description": "ai_agents.agent_tasks",
+      "database": "ai_agents"
+    },
+    {
+      "id": "table:ai_rag_knowledge.knowledge_documents",
+      "type": "table",
+      "label": "knowledge_documents",
+      "file": "scripts/init_databases.py",
+      "description": "ai_rag_knowledge.knowledge_documents",
+      "database": "ai_rag_knowledge"
+    },
+    {
+      "id": "table:ai_rag_knowledge.knowledge_points",
+      "type": "table",
+      "label": "knowledge_points",
+      "file": "scripts/init_databases.py",
+      "description": "ai_rag_knowledge.knowledge_points",
+      "database": "ai_rag_knowledge"
+    },
+    {
+      "id": "table:ai_rag_knowledge.document_categories",
+      "type": "table",
+      "label": "document_categories",
+      "file": "scripts/init_databases.py",
+      "description": "ai_rag_knowledge.document_categories",
+      "database": "ai_rag_knowledge"
+    },
+    {
+      "id": "table:ai_rag_knowledge.document_category_relation",
+      "type": "table",
+      "label": "document_category_relation",
+      "file": "scripts/init_databases.py",
+      "description": "ai_rag_knowledge.document_category_relation",
+      "database": "ai_rag_knowledge"
+    },
+    {
+      "id": "table:ai_rag_knowledge.document_usage_log",
+      "type": "table",
+      "label": "document_usage_log",
+      "file": "scripts/init_databases.py",
+      "description": "ai_rag_knowledge.document_usage_log",
+      "database": "ai_rag_knowledge"
+    },
+    {
+      "id": "table:ai_rag_knowledge.knowledge_entity_graph",
+      "type": "table",
+      "label": "knowledge_entity_graph",
+      "file": "scripts/init_databases.py",
+      "description": "ai_rag_knowledge.knowledge_entity_graph",
+      "database": "ai_rag_knowledge"
+    },
+    {
+      "id": "table:ai_memory.short_term_memory",
+      "type": "table",
+      "label": "short_term_memory",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.short_term_memory",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.episodic_memory",
+      "type": "table",
+      "label": "episodic_memory",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.episodic_memory",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.semantic_memory",
+      "type": "table",
+      "label": "semantic_memory",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.semantic_memory",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.entity_memory",
+      "type": "table",
+      "label": "entity_memory",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.entity_memory",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.entity_relations",
+      "type": "table",
+      "label": "entity_relations",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.entity_relations",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.memory_metadata",
+      "type": "table",
+      "label": "memory_metadata",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.memory_metadata",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.memory_conflicts",
+      "type": "table",
+      "label": "memory_conflicts",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.memory_conflicts",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.memory_access_log",
+      "type": "table",
+      "label": "memory_access_log",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.memory_access_log",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.user_feedback",
+      "type": "table",
+      "label": "user_feedback",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.user_feedback",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.learning_experiences",
+      "type": "table",
+      "label": "learning_experiences",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.learning_experiences",
+      "database": "ai_memory"
+    },
+    {
+      "id": "table:ai_memory.profile_evaluations",
+      "type": "table",
+      "label": "profile_evaluations",
+      "file": "scripts/init_databases.py",
+      "description": "ai_memory.profile_evaluations",
+      "database": "ai_memory"
+    },
+    {
+      "id": "service:adaptive_difficulty",
+      "type": "service",
+      "label": "adaptive_difficulty",
+      "file": "services/adaptive_difficulty.py",
+      "description": "自适应难度"
+    },
+    {
+      "id": "service:adaptive_path",
+      "type": "service",
+      "label": "adaptive_path",
+      "file": "services/adaptive_path.py",
+      "description": "自适应路径"
+    },
+    {
+      "id": "service:advanced_retrieval_service",
+      "type": "service",
+      "label": "advanced_retrieval_service",
+      "file": "services/advanced_retrieval_service.py",
+      "description": "高级检索服务-11种策略"
+    },
+    {
+      "id": "agent:agent_coordinator",
+      "type": "agent",
+      "label": "agent_coordinator",
+      "file": "services/agent_coordinator.py",
+      "description": "中央协调器-分发任务给5个专业智能体"
+    },
+    {
+      "id": "infra:agent_message",
+      "type": "infra",
+      "label": "agent_message",
+      "file": "services/agent_message.py",
+      "description": "消息协议-14种类型"
+    },
+    {
+      "id": "service:animation_service",
+      "type": "service",
+      "label": "animation_service",
+      "file": "services/animation_service.py",
+      "description": "动画生成服务"
+    },
+    {
+      "id": "service:answer_quality_scorer",
+      "type": "service",
+      "label": "answer_quality_scorer",
+      "file": "services/answer_quality_scorer.py",
+      "description": "答案质量评分器"
+    },
+    {
+      "id": "agent:assessment_agent",
+      "type": "agent",
+      "label": "assessment_agent",
+      "file": "services/assessment_agent.py",
+      "description": "评估智能体-基于真实学生数据生成评估报告"
+    },
+    {
+      "id": "service:auth_service",
+      "type": "service",
+      "label": "auth_service",
+      "file": "services/auth_service.py",
+      "description": "认证服务-JWT认证"
+    },
+    {
+      "id": "service:citation_annotator",
+      "type": "service",
+      "label": "citation_annotator",
+      "file": "services/citation_annotator.py",
+      "description": "引用标注器"
+    },
+    {
+      "id": "service:collaboration_service",
+      "type": "service",
+      "label": "collaboration_service",
+      "file": "services/collaboration_service.py",
+      "description": "协同学习服务-学习小组"
+    },
+    {
+      "id": "service:content_safety_service",
+      "type": "service",
+      "label": "content_safety_service",
+      "file": "services/content_safety_service.py",
+      "description": "内容安全服务-敏感词检测+防幻觉"
+    },
+    {
+      "id": "service:context_compressor",
+      "type": "service",
+      "label": "context_compressor",
+      "file": "services/context_compressor.py",
+      "description": "上下文压缩器"
+    },
+    {
+      "id": "service:document_analysis_service",
+      "type": "service",
+      "label": "document_analysis_service",
+      "file": "services/document_analysis_service.py",
+      "description": "文档分析服务"
+    },
+    {
+      "id": "service:enhanced_vision_service",
+      "type": "service",
+      "label": "enhanced_vision_service",
+      "file": "services/enhanced_vision_service.py",
+      "description": "增强视觉服务"
+    },
+    {
+      "id": "service:image_service",
+      "type": "service",
+      "label": "image_service",
+      "file": "services/image_service.py",
+      "description": "图片生成服务"
+    },
+    {
+      "id": "service:knowledge_tracer",
+      "type": "service",
+      "label": "knowledge_tracer",
+      "file": "services/knowledge_tracer.py",
+      "description": "知识追踪器-BKT"
+    },
+    {
+      "id": "service:memory_extractor",
+      "type": "service",
+      "label": "memory_extractor",
+      "file": "services/memory_extractor.py",
+      "description": "记忆提取器"
+    },
+    {
+      "id": "service:memory_service",
+      "type": "service",
+      "label": "memory_service",
+      "file": "services/memory_service.py",
+      "description": "四层记忆系统-艾宾浩斯遗忘曲线"
+    },
+    {
+      "id": "infra:message_bus",
+      "type": "infra",
+      "label": "message_bus",
+      "file": "services/message_bus.py",
+      "description": "事件驱动消息总线"
+    },
+    {
+      "id": "service:multi_hop_retriever",
+      "type": "service",
+      "label": "multi_hop_retriever",
+      "file": "services/multi_hop_retriever.py",
+      "description": "多跳推理检索器"
+    },
+    {
+      "id": "agent:path_agent",
+      "type": "agent",
+      "label": "path_agent",
+      "file": "services/path_agent.py",
+      "description": "路径智能体-规划个性化学习路径"
+    },
+    {
+      "id": "agent:profile_agent",
+      "type": "agent",
+      "label": "profile_agent",
+      "file": "services/profile_agent.py",
+      "description": "画像智能体-8轮对话采集构建9维度学生画像"
+    },
+    {
+      "id": "service:prompt_personalizer",
+      "type": "service",
+      "label": "prompt_personalizer",
+      "file": "services/prompt_personalizer.py",
+      "description": "提示词个性化"
+    },
+    {
+      "id": "service:qa_service",
+      "type": "service",
+      "label": "qa_service",
+      "file": "services/qa_service.py",
+      "description": "AI调用封装层"
+    },
+    {
+      "id": "service:query_processor",
+      "type": "service",
+      "label": "query_processor",
+      "file": "services/query_processor.py",
+      "description": "查询处理器"
+    },
+    {
+      "id": "service:reflector",
+      "type": "service",
+      "label": "reflector",
+      "file": "services/reflector.py",
+      "description": "反思验证器"
+    },
+    {
+      "id": "agent:resource_agent",
+      "type": "agent",
+      "label": "resource_agent",
+      "file": "services/resource_agent.py",
+      "description": "资源智能体-生成7种多模态学习资源"
+    },
+    {
+      "id": "service:resource_export_service",
+      "type": "service",
+      "label": "resource_export_service",
+      "file": "services/resource_export_service.py",
+      "description": "资源导出服务"
+    },
+    {
+      "id": "service:retrieval_evaluator",
+      "type": "service",
+      "label": "retrieval_evaluator",
+      "file": "services/retrieval_evaluator.py",
+      "description": "检索评估器"
+    },
+    {
+      "id": "service:self_learning_service",
+      "type": "service",
+      "label": "self_learning_service",
+      "file": "services/self_learning_service.py",
+      "description": "自学习闭环"
+    },
+    {
+      "id": "service:self_rag",
+      "type": "service",
+      "label": "self_rag",
+      "file": "services/self_rag.py",
+      "description": "Self-RAG"
+    },
+    {
+      "id": "service:spark_client",
+      "type": "service",
+      "label": "spark_client",
+      "file": "services/spark_client.py",
+      "description": "MiMo API客户端"
+    },
+    {
+      "id": "service:streaming_service",
+      "type": "service",
+      "label": "streaming_service",
+      "file": "services/streaming_service.py",
+      "description": "SSE流式输出服务"
+    },
+    {
+      "id": "service:student_data_service",
+      "type": "service",
+      "label": "student_data_service",
+      "file": "services/student_data_service.py",
+      "description": "学生数据服务-课表/成绩/错题/学习计划"
+    },
+    {
+      "id": "agent:tutor_agent",
+      "type": "agent",
+      "label": "tutor_agent",
+      "file": "services/tutor_agent.py",
+      "description": "辅导智能体-多模态答疑集成记忆增强和Self-RAG"
+    },
+    {
+      "id": "service:video_generation_service",
+      "type": "service",
+      "label": "video_generation_service",
+      "file": "services/video_generation_service.py",
+      "description": "视频脚本生成服务"
+    },
+    {
+      "id": "data:collaboration_db",
+      "type": "data_layer",
+      "label": "collaboration_db",
+      "file": "data/collaboration_db.py",
+      "description": "协同学习数据库"
+    },
+    {
+      "id": "data:config",
+      "type": "data_layer",
+      "label": "config",
+      "file": "data/config.py",
+      "description": "数据库配置"
+    },
+    {
+      "id": "data:dao",
+      "type": "data_layer",
+      "label": "dao",
+      "file": "data/dao.py",
+      "description": "数据访问对象"
+    },
+    {
+      "id": "data:data_manager",
+      "type": "data_layer",
+      "label": "data_manager",
+      "file": "data/data_manager.py",
+      "description": "缓存管理器"
+    },
+    {
+      "id": "data:db_operations",
+      "type": "data_layer",
+      "label": "db_operations",
+      "file": "data/db_operations.py",
+      "description": "数据库操作"
+    },
+    {
+      "id": "data:embedding_service",
+      "type": "data_layer",
+      "label": "embedding_service",
+      "file": "data/embedding_service.py",
+      "description": "向量化服务"
+    },
+    {
+      "id": "data:qa_db_operations",
+      "type": "data_layer",
+      "label": "qa_db_operations",
+      "file": "data/qa_db_operations.py",
+      "description": "QA数据库操作"
+    },
+    {
+      "id": "data:rag_knowledge_base",
+      "type": "data_layer",
+      "label": "rag_knowledge_base",
+      "file": "data/rag_knowledge_base.py",
+      "description": "RAG知识库"
+    },
+    {
+      "id": "endpoint:POST/build-profile",
+      "type": "endpoint",
+      "label": "POST /build-profile",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/build-profile",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/get-profile",
+      "type": "endpoint",
+      "label": "GET /get-profile",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/get-profile",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/update-profile-field",
+      "type": "endpoint",
+      "label": "POST /update-profile-field",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/update-profile-field",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/evaluate-profile",
+      "type": "endpoint",
+      "label": "POST /evaluate-profile",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/evaluate-profile",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/generate-resources",
+      "type": "endpoint",
+      "label": "POST /generate-resources",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/generate-resources",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/plan-path",
+      "type": "endpoint",
+      "label": "POST /plan-path",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/plan-path",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/tutor",
+      "type": "endpoint",
+      "label": "POST /tutor",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/tutor",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/knowledge-map",
+      "type": "endpoint",
+      "label": "GET /knowledge-map",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/knowledge-map",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/learning-recommendations",
+      "type": "endpoint",
+      "label": "GET /learning-recommendations",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/learning-recommendations",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/memory/maintenance",
+      "type": "endpoint",
+      "label": "POST /memory/maintenance",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/memory/maintenance",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/assess",
+      "type": "endpoint",
+      "label": "POST /assess",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/assess",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/latest-assessment",
+      "type": "endpoint",
+      "label": "GET /latest-assessment",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/latest-assessment",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/comprehensive-plan",
+      "type": "endpoint",
+      "label": "POST /comprehensive-plan",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/comprehensive-plan",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/update-path-progress",
+      "type": "endpoint",
+      "label": "POST /update-path-progress",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/update-path-progress",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/update-profile-from-learning",
+      "type": "endpoint",
+      "label": "POST /update-profile-from-learning",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/update-profile-from-learning",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/export-resource",
+      "type": "endpoint",
+      "label": "POST /export-resource",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/export-resource",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/save-resource",
+      "type": "endpoint",
+      "label": "POST /save-resource",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/save-resource",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/list-resources",
+      "type": "endpoint",
+      "label": "GET /list-resources",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/list-resources",
+      "description": ""
+    },
+    {
+      "id": "endpoint:DELETE/delete-resource/{resource_id}",
+      "type": "endpoint",
+      "label": "DELETE /delete-resource/{resource_id}",
+      "file": "backend/api/agent.py",
+      "method": "DELETE",
+      "path": "/delete-resource/{resource_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/analyze-documents",
+      "type": "endpoint",
+      "label": "POST /analyze-documents",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/analyze-documents",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/upload-to-rag",
+      "type": "endpoint",
+      "label": "POST /upload-to-rag",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/upload-to-rag",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/rag-documents",
+      "type": "endpoint",
+      "label": "GET /rag-documents",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/rag-documents",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/save-course-schedule",
+      "type": "endpoint",
+      "label": "POST /save-course-schedule",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/save-course-schedule",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/get-course-schedule",
+      "type": "endpoint",
+      "label": "GET /get-course-schedule",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/get-course-schedule",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/list-semesters",
+      "type": "endpoint",
+      "label": "GET /list-semesters",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/list-semesters",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/save-grades",
+      "type": "endpoint",
+      "label": "POST /save-grades",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/save-grades",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/get-grades",
+      "type": "endpoint",
+      "label": "GET /get-grades",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/get-grades",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/save-error-note",
+      "type": "endpoint",
+      "label": "POST /save-error-note",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/save-error-note",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/get-error-notes",
+      "type": "endpoint",
+      "label": "GET /get-error-notes",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/get-error-notes",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/update-error-mastery",
+      "type": "endpoint",
+      "label": "POST /update-error-mastery",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/update-error-mastery",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/delete-error-note",
+      "type": "endpoint",
+      "label": "POST /delete-error-note",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/delete-error-note",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/review-due",
+      "type": "endpoint",
+      "label": "GET /review-due",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/review-due",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/review-submit",
+      "type": "endpoint",
+      "label": "POST /review-submit",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/review-submit",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/review-reminder",
+      "type": "endpoint",
+      "label": "GET /review-reminder",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/review-reminder",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/generate-study-plan",
+      "type": "endpoint",
+      "label": "POST /generate-study-plan",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/generate-study-plan",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/get-study-plans",
+      "type": "endpoint",
+      "label": "GET /get-study-plans",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/get-study-plans",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/import-courses-from-file",
+      "type": "endpoint",
+      "label": "POST /import-courses-from-file",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/import-courses-from-file",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/import-grades-from-file",
+      "type": "endpoint",
+      "label": "POST /import-grades-from-file",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/import-grades-from-file",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/import-errors-from-file",
+      "type": "endpoint",
+      "label": "POST /import-errors-from-file",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/import-errors-from-file",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/dashboard/stats",
+      "type": "endpoint",
+      "label": "GET /dashboard/stats",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/dashboard/stats",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/activity-logs",
+      "type": "endpoint",
+      "label": "GET /activity-logs",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/activity-logs",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/activity-logs",
+      "type": "endpoint",
+      "label": "POST /activity-logs",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/activity-logs",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/advanced-search",
+      "type": "endpoint",
+      "label": "POST /advanced-search",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/advanced-search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/contextual-upload",
+      "type": "endpoint",
+      "label": "POST /contextual-upload",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/contextual-upload",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/hyde-search",
+      "type": "endpoint",
+      "label": "POST /hyde-search",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/hyde-search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/multi-query-search",
+      "type": "endpoint",
+      "label": "POST /multi-query-search",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/multi-query-search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/rag-fusion-search",
+      "type": "endpoint",
+      "label": "POST /rag-fusion-search",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/rag-fusion-search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/graph-search",
+      "type": "endpoint",
+      "label": "POST /graph-search",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/graph-search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/feedback",
+      "type": "endpoint",
+      "label": "POST /feedback",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/feedback",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/learning-stats",
+      "type": "endpoint",
+      "label": "GET /learning-stats",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/learning-stats",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/trigger-learning",
+      "type": "endpoint",
+      "label": "POST /trigger-learning",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/trigger-learning",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/eval-retrieval/datasets",
+      "type": "endpoint",
+      "label": "GET /eval-retrieval/datasets",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/eval-retrieval/datasets",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/eval-retrieval/datasets",
+      "type": "endpoint",
+      "label": "POST /eval-retrieval/datasets",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/eval-retrieval/datasets",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/eval-retrieval/queries",
+      "type": "endpoint",
+      "label": "POST /eval-retrieval/queries",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/eval-retrieval/queries",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/eval-retrieval/run",
+      "type": "endpoint",
+      "label": "POST /eval-retrieval/run",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/eval-retrieval/run",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/eval-retrieval/history",
+      "type": "endpoint",
+      "label": "GET /eval-retrieval/history",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/eval-retrieval/history",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/eval-retrieval/compare",
+      "type": "endpoint",
+      "label": "GET /eval-retrieval/compare",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/eval-retrieval/compare",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/multi-hop-search",
+      "type": "endpoint",
+      "label": "POST /multi-hop-search",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/multi-hop-search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/react-search",
+      "type": "endpoint",
+      "label": "POST /react-search",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/react-search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/faiss-info",
+      "type": "endpoint",
+      "label": "GET /faiss-info",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/faiss-info",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/agent-status/{session_id}",
+      "type": "endpoint",
+      "label": "GET /agent-status/{session_id}",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/agent-status/{session_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/agent-status-stream/{session_id}",
+      "type": "endpoint",
+      "label": "GET /agent-status-stream/{session_id}",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/agent-status-stream/{session_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/bilibili/search",
+      "type": "endpoint",
+      "label": "GET /bilibili/search",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/bilibili/search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/bilibili/recommend",
+      "type": "endpoint",
+      "label": "GET /bilibili/recommend",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/bilibili/recommend",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/bilibili/cover",
+      "type": "endpoint",
+      "label": "GET /bilibili/cover",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/bilibili/cover",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/books/search",
+      "type": "endpoint",
+      "label": "GET /books/search",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/books/search",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/books/recommend",
+      "type": "endpoint",
+      "label": "GET /books/recommend",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/books/recommend",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/books/cover",
+      "type": "endpoint",
+      "label": "GET /books/cover",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/books/cover",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/quiz/start",
+      "type": "endpoint",
+      "label": "POST /quiz/start",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/quiz/start",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/quiz/submit",
+      "type": "endpoint",
+      "label": "POST /quiz/submit",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/quiz/submit",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/quiz/finish",
+      "type": "endpoint",
+      "label": "POST /quiz/finish",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/quiz/finish",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/quiz/history",
+      "type": "endpoint",
+      "label": "GET /quiz/history",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/quiz/history",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/quiz/session/{session_id}",
+      "type": "endpoint",
+      "label": "GET /quiz/session/{session_id}",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/quiz/session/{session_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/quiz/stats",
+      "type": "endpoint",
+      "label": "GET /quiz/stats",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/quiz/stats",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/quiz/weak-topics",
+      "type": "endpoint",
+      "label": "GET /quiz/weak-topics",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/quiz/weak-topics",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/quiz/adaptive",
+      "type": "endpoint",
+      "label": "POST /quiz/adaptive",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/quiz/adaptive",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/quiz/import-bank",
+      "type": "endpoint",
+      "label": "POST /quiz/import-bank",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/quiz/import-bank",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/analytics/overview",
+      "type": "endpoint",
+      "label": "GET /analytics/overview",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/analytics/overview",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/analytics/subject-breakdown",
+      "type": "endpoint",
+      "label": "GET /analytics/subject-breakdown",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/analytics/subject-breakdown",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/analytics/resource-type-breakdown",
+      "type": "endpoint",
+      "label": "GET /analytics/resource-type-breakdown",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/analytics/resource-type-breakdown",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/analytics/study-trend",
+      "type": "endpoint",
+      "label": "GET /analytics/study-trend",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/analytics/study-trend",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/analytics/quiz-trend",
+      "type": "endpoint",
+      "label": "GET /analytics/quiz-trend",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/analytics/quiz-trend",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/analytics/knowledge-mastery",
+      "type": "endpoint",
+      "label": "GET /analytics/knowledge-mastery",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/analytics/knowledge-mastery",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/analytics/weekly-report",
+      "type": "endpoint",
+      "label": "GET /analytics/weekly-report",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/analytics/weekly-report",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/profile/assessment-quiz",
+      "type": "endpoint",
+      "label": "GET /profile/assessment-quiz",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/profile/assessment-quiz",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/profile/submit-assessment",
+      "type": "endpoint",
+      "label": "POST /profile/submit-assessment",
+      "file": "backend/api/agent.py",
+      "method": "POST",
+      "path": "/profile/submit-assessment",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/login",
+      "type": "endpoint",
+      "label": "POST /login",
+      "file": "backend/api/auth.py",
+      "method": "POST",
+      "path": "/login",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/register",
+      "type": "endpoint",
+      "label": "POST /register",
+      "file": "backend/api/auth.py",
+      "method": "POST",
+      "path": "/register",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/me",
+      "type": "endpoint",
+      "label": "GET /me",
+      "file": "backend/api/auth.py",
+      "method": "GET",
+      "path": "/me",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/change-password",
+      "type": "endpoint",
+      "label": "POST /change-password",
+      "file": "backend/api/auth.py",
+      "method": "POST",
+      "path": "/change-password",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/guest",
+      "type": "endpoint",
+      "label": "POST /guest",
+      "file": "backend/api/auth.py",
+      "method": "POST",
+      "path": "/guest",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/create-group",
+      "type": "endpoint",
+      "label": "POST /create-group",
+      "file": "backend/api/collaboration.py",
+      "method": "POST",
+      "path": "/create-group",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/join-group",
+      "type": "endpoint",
+      "label": "POST /join-group",
+      "file": "backend/api/collaboration.py",
+      "method": "POST",
+      "path": "/join-group",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/leave-group",
+      "type": "endpoint",
+      "label": "POST /leave-group",
+      "file": "backend/api/collaboration.py",
+      "method": "POST",
+      "path": "/leave-group",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/my-groups",
+      "type": "endpoint",
+      "label": "GET /my-groups",
+      "file": "backend/api/collaboration.py",
+      "method": "GET",
+      "path": "/my-groups",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/group/{group_id}",
+      "type": "endpoint",
+      "label": "GET /group/{group_id}",
+      "file": "backend/api/collaboration.py",
+      "method": "GET",
+      "path": "/group/{group_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/share-resource",
+      "type": "endpoint",
+      "label": "POST /share-resource",
+      "file": "backend/api/collaboration.py",
+      "method": "POST",
+      "path": "/share-resource",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/shared-resources/{group_id}",
+      "type": "endpoint",
+      "label": "GET /shared-resources/{group_id}",
+      "file": "backend/api/collaboration.py",
+      "method": "GET",
+      "path": "/shared-resources/{group_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/activities/{group_id}",
+      "type": "endpoint",
+      "label": "GET /activities/{group_id}",
+      "file": "backend/api/collaboration.py",
+      "method": "GET",
+      "path": "/activities/{group_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/review",
+      "type": "endpoint",
+      "label": "POST /review",
+      "file": "backend/api/collaboration.py",
+      "method": "POST",
+      "path": "/review",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/learning-stats/{group_id}",
+      "type": "endpoint",
+      "label": "GET /learning-stats/{group_id}",
+      "file": "backend/api/collaboration.py",
+      "method": "GET",
+      "path": "/learning-stats/{group_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/generate-resource/{resource_type}",
+      "type": "endpoint",
+      "label": "GET /generate-resource/{resource_type}",
+      "file": "backend/api/stream.py",
+      "method": "GET",
+      "path": "/generate-resource/{resource_type}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/generate-resources-real",
+      "type": "endpoint",
+      "label": "GET /generate-resources-real",
+      "file": "backend/api/stream.py",
+      "method": "GET",
+      "path": "/generate-resources-real",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/progress/{task_id}",
+      "type": "endpoint",
+      "label": "GET /progress/{task_id}",
+      "file": "backend/api/stream.py",
+      "method": "GET",
+      "path": "/progress/{task_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/my-tasks",
+      "type": "endpoint",
+      "label": "GET /my-tasks",
+      "file": "backend/api/stream.py",
+      "method": "GET",
+      "path": "/my-tasks",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/check-content-safety",
+      "type": "endpoint",
+      "label": "POST /check-content-safety",
+      "file": "backend/api/stream.py",
+      "method": "POST",
+      "path": "/check-content-safety",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/verify-fact",
+      "type": "endpoint",
+      "label": "POST /verify-fact",
+      "file": "backend/api/stream.py",
+      "method": "POST",
+      "path": "/verify-fact",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/add-citations",
+      "type": "endpoint",
+      "label": "POST /add-citations",
+      "file": "backend/api/stream.py",
+      "method": "POST",
+      "path": "/add-citations",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/cross-validate",
+      "type": "endpoint",
+      "label": "POST /cross-validate",
+      "file": "backend/api/stream.py",
+      "method": "POST",
+      "path": "/cross-validate",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/tutor",
+      "type": "endpoint",
+      "label": "POST /tutor",
+      "file": "backend/api/stream.py",
+      "method": "POST",
+      "path": "/tutor",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/quiz/adaptive",
+      "type": "endpoint",
+      "label": "POST /quiz/adaptive",
+      "file": "backend/api/stream.py",
+      "method": "POST",
+      "path": "/quiz/adaptive",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/plan-path",
+      "type": "endpoint",
+      "label": "POST /plan-path",
+      "file": "backend/api/stream.py",
+      "method": "POST",
+      "path": "/plan-path",
+      "description": ""
+    },
+    {
+      "id": "prompt:ProfilePrompts",
+      "type": "prompt",
+      "label": "ProfilePrompts",
+      "file": "core/prompts.py",
+      "description": "画像构建提示词"
+    },
+    {
+      "id": "prompt:AnalysisPrompts",
+      "type": "prompt",
+      "label": "AnalysisPrompts",
+      "file": "core/prompts.py",
+      "description": "学情分析提示词"
+    },
+    {
+      "id": "prompt:DocumentAnalysisPrompts",
+      "type": "prompt",
+      "label": "DocumentAnalysisPrompts",
+      "file": "core/prompts.py",
+      "description": "文档分析提示词"
+    },
+    {
+      "id": "prompt:VoiceQAPrompts",
+      "type": "prompt",
+      "label": "VoiceQAPrompts",
+      "file": "core/prompts.py",
+      "description": "语音问答提示词"
+    },
+    {
+      "id": "page:assessment",
+      "type": "page",
+      "label": "assessment",
+      "file": "frontend/app/assessment/page.tsx",
+      "description": ""
+    },
+    {
+      "id": "page:assessment-quiz",
+      "type": "page",
+      "label": "assessment-quiz",
+      "file": "frontend/app/assessment-quiz/page.tsx",
+      "description": "测验页面"
+    },
+    {
+      "id": "page:dashboard",
+      "type": "page",
+      "label": "dashboard",
+      "file": "frontend/app/dashboard/page.tsx",
+      "description": "工作台主页面"
+    },
+    {
+      "id": "page:layout",
+      "type": "page",
+      "label": "layout",
+      "file": "frontend/app/layout.tsx",
+      "description": ""
+    },
+    {
+      "id": "page:learning-path",
+      "type": "page",
+      "label": "learning-path",
+      "file": "frontend/app/learning-path/page.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:LoginContent",
+      "type": "module",
+      "label": "LoginContent",
+      "file": "frontend/app/LoginContent.tsx",
+      "description": ""
+    },
+    {
+      "id": "page:page",
+      "type": "page",
+      "label": "page",
+      "file": "frontend/app/page.tsx",
+      "description": ""
+    },
+    {
+      "id": "page:profile",
+      "type": "page",
+      "label": "profile",
+      "file": "frontend/app/profile/page.tsx",
+      "description": ""
+    },
+    {
+      "id": "page:resources",
+      "type": "page",
+      "label": "resources",
+      "file": "frontend/app/resources/page.tsx",
+      "description": ""
+    },
+    {
+      "id": "page:tutor",
+      "type": "page",
+      "label": "tutor",
+      "file": "frontend/app/tutor/page.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:index",
+      "type": "component",
+      "label": "index",
+      "file": "frontend/components/animations/index.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:DashboardContent",
+      "type": "component",
+      "label": "DashboardContent",
+      "file": "frontend/components/DashboardContent.tsx",
+      "description": "工作台内容"
+    },
+    {
+      "id": "component:FloatingMenu",
+      "type": "component",
+      "label": "FloatingMenu",
+      "file": "frontend/components/layout/FloatingMenu.tsx",
+      "description": "浮动菜单"
+    },
+    {
+      "id": "component:Sidebar",
+      "type": "component",
+      "label": "Sidebar",
+      "file": "frontend/components/layout/Sidebar.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:AnalyticsModule",
+      "type": "component",
+      "label": "AnalyticsModule",
+      "file": "frontend/components/modules/AnalyticsModule.tsx",
+      "description": "分析模块"
+    },
+    {
+      "id": "component:AssessmentModule",
+      "type": "component",
+      "label": "AssessmentModule",
+      "file": "frontend/components/modules/AssessmentModule.tsx",
+      "description": "评估模块"
+    },
+    {
+      "id": "component:BookResourceModule",
+      "type": "component",
+      "label": "BookResourceModule",
+      "file": "frontend/components/modules/BookResourceModule.tsx",
+      "description": "图书资源模块"
+    },
+    {
+      "id": "component:CollaborationModule",
+      "type": "component",
+      "label": "CollaborationModule",
+      "file": "frontend/components/modules/CollaborationModule.tsx",
+      "description": "协同模块"
+    },
+    {
+      "id": "component:MermaidDiagram",
+      "type": "component",
+      "label": "MermaidDiagram",
+      "file": "frontend/components/modules/MermaidDiagram.tsx",
+      "description": "Mermaid图表渲染器"
+    },
+    {
+      "id": "component:PathModule",
+      "type": "component",
+      "label": "PathModule",
+      "file": "frontend/components/modules/PathModule.tsx",
+      "description": "路径模块"
+    },
+    {
+      "id": "component:ProfileModule",
+      "type": "component",
+      "label": "ProfileModule",
+      "file": "frontend/components/modules/ProfileModule.tsx",
+      "description": "画像模块"
+    },
+    {
+      "id": "component:QuizHistoryPanel",
+      "type": "component",
+      "label": "QuizHistoryPanel",
+      "file": "frontend/components/modules/quiz/QuizHistoryPanel.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:QuizQuestionCard",
+      "type": "component",
+      "label": "QuizQuestionCard",
+      "file": "frontend/components/modules/quiz/QuizQuestionCard.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:QuizResultPanel",
+      "type": "component",
+      "label": "QuizResultPanel",
+      "file": "frontend/components/modules/quiz/QuizResultPanel.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:QuizStartPanel",
+      "type": "component",
+      "label": "QuizStartPanel",
+      "file": "frontend/components/modules/quiz/QuizStartPanel.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:QuizStatsPanel",
+      "type": "component",
+      "label": "QuizStatsPanel",
+      "file": "frontend/components/modules/quiz/QuizStatsPanel.tsx",
+      "description": ""
+    },
+    {
+      "id": "component:QuizModule",
+      "type": "component",
+      "label": "QuizModule",
+      "file": "frontend/components/modules/QuizModule.tsx",
+      "description": "测验模块"
+    },
+    {
+      "id": "component:RagKnowledgeModule",
+      "type": "component",
+      "label": "RagKnowledgeModule",
+      "file": "frontend/components/modules/RagKnowledgeModule.tsx",
+      "description": "知识库模块"
+    },
+    {
+      "id": "component:ResourcesModule",
+      "type": "component",
+      "label": "ResourcesModule",
+      "file": "frontend/components/modules/ResourcesModule.tsx",
+      "description": "资源模块"
+    },
+    {
+      "id": "component:TutorModule",
+      "type": "component",
+      "label": "TutorModule",
+      "file": "frontend/components/modules/TutorModule.tsx",
+      "description": "辅导模块"
+    },
+    {
+      "id": "component:VideoResourceModule",
+      "type": "component",
+      "label": "VideoResourceModule",
+      "file": "frontend/components/modules/VideoResourceModule.tsx",
+      "description": "视频资源模块"
+    },
+    {
+      "id": "component:BackgroundEffects",
+      "type": "component",
+      "label": "BackgroundEffects",
+      "file": "frontend/components/shared/BackgroundEffects.tsx",
+      "description": "背景特效"
+    },
+    {
+      "id": "component:ErrorBoundary",
+      "type": "component",
+      "label": "ErrorBoundary",
+      "file": "frontend/components/shared/ErrorBoundary.tsx",
+      "description": "错误边界"
+    },
+    {
+      "id": "component:MarkdownRenderer",
+      "type": "component",
+      "label": "MarkdownRenderer",
+      "file": "frontend/components/shared/MarkdownRenderer.tsx",
+      "description": "Markdown渲染器"
+    },
+    {
+      "id": "component:WorkSpaceSection",
+      "type": "component",
+      "label": "WorkSpaceSection",
+      "file": "frontend/components/WorkSpaceSection.tsx",
+      "description": "工作区组件"
+    },
+    {
+      "id": "component:constants",
+      "type": "component",
+      "label": "constants",
+      "file": "frontend/components/modules/constants.ts",
+      "description": ""
+    },
+    {
+      "id": "component:types",
+      "type": "component",
+      "label": "types",
+      "file": "frontend/components/modules/types.ts",
+      "description": ""
+    },
+    {
+      "id": "component:useDashboard",
+      "type": "component",
+      "label": "useDashboard",
+      "file": "frontend/components/modules/useDashboard.ts",
+      "description": ""
+    },
+    {
+      "id": "config:.env",
+      "type": "config",
+      "label": ".env",
+      "file": ".env",
+      "description": "环境变量配置",
+      "config_type": "env"
+    },
+    {
+      "id": "config:pyproject.toml",
+      "type": "config",
+      "label": "pyproject.toml",
+      "file": "pyproject.toml",
+      "description": "Python项目配置",
+      "config_type": "toml"
+    },
+    {
+      "id": "config:sensitive_words.json",
+      "type": "config",
+      "label": "sensitive_words.json",
+      "file": "config/sensitive_words.json",
+      "description": "敏感词库(127条)",
+      "config_type": "json"
+    },
+    {
+      "id": "config:docker-compose.yml",
+      "type": "config",
+      "label": "docker-compose.yml",
+      "file": "docker-compose.yml",
+      "description": "Docker服务编排",
+      "config_type": "yaml"
+    },
+    {
+      "id": "config:Dockerfile",
+      "type": "config",
+      "label": "Dockerfile",
+      "file": "Dockerfile",
+      "description": "后端Docker镜像",
+      "config_type": "docker"
+    },
+    {
+      "id": "config:package.json",
+      "type": "config",
+      "label": "package.json",
+      "file": "frontend/package.json",
+      "description": "前端依赖配置",
+      "config_type": "json"
+    },
+    {
+      "id": "config:tailwind.config.ts",
+      "type": "config",
+      "label": "tailwind.config.ts",
+      "file": "frontend/tailwind.config.ts",
+      "description": "Tailwind CSS配置",
+      "config_type": "ts"
+    },
+    {
+      "id": "data:document_parser",
+      "type": "data",
+      "label": "document_parser",
+      "file": "",
+      "description": "文档解析器"
+    }
+  ],
+  "edges": [
+    {
+      "source": "db:ai_auth",
+      "target": "table:ai_auth.users",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_auth",
+      "target": "table:ai_auth.sessions",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_profiles",
+      "target": "table:ai_profiles.student_profiles",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_profiles",
+      "target": "table:ai_profiles.course_schedules",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_profiles",
+      "target": "table:ai_profiles.student_grades",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_profiles",
+      "target": "table:ai_profiles.error_notes",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_profiles",
+      "target": "table:ai_profiles.study_plans",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_resources",
+      "target": "table:ai_resources.learning_resources",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_resources",
+      "target": "table:ai_resources.resource_safety_logs",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_paths",
+      "target": "table:ai_paths.learning_paths",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_paths",
+      "target": "table:ai_paths.path_progress",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_tutor",
+      "target": "table:ai_tutor.tutor_sessions",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_tutor",
+      "target": "table:ai_tutor.tutor_messages",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_tutor",
+      "target": "table:ai_tutor.tutor_knowledge_refs",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_assessments",
+      "target": "table:ai_assessments.learning_assessments",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_assessments",
+      "target": "table:ai_assessments.assessment_dimensions",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_assessments",
+      "target": "table:ai_assessments.learning_activities",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_assessments",
+      "target": "table:ai_assessments.quiz_sessions",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_assessments",
+      "target": "table:ai_assessments.quiz_answers",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_assessments",
+      "target": "table:ai_assessments.question_bank",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_agents",
+      "target": "table:ai_agents.agent_collaboration_logs",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_agents",
+      "target": "table:ai_agents.agent_tasks",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_rag_knowledge",
+      "target": "table:ai_rag_knowledge.knowledge_documents",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_rag_knowledge",
+      "target": "table:ai_rag_knowledge.knowledge_points",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_rag_knowledge",
+      "target": "table:ai_rag_knowledge.document_categories",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_rag_knowledge",
+      "target": "table:ai_rag_knowledge.document_category_relation",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_rag_knowledge",
+      "target": "table:ai_rag_knowledge.document_usage_log",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_rag_knowledge",
+      "target": "table:ai_rag_knowledge.knowledge_entity_graph",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.short_term_memory",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.episodic_memory",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.semantic_memory",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.entity_memory",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.entity_relations",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.memory_metadata",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.memory_conflicts",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.memory_access_log",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.user_feedback",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.learning_experiences",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_memory",
+      "target": "table:ai_memory.profile_evaluations",
+      "type": "contains_table"
+    },
+    {
+      "source": "service:advanced_retrieval_service",
+      "target": "service:advanced_retrieval_service",
+      "type": "imports"
+    },
+    {
+      "source": "agent:agent_coordinator",
+      "target": "infra:message_bus",
+      "type": "communicates_via"
+    },
+    {
+      "source": "agent:assessment_agent",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "agent:assessment_agent",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:auth_service",
+      "target": "db:ai_auth",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:memory_service",
+      "target": "db:ai_memory",
+      "type": "uses_database"
+    },
+    {
+      "source": "infra:message_bus",
+      "target": "infra:message_bus",
+      "type": "communicates_via"
+    },
+    {
+      "source": "service:multi_hop_retriever",
+      "target": "db:ai_rag_knowledge",
+      "type": "uses_database"
+    },
+    {
+      "source": "agent:path_agent",
+      "target": "service:adaptive_path",
+      "type": "imports"
+    },
+    {
+      "source": "agent:path_agent",
+      "target": "db:ai_paths",
+      "type": "uses_database"
+    },
+    {
+      "source": "agent:profile_agent",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "agent:profile_agent",
+      "target": "prompt:ProfilePrompts",
+      "type": "uses_prompt"
+    },
+    {
+      "source": "service:reflector",
+      "target": "service:qa_service",
+      "type": "imports"
+    },
+    {
+      "source": "service:reflector",
+      "target": "service:content_safety_service",
+      "type": "imports"
+    },
+    {
+      "source": "service:reflector",
+      "target": "service:advanced_retrieval_service",
+      "type": "imports"
+    },
+    {
+      "source": "agent:resource_agent",
+      "target": "service:content_safety_service",
+      "type": "imports"
+    },
+    {
+      "source": "agent:resource_agent",
+      "target": "service:image_service",
+      "type": "imports"
+    },
+    {
+      "source": "agent:resource_agent",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:self_learning_service",
+      "target": "service:qa_service",
+      "type": "imports"
+    },
+    {
+      "source": "service:self_learning_service",
+      "target": "db:ai_memory",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:self_rag",
+      "target": "service:qa_service",
+      "type": "imports"
+    },
+    {
+      "source": "service:student_data_service",
+      "target": "service:qa_service",
+      "type": "imports"
+    },
+    {
+      "source": "service:student_data_service",
+      "target": "service:document_analysis_service",
+      "type": "imports"
+    },
+    {
+      "source": "service:student_data_service",
+      "target": "service:spark_client",
+      "type": "imports"
+    },
+    {
+      "source": "service:student_data_service",
+      "target": "service:enhanced_vision_service",
+      "type": "imports"
+    },
+    {
+      "source": "service:student_data_service",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:qa_service",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:query_processor",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:self_rag",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:memory_service",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:context_compressor",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:answer_quality_scorer",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:citation_annotator",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:reflector",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:self_learning_service",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:advanced_retrieval_service",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:memory_extractor",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:prompt_personalizer",
+      "type": "imports"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:collaboration_db",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:collaboration_db",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_tutor",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_agents",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_paths",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_auth",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_rag_knowledge",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_memory",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:dao",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:dao",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:db_operations",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:db_operations",
+      "target": "db:ai_agents",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:db_operations",
+      "target": "db:ai_paths",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:db_operations",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:db_operations",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:qa_db_operations",
+      "target": "db:ai_tutor",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:rag_knowledge_base",
+      "target": "db:ai_rag_knowledge",
+      "type": "uses_database"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:memory_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:advanced_retrieval_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:self_rag",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:query_processor",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:context_compressor",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:prompt_personalizer",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:answer_quality_scorer",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:citation_annotator",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:reflector",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:memory_extractor",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:knowledge_tracer",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "service:self_learning_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:path_agent",
+      "target": "service:adaptive_path",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:path_agent",
+      "target": "service:knowledge_tracer",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:resource_agent",
+      "target": "service:content_safety_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:resource_agent",
+      "target": "service:image_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:assessment_agent",
+      "target": "service:spark_client",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:profile_agent",
+      "target": "infra:message_bus",
+      "type": "communicates_via"
+    },
+    {
+      "source": "agent:resource_agent",
+      "target": "infra:message_bus",
+      "type": "communicates_via"
+    },
+    {
+      "source": "agent:path_agent",
+      "target": "infra:message_bus",
+      "type": "communicates_via"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "infra:message_bus",
+      "type": "communicates_via"
+    },
+    {
+      "source": "agent:assessment_agent",
+      "target": "infra:message_bus",
+      "type": "communicates_via"
+    },
+    {
+      "source": "agent:agent_coordinator",
+      "target": "agent:profile_agent",
+      "type": "coordinates"
+    },
+    {
+      "source": "agent:agent_coordinator",
+      "target": "agent:resource_agent",
+      "type": "coordinates"
+    },
+    {
+      "source": "agent:agent_coordinator",
+      "target": "agent:path_agent",
+      "type": "coordinates"
+    },
+    {
+      "source": "agent:agent_coordinator",
+      "target": "agent:tutor_agent",
+      "type": "coordinates"
+    },
+    {
+      "source": "agent:agent_coordinator",
+      "target": "agent:assessment_agent",
+      "type": "coordinates"
+    },
+    {
+      "source": "agent:assessment_agent",
+      "target": "prompt:AnalysisPrompts",
+      "type": "uses_prompt"
+    },
+    {
+      "source": "endpoint:POST/build-profile",
+      "target": "agent:agent_coordinator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/get-profile",
+      "target": "agent:profile_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/update-profile-field",
+      "target": "agent:profile_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/evaluate-profile",
+      "target": "agent:profile_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/generate-resources",
+      "target": "agent:agent_coordinator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/plan-path",
+      "target": "agent:agent_coordinator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/tutor",
+      "target": "agent:tutor_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/knowledge-map",
+      "target": "agent:tutor_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/learning-recommendations",
+      "target": "agent:tutor_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/memory/maintenance",
+      "target": "agent:tutor_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/assess",
+      "target": "agent:agent_coordinator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/latest-assessment",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/comprehensive-plan",
+      "target": "agent:agent_coordinator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/update-path-progress",
+      "target": "agent:path_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/update-profile-from-learning",
+      "target": "agent:profile_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/export-resource",
+      "target": "service:resource_export_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/save-resource",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/list-resources",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:DELETE/delete-resource/{resource_id}",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/analyze-documents",
+      "target": "service:document_analysis_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/upload-to-rag",
+      "target": "data:rag_knowledge_base",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/rag-documents",
+      "target": "data:rag_knowledge_base",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/save-course-schedule",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/get-course-schedule",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/list-semesters",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/save-grades",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/get-grades",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/save-error-note",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/get-error-notes",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/update-error-mastery",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/delete-error-note",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/review-due",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/review-submit",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/review-reminder",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/generate-study-plan",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/get-study-plans",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/import-courses-from-file",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/import-grades-from-file",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/import-errors-from-file",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/dashboard/stats",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/activity-logs",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/activity-logs",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/advanced-search",
+      "target": "service:advanced_retrieval_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/contextual-upload",
+      "target": "service:advanced_retrieval_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/hyde-search",
+      "target": "service:advanced_retrieval_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/multi-query-search",
+      "target": "service:advanced_retrieval_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/rag-fusion-search",
+      "target": "service:advanced_retrieval_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/graph-search",
+      "target": "service:advanced_retrieval_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/feedback",
+      "target": "service:self_learning_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/learning-stats",
+      "target": "service:self_learning_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/trigger-learning",
+      "target": "service:self_learning_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/eval-retrieval/datasets",
+      "target": "service:retrieval_evaluator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/eval-retrieval/datasets",
+      "target": "service:retrieval_evaluator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/eval-retrieval/queries",
+      "target": "service:retrieval_evaluator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/eval-retrieval/run",
+      "target": "service:retrieval_evaluator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/eval-retrieval/history",
+      "target": "service:retrieval_evaluator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/eval-retrieval/compare",
+      "target": "service:retrieval_evaluator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/multi-hop-search",
+      "target": "service:multi_hop_retriever",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/react-search",
+      "target": "service:multi_hop_retriever",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/faiss-info",
+      "target": "data:rag_knowledge_base",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/agent-status/{session_id}",
+      "target": "agent:agent_coordinator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/agent-status-stream/{session_id}",
+      "target": "agent:agent_coordinator",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/quiz/start",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/quiz/submit",
+      "target": "service:student_data_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/quiz/finish",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/quiz/history",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/quiz/session/{session_id}",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/quiz/stats",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/quiz/weak-topics",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/quiz/adaptive",
+      "target": "service:adaptive_difficulty",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/analytics/overview",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/analytics/subject-breakdown",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/analytics/resource-type-breakdown",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/analytics/study-trend",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/analytics/quiz-trend",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/analytics/knowledge-mastery",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/analytics/weekly-report",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/profile/assessment-quiz",
+      "target": "agent:profile_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/profile/submit-assessment",
+      "target": "agent:profile_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/generate-resource/{resource_type}",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/generate-resources-real",
+      "target": "agent:resource_agent",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/progress/{task_id}",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/my-tasks",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/check-content-safety",
+      "target": "service:content_safety_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/verify-fact",
+      "target": "service:content_safety_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/add-citations",
+      "target": "service:content_safety_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/cross-validate",
+      "target": "service:content_safety_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/login",
+      "target": "service:auth_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/register",
+      "target": "service:auth_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/change-password",
+      "target": "service:auth_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/create-group",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/join-group",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/leave-group",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/my-groups",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/group/{group_id}",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/share-resource",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/shared-resources/{group_id}",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/activities/{group_id}",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/review",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/learning-stats/{group_id}",
+      "target": "service:collaboration_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "service:advanced_retrieval_service",
+      "target": "data:embedding_service",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:advanced_retrieval_service",
+      "target": "data:rag_knowledge_base",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:multi_hop_retriever",
+      "target": "data:embedding_service",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:multi_hop_retriever",
+      "target": "data:rag_knowledge_base",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:self_learning_service",
+      "target": "data:rag_knowledge_base",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:self_learning_service",
+      "target": "data:embedding_service",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:memory_extractor",
+      "target": "service:memory_service",
+      "type": "imports"
+    },
+    {
+      "source": "service:retrieval_evaluator",
+      "target": "data:rag_knowledge_base",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:student_data_service",
+      "target": "data:db_operations",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:collaboration_service",
+      "target": "data:collaboration_db",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:document_analysis_service",
+      "target": "data:document_parser",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "data:dao",
+      "target": "data:db_operations",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "data:db_operations",
+      "target": "data:config",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "data:rag_knowledge_base",
+      "target": "data:config",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:auth_service",
+      "target": "data:db_operations",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "data:data_manager",
+      "target": "data:db_operations",
+      "type": "uses_data_layer"
+    },
+    {
+      "source": "service:content_safety_service",
+      "target": "config:sensitive_words.json",
+      "type": "configured_by"
+    },
+    {
+      "source": "service:auth_service",
+      "target": "config:.env",
+      "type": "configured_by"
+    },
+    {
+      "source": "service:spark_client",
+      "target": "config:.env",
+      "type": "configured_by"
+    },
+    {
+      "source": "page:dashboard",
+      "target": "component:DashboardContent",
+      "type": "routes_to"
+    },
+    {
+      "source": "page:dashboard",
+      "target": "component:FloatingMenu",
+      "type": "routes_to"
+    },
+    {
+      "source": "page:page",
+      "target": "component:LoginContent",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:ProfileModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:ResourcesModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:PathModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:TutorModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:AssessmentModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:AnalyticsModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:RagKnowledgeModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:CollaborationModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:QuizModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:WorkSpaceSection",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:BackgroundEffects",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:QuizModule",
+      "target": "component:QuizStartPanel",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:QuizModule",
+      "target": "component:QuizQuestionCard",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:QuizModule",
+      "target": "component:QuizResultPanel",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:QuizModule",
+      "target": "component:QuizHistoryPanel",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:QuizModule",
+      "target": "component:QuizStatsPanel",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:ResourcesModule",
+      "target": "component:VideoResourceModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:ResourcesModule",
+      "target": "component:BookResourceModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:ResourcesModule",
+      "target": "component:MarkdownRenderer",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:TutorModule",
+      "target": "component:MarkdownRenderer",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:TutorModule",
+      "target": "component:MermaidDiagram",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:WorkSpaceSection",
+      "target": "component:MarkdownRenderer",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:WorkSpaceSection",
+      "target": "component:BackgroundEffects",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:LoginContent",
+      "target": "component:BackgroundEffects",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:LoginContent",
+      "target": "endpoint:POST/login",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:LoginContent",
+      "target": "endpoint:POST/register",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:ProfileModule",
+      "target": "endpoint:GET/get-profile",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:ProfileModule",
+      "target": "endpoint:POST/evaluate-profile",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:ResourcesModule",
+      "target": "endpoint:GET/list-resources",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:ResourcesModule",
+      "target": "endpoint:POST/generate-resources",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:PathModule",
+      "target": "endpoint:POST/plan-path",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:TutorModule",
+      "target": "endpoint:POST/tutor",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:AssessmentModule",
+      "target": "endpoint:POST/assess",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:AssessmentModule",
+      "target": "endpoint:GET/latest-assessment",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:QuizModule",
+      "target": "endpoint:POST/quiz/start",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:QuizModule",
+      "target": "endpoint:POST/quiz/submit",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "component:QuizModule",
+      "target": "endpoint:POST/quiz/adaptive",
+      "type": "calls_endpoint"
+    },
+    {
+      "source": "infra:message_bus",
+      "target": "infra:agent_message",
+      "type": "imports"
+    },
+    {
+      "source": "agent:resource_agent",
+      "target": "service:animation_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "agent:resource_agent",
+      "target": "service:video_generation_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "service:document_analysis_service",
+      "target": "prompt:DocumentAnalysisPrompts",
+      "type": "uses_prompt"
+    },
+    {
+      "source": "page:profile",
+      "target": "page:dashboard",
+      "type": "routes_to"
+    },
+    {
+      "source": "page:resources",
+      "target": "page:dashboard",
+      "type": "routes_to"
+    },
+    {
+      "source": "page:learning-path",
+      "target": "page:dashboard",
+      "type": "routes_to"
+    },
+    {
+      "source": "page:tutor",
+      "target": "page:dashboard",
+      "type": "routes_to"
+    },
+    {
+      "source": "page:assessment",
+      "target": "page:dashboard",
+      "type": "routes_to"
+    },
+    {
+      "source": "page:dashboard",
+      "target": "page:layout",
+      "type": "routes_to"
+    },
+    {
+      "source": "service:retrieval_evaluator",
+      "target": "db:retrieval_eval",
+      "type": "uses_database"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:Sidebar",
+      "type": "routes_to"
+    },
+    {
+      "source": "endpoint:GET/me",
+      "target": "service:auth_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:POST/guest",
+      "target": "service:auth_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "config:Dockerfile",
+      "target": "config:docker-compose.yml",
+      "type": "configured_by"
+    },
+    {
+      "source": "config:docker-compose.yml",
+      "target": "config:package.json",
+      "type": "configured_by"
+    },
+    {
+      "source": "component:useDashboard",
+      "target": "component:DashboardContent",
+      "type": "imports"
+    },
+    {
+      "source": "endpoint:POST/quiz/import-bank",
+      "target": "data:dao",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/bilibili/search",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/books/search",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/bilibili/recommend",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/bilibili/cover",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/books/recommend",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "endpoint:GET/books/cover",
+      "target": "service:streaming_service",
+      "type": "calls_service"
+    },
+    {
+      "source": "agent:tutor_agent",
+      "target": "prompt:VoiceQAPrompts",
+      "type": "uses_prompt"
+    },
+    {
+      "source": "page:assessment-quiz",
+      "target": "component:QuizModule",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:index",
+      "target": "component:BackgroundEffects",
+      "type": "imports"
+    },
+    {
+      "source": "page:layout",
+      "target": "component:ErrorBoundary",
+      "type": "routes_to"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:constants",
+      "type": "imports"
+    },
+    {
+      "source": "component:DashboardContent",
+      "target": "component:types",
+      "type": "imports"
+    },
+    {
+      "source": "config:pyproject.toml",
+      "target": "config:Dockerfile",
+      "type": "configured_by"
+    },
+    {
+      "source": "config:tailwind.config.ts",
+      "target": "config:package.json",
+      "type": "configured_by"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2026-07-30T17:00:36.251468",
+    "version": "1.0",
+    "project": "基于多智能体的个性化学习资源系统",
+    "stats": {
+      "total_nodes": 256,
+      "total_edges": 318,
+      "node_types": {
+        "database": 10,
+        "table": 39,
+        "service": 29,
+        "agent": 6,
+        "infra": 2,
+        "data_layer": 8,
+        "endpoint": 112,
+        "prompt": 4,
+        "page": 9,
+        "module": 1,
+        "component": 28,
+        "config": 7,
+        "data": 1
+      },
+      "edge_types": {
+        "contains_table": 39,
+        "imports": 31,
+        "communicates_via": 7,
+        "uses_database": 33,
+        "uses_prompt": 4,
+        "depends_on": 19,
+        "coordinates": 5,
+        "calls_service": 109,
+        "uses_data_layer": 15,
+        "configured_by": 7,
+        "routes_to": 36,
+        "calls_endpoint": 13
+      },
+      "top_connected": [
+        {
+          "id": "agent:tutor_agent",
+          "label": "tutor_agent",
+          "degree": 33
+        },
+        {
+          "id": "service:student_data_service",
+          "label": "student_data_service",
+          "degree": 24
+        },
+        {
+          "id": "data:dao",
+          "label": "dao",
+          "degree": 24
+        },
+        {
+          "id": "component:DashboardContent",
+          "label": "DashboardContent",
+          "degree": 16
+        },
+        {
+          "id": "db:ai_memory",
+          "label": "ai_memory",
+          "degree": 14
+        },
+        {
+          "id": "service:advanced_retrieval_service",
+          "label": "advanced_retrieval_service",
+          "degree": 13
+        },
+        {
+          "id": "agent:agent_coordinator",
+          "label": "agent_coordinator",
+          "degree": 13
+        },
+        {
+          "id": "db:ai_assessments",
+          "label": "ai_assessments",
+          "degree": 12
+        },
+        {
+          "id": "db:ai_profiles",
+          "label": "ai_profiles",
+          "degree": 11
+        },
+        {
+          "id": "data:config",
+          "label": "config",
+          "degree": 11
+        },
+        {
+          "id": "service:collaboration_service",
+          "label": "collaboration_service",
+          "degree": 11
+        },
+        {
+          "id": "agent:profile_agent",
+          "label": "profile_agent",
+          "degree": 10
+        },
+        {
+          "id": "agent:resource_agent",
+          "label": "resource_agent",
+          "degree": 10
+        },
+        {
+          "id": "data:db_operations",
+          "label": "db_operations",
+          "degree": 10
+        },
+        {
+          "id": "component:QuizModule",
+          "label": "QuizModule",
+          "degree": 10
+        }
+      ]
+    }
+  }
+}
