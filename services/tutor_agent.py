@@ -83,15 +83,28 @@ class TutorAgent:
 
             with memory_service as ms:
                 # 1. 检索相关记忆（使用 Self-RAG 策略路由）
-                relevant_memories = self._retrieve_memories(
-                    ms, user_id, question, subject, preferred_strategy
-                )
+                try:
+                    ms.ensure_connected()
+                    relevant_memories = self._retrieve_memories(
+                        ms, user_id, question, subject, preferred_strategy
+                    )
+                except Exception as e:
+                    debug(f"记忆检索失败: {e}")
+                    relevant_memories = {'semantic': [], 'episodic': [], 'entity': [], 'rag_docs': []}
 
                 # 2. 获取用户知识背景
-                user_context = self._build_user_context(ms, user_id, subject)
+                try:
+                    user_context = self._build_user_context(ms, user_id, subject)
+                except Exception as e:
+                    debug(f"构建用户上下文失败: {e}")
+                    user_context = {'knowledge_level': 'beginner', 'known_concepts': [], 'learning_goals': [], 'preferences': {}}
 
                 # 3. 获取对话历史
-                conversation_history = ms.get_short_term_context(user_id, session_id, max_tokens=2000)
+                try:
+                    conversation_history = ms.get_short_term_context(user_id, session_id, max_tokens=2000)
+                except Exception as e:
+                    debug(f"获取对话历史失败: {e}")
+                    conversation_history = []
 
                 # 4. 构建增强上下文
                 enhanced_context = self._build_enhanced_context(
@@ -200,6 +213,7 @@ class TutorAgent:
                     if verify_result["should_retry"] and verify_result["retry_strategy"]:
                         retry_strategy = verify_result["retry_strategy"]
                         info(f"[Self-RAG] 质量不足，重试策略: {retry_strategy}")
+                        ms.ensure_connected()
                         retry_results = self._retrieve_memories(
                             ms, user_id, question, subject, retry_strategy
                         )
@@ -231,16 +245,27 @@ class TutorAgent:
                 # 7. 保存问答记录
                 self._save_tutor_record(user_id, question, answer_data)
 
-                # 8. 保存短期记忆
-                ms.add_short_term(user_id, session_id, 'user', question)
-                answer_text = answer_data.get('text_answer', {})
-                if isinstance(answer_text, dict):
-                    answer_text = answer_text.get('summary', '')
-                if answer_text:
-                    ms.add_short_term(user_id, session_id, 'assistant', str(answer_text))
+                # 8. 保存短期记忆（cursor 可能已关闭，自动重连）
+                try:
+                    ms.ensure_connected()
+                    ms.add_short_term(user_id, session_id, 'user', question)
+                    answer_text = answer_data.get('text_answer', {})
+                    if isinstance(answer_text, dict):
+                        answer_text = answer_text.get('summary', '')
+                    if answer_text:
+                        ms.add_short_term(user_id, session_id, 'assistant', str(answer_text))
+                except Exception as mem_err:
+                    debug(f"保存短期记忆失败（cursor 可能已关闭）: {mem_err}")
 
                 # 9. 提取并保存长期记忆
-                self._extract_and_save_memories(ms, user_id, session_id, question, str(answer_text), subject)
+                try:
+                    ms.ensure_connected()
+                    answer_text = answer_data.get('text_answer', {})
+                    if isinstance(answer_text, dict):
+                        answer_text = answer_text.get('summary', '')
+                    self._extract_and_save_memories(ms, user_id, session_id, question, str(answer_text), subject)
+                except Exception as mem_err:
+                    debug(f"保存长期记忆失败: {mem_err}")
 
                 # 生成交互ID（用于反馈追踪）
                 interaction_id = ""
@@ -268,7 +293,9 @@ class TutorAgent:
                 return result
 
         except Exception as e:
+            import traceback
             warning(f"记忆增强失败，降级到普通问答: {e!s}")
+            debug(f"异常堆栈: {traceback.format_exc()}")
             return self._fallback_answer(user_id, input_data)
 
     def _fallback_answer(self, user_id: int, input_data: dict) -> dict:
@@ -283,10 +310,10 @@ class TutorAgent:
                 input_data.get("preferred_format", "all")
             )
             self._save_tutor_record(user_id, question, answer_data)
-            return {"answer": answer_data, "message": "智能辅导回答生成完成"}
+            return {"answer": answer_data, "message": "智能辅导回答生成完成（降级模式）"}
         except Exception as e:
             error(f"辅导失败: {e!s}")
-            return {"success": False, "message": f"辅导失败: {e!s}"}
+            return {"answer": None, "message": f"辅导失败: {e!s}"}
 
     # ==========================================
     # 记忆检索与上下文构建
@@ -308,8 +335,9 @@ class TutorAgent:
             # 高级 RAG 检索（根据 Self-RAG 策略选择）
             try:
                 from services.advanced_retrieval_service import retrieval_service
+                info(f"[RAG] 开始检索, 策略={preferred_strategy or 'graph'}, query={question[:50]}")
                 if preferred_strategy:
-                    rag_results = retrieval_service.search(
+                    rag_results = retrieval_service.smart_search(
                         user_id=user_id, query=question, subject=subject,
                         strategy=preferred_strategy, limit=3
                     )
@@ -319,8 +347,13 @@ class TutorAgent:
                     )
                 if rag_results:
                     memories['rag_docs'] = rag_results
+                    info(f"[RAG] 检索到 {len(rag_results)} 篇文档, 策略={preferred_strategy or 'graph'}")
+                else:
+                    info(f"[RAG] 检索结果为空, 策略={preferred_strategy or 'graph'}")
             except Exception as e:
-                debug(f"高级 RAG 检索降级: {e}")
+                import traceback
+                warning(f"[RAG] 检索异常: {e}")
+                debug(f"[RAG] 异常堆栈: {traceback.format_exc()}")
         except Exception as e:
             warning(f"检索记忆失败: {e!s}")
         return memories
@@ -441,50 +474,60 @@ class TutorAgent:
             # 成绩数据
             try:
                 if profile_db.connect():
-                    profile_db.cursor.execute(
-                        "SELECT course_name, score, credits, semester FROM student_grades WHERE user_id=? ORDER BY updated_at DESC LIMIT 30",
-                        (user_id,)
-                    )
-                    grades = [dict(r) for r in profile_db.cursor.fetchall()]
-                    profile_db.close()
+                    try:
+                        profile_db.cursor.execute(
+                            "SELECT course_name, score, credits, semester FROM student_grades WHERE user_id=? ORDER BY created_at DESC LIMIT 30",
+                            (user_id,)
+                        )
+                        grades = [dict(r) for r in profile_db.cursor.fetchall()]
+                    finally:
+                        profile_db.close()
             except Exception:
                 pass
 
             # 错题数据
             try:
                 if profile_db.connect():
-                    profile_db.cursor.execute(
-                        "SELECT subject, chapter, question, error_reason, mastery, created_at FROM error_notes WHERE user_id=? ORDER BY created_at DESC LIMIT 50",
-                        (user_id,)
-                    )
-                    error_notes = [dict(r) for r in profile_db.cursor.fetchall()]
-                    profile_db.close()
+                    try:
+                        profile_db.cursor.execute(
+                            "SELECT subject, chapter, question, error_reason, mastery, created_at FROM error_notes WHERE user_id=? ORDER BY created_at DESC LIMIT 50",
+                            (user_id,)
+                        )
+                        error_notes = [dict(r) for r in profile_db.cursor.fetchall()]
+                    finally:
+                        profile_db.close()
             except Exception:
                 pass
 
             # 学习计划
             try:
                 if profile_db.connect():
-                    profile_db.cursor.execute(
-                        "SELECT plan_title, plan_type, status, semester FROM study_plans WHERE user_id=? AND status='active' ORDER BY created_at DESC LIMIT 5",
-                        (user_id,)
-                    )
-                    study_plans = [dict(r) for r in profile_db.cursor.fetchall()]
-                    profile_db.close()
+                    try:
+                        profile_db.cursor.execute(
+                            "SELECT plan_type, plan_data, status, semester FROM study_plans WHERE user_id=? AND status='active' ORDER BY created_at DESC LIMIT 5",
+                            (user_id,)
+                        )
+                        study_plans = [dict(r) for r in profile_db.cursor.fetchall()]
+                    finally:
+                        profile_db.close()
             except Exception:
                 pass
 
             # 学生画像
             try:
                 if profile_db.connect():
-                    profile_db.cursor.execute(
-                        "SELECT profile_data FROM student_profiles WHERE user_id=? ORDER BY updated_at DESC LIMIT 1",
-                        (user_id,)
-                    )
-                    row = profile_db.cursor.fetchone()
-                    if row and row.get('profile_data'):
-                        profile = json.loads(row['profile_data']) if isinstance(row['profile_data'], str) else row['profile_data']
-                    profile_db.close()
+                    try:
+                        profile_db.cursor.execute(
+                            "SELECT profile_data FROM student_profiles WHERE user_id=? ORDER BY updated_at DESC LIMIT 1",
+                            (user_id,)
+                        )
+                        row = profile_db.cursor.fetchone()
+                        if row:
+                            row = dict(row)
+                            if row.get('profile_data'):
+                                profile = json.loads(row['profile_data']) if isinstance(row['profile_data'], str) else row['profile_data']
+                    finally:
+                        profile_db.close()
             except Exception:
                 pass
 
@@ -528,6 +571,7 @@ class TutorAgent:
                             })
 
             # ── 5. 基于遗忘曲线的错题复习提醒 ──
+            now = datetime.now()
             review_intervals = [1, 3, 7, 14, 30]
             due_subjects = {}
             for note in error_notes:

@@ -260,8 +260,9 @@ class SelfLearningService:
                     doc_id = self.rag_kb.add_document(
                         title=f"[自学习] {query[:50]}",
                         subject="自学习经验",
-                        content_text=combined,
+                        file_path="generated/self_learning",
                         file_type="auto_generated",
+                        content_text=combined,
                     )
 
                     if doc_id:

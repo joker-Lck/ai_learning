@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 from core.json_utils import safe_parse_json
-from core.logger import error, info, warning
+from core.logger import debug, error, info, warning
 from services.qa_service import qa_service
 
 

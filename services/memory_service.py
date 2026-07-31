@@ -202,8 +202,8 @@ class SemanticHandler(MemoryDB):
             INSERT INTO semantic_memory
             (user_id, fact_type, subject, predicate, object, confidence, source)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(user_id, subject, predicate) DO UPDATE SET
-                object = excluded.object, confidence = excluded.confidence,
+            ON CONFLICT(user_id, subject, predicate, object) DO UPDATE SET
+                confidence = excluded.confidence,
                 source = excluded.source, access_count = access_count + 1,
                 updated_at = CURRENT_TIMESTAMP
         """
@@ -711,6 +711,21 @@ class MemoryService:
         self.entity     = EntityHandler(self.conn, self.cursor)
         self.forgetting = ForgettingHandler(self.conn, self.cursor)
         self.conflict   = ConflictHandler(self.conn, self.cursor)
+
+    def ensure_connected(self):
+        """检查 cursor 是否可用，不可用则重连"""
+        try:
+            if self.cursor is None or self.conn is None:
+                self.connect()
+                return
+            # 测试 cursor 是否可用
+            self.cursor.execute("SELECT 1")
+        except Exception:
+            try:
+                self.close()
+            except Exception:
+                pass
+            self.connect()
 
     def close(self):
         if self.cursor: self.cursor.close()

@@ -15,7 +15,7 @@ from backend.schemas.request_models import (
     GenerateResourcesRequest,
     TutorQueryRequest,
 )
-from core.logger import error, info, warning
+from core.logger import debug, error, info, warning
 from data.dao import get_activity_dao, get_analytics_dao, get_quiz_dao, get_resource_dao
 from services.agent_coordinator import agent_coordinator
 from services.assessment_agent import AssessmentAgent
@@ -356,12 +356,12 @@ async def tutor_query(
         from services.tutor_agent import tutor_agent
         result = tutor_agent.answer_query(user_id, input_data.model_dump())
 
-        info(f"辅导结果 - success: {result.get('success')}, 数据大小: {len(str(result.get('data', '')))} 字符")
+        info(f"辅导结果 - success: {bool(result.get('answer'))}, 数据大小: {len(str(result.get('answer', '')))} 字符")
 
         resp_content = {
-            "success": result.get("success", False),
+            "success": bool(result.get("answer") or result.get("data")),
             "message": result.get("message", ""),
-            "data": result.get("data"),
+            "data": result.get("answer") or result.get("data"),
         }
         # 确保可序列化
         try:
@@ -1351,13 +1351,16 @@ async def get_review_reminder(user: dict = Depends(get_current_user)):
         # 学习计划提醒
         plans = []
         try:
+            from data.db_operations import profile_db
             if profile_db.connect():
-                profile_db.cursor.execute(
-                    "SELECT plan_title, plan_type FROM study_plans WHERE user_id=? AND status='active' LIMIT 3",
-                    (user["id"],)
-                )
-                plans = [dict(r) for r in profile_db.cursor.fetchall()]
-                profile_db.close()
+                try:
+                    profile_db.cursor.execute(
+                        "SELECT plan_type, plan_data FROM study_plans WHERE user_id=? AND status='active' LIMIT 3",
+                        (user["id"],)
+                    )
+                    plans = [dict(r) for r in profile_db.cursor.fetchall()]
+                finally:
+                    profile_db.close()
         except Exception:
             pass
         reminders = []

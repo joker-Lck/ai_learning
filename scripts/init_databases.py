@@ -579,6 +579,7 @@ def init_memory_database():
                 content TEXT NOT NULL,
                 token_count INTEGER DEFAULT 0,
                 position INTEGER DEFAULT 0,
+                context_window_position INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_stm_user_session ON short_term_memory(user_id, session_id);
@@ -591,12 +592,14 @@ def init_memory_database():
                 title TEXT NOT NULL,
                 summary TEXT,
                 context TEXT,
+                content TEXT DEFAULT '',
                 emotions TEXT,
                 participants TEXT,
                 location TEXT,
                 importance REAL DEFAULT 0.5,
                 embedding BLOB,
                 access_count INTEGER DEFAULT 0,
+                last_accessed_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -638,6 +641,8 @@ def init_memory_database():
                 source TEXT DEFAULT '',
                 embedding BLOB,
                 access_count INTEGER DEFAULT 0,
+                is_verified INTEGER DEFAULT 0,
+                last_accessed_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, subject, predicate, object)
@@ -657,6 +662,7 @@ def init_memory_database():
                 importance REAL DEFAULT 0.5,
                 embedding BLOB,
                 access_count INTEGER DEFAULT 0,
+                last_accessed_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, entity_type, entity_name)
@@ -671,8 +677,10 @@ def init_memory_database():
                 source_entity_id INTEGER NOT NULL,
                 target_entity_id INTEGER NOT NULL,
                 relation_type TEXT NOT NULL,
+                relation_label TEXT DEFAULT '',
                 weight REAL DEFAULT 1.0,
                 context TEXT,
+                last_accessed_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (source_entity_id) REFERENCES entity_memory(id) ON DELETE CASCADE,
@@ -686,9 +694,11 @@ def init_memory_database():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 memory_type TEXT CHECK(memory_type IN ('episodic', 'semantic', 'entity')) NOT NULL,
                 memory_id INTEGER NOT NULL,
+                user_id INTEGER DEFAULT 0,
                 importance REAL DEFAULT 0.5,
                 decay_rate REAL DEFAULT 0.01,
                 access_count INTEGER DEFAULT 0,
+                reinforcement_count INTEGER DEFAULT 0,
                 last_accessed_at TIMESTAMP,
                 is_forgotten INTEGER DEFAULT 0,
                 forgotten_at TIMESTAMP,

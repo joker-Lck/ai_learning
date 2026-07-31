@@ -237,7 +237,7 @@ class SelfRAG:
         overlap_ratio = len(overlap) / max(len(q_words), 1)
 
         # 检索文档的相关性
-        doc_scores = [d.get('score', d.get('rrf_score', 0)) for d in retrieved_docs]
+        doc_scores = [d.get('score', d.get('rrf_score', d.get('similarity', 0))) for d in retrieved_docs]
         avg_score = sum(doc_scores) / max(len(doc_scores), 1)
 
         # 综合判断

@@ -702,7 +702,9 @@ class RAGKnowledgeBase:
             results = self.cursor.fetchall()
 
             # 解析 JSON 字段
-            for record in results:
+            for i, record in enumerate(results):
+                record = dict(record)
+                results[i] = record
                 if record.get('document_data'):
                     record['document_data'] = json.loads(record['document_data'])
                     # 兼容旧代码：提取常用字段
@@ -729,7 +731,9 @@ class RAGKnowledgeBase:
             results = self.cursor.fetchall()
 
             # 解析 JSON 字段
-            for record in results:
+            for i, record in enumerate(results):
+                record = dict(record)
+                results[i] = record
                 if record.get('document_data'):
                     record['document_data'] = json.loads(record['document_data'])
                     # 兼容旧代码
@@ -767,7 +771,9 @@ class RAGKnowledgeBase:
             self.cursor.execute(sql, (int(user_id), limit, offset))
             results = self.cursor.fetchall()
 
-            for record in results:
+            for i, record in enumerate(results):
+                record = dict(record)
+                results[i] = record
                 if record.get('document_data'):
                     record['document_data'] = json.loads(record['document_data'])
                     doc_data = record['document_data']
@@ -834,7 +840,7 @@ class RAGKnowledgeBase:
                 row = rows.get(did)
                 if not row:
                     continue
-                doc_data = row.get('document_data')
+                doc_data = row['document_data']
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
                 raw_text = doc_data.get('content', {}).get('raw_text', '')
@@ -864,7 +870,7 @@ class RAGKnowledgeBase:
         doc_ids = []
         embeddings = []
         for row in rows:
-            doc_data = row.get('document_data')
+            doc_data = row['document_data']
             if isinstance(doc_data, str):
                 doc_data = json.loads(doc_data)
             emb = doc_data.get('embedding') if doc_data else None
@@ -900,7 +906,7 @@ class RAGKnowledgeBase:
             embeddings_list = []
 
             for doc in docs:
-                doc_data = doc.get('document_data')
+                doc_data = doc['document_data']
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
                 doc_embedding = doc_data.get('embedding')
@@ -1060,7 +1066,7 @@ class RAGKnowledgeBase:
 
             results = []
             for row in self.cursor.fetchall():
-                doc_data = row.get('document_data')
+                doc_data = row['document_data']
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
                 raw_text = doc_data.get('content', {}).get('raw_text', '')
@@ -1166,14 +1172,16 @@ class RAGKnowledgeBase:
             results = self.cursor.fetchall()
 
             # 解析 JSON 数据并提取所需字段
-            for record in results:
+            for i, record in enumerate(results):
+                record = dict(record)
+                results[i] = record
                 doc_data = record.get('document_data')
                 if isinstance(doc_data, str):
                     doc_data = json.loads(doc_data)
 
-                record['content_text'] = doc_data.get('content', {}).get('raw_text', '')
-                record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
-                record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
+                record['content_text'] = doc_data.get('content', {}).get('raw_text', '') if doc_data else ''
+                record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '') if doc_data else ''
+                record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', []) if doc_data else []
 
             return results
 
@@ -1190,13 +1198,15 @@ class RAGKnowledgeBase:
             record = self.cursor.fetchone()
 
             # 解析 JSON 字段
-            if record and record.get('document_data'):
-                record['document_data'] = json.loads(record['document_data'])
-                # 兼容旧代码
-                doc_data = record['document_data']
-                record['content_text'] = doc_data.get('content', {}).get('raw_text', '')
-                record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
-                record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
+            if record:
+                record = dict(record)
+                if record.get('document_data'):
+                    record['document_data'] = json.loads(record['document_data'])
+                    # 兼容旧代码
+                    doc_data = record['document_data']
+                    record['content_text'] = doc_data.get('content', {}).get('raw_text', '')
+                    record['knowledge_points'] = doc_data.get('analysis', {}).get('knowledge_points', [])
+                    record['ai_summary'] = doc_data.get('analysis', {}).get('summary', '')
 
             return record
         except Exception as e:

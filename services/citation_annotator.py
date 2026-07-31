@@ -41,7 +41,7 @@ class CitationAnnotator:
         source_map: dict[int, str] = {}
 
         for i, doc in enumerate(retrieved_docs):
-            content = doc.get("content", "")
+            content = doc.get("content_text", doc.get("content", ""))
             title = doc.get("title", f"文档{i + 1}")
             source_map[i + 1] = title[:50]
 
