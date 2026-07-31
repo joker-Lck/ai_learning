@@ -423,9 +423,10 @@ class AdvancedRetrievalService:
     def _traverse_graph(
         self, user_id: int, entities: list[str], depth: int = 2
     ) -> dict:
-        """在知识图谱中遍历关联实体"""
+        """在知识图谱中遍历关联实体（融合 entity_memory + knowledge_entity_graph）"""
         graph_data = {'entities': [], 'relations': [], 'related_concepts': []}
         try:
+            # 数据源1: entity_memory（用户实体记忆图谱）
             with self.memory_service as ms:
                 for entity_name in entities[:3]:
                     found = ms.search_entities(user_id, entity_name, limit=1)
@@ -450,18 +451,63 @@ class AdvancedRetrievalService:
                             'label': edge.get('label', ''),
                         })
 
+            # 数据源2: knowledge_entity_graph（文档级实体关系图谱）
+            try:
+                from data.config import get_rag_db_path
+                import sqlite3
+                conn = sqlite3.connect(get_rag_db_path())
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+
+                for entity_name in entities[:3]:
+                    cursor.execute(
+                        "SELECT entity_name, entity_type, related_entities "
+                        "FROM knowledge_entity_graph WHERE entity_name LIKE ? LIMIT 5",
+                        (f"%{entity_name}%",)
+                    )
+                    for row in cursor.fetchall():
+                        row = dict(row)
+                        graph_data['entities'].append({
+                            'name': row['entity_name'],
+                            'type': row.get('entity_type', 'concept'),
+                        })
+                        # 解析关联实体
+                        related = row.get('related_entities', '[]')
+                        if isinstance(related, str):
+                            import json as _json
+                            related = _json.loads(related)
+                        for r in related:
+                            if r != entity_name:
+                                graph_data['related_concepts'].append(r)
+
+                conn.close()
+            except Exception as e:
+                debug(f"knowledge_entity_graph 查询跳过: {e}")
+
         except Exception as e:
             warning(f"图谱遍历失败: {e}")
 
-        graph_data['related_concepts'] = list(set(graph_data['related_concepts']))[:10]
+        # 去重并限制数量
+        seen = set()
+        unique_concepts = []
+        for c in graph_data['related_concepts']:
+            if c not in seen:
+                seen.add(c)
+                unique_concepts.append(c)
+        graph_data['related_concepts'] = unique_concepts[:10]
+
         return graph_data
 
     def _expand_query_with_graph(self, query: str, graph_context: dict) -> str:
-        """用图谱上下文扩展查询"""
+        """用图谱上下文扩展查询（带相关性过滤）"""
         related = graph_context.get('related_concepts', [])
         if not related:
             return query
-        expansion = ' '.join(related[:5])
+        # 只添加与原始查询语义相关的概念（简单过滤：排除过长的概念名）
+        filtered = [r for r in related if 2 <= len(r) <= 20][:3]
+        if not filtered:
+            return query
+        expansion = ' '.join(filtered)
         return f"{query} {expansion}"
 
     # ══════════════════════════════════════════

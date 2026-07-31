@@ -41,6 +41,26 @@ class MemoryExtractor:
     def __init__(self, ai_client=None):
         self.ai_client = ai_client
 
+    def _clean_entity(self, entity: dict) -> dict | None:
+        """实体后处理：清洗、标准化、过滤"""
+        name = entity.get('name', '').strip()
+        # 过滤空名称、纯标点、超长名称
+        if not name or len(name) > 100:
+            return None
+        # 过滤纯标点/数字
+        import re
+        if re.match(r'^[\d\s\W]+$', name):
+            return None
+        # 清洗：去除多余空格和特殊字符
+        name = re.sub(r'\s+', ' ', name).strip()
+        name = name.strip('。，、；：""''（）【】《》')
+        if not name or len(name) < 2:
+            return None
+        entity['name'] = name
+        # 规范化类型
+        entity['type'] = entity.get('type', 'concept').strip().lower()
+        return entity
+
     def extract_from_conversation(self, user_id: int, session_id: str,
                                   user_message: str, assistant_response: str) -> dict[str, int]:
         """从对话中提取记忆"""
@@ -76,9 +96,18 @@ class MemoryExtractor:
                         )
                         results['semantic'] += 1
 
-                    # 4. 保存实体记忆
+                    # 4. 保存实体记忆（含后处理）
                     entity_ids = {}
+                    seen_names = set()  # 批次内去重
                     for entity in extracted.get('entities', []):
+                        entity = self._clean_entity(entity)
+                        if not entity:
+                            continue
+                        name = entity['name']
+                        if name.lower() in seen_names:
+                            continue
+                        seen_names.add(name.lower())
+
                         entity_id = ms.add_entity(
                             user_id=user_id,
                             entity_type=entity.get('type', 'concept'),

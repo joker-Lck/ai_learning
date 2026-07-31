@@ -223,13 +223,33 @@ class SemanticHandler(MemoryDB):
             conditions.append("fact_type = ?")
             params.append(fact_type)
         params.append(limit)
-        return self._fetchall(
+        rows = self._fetchall(
             f"SELECT id, fact_type, subject, predicate, object, confidence, "
-            f"source, is_verified, access_count, created_at "
+            f"source, is_verified, access_count, created_at, "
+            f"COALESCE(last_accessed_at, created_at) as last_access "
             f"FROM semantic_memory WHERE {' AND '.join(conditions)} "
             f"ORDER BY confidence DESC, access_count DESC LIMIT ?",
             tuple(params)
         )
+        # 置信度时间衰减：effective = confidence * e^(-days/30)
+        import math
+        now = datetime.now()
+        for row in rows:
+            row = dict(row)
+            try:
+                last = row.get('last_access', row.get('created_at', ''))
+                if last:
+                    last_dt = datetime.strptime(str(last)[:19], '%Y-%m-%d %H:%M:%S')
+                    days = (now - last_dt).days
+                    decay = math.exp(-days / 30)
+                    row['effective_confidence'] = round(row['confidence'] * decay, 3)
+                else:
+                    row['effective_confidence'] = row['confidence']
+            except Exception:
+                row['effective_confidence'] = row['confidence']
+        # 按有效置信度排序
+        rows.sort(key=lambda x: x.get('effective_confidence', 0), reverse=True)
+        return rows
 
     def get_by_subject(self, user_id: int, subject: str) -> list[dict]:
         return self._fetchall(
@@ -239,14 +259,43 @@ class SemanticHandler(MemoryDB):
             (user_id, subject)
         )
 
+    # 反义谓词映射表
+    ANTONYM_PREDICATES = {
+        '喜欢': '讨厌', '讨厌': '喜欢',
+        '会': '不会', '不会': '会',
+        '擅长': '不擅长', '不擅长': '擅长',
+        '了解': '不了解', '不了解': '了解',
+        '是': '不是', '不是': '是',
+        '有': '没有', '没有': '有',
+        '能': '不能', '不能': '能',
+        '愿意': '不愿意', '不愿意': '愿意',
+        'like': 'dislike', 'dislike': 'like',
+        'can': 'cannot', 'cannot': 'can',
+        'is': 'is_not', 'is_not': 'is',
+    }
+
     def _detect_conflict(self, user_id: int, subject: str,
                          predicate: str, object_val: str) -> dict | None:
-        return self._fetchone(
+        # 1. 精确谓词冲突（同谓词不同值）
+        exact = self._fetchone(
             "SELECT id, object, confidence FROM semantic_memory "
             "WHERE user_id = ? AND subject = ? AND predicate = ? AND object != ? "
             "ORDER BY confidence DESC LIMIT 1",
             (user_id, subject, predicate, object_val)
         )
+        if exact:
+            return exact
+
+        # 2. 反义谓词冲突（如 "喜欢X" vs "讨厌X"）
+        antonym = self.ANTONYM_PREDICATES.get(predicate)
+        if antonym:
+            return self._fetchone(
+                "SELECT id, object, confidence FROM semantic_memory "
+                "WHERE user_id = ? AND subject = ? AND predicate = ? AND object = ? "
+                "ORDER BY confidence DESC LIMIT 1",
+                (user_id, subject, antonym, object_val)
+            )
+        return None
 
     def _record_conflict(self, user_id: int, conflict_type: str,
                          old_type: str, old_id: int, new_type: str, new_id: int):
@@ -398,7 +447,8 @@ class EntityHandler(MemoryDB):
             (user_id, source_id, target_id, relation_type)
         )
         if existing:
-            new_weight = max(existing['weight'], weight)
+            # 加权平均：新旧权重取均值，避免只增不减
+            new_weight = (existing['weight'] * 0.7 + weight * 0.3)
             sql = """
                 UPDATE entity_relations SET
                     weight = ?,
@@ -682,6 +732,46 @@ class ConflictHandler(MemoryDB):
             self.conn.rollback()
             return False
 
+    def auto_resolve(self, user_id: int) -> int:
+        """自动解决冲突：新信息置信度显著高于旧信息时自动采纳"""
+        resolved = 0
+        try:
+            pending = self.get_pending(user_id)
+            for conflict in pending:
+                old_id = conflict.get('old_memory_id')
+                new_id = conflict.get('new_memory_id')
+                if not old_id or not new_id:
+                    continue
+
+                # 获取新旧记录的置信度
+                old_rec = self._fetchone(
+                    "SELECT confidence, access_count FROM semantic_memory WHERE id = ?", (old_id,))
+                new_rec = self._fetchone(
+                    "SELECT confidence, access_count FROM semantic_memory WHERE id = ?", (new_id,))
+
+                if not old_rec or not new_rec:
+                    continue
+
+                old_conf = old_rec.get('confidence', 0.5)
+                new_conf = new_rec.get('confidence', 0.5)
+
+                # 自动解决规则
+                if new_conf >= old_conf + 0.2:
+                    # 新信息置信度显著更高 → 采纳新信息
+                    self.resolve(conflict['id'], 'keep_new', user_id)
+                    resolved += 1
+                elif old_conf >= new_conf + 0.2:
+                    # 旧信息置信度显著更高 → 保留旧信息
+                    self.resolve(conflict['id'], 'keep_old', user_id)
+                    resolved += 1
+                # 差距不大时保留给用户决定
+
+            if resolved:
+                info(f"自动解决了 {resolved} 个冲突")
+        except Exception as e:
+            warning(f"自动解决冲突失败: {e}")
+        return resolved
+
     def _delete_memory(self, memory_type: str, memory_id: int):
         table = self._table_for(memory_type)
         self._execute(f"DELETE FROM {table} WHERE id = ?", (memory_id,))
@@ -913,6 +1003,9 @@ class MemoryService:
 
     def resolve_conflict(self, conflict_id, strategy, user_id):
         return self.conflict.resolve(conflict_id, strategy, user_id)
+
+    def auto_resolve_conflicts(self, user_id):
+        return self.conflict.auto_resolve(user_id)
 
     def get_memory_stats(self, user_id: int) -> dict:
         try:
