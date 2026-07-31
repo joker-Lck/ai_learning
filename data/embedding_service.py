@@ -39,7 +39,7 @@ class EmbeddingService:
         self._idf = None
         self._svd = None
         self._fitted = False
-        self._vocab_size = 20000
+        self._vocab_size = int(os.getenv('EMBEDDING_VOCAB_SIZE', '20000'))
 
     def _load_model(self):
         """懒加载预训练模型"""

@@ -80,87 +80,102 @@ class MemoryExtractor:
                 results['short_term'] = 2
 
                 # 2. 使用 AI 提取长期记忆
+                extracted = {}
                 if self.ai_client:
                     extracted = self._extract_with_ai(user_message, assistant_response)
 
-                    # 3. 保存语义记忆（事实）
-                    for fact in extracted.get('facts', []):
-                        ms.add_semantic(
+                # 2.5 规则方法补充（AI 未提取到的内容）
+                rule_facts = self.extract_facts_from_text(user_message)
+                rule_entities = self.extract_entities_from_text(user_message)
+                existing_fact_keys = {(f.get('subject',''), f.get('predicate',''), f.get('object',''))
+                                      for f in extracted.get('facts', [])}
+                existing_entity_names = {e.get('name','').lower() for e in extracted.get('entities', [])}
+                for rf in rule_facts:
+                    key = (rf.get('subject',''), rf.get('predicate',''), rf.get('object',''))
+                    if key not in existing_fact_keys:
+                        extracted.setdefault('facts', []).append(rf)
+                for re_ in rule_entities:
+                    if re_.get('name','').lower() not in existing_entity_names:
+                        extracted.setdefault('entities', []).append(re_)
+
+                # 3. 保存语义记忆（事实）
+                for fact in extracted.get('facts', []):
+                    ms.add_semantic(
+                        user_id=user_id,
+                        fact_type=fact.get('type', 'knowledge'),
+                        subject=fact['subject'],
+                        predicate=fact['predicate'],
+                        object_val=fact['object'],
+                        confidence=fact.get('confidence', 0.7),
+                        source=f"session:{session_id}"
+                    )
+                    results['semantic'] += 1
+
+                # 4. 保存实体记忆（含后处理）
+                entity_ids = {}
+                seen_names = set()  # 批次内去重
+                for entity in extracted.get('entities', []):
+                    entity = self._clean_entity(entity)
+                    if not entity:
+                        continue
+                    name = entity['name']
+                    if name.lower() in seen_names:
+                        continue
+                    seen_names.add(name.lower())
+
+                    entity_id = ms.add_entity(
+                        user_id=user_id,
+                        entity_type=entity.get('type', 'concept'),
+                        entity_name=entity['name'],
+                        attributes=entity.get('attributes'),
+                        description=entity.get('description', '')
+                    )
+                    entity_ids[entity['name']] = entity_id
+                    results['entity'] += 1
+
+                # 5. 保存实体关系（支持跨对话）
+                for relation in extracted.get('relations', []):
+                    source_name = relation.get('source')
+                    target_name = relation.get('target')
+                    rel_type = self._normalize_relation_type(relation.get('type', 'related'))
+
+                    # 查找源实体 ID（先当前批次，再数据库）
+                    source_id = entity_ids.get(source_name)
+                    if not source_id:
+                        found = ms.search_entities(user_id, source_name, limit=1)
+                        if found:
+                            source_id = found[0]['id']
+
+                    # 查找目标实体 ID
+                    target_id = entity_ids.get(target_name)
+                    if not target_id:
+                        found = ms.search_entities(user_id, target_name, limit=1)
+                        if found:
+                            target_id = found[0]['id']
+
+                    if source_id and target_id:
+                        ms.add_relation(
                             user_id=user_id,
-                            fact_type=fact.get('type', 'knowledge'),
-                            subject=fact['subject'],
-                            predicate=fact['predicate'],
-                            object_val=fact['object'],
-                            confidence=fact.get('confidence', 0.7),
-                            source=f"session:{session_id}"
+                            source_entity_id=source_id,
+                            target_entity_id=target_id,
+                            relation_type=rel_type,
+                            relation_label=relation.get('label', '')
                         )
-                        results['semantic'] += 1
+                        results['relations'] += 1
 
-                    # 4. 保存实体记忆（含后处理）
-                    entity_ids = {}
-                    seen_names = set()  # 批次内去重
-                    for entity in extracted.get('entities', []):
-                        entity = self._clean_entity(entity)
-                        if not entity:
-                            continue
-                        name = entity['name']
-                        if name.lower() in seen_names:
-                            continue
-                        seen_names.add(name.lower())
-
-                        entity_id = ms.add_entity(
-                            user_id=user_id,
-                            entity_type=entity.get('type', 'concept'),
-                            entity_name=entity['name'],
-                            attributes=entity.get('attributes'),
-                            description=entity.get('description', '')
-                        )
-                        entity_ids[entity['name']] = entity_id
-                        results['entity'] += 1
-
-                    # 5. 保存实体关系（支持跨对话）
-                    for relation in extracted.get('relations', []):
-                        source_name = relation.get('source')
-                        target_name = relation.get('target')
-                        rel_type = self._normalize_relation_type(relation.get('type', 'related'))
-
-                        # 查找源实体 ID（先当前批次，再数据库）
-                        source_id = entity_ids.get(source_name)
-                        if not source_id:
-                            found = ms.search_entities(user_id, source_name, limit=1)
-                            if found:
-                                source_id = found[0]['id']
-
-                        # 查找目标实体 ID
-                        target_id = entity_ids.get(target_name)
-                        if not target_id:
-                            found = ms.search_entities(user_id, target_name, limit=1)
-                            if found:
-                                target_id = found[0]['id']
-
-                        if source_id and target_id:
-                            ms.add_relation(
-                                user_id=user_id,
-                                source_entity_id=source_id,
-                                target_entity_id=target_id,
-                                relation_type=rel_type,
-                                relation_label=relation.get('label', '')
-                            )
-                            results['relations'] += 1
-
-                    # 6. 保存情景记忆（如果对话有意义）
-                    if extracted.get('episode'):
-                        episode = extracted['episode']
-                        ms.add_episodic(
-                            user_id=user_id,
-                            episode_type=episode.get('type', 'conversation'),
-                            title=episode.get('title', ''),
-                            summary=episode.get('summary', ''),
-                            content=f"用户: {user_message}\n助手: {assistant_response}",
-                            context={'session_id': session_id},
-                            importance=episode.get('importance', 0.5)
-                        )
-                        results['episodic'] += 1
+                # 6. 保存情景记忆（如果对话有意义）
+                if extracted.get('episode'):
+                    episode = extracted['episode']
+                    ms.add_episodic(
+                        user_id=user_id,
+                        episode_type=episode.get('type', 'conversation'),
+                        title=episode.get('title', ''),
+                        summary=episode.get('summary', ''),
+                        content=f"用户: {user_message}\n助手: {assistant_response}",
+                        context={'session_id': session_id},
+                        importance=episode.get('importance', 0.5)
+                    )
+                    results['episodic'] += 1
 
         except Exception as e:
             error(f"记忆提取失败: {e!s}")
