@@ -234,8 +234,9 @@ class SemanticHandler(MemoryDB):
         # 置信度时间衰减：effective = confidence * e^(-days/30)
         import math
         now = datetime.now()
-        for row in rows:
+        for i, row in enumerate(rows):
             row = dict(row)
+            rows[i] = row
             try:
                 last = row.get('last_access', row.get('created_at', ''))
                 if last:
