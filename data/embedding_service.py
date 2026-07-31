@@ -1,145 +1,192 @@
 """
-向量化服务模块 - TF-IDF + SVD 降维
-适合长文本语义检索，纯本地实现无需网络
+向量化服务模块 - 预训练中文嵌入模型
+模型: shibing624/text2vec-base-chinese (768维, 语义检索专用)
+回退: TF-IDF + SVD (模型不可用时)
 """
 
-import hashlib
 import os
 import threading
 
-import jieba
 import numpy as np
 from dotenv import load_dotenv
 
-from core.logger import error, info
+from core.logger import error, info, warning
 
 load_dotenv(override=True)
 
-# 停用词
-STOP_WORDS = frozenset({
-    '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个',
-    '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好',
-    '自己', '这', '他', '她', '它', '们', '那', '些', '么', '等', '而', '吗', '呢',
-    '把', '被', '比', '如', '从', '对', '但', '以', '与', '又', '或', '之', '其',
-    '这个', '那个', '什么', '怎么', '如何', '为什么', '可以', '可能', '应该', '需要',
-})
+# HuggingFace 国内镜像 + 离线优先
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
-
-def _tokenize(text):
-    """中文分词，过滤停用词和短词"""
-    words = jieba.cut(text)
-    return [w for w in words if len(w) > 1 and w.strip() and w not in STOP_WORDS]
+# 模型配置
+DEFAULT_MODEL = os.getenv("EMBEDDING_MODEL", "shibing624/text2vec-base-chinese")
+MAX_SEQ_LENGTH = 512
 
 
 class EmbeddingService:
-    """向量化服务类"""
+    """向量化服务类 — 预训练模型 + TF-IDF 回退"""
 
     def __init__(self):
-        self._dim = int(os.getenv('EMBEDDING_DIM', '256'))
-        self._vocab_size = 20000
+        self._dim = 768  # text2vec-base-chinese 输出维度
         self._lock = threading.Lock()
-        self._idf = None
+        self._model = None
+        self._model_loaded = False
+        self._model_name = DEFAULT_MODEL
+
+        # TF-IDF 回退相关
+        self._tfidf_fallback = False
         self._vocab = None
+        self._idf = None
         self._svd = None
         self._fitted = False
+        self._vocab_size = 20000
 
-    def _build_vocab(self, texts):
-        """从文本构建词表和IDF权重"""
-        from collections import Counter
+    def _load_model(self):
+        """懒加载预训练模型"""
+        if self._model_loaded:
+            return
+        with self._lock:
+            if self._model_loaded:
+                return
+            try:
+                from sentence_transformers import SentenceTransformer
+                info(f"加载嵌入模型: {self._model_name}")
+                self._model = SentenceTransformer(self._model_name)
+                self._dim = self._model.get_embedding_dimension()
+                self._model_loaded = True
+                info(f"嵌入模型加载完成 (dim={self._dim})")
+            except Exception as e:
+                warning(f"预训练模型加载失败，回退到 TF-IDF: {e}")
+                self._tfidf_fallback = True
+                self._dim = 256
 
-        word_freq = Counter()
-        doc_freq = Counter()
-        n_docs = len(texts)
+    # ── 预训练模型路径 ──────────────────────
 
-        for text in texts:
-            words = set(_tokenize(text))
-            word_freq.update(words)
-            doc_freq.update(words)
+    def _encode(self, text: str) -> list[float]:
+        """使用预训练模型编码"""
+        self._load_model()
+        if self._model_loaded and self._model:
+            text = text[:MAX_SEQ_LENGTH]
+            vec = self._model.encode(text, normalize_embeddings=True)
+            return vec.tolist()
+        return self._hash_fallback(text)
 
-        # 按频率排序取 top N
-        common = word_freq.most_common(self._vocab_size)
-        self._vocab = {w: i for i, (w, _) in enumerate(common)}
+    def _encode_batch(self, texts: list[str]) -> list[list[float]]:
+        """批量编码"""
+        self._load_model()
+        if self._model_loaded and self._model:
+            texts = [t[:MAX_SEQ_LENGTH] if t else "" for t in texts]
+            vecs = self._model.encode(texts, normalize_embeddings=True, batch_size=32)
+            return [v.tolist() for v in vecs]
+        return [self._hash_fallback(t) for t in texts]
 
-        # 计算 IDF
-        self._idf = np.zeros(len(self._vocab))
-        for w, i in self._vocab.items():
-            df = doc_freq.get(w, 0)
-            self._idf[i] = np.log((n_docs + 1) / (df + 1)) + 1
-
-        info(f"词表构建完成: {len(self._vocab)} 词")
-
-    def _text_to_tfidf(self, text):
-        """将文本转为 TF-IDF 向量"""
-        words = _tokenize(text)
-        vec = np.zeros(len(self._vocab), dtype=np.float32)
-
-        word_count = {}
-        for w in words:
-            word_count[w] = word_count.get(w, 0) + 1
-
-        for w, count in word_count.items():
-            if w in self._vocab:
-                idx = self._vocab[w]
-                tf = count / len(words) if words else 0
-                vec[idx] = tf * self._idf[idx]
-
-        return vec
+    # ── TF-IDF 回退路径 ─────────────────────
 
     def fit(self, corpus):
         """
-        用语料库训练 TF-IDF + SVD 模型
-
-        参数：
-        - corpus: 文本列表，建议 100+ 条
+        训练 TF-IDF + SVD 回退模型
+        预训练模型可用时此方法为空操作
         """
+        if self._model_loaded:
+            info("预训练模型已加载，跳过 TF-IDF 训练")
+            return
+
         with self._lock:
-            from sklearn.decomposition import TruncatedSVD
-            from sklearn.preprocessing import normalize
+            try:
+                from sklearn.decomposition import TruncatedSVD
+                from collections import Counter
+                import jieba
 
-            info(f"开始训练 embedding 模型，语料 {len(corpus)} 条")
+                info(f"TF-IDF 回退: 开始训练，语料 {len(corpus)} 条")
 
-            self._build_vocab(corpus)
+                # 构建词表
+                STOP_WORDS = frozenset({
+                    '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都',
+                    '一', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着',
+                })
 
-            # 构建 TF-IDF 矩阵
-            tfidf_matrix = np.array([self._text_to_tfidf(t) for t in corpus])
+                def tokenize(text):
+                    words = jieba.cut(text)
+                    return [w for w in words if len(w) > 1 and w.strip() and w not in STOP_WORDS]
 
-            # SVD 降维
-            n_components = min(self._dim, tfidf_matrix.shape[1] - 1, tfidf_matrix.shape[0] - 1)
-            self._svd = TruncatedSVD(n_components=n_components, random_state=42)
-            self._svd.fit(tfidf_matrix)
+                word_freq = Counter()
+                doc_freq = Counter()
+                for text in corpus:
+                    words = set(tokenize(text))
+                    word_freq.update(words)
+                    doc_freq.update(words)
 
-            self._fitted = True
-            self._dim = n_components
-            info(f"Embedding 模型训练完成 (dim={n_components})")
+                common = word_freq.most_common(self._vocab_size)
+                self._vocab = {w: i for i, (w, _) in enumerate(common)}
 
-    def _vectorize(self, text):
-        """将文本转为低维向量"""
-        if not self._fitted:
-            # 未训练时使用哈希回退
-            return self._hash_fallback(text)
+                n_docs = len(corpus)
+                self._idf = np.zeros(len(self._vocab))
+                for w, i in self._vocab.items():
+                    df = doc_freq.get(w, 0)
+                    self._idf[i] = np.log((n_docs + 1) / (df + 1)) + 1
 
-        tfidf = self._text_to_tfidf(text).reshape(1, -1)
-        vec = self._svd.transform(tfidf)[0]
+                # TF-IDF 矩阵
+                def text_to_tfidf(text):
+                    words = tokenize(text)
+                    vec = np.zeros(len(self._vocab), dtype=np.float32)
+                    wc = {}
+                    for w in words:
+                        wc[w] = wc.get(w, 0) + 1
+                    for w, c in wc.items():
+                        if w in self._vocab:
+                            idx = self._vocab[w]
+                            tf = c / len(words) if words else 0
+                            vec[idx] = tf * self._idf[idx]
+                    return vec
 
-        # L2 归一化
-        norm = np.linalg.norm(vec)
+                tfidf_matrix = np.array([text_to_tfidf(t) for t in corpus])
+                n_components = min(self._dim, tfidf_matrix.shape[1] - 1, tfidf_matrix.shape[0] - 1)
+                self._svd = TruncatedSVD(n_components=n_components, random_state=42)
+                self._svd.fit(tfidf_matrix)
+                self._fitted = True
+                self._dim = n_components
+                self._tfidf_fallback = True
+                info(f"TF-IDF 回退训练完成 (dim={n_components})")
+            except Exception as e:
+                error(f"TF-IDF 训练失败: {e}")
+
+    def _tfidf_encode(self, text: str) -> list[float]:
+        """TF-IDF + SVD 编码"""
+        import jieba
+        STOP_WORDS = frozenset({'的', '了', '在', '是', '我', '有', '和', '就', '不'})
+
+        words = [w for w in jieba.cut(text) if len(w) > 1 and w.strip() and w not in STOP_WORDS]
+        vec = np.zeros(len(self._vocab), dtype=np.float32)
+        wc = {}
+        for w in words:
+            wc[w] = wc.get(w, 0) + 1
+        for w, c in wc.items():
+            if w in self._vocab:
+                idx = self._vocab[w]
+                tf = c / len(words) if words else 0
+                vec[idx] = tf * self._idf[idx]
+
+        tfidf = vec.reshape(1, -1)
+        result = self._svd.transform(tfidf)[0]
+        norm = np.linalg.norm(result)
         if norm > 0:
-            vec = vec / norm
+            result = result / norm
+        return result.tolist()
 
-        return vec.tolist()
-
-    def _hash_fallback(self, text):
-        """哈希回退方案（模型未训练时使用）"""
+    def _hash_fallback(self, text: str) -> list[float]:
+        """哈希回退（最后手段）"""
+        import hashlib
         vec = np.zeros(self._dim, dtype=np.float32)
 
-        words = _tokenize(text)
+        import jieba
+        words = list(jieba.cut(text))
         for w in words:
-            h = int(hashlib.md5(w.encode('utf-8')).hexdigest(), 16)
-            idx = h % self._dim
-            sign = 1 if (h // self._dim) % 2 == 0 else -1
-            vec[idx] += sign
+            if len(w) > 1 and w.strip():
+                h = int(hashlib.md5(w.encode('utf-8')).hexdigest(), 16)
+                idx = h % self._dim
+                sign = 1 if (h // self._dim) % 2 == 0 else -1
+                vec[idx] += sign
 
-        # 字符 bigram
         chars = [c for c in text if c.strip()]
         for i in range(len(chars) - 1):
             bg = chars[i] + chars[i + 1]
@@ -151,8 +198,9 @@ class EmbeddingService:
         norm = np.linalg.norm(vec)
         if norm > 0:
             vec = vec / norm
-
         return vec.tolist()
+
+    # ── 公共 API（保持不变）──────────────────
 
     def get_embedding(self, text, model=None):
         """
@@ -162,13 +210,23 @@ class EmbeddingService:
         - text: 要向量化的文本
 
         返回：
-        - list: 向量数组
+        - list: 向量数组 (768维)
         """
         try:
             text = text[:8000]
             if not text.strip():
                 return [0.0] * self._dim
-            return self._vectorize(text)
+
+            # 优先预训练模型
+            if self._model_loaded or not self._tfidf_fallback:
+                return self._encode(text)
+
+            # TF-IDF 回退
+            if self._fitted and self._vocab:
+                return self._tfidf_encode(text)
+
+            # 哈希回退
+            return self._hash_fallback(text)
         except Exception as e:
             error(f"获取向量失败：{e!s}")
             return None
@@ -178,7 +236,10 @@ class EmbeddingService:
         批量获取文本的向量表示
         """
         try:
-            return [self._vectorize(t) if t and t.strip() else [0.0] * self._dim for t in texts]
+            if self._model_loaded or not self._tfidf_fallback:
+                return self._encode_batch(texts)
+
+            return [self.get_embedding(t) for t in texts]
         except Exception as e:
             error(f"批量获取向量失败：{e!s}")
             return None

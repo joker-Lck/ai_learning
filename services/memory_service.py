@@ -271,15 +271,79 @@ class SemanticHandler(MemoryDB):
 class EntityHandler(MemoryDB):
     """实体画像存储 + 知识图谱"""
 
+    # 标准实体类型集
+    VALID_TYPES = {'person', 'concept', 'skill', 'course', 'tool', 'organization', 'other'}
+
+    def _normalize_type(self, entity_type: str) -> str:
+        """规范化实体类型到合法集合"""
+        t = entity_type.strip().lower()
+        if t in self.VALID_TYPES:
+            return t
+        # 映射常见非标准类型
+        type_map = {
+            '算法': 'concept', '知识点': 'concept', '技术': 'concept',
+            '方法': 'concept', '模型': 'concept', '框架': 'tool',
+            '库': 'tool', '语言': 'skill', '学科': 'course',
+        }
+        return type_map.get(t, 'other')
+
+    def _find_similar_entity(self, user_id: int, entity_name: str,
+                              threshold: float = 0.85) -> dict | None:
+        """通过 embedding 相似度查找已有相似实体"""
+        try:
+            from data.embedding_service import embedding_service
+            new_emb = embedding_service.get_embedding(entity_name)
+            if not new_emb:
+                return None
+
+            # 查询所有同用户实体
+            rows = self._fetchall(
+                "SELECT id, entity_name, entity_type, entity_alias, embedding "
+                "FROM entity_memory WHERE user_id = ? AND embedding IS NOT NULL",
+                (user_id,)
+            )
+            best_match = None
+            best_sim = 0.0
+            for row in rows:
+                if row['embedding']:
+                    import json as _json
+                    existing_emb = _json.loads(row['embedding']) if isinstance(row['embedding'], str) else row['embedding']
+                    sim = embedding_service.cosine_similarity(new_emb, existing_emb)
+                    if sim > best_sim and sim >= threshold:
+                        best_sim = sim
+                        best_match = dict(row)
+            if best_match:
+                best_match['_similarity'] = best_sim
+            return best_match
+        except Exception:
+            return None
+
     def add(self, user_id: int, entity_type: str, entity_name: str,
             attributes: dict | None = None, description: str = "",
             entity_alias: str = "", importance: float = 0.5) -> int:
-        # 先查询已有记录，用于应用层 JSON 合并
+        entity_type = self._normalize_type(entity_type)
+        entity_name = entity_name.strip()
+        if not entity_name or len(entity_name) > 100:
+            return 0
+
+        # 1. 精确匹配已有实体
         existing = self._fetchone(
             "SELECT id, attributes, importance FROM entity_memory "
             "WHERE user_id = ? AND entity_name = ?",
             (user_id, entity_name)
         )
+
+        # 2. 精确匹配失败时，尝试模糊匹配
+        if not existing:
+            similar = self._find_similar_entity(user_id, entity_name)
+            if similar:
+                existing = similar
+                # 将新名称作为别名追加
+                old_alias = similar.get('entity_alias', '') or ''
+                aliases = set(a.strip() for a in old_alias.split(',') if a.strip())
+                aliases.add(entity_name)
+                entity_alias = ','.join(list(aliases)[:10])
+                info(f"实体模糊匹配: '{entity_name}' -> '{similar['entity_name']}' (sim={similar.get('_similarity', 0):.3f})")
         if existing:
             # 应用层合并 attributes
             old_attrs = {}
@@ -304,13 +368,24 @@ class EntityHandler(MemoryDB):
         else:
             sql = """
                 INSERT INTO entity_memory
-                (user_id, entity_type, entity_name, entity_alias, attributes, description, importance)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (user_id, entity_type, entity_name, entity_alias, attributes, description, importance, embedding)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
+            # 生成实体 embedding
+            emb_blob = None
+            try:
+                from data.embedding_service import embedding_service
+                emb = embedding_service.get_embedding(entity_name)
+                if emb:
+                    import json as _json
+                    emb_blob = _json.dumps(emb).encode('utf-8')
+            except Exception:
+                pass
+
             self._execute_commit(sql, (
                 user_id, entity_type, entity_name, entity_alias,
                 json.dumps(attributes, ensure_ascii=False) if attributes else None,
-                description, importance
+                description, importance, emb_blob
             ))
             return self._last_id()
 

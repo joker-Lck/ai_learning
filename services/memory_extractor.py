@@ -13,6 +13,31 @@ from services.memory_service import memory_service
 class MemoryExtractor:
     """记忆提取器"""
 
+    # 标准关系类型本体
+    RELATION_TYPE_MAP = {
+        'uses': 'uses', 'use': 'uses', 'uses_for': 'uses', 'is_used_for': 'uses',
+        '用于': 'uses', '使用': 'uses', '利用': 'uses',
+        'is_a': 'is_a', 'is_type_of': 'is_a', '属于': 'is_a', '是一种': 'is_a',
+        'part_of': 'part_of', 'belongs_to': 'part_of', '包含': 'part_of',
+        'depends_on': 'depends_on', 'requires': 'depends_on', '依赖': 'depends_on', '需要': 'depends_on',
+        'improves': 'improves', 'enhances': 'improves', '提升': 'improves', '改善': 'improves',
+        'causes': 'causes', 'leads_to': 'causes', '导致': 'causes', '引起': 'causes',
+        'related_to': 'related_to', 'related': 'related_to', '相关': 'related_to', '关联': 'related_to',
+        'teaches': 'teaches', 'covers': 'teaches', '教授': 'teaches', '涵盖': 'teaches',
+        'prerequisite': 'prerequisite', '前置': 'prerequisite', '基础': 'prerequisite',
+        'contradicts': 'contradicts', 'opposes': 'contradicts', '矛盾': 'contradicts', '相反': 'contradicts',
+    }
+
+    def _normalize_relation_type(self, raw_type: str) -> str:
+        """规范化关系类型到标准本体"""
+        t = raw_type.strip().lower()
+        if t in self.RELATION_TYPE_MAP:
+            return self.RELATION_TYPE_MAP[t]
+        for key, val in self.RELATION_TYPE_MAP.items():
+            if key in t or t in key:
+                return val
+        return 'related_to'
+
     def __init__(self, ai_client=None):
         self.ai_client = ai_client
 
@@ -64,17 +89,32 @@ class MemoryExtractor:
                         entity_ids[entity['name']] = entity_id
                         results['entity'] += 1
 
-                    # 5. 保存实体关系
+                    # 5. 保存实体关系（支持跨对话）
                     for relation in extracted.get('relations', []):
                         source_name = relation.get('source')
                         target_name = relation.get('target')
+                        rel_type = self._normalize_relation_type(relation.get('type', 'related'))
 
-                        if source_name in entity_ids and target_name in entity_ids:
+                        # 查找源实体 ID（先当前批次，再数据库）
+                        source_id = entity_ids.get(source_name)
+                        if not source_id:
+                            found = ms.search_entities(user_id, source_name, limit=1)
+                            if found:
+                                source_id = found[0]['id']
+
+                        # 查找目标实体 ID
+                        target_id = entity_ids.get(target_name)
+                        if not target_id:
+                            found = ms.search_entities(user_id, target_name, limit=1)
+                            if found:
+                                target_id = found[0]['id']
+
+                        if source_id and target_id:
                             ms.add_relation(
                                 user_id=user_id,
-                                source_entity_id=entity_ids[source_name],
-                                target_entity_id=entity_ids[target_name],
-                                relation_type=relation.get('type', 'related'),
+                                source_entity_id=source_id,
+                                target_entity_id=target_id,
+                                relation_type=rel_type,
                                 relation_label=relation.get('label', '')
                             )
                             results['relations'] += 1
@@ -131,7 +171,7 @@ class MemoryExtractor:
         {{
             "source": "源实体名称",
             "target": "目标实体名称",
-            "type": "关系类型",
+            "type": "关系类型(uses/is_a/part_of/depends_on/improves/causes/teaches/prerequisite/related_to)",
             "label": "关系描述"
         }}
     ],

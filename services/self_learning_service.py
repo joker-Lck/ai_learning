@@ -162,13 +162,14 @@ class SelfLearningService:
             return stats
 
     def _filter_high_quality_experiences(self, feedbacks: list[dict]) -> list[dict]:
-        """筛选：评分 >= 4 且 helpful=True 的交互"""
+        """筛选：评分 >= 4 且 (helpful=True 或 有正面评论) 的交互"""
         high_quality = []
         for fb in feedbacks:
             rating = fb.get("rating", 0)
             helpful = fb.get("helpful", 0)
+            comment = fb.get("comment", "")
 
-            if (rating >= self.RATING_THRESHOLD and helpful) or (rating >= self.RATING_THRESHOLD and fb.get("original_query")):
+            if rating >= self.RATING_THRESHOLD and (helpful or (comment and len(comment) > 5)):
                 high_quality.append(fb)
 
         return high_quality
@@ -226,8 +227,28 @@ class SelfLearningService:
             pass
         return []
 
+    def _validate_qa_pair(self, query: str, answer: str) -> bool:
+        """质量门控：LLM 自评 QA 对的正确性"""
+        try:
+            prompt = f"""请判断以下问答对是否正确、完整、无误导。
+
+问题：{query}
+回答：{answer[:500]}
+
+判断标准：
+1. 回答是否准确（无明显错误）
+2. 回答是否完整（覆盖了问题的核心）
+3. 回答是否安全（无有害内容）
+
+只回答 "PASS" 或 "FAIL"，不要其他内容。"""
+
+            result = self.qa_service.call_simple(prompt, max_tokens=10)
+            return result and "PASS" in result.upper()
+        except Exception:
+            return False  # 验证失败时保守处理
+
     def _apply_experiences_to_rag(self) -> int:
-        """将未应用的经验写入 RAG 知识库"""
+        """将未应用的经验写入 RAG 知识库（带质量门控）"""
         applied_count = 0
 
         try:
@@ -254,6 +275,13 @@ class SelfLearningService:
                     answer = content.get("answer", "")
 
                     if not query or not answer:
+                        continue
+
+                    # 质量门控：LLM 自评
+                    if not self._validate_qa_pair(query, answer):
+                        info(f"[SelfLearning] QA 对未通过质量门控: {query[:50]}")
+                        # 标记为已处理但不写入 RAG
+                        cursor.execute("UPDATE learning_experiences SET applied = -1 WHERE id = ?", (exp["id"],))
                         continue
 
                     combined = f"问：{query}\n答：{answer}"
