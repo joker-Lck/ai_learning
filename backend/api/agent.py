@@ -136,7 +136,7 @@ async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
             mem_stats = ms.get_memory_stats(user_id)
 
         # 3. 构建 AI 评定 prompt
-        prompt = f"""你是一个学习能力评估专家。请根据以下学生画像和使用数据，评估 6 个维度的分数（1-5 分）。
+        prompt = f"""你是一个学习能力评估专家。请根据以下学生画像和使用数据，评估 9 个维度的分数（1-5 分）。
 
 【学生画像】
 {json.dumps(profile, ensure_ascii=False, indent=2)}
@@ -152,11 +152,14 @@ async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
 请输出 JSON 格式：
 {{
   "knowledge_base": 分数,
+  "cognitive_style": 分数,
   "learning_goals": 分数,
-  "memory_ability": 分数,
-  "self_control": 分数,
-  "focus": 分数,
-  "learning_depth": 分数,
+  "interest_areas": 分数,
+  "preferred_resources": 分数,
+  "learning_history": 分数,
+  "weak_points": 分数,
+  "learning_breadth": 分数,
+  "learning_stage": 分数,
   "reasoning": "评估理由"
 }}
 
@@ -177,8 +180,9 @@ async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
 
         if not scores:
             scores = {
-                "knowledge_base": 3, "learning_goals": 3, "memory_ability": 3,
-                "self_control": 3, "focus": 3, "learning_depth": 3,
+                "knowledge_base": 3, "cognitive_style": 3, "learning_goals": 3,
+                "interest_areas": 3, "preferred_resources": 3, "learning_history": 3,
+                "weak_points": 3, "learning_breadth": 3, "learning_stage": 3,
                 "reasoning": "AI 评定失败，使用默认分数",
             }
 
@@ -190,18 +194,22 @@ async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
             conn = sqlite3.connect(get_memory_db_path())
             conn.execute("""
                 INSERT INTO profile_evaluations
-                (user_id, knowledge_base, learning_goals, memory_ability,
-                 self_control, focus, learning_depth, reasoning,
+                (user_id, knowledge_base, cognitive_style, learning_goals,
+                 interest_areas, preferred_resources, learning_history,
+                 weak_points, learning_breadth, learning_stage, reasoning,
                  resource_count, activity_count, evaluation_source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai')
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai')
             """, (
                 user_id,
                 scores.get("knowledge_base", 3),
+                scores.get("cognitive_style", 3),
                 scores.get("learning_goals", 3),
-                scores.get("memory_ability", 3),
-                scores.get("self_control", 3),
-                scores.get("focus", 3),
-                scores.get("learning_depth", 3),
+                scores.get("interest_areas", 3),
+                scores.get("preferred_resources", 3),
+                scores.get("learning_history", 3),
+                scores.get("weak_points", 3),
+                scores.get("learning_breadth", 3),
+                scores.get("learning_stage", 3),
                 scores.get("reasoning", ""),
                 resource_count,
                 activity_count,

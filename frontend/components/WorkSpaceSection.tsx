@@ -131,16 +131,17 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
       const res: any = await api.evaluateProfile();
       if (res.success && res.data?.scores) {
         const s = res.data.scores;
+        const clamp = (v: any) => Math.max(1, Math.min(5, Number(v) || 3));
         const scores = {
-          knowledge_base: s.knowledge_base || 3,
-          cognitive_style: s.cognitive_style || 3,
-          learning_goals: s.learning_goals || 3,
-          interest_areas: s.interest_areas || 3,
-          preferred_resources: s.preferred_resources || 3,
-          learning_history: s.learning_history || 3,
-          weak_points: s.weak_points || 3,
-          learning_breadth: s.learning_breadth || 3,
-          learning_stage: s.learning_stage || 3,
+          knowledge_base: clamp(s.knowledge_base),
+          cognitive_style: clamp(s.cognitive_style),
+          learning_goals: clamp(s.learning_goals),
+          interest_areas: clamp(s.interest_areas),
+          preferred_resources: clamp(s.preferred_resources),
+          learning_history: clamp(s.learning_history),
+          weak_points: clamp(s.weak_points),
+          learning_breadth: clamp(s.learning_breadth),
+          learning_stage: clamp(s.learning_stage),
         };
         setAiScores(scores);
         setAiReasoning(s.reasoning || '');
@@ -622,7 +623,26 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
   );
 }
 
-function RecentGeneratedList({ resources, onPreview }: { resources: ApiResource[]; onPreview: (r: ApiResource) => void }) {
+function extractPreview(data: any, type: string): string {
+  if (!data) return '';
+  if (typeof data === 'string') return data.slice(0, 120);
+  const parts: string[] = [];
+  if (data.summary) parts.push(data.summary);
+  else if (data.description) parts.push(data.description);
+  else if (data.introduction) parts.push(data.introduction);
+  if (parts.length === 0 && data.content) parts.push(data.content);
+  if (parts.length === 0 && data.sections?.[0]?.content) parts.push(data.sections[0].content);
+  if (parts.length === 0 && data.questions?.[0]) {
+    parts.push(data.questions[0].question || data.questions[0].title || '');
+  }
+  if (parts.length === 0 && data.branches?.[0]) {
+    parts.push(data.branches[0].topic || data.branches[0].name || '');
+  }
+  const text = parts.join(' ').replace(/[#*`>\-\[\]]/g, '').replace(/\n+/g, ' ').trim();
+  return text.length > 100 ? text.slice(0, 100) + '...' : text;
+}
+
+function RecentGeneratedList({ resources, onPreview, compact }: { resources: ApiResource[]; onPreview: (r: ApiResource) => void; compact?: boolean }) {
   if (resources.length === 0) {
     return (
       <div>
@@ -641,20 +661,27 @@ function RecentGeneratedList({ resources, onPreview }: { resources: ApiResource[
         <h2 className="text-lg font-semibold text-white">最近生成</h2>
         <span className="text-xs text-white/20">{resources.length} 个资源</span>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid ${compact ? 'grid-cols-2' : 'grid-cols-3'} gap-3`}>
         {resources.map((item, i) => {
           const typeInfo = TYPE_MAP[item.resource_type] || { icon: FileText, color: 'text-white/40', label: '资源' };
           const Icon = typeInfo.icon;
+          const preview = compact ? extractPreview(item.content_data, item.resource_type) : '';
           return (
-            <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.05, duration: 0.3 }} onClick={() => onPreview(item)} className="group p-4 rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-purple-500/20 cursor-pointer transition-all">
+            <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.05, duration: 0.3 }} onClick={() => onPreview(item)} className={`group rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-purple-500/20 cursor-pointer transition-all ${compact ? 'p-5' : 'p-4'}`}>
               <div className="flex items-center gap-2.5 mb-3">
-                <div className="w-9 h-9 rounded-lg bg-white/[0.04] flex items-center justify-center"><Icon className={`w-4 h-4 ${typeInfo.color}`} /></div>
-                <span className="text-[11px] text-white/20">{typeInfo.label}</span>
+                <div className={`rounded-lg bg-white/[0.04] flex items-center justify-center ${compact ? 'w-10 h-10' : 'w-9 h-9'}`}><Icon className={`${compact ? 'w-5 h-5' : 'w-4 h-4'} ${typeInfo.color}`} /></div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] text-white/20">{typeInfo.label}</span>
+                  {compact && <span className="text-[11px] text-white/15 ml-2">{formatTimeAgo(item.created_at)}</span>}
+                </div>
               </div>
-              <div className="text-sm text-white font-medium truncate mb-1.5">{item.title}</div>
+              <div className={`text-white font-medium mb-1.5 ${compact ? 'text-sm truncate' : 'text-sm truncate'}`}>{item.title}</div>
+              {compact && preview && (
+                <p className="text-xs text-white/30 leading-relaxed line-clamp-2 mb-2">{preview}</p>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-white/20 truncate max-w-[60%]">{item.subject}{item.topic ? ` · ${item.topic}` : ''}</span>
-                <span className="text-[11px] text-white/15">{formatTimeAgo(item.created_at)}</span>
+                {!compact && <span className="text-[11px] text-white/15">{formatTimeAgo(item.created_at)}</span>}
               </div>
             </motion.div>
           );
@@ -664,7 +691,7 @@ function RecentGeneratedList({ resources, onPreview }: { resources: ApiResource[
   );
 }
 
-function SuggestionCard({ recommendations, onNavigateModule }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void }) {
+function SuggestionCard({ recommendations, onNavigateModule, compact }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void; compact?: boolean }) {
   const categoryConfig: Record<string, { icon: typeof Lightbulb; color: string; bgColor: string; borderColor: string; label: string }> = {
     weakness:  { icon: Zap, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', label: '薄弱' },
     review:    { icon: Clock, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20', label: '复习' },
@@ -688,7 +715,7 @@ function SuggestionCard({ recommendations, onNavigateModule }: { recommendations
       {items.length === 0 ? (
         <p className="text-xs text-white/25 text-center py-6">暂无建议，多使用系统后会自动生成</p>
       ) : (
-        <div className="grid grid-cols-4 gap-3">
+        <div className={`${compact ? 'space-y-2.5' : 'grid grid-cols-4 gap-3'}`}>
           {items.map((item, i) => {
             const cat = categoryConfig[item.category || ''] || { icon: Lightbulb, color: 'text-white/50', bgColor: 'bg-white/[0.04]', borderColor: 'border-white/[0.08]', label: '建议' };
             const Icon = cat.icon;
@@ -700,15 +727,15 @@ function SuggestionCard({ recommendations, onNavigateModule }: { recommendations
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06, duration: 0.25 }}
                 onClick={() => onNavigateModule(targetModule, { topic: item.topic, autoPlan: false })}
-                className={`group p-4 rounded-xl border cursor-pointer hover:scale-[1.02] transition-all ${cat.borderColor} ${cat.bgColor}`}
+                className={`group p-3 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${cat.borderColor} ${cat.bgColor}`}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-7 h-7 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-3.5 h-3.5 ${cat.color}`} />
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className={`w-6 h-6 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-3 h-3 ${cat.color}`} />
                   </div>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${cat.bgColor} ${cat.color} font-medium`}>{cat.label}</span>
                 </div>
-                <div className="text-sm text-white/80 group-hover:text-white transition-colors font-medium mb-1 truncate">{item.topic}</div>
+                <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 truncate">{item.topic}</div>
                 <div className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{item.reason}</div>
                 {item.detail && <div className="text-[10px] text-white/15 mt-1 line-clamp-1">{item.detail}</div>}
               </motion.div>
@@ -814,6 +841,65 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
 }
 
 /* ═══════════════════════════════════════════
+   错题复习卡片
+   ═══════════════════════════════════════════ */
+
+function DueReviewSection({ notes, onStartReview }: { notes: any[]; onStartReview: () => void }) {
+  if (notes.length === 0) return null;
+
+  const subjectColors: Record<string, { bg: string; text: string; border: string }> = {
+    '数学': { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
+    '英语': { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
+    '物理': { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
+    '化学': { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20' },
+    '生物': { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/20' },
+  };
+
+  const defaultColor = { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' };
+  const displayNotes = notes.slice(0, 4);
+
+  return (
+    <div className="mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-white">错题复习</h3>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">{notes.length} 道</span>
+        </div>
+        <button onClick={onStartReview} className="text-[11px] px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors">
+          全部复习
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {displayNotes.map((note, i) => {
+          const colors = subjectColors[note.subject] || defaultColor;
+          return (
+            <motion.div
+              key={note.id || i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06, duration: 0.25 }}
+              onClick={onStartReview}
+              className={`group p-4 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${colors.border} ${colors.bg}`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${colors.bg} ${colors.text} font-medium`}>{note.subject || '未知'}</span>
+                {note.chapter && <span className="text-[10px] text-white/20 truncate">{note.chapter}</span>}
+                <span className="text-[10px] text-white/15 ml-auto">复习 {note.review_count || 0} 次</span>
+              </div>
+              <div className="text-sm text-white/80 group-hover:text-white transition-colors font-medium mb-1.5 line-clamp-2">{note.question || '未知题目'}</div>
+              {note.error_reason && (
+                <div className="text-[11px] text-white/25 line-clamp-1">错因：{note.error_reason}</div>
+              )}
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    主组件
    ═══════════════════════════════════════════ */
 
@@ -828,6 +914,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [dueCount, setDueCount] = useState(0);
+  const [dueNotes, setDueNotes] = useState<any[]>([]);
   const [hasProfile, setHasProfile] = useState(true); // 默认true，加载后更新
 
   // 新用户引导检测 + 画像评估强制检查
@@ -911,7 +998,9 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
           setStats((statsRes.value as any).data || null);
         }
         if (dueRes.status === 'fulfilled' && (dueRes.value as any)?.success) {
-          setDueCount((dueRes.value as any).data?.total_due || 0);
+          const dueData = (dueRes.value as any).data;
+          setDueCount(dueData?.total_due || 0);
+          setDueNotes(dueData?.due_notes || []);
         }
       } catch {}
 
@@ -953,40 +1042,40 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
           <Header profile={profile} stats={stats} />
           <QuickStartCard onNavigateModule={onNavigateModule} />
 
-          {/* 待复习提醒 */}
+          {/* 错题复习卡片 */}
           {dueCount > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-5 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 flex items-center justify-between cursor-pointer hover:bg-amber-500/10 transition-colors"
-              onClick={() => router.push('/dashboard?module=quiz&mode=review', { scroll: false })}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-amber-400" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-white">{dueCount} 道错题待复习</div>
-                  <div className="text-xs text-white/40">根据遗忘曲线，现在是最佳复习时间</div>
-                </div>
-              </div>
-              <div className="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 text-sm font-medium hover:bg-amber-500/30 transition-colors">
-                开始复习
-              </div>
-            </motion.div>
+            <DueReviewSection
+              notes={dueNotes}
+              onStartReview={() => router.push('/dashboard?module=quiz&mode=review', { scroll: false })}
+            />
           )}
 
-          <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
-
-          <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
-            <div className="flex-[7] min-w-0">
-              <LatestAssessmentCard onNavigateModule={onNavigateModule} />
-              <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
+          {/* 当错题复习和今日建议都有内容时，将今日建议移到右侧边栏，确保最近生成完整展示 */}
+          {dueCount > 0 && recommendations.length > 0 ? (
+            <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
+              <div className="flex-[8] min-w-0">
+                <LatestAssessmentCard onNavigateModule={onNavigateModule} />
+                <RecentGeneratedList resources={resources} onPreview={setPreviewResource} compact />
+              </div>
+              <div className="flex-[2] min-w-0 flex flex-col gap-5">
+                <DashboardRadarChart profile={profile} />
+                <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} compact />
+              </div>
             </div>
-            <div className="flex-[3] min-w-0 flex flex-col gap-5">
-              <DashboardRadarChart profile={profile} />
-            </div>
-          </div>
+          ) : (
+            <>
+              <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
+              <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
+                <div className="flex-[7] min-w-0">
+                  <LatestAssessmentCard onNavigateModule={onNavigateModule} />
+                  <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
+                </div>
+                <div className="flex-[3] min-w-0 flex flex-col gap-5">
+                  <DashboardRadarChart profile={profile} />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </main>
 

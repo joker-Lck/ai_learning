@@ -779,11 +779,14 @@ def init_memory_database():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 knowledge_base REAL DEFAULT 3,
+                cognitive_style REAL DEFAULT 3,
                 learning_goals REAL DEFAULT 3,
-                memory_ability REAL DEFAULT 3,
-                self_control REAL DEFAULT 3,
-                focus REAL DEFAULT 3,
-                learning_depth REAL DEFAULT 3,
+                interest_areas REAL DEFAULT 3,
+                preferred_resources REAL DEFAULT 3,
+                learning_history REAL DEFAULT 3,
+                weak_points REAL DEFAULT 3,
+                learning_breadth REAL DEFAULT 3,
+                learning_stage REAL DEFAULT 3,
                 reasoning TEXT,
                 resource_count INTEGER DEFAULT 0,
                 activity_count INTEGER DEFAULT 0,
@@ -793,6 +796,22 @@ def init_memory_database():
             CREATE INDEX IF NOT EXISTS idx_pe_user ON profile_evaluations(user_id);
             CREATE INDEX IF NOT EXISTS idx_pe_created ON profile_evaluations(created_at);
         """)
+
+        # 迁移：为已有表添加新维度列
+        new_cols = [
+            ("cognitive_style", "REAL DEFAULT 3"),
+            ("interest_areas", "REAL DEFAULT 3"),
+            ("preferred_resources", "REAL DEFAULT 3"),
+            ("learning_history", "REAL DEFAULT 3"),
+            ("weak_points", "REAL DEFAULT 3"),
+            ("learning_breadth", "REAL DEFAULT 3"),
+            ("learning_stage", "REAL DEFAULT 3"),
+        ]
+        for col_name, col_type in new_cols:
+            try:
+                conn.execute(f"ALTER TABLE profile_evaluations ADD COLUMN {col_name} {col_type}")
+            except Exception:
+                pass  # 列已存在则忽略
 
         conn.commit()
         print("  [OK] 记忆系统数据库初始化完成!")
