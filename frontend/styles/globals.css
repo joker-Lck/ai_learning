@@ -362,6 +362,25 @@ html {
 
 /* 页面切换由 JS 控制，不再使用 CSS scroll-snap */
 
+/* ==================== 自动滚动动画 ==================== */
+
+@keyframes auto-scroll-up {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+.auto-scroll-container {
+  overflow: hidden;
+}
+
+.auto-scroll-content {
+  animation: auto-scroll-up var(--scroll-duration, 20s) linear infinite;
+}
+
+.auto-scroll-container:hover .auto-scroll-content {
+  animation-play-state: paused;
+}
+
 /* ==================== 减少动画偏好 ==================== */
 
 @media (prefers-reduced-motion: reduce) {

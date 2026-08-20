@@ -3186,12 +3186,14 @@ async def quiz_adaptive(
             else:
                 raise ValueError("无BKT数据")
         except Exception:
-            prompt = f"""请为{subject}学科生成 {need} 道练习题。
+            prompt = f"""请针对「{subject}」相关知识点生成 {need} 道练习题。
+注意：「{subject}」是学科名或知识点关键词，请围绕其涉及的学科知识出题，不要把题目本身当成知识点来出题。
 {weak_info}
 要求：题型包含选择题(type="multiple_choice")、判断题(type="judge")、填空题(type="fill_blank")。
 选择题options格式：["A. xxx", "B. xxx", "C. xxx", "D. xxx"]，answer填字母如"A"。
 判断题options留空数组，answer填"true"或"false"。
 填空题options留空数组，answer填答案文本。
+每道题必须考察具体的学科知识内容，不要出"以下关于XX说法正确的是"这类空洞题目。
 
 只输出JSON，不要输出其他内容：
 {{"questions":[{{"id":1,"type":"multiple_choice","question":"...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A","explanation":"...","difficulty":"easy","knowledge_point":"..."}}]}}"""

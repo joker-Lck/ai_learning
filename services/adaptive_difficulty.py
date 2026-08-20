@@ -72,7 +72,7 @@ class AdaptiveDifficultyEngine:
         """构建自适应出题 prompt"""
         dist = self.build_distribution(mastery_data, count)
 
-        prompt = f"请为{subject}学科生成 {count} 道练习题，按以下分配：\n\n"
+        prompt = f"请针对「{subject}」相关知识点生成 {count} 道练习题，按以下分配：\n注意：「{subject}」是学科名或知识点关键词，请围绕其涉及的学科知识出题，不要把题目本身当成知识点来出题。\n每道题必须考察具体的学科知识内容，不要出空洞题目。\n\n"
 
         easy = dist["easy"]
         if easy["topics"]:

@@ -642,6 +642,31 @@ function extractPreview(data: any, type: string): string {
   return text.length > 100 ? text.slice(0, 100) + '...' : text;
 }
 
+function ResourceCard({ item, compact, onPreview }: { item: ApiResource; compact?: boolean; onPreview: (r: ApiResource) => void }) {
+  const typeInfo = TYPE_MAP[item.resource_type] || { icon: FileText, color: 'text-white/40', label: '资源' };
+  const Icon = typeInfo.icon;
+  const preview = compact ? extractPreview(item.content_data, item.resource_type) : '';
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} onClick={() => onPreview(item)} className={`group rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-purple-500/20 cursor-pointer transition-all ${compact ? 'p-5' : 'p-4'}`}>
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`rounded-lg bg-white/[0.04] flex items-center justify-center ${compact ? 'w-10 h-10' : 'w-9 h-9'}`}><Icon className={`${compact ? 'w-5 h-5' : 'w-4 h-4'} ${typeInfo.color}`} /></div>
+        <div className="flex-1 min-w-0">
+          <span className="text-[11px] text-white/20">{typeInfo.label}</span>
+          {compact && <span className="text-[11px] text-white/15 ml-2">{formatTimeAgo(item.created_at)}</span>}
+        </div>
+      </div>
+      <div className={`text-white font-medium mb-1.5 ${compact ? 'text-sm truncate' : 'text-sm truncate'}`}>{item.title}</div>
+      {compact && preview && (
+        <p className="text-xs text-white/30 leading-relaxed line-clamp-2 mb-2">{preview}</p>
+      )}
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-white/20 truncate max-w-[60%]">{item.subject}{item.topic ? ` · ${item.topic}` : ''}</span>
+        {!compact && <span className="text-[11px] text-white/15">{formatTimeAgo(item.created_at)}</span>}
+      </div>
+    </motion.div>
+  );
+}
+
 function RecentGeneratedList({ resources, onPreview, compact }: { resources: ApiResource[]; onPreview: (r: ApiResource) => void; compact?: boolean }) {
   if (resources.length === 0) {
     return (
@@ -655,40 +680,126 @@ function RecentGeneratedList({ resources, onPreview, compact }: { resources: Api
     );
   }
 
+  const enableAutoScroll = resources.length >= 6;
+  const duration = Math.max(15, resources.length * 3);
+
+  const renderGrid = (items: ApiResource[], keyPrefix: string) => (
+    <div className={`grid ${compact ? 'grid-cols-2' : 'grid-cols-3'} gap-3`}>
+      {items.map((item, i) => (
+        <ResourceCard key={`${keyPrefix}-${item.id}`} item={item} compact={compact} onPreview={onPreview} />
+      ))}
+    </div>
+  );
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white">最近生成</h2>
         <span className="text-xs text-white/20">{resources.length} 个资源</span>
       </div>
-      <div className={`grid ${compact ? 'grid-cols-2' : 'grid-cols-3'} gap-3`}>
-        {resources.map((item, i) => {
-          const typeInfo = TYPE_MAP[item.resource_type] || { icon: FileText, color: 'text-white/40', label: '资源' };
-          const Icon = typeInfo.icon;
-          const preview = compact ? extractPreview(item.content_data, item.resource_type) : '';
-          return (
-            <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.05, duration: 0.3 }} onClick={() => onPreview(item)} className={`group rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-purple-500/20 cursor-pointer transition-all ${compact ? 'p-5' : 'p-4'}`}>
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className={`rounded-lg bg-white/[0.04] flex items-center justify-center ${compact ? 'w-10 h-10' : 'w-9 h-9'}`}><Icon className={`${compact ? 'w-5 h-5' : 'w-4 h-4'} ${typeInfo.color}`} /></div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-[11px] text-white/20">{typeInfo.label}</span>
-                  {compact && <span className="text-[11px] text-white/15 ml-2">{formatTimeAgo(item.created_at)}</span>}
-                </div>
-              </div>
-              <div className={`text-white font-medium mb-1.5 ${compact ? 'text-sm truncate' : 'text-sm truncate'}`}>{item.title}</div>
-              {compact && preview && (
-                <p className="text-xs text-white/30 leading-relaxed line-clamp-2 mb-2">{preview}</p>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-white/20 truncate max-w-[60%]">{item.subject}{item.topic ? ` · ${item.topic}` : ''}</span>
-                {!compact && <span className="text-[11px] text-white/15">{formatTimeAgo(item.created_at)}</span>}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+      {enableAutoScroll ? (
+        <div className="auto-scroll-container" style={{ maxHeight: 'calc(100vh - 500px)' }}>
+          <div className="auto-scroll-content" style={{ '--scroll-duration': `${duration}s` } as React.CSSProperties}>
+            {renderGrid(resources, 'a')}
+            {renderGrid(resources, 'b')}
+          </div>
+        </div>
+      ) : (
+        renderGrid(resources, 'c')
+      )}
     </div>
   );
+}
+
+function SuggestionAutoScroll({ items, dueDisplay, compact, categoryConfig, actionModuleMap, subjectColors, defaultColor, onNavigateModule, onStartReview }: {
+  items: Recommendation[];
+  dueDisplay: any[];
+  compact?: boolean;
+  categoryConfig: Record<string, any>;
+  actionModuleMap: Record<string, ModuleType>;
+  subjectColors: Record<string, any>;
+  defaultColor: any;
+  onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void;
+  onStartReview?: () => void;
+}) {
+  const totalItems = items.length + dueDisplay.length;
+  const enableAutoScroll = totalItems >= 4;
+  const duration = Math.max(12, totalItems * 4);
+
+  const renderContent = (keyPrefix: string) => (
+    <>
+      {items.length > 0 && (
+        <div className={`${compact ? 'space-y-2.5' : 'grid grid-cols-4 gap-3'} ${dueDisplay.length > 0 ? 'mb-4' : ''}`}>
+          {items.map((item, i) => {
+            const cat = categoryConfig[item.category || ''] || { icon: Lightbulb, color: 'text-white/50', bgColor: 'bg-white/[0.04]', borderColor: 'border-white/[0.08]', label: '建议' };
+            const Icon = cat.icon;
+            const targetModule = actionModuleMap[item.action || ''] || 'tutor';
+            return (
+              <motion.div
+                key={`${keyPrefix}-rec-${i}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06, duration: 0.25 }}
+                onClick={() => onNavigateModule(targetModule, { topic: item.topic, autoPlan: false })}
+                className={`group p-3 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${cat.borderColor} ${cat.bgColor}`}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className={`w-6 h-6 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-3 h-3 ${cat.color}`} />
+                  </div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${cat.bgColor} ${cat.color} font-medium`}>{cat.label}</span>
+                </div>
+                <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 truncate">{item.topic}</div>
+                <div className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{item.reason}</div>
+                {item.detail && <div className="text-[10px] text-white/15 mt-1 line-clamp-1">{item.detail}</div>}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+      {dueDisplay.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {dueDisplay.map((note, i) => {
+            const colors = subjectColors[note.subject] || defaultColor;
+            return (
+              <motion.div
+                key={`${keyPrefix}-due-${note.id || i}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06, duration: 0.25 }}
+                onClick={onStartReview}
+                className={`group p-3 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${colors.border} ${colors.bg}`}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Clock className="w-3 h-3 text-amber-400" />
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${colors.bg} ${colors.text} font-medium`}>{note.subject || '未知'}</span>
+                  {note.chapter && <span className="text-[10px] text-white/20 truncate">{note.chapter}</span>}
+                  <span className="text-[10px] text-white/15 ml-auto">复习 {note.review_count || 0} 次</span>
+                </div>
+                <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 line-clamp-2">{note.question || '未知题目'}</div>
+                {note.error_reason && (
+                  <div className="text-[10px] text-white/25 line-clamp-1">错因：{note.error_reason}</div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+
+  if (enableAutoScroll) {
+    return (
+      <div className="auto-scroll-container" style={{ maxHeight: '280px' }}>
+        <div className="auto-scroll-content" style={{ '--scroll-duration': `${duration}s` } as React.CSSProperties}>
+          {renderContent('a')}
+          {renderContent('b')}
+        </div>
+      </div>
+    );
+  }
+
+  return <>{renderContent('c')}</>;
 }
 
 function SuggestionCard({ recommendations, onNavigateModule, compact, dueNotes, onStartReview }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void; compact?: boolean; dueNotes?: any[]; onStartReview?: () => void }) {
@@ -731,65 +842,7 @@ function SuggestionCard({ recommendations, onNavigateModule, compact, dueNotes, 
       {items.length === 0 && dueDisplay.length === 0 ? (
         <p className="text-xs text-white/25 text-center py-6">暂无建议，多使用系统后会自动生成</p>
       ) : (
-        <>
-          {items.length > 0 && (
-            <div className={`${compact ? 'space-y-2.5' : 'grid grid-cols-4 gap-3'} ${dueDisplay.length > 0 ? 'mb-4' : ''}`}>
-              {items.map((item, i) => {
-                const cat = categoryConfig[item.category || ''] || { icon: Lightbulb, color: 'text-white/50', bgColor: 'bg-white/[0.04]', borderColor: 'border-white/[0.08]', label: '建议' };
-                const Icon = cat.icon;
-                const targetModule = actionModuleMap[item.action || ''] || 'tutor';
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.06, duration: 0.25 }}
-                    onClick={() => onNavigateModule(targetModule, { topic: item.topic, autoPlan: false })}
-                    className={`group p-3 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${cat.borderColor} ${cat.bgColor}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className={`w-6 h-6 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
-                        <Icon className={`w-3 h-3 ${cat.color}`} />
-                      </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${cat.bgColor} ${cat.color} font-medium`}>{cat.label}</span>
-                    </div>
-                    <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 truncate">{item.topic}</div>
-                    <div className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{item.reason}</div>
-                    {item.detail && <div className="text-[10px] text-white/15 mt-1 line-clamp-1">{item.detail}</div>}
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-          {dueDisplay.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
-              {dueDisplay.map((note, i) => {
-                const colors = subjectColors[note.subject] || defaultColor;
-                return (
-                  <motion.div
-                    key={note.id || i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.06, duration: 0.25 }}
-                    onClick={onStartReview}
-                    className={`group p-3 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${colors.border} ${colors.bg}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Clock className="w-3 h-3 text-amber-400" />
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${colors.bg} ${colors.text} font-medium`}>{note.subject || '未知'}</span>
-                      {note.chapter && <span className="text-[10px] text-white/20 truncate">{note.chapter}</span>}
-                      <span className="text-[10px] text-white/15 ml-auto">复习 {note.review_count || 0} 次</span>
-                    </div>
-                    <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 line-clamp-2">{note.question || '未知题目'}</div>
-                    {note.error_reason && (
-                      <div className="text-[10px] text-white/25 line-clamp-1">错因：{note.error_reason}</div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </>
+        <SuggestionAutoScroll items={items} dueDisplay={dueDisplay} compact={compact} categoryConfig={categoryConfig} actionModuleMap={actionModuleMap} subjectColors={subjectColors} defaultColor={defaultColor} onNavigateModule={onNavigateModule} onStartReview={onStartReview} />
       )}
     </div>
   );
@@ -1090,13 +1143,15 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
           <Header profile={profile} stats={stats} />
           <QuickStartCard onNavigateModule={onNavigateModule} />
 
-          <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} dueNotes={dueNotes} onStartReview={() => router.push('/dashboard?module=quiz&mode=review', { scroll: false })} />
           <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
-            <div className="flex-[7] min-w-0">
-              <LatestAssessmentCard onNavigateModule={onNavigateModule} />
-              <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
+            <div className="flex-[7] min-w-0 flex flex-col gap-5">
+              <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} dueNotes={dueNotes} onStartReview={() => router.push('/dashboard?module=quiz&mode=review', { scroll: false })} />
+              <div className="flex-1 min-h-0">
+                <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
+              </div>
             </div>
             <div className="flex-[3] min-w-0 flex flex-col gap-5">
+              <LatestAssessmentCard onNavigateModule={onNavigateModule} />
               <DashboardRadarChart profile={profile} />
             </div>
           </div>
