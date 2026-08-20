@@ -436,6 +436,107 @@ async def get_learning_recommendations(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/auto-learning-path")
+async def get_auto_learning_path(
+    user: dict = Depends(get_current_user)
+):
+    """
+    获取或自动生成学习路径（登录时调用一次）
+
+    逻辑:
+    1. 检查今天是否已有活跃路径 → 有则直接返回
+    2. 无则基于学生画像薄弱点自动生成
+    """
+    try:
+        from datetime import datetime, timedelta
+        from data.db_operations import path_db
+
+        user_id = user["id"]
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        # 检查今天是否已有活跃路径
+        try:
+            with path_db:
+                path_db.cursor.execute(
+                    """SELECT id, path_name, description, path_data, current_step, total_steps, estimated_hours, status
+                       FROM learning_paths
+                       WHERE user_id = ? AND status = 'active'
+                       ORDER BY id DESC LIMIT 1""",
+                    (user_id,)
+                )
+                row = path_db.cursor.fetchone()
+                if row:
+                    row = dict(row)
+                    try:
+                        created_str = json.loads(row["path_data"]).get("created_at", "")
+                        if created_str and created_str[:10] == today:
+                            path_data = json.loads(row["path_data"])
+                            raw_steps = path_data.get("steps", [])
+                            formatted = [
+                                {
+                                    "step_number": s.get("step_id", i + 1),
+                                    "title": s.get("title", f"步骤 {i + 1}"),
+                                    "description": s.get("description", s.get("learning_objective", "")),
+                                    "estimated_time": f"{s.get('estimated_time', 30)}分钟",
+                                    "prerequisites": s.get("prerequisites", []),
+                                    "resources": [s.get("resource_type", "")] if s.get("resource_type") else [],
+                                }
+                                for i, s in enumerate(raw_steps)
+                            ]
+                            return {
+                                "success": True,
+                                "data": {
+                                    "path": {
+                                        "goal": row["path_name"],
+                                        "total_steps": row["total_steps"],
+                                        "estimated_duration": f"{row['estimated_hours']}小时",
+                                        "steps": formatted,
+                                    },
+                                    "path_id": row["id"],
+                                    "auto_generated": False,
+                                },
+                            }
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        # 获取学生画像，提取薄弱点作为学习目标
+        from services.profile_agent import ProfileAgent
+        profile_agent_inst = ProfileAgent()
+        profile_result = profile_agent_inst.get_or_build_profile(user_id)
+        profile = profile_result.get("profile", {})
+        weak_points = profile.get("weak_points", [])
+        learning_goal = weak_points[0] if weak_points else "综合提升"
+
+        # 使用 path_agent 自动生成
+        from services.path_agent import PathAgent
+        pa = PathAgent()
+        input_data = {
+            "profile": profile,
+            "resources": [],
+            "learning_goal": learning_goal,
+        }
+        result = pa.plan_path(user_id, input_data)
+
+        if result.get("success"):
+            path = result.get("path", {})
+            return {
+                "success": True,
+                "data": {
+                    "path": path,
+                    "path_id": result.get("path_id"),
+                    "auto_generated": True,
+                },
+            }
+        else:
+            return {"success": False, "data": None, "message": result.get("message", "生成失败")}
+
+    except Exception as e:
+        error(f"自动生成学习路径失败: {e!s}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/memory/maintenance")
 async def apply_memory_maintenance(
     user: dict = Depends(require_auth)

@@ -734,6 +734,8 @@ function SuggestionAutoScroll({ items, dueDisplay, compact, categoryConfig, acti
             const cat = categoryConfig[item.category || ''] || { icon: Lightbulb, color: 'text-white/50', bgColor: 'bg-white/[0.04]', borderColor: 'border-white/[0.08]', label: '建议' };
             const Icon = cat.icon;
             const targetModule = actionModuleMap[item.action || ''] || 'tutor';
+            const isPathStep = item.category === 'path_step';
+            const isPathInfo = isPathStep && item.type === 'path_info';
             return (
               <motion.div
                 key={`${keyPrefix}-rec-${i}`}
@@ -745,13 +747,20 @@ function SuggestionAutoScroll({ items, dueDisplay, compact, categoryConfig, acti
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   <div className={`w-6 h-6 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-3 h-3 ${cat.color}`} />
+                    {isPathInfo ? (
+                      <Router className={`w-3 h-3 ${cat.color}`} />
+                    ) : isPathStep ? (
+                      <span className={`text-[10px] font-bold ${cat.color}`}>{item.resource_type || '·'}</span>
+                    ) : (
+                      <Icon className={`w-3 h-3 ${cat.color}`} />
+                    )}
                   </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${cat.bgColor} ${cat.color} font-medium`}>{cat.label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${cat.bgColor} ${cat.color} font-medium`}>{isPathInfo ? '学习路径' : cat.label}</span>
+                  {isPathStep && !isPathInfo && item.detail && <span className="text-[10px] text-white/20 ml-auto">{item.detail}</span>}
                 </div>
                 <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 truncate">{item.topic}</div>
                 <div className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{item.reason}</div>
-                {item.detail && <div className="text-[10px] text-white/15 mt-1 line-clamp-1">{item.detail}</div>}
+                {!isPathStep && item.detail && <div className="text-[10px] text-white/15 mt-1 line-clamp-1">{item.detail}</div>}
               </motion.div>
             );
           })}
@@ -804,17 +813,20 @@ function SuggestionAutoScroll({ items, dueDisplay, compact, categoryConfig, acti
 
 function SuggestionCard({ recommendations, onNavigateModule, compact, dueNotes, onStartReview }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void; compact?: boolean; dueNotes?: any[]; onStartReview?: () => void }) {
   const categoryConfig: Record<string, { icon: typeof Lightbulb; color: string; bgColor: string; borderColor: string; label: string }> = {
-    weakness:  { icon: Zap, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', label: '薄弱' },
-    review:    { icon: Clock, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20', label: '复习' },
-    planning:  { icon: Target, color: 'text-blue-400', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20', label: '规划' },
-    strategy:  { icon: Brain, color: 'text-purple-400', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/20', label: '策略' },
+    weakness:   { icon: Zap, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', label: '薄弱' },
+    review:     { icon: Clock, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20', label: '复习' },
+    planning:   { icon: Target, color: 'text-blue-400', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20', label: '规划' },
+    strategy:   { icon: Brain, color: 'text-purple-400', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/20', label: '策略' },
+    path_step:  { icon: Router, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/20', label: '路径' },
   };
 
   const actionModuleMap: Record<string, ModuleType> = {
-    tutor: 'tutor', review: 'tutor', resources: 'resources', plan: 'path', assessment: 'assessment',
+    tutor: 'tutor', review: 'tutor', resources: 'resources', plan: 'path', assessment: 'assessment', path_step: 'path',
   };
 
-  const items = recommendations.slice(0, 4);
+  const items = recommendations
+    .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+    .slice(0, 8);
 
   const dueDisplay = (dueNotes && dueNotes.length > 0) ? dueNotes.slice(0, 4) : [];
 
@@ -1066,30 +1078,68 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
     const loadAll = async () => {
       setLoading(true);
       try {
-        const [resRes, recRes, profileRes, statsRes, dueRes] = await Promise.allSettled([
+        const [resRes, recRes, profileRes, statsRes, dueRes, pathRes] = await Promise.allSettled([
           api.getResources({ limit: 12 }),
           api.getLearningRecommendations(),
           api.getProfile(),
           api.getDashboardStats(),
           api.getReviewDue(undefined, 50),
+          api.getAutoLearningPath(),
         ]);
 
         if (resRes.status === 'fulfilled' && (resRes.value as any)?.success) {
           setResources((resRes.value as any).data.resources || []);
         }
+
+        // 构建建议列表
+        const mapped: any[] = [];
         if (recRes.status === 'fulfilled' && (recRes.value as any)?.success) {
           const raw = (recRes.value as any).data.recommendations || [];
-          setRecommendations(raw.map((r: any) => ({
-            topic: r.topic || r.name || '',
-            reason: r.reason || '',
-            resource_type: r.resource_type || r.type || '',
-            priority: r.priority,
-            type: r.type || '',
-            category: r.category || '',
-            action: r.action || '',
-            detail: r.detail || '',
-          })));
+          for (const r of raw) {
+            mapped.push({
+              topic: r.topic || r.name || '',
+              reason: r.reason || '',
+              resource_type: r.resource_type || r.type || '',
+              priority: r.priority,
+              type: r.type || '',
+              category: r.category || '',
+              action: r.action || '',
+              detail: r.detail || '',
+            });
+          }
         }
+
+        // 合并学习路径步骤到建议中（独立于推荐接口）
+        if (pathRes.status === 'fulfilled' && (pathRes.value as any)?.success) {
+          const pathData = (pathRes.value as any).data;
+          const path = pathData?.path;
+          if (path?.steps?.length) {
+            const goalName = path.goal || '学习路径';
+            const pathSteps = path.steps.slice(0, 3).map((s: any, i: number) => ({
+              topic: s.title || `步骤 ${s.step_number || i + 1}`,
+              reason: s.description || '',
+              resource_type: String(s.step_number || i + 1),
+              priority: 0.55,
+              type: 'path_step',
+              category: 'path_step',
+              action: 'path_step',
+              detail: s.estimated_time || '',
+            }));
+            const pathHeader = {
+              topic: goalName,
+              reason: `共 ${path.total_steps || path.steps.length} 步 · ${path.estimated_duration || ''}`,
+              resource_type: '',
+              priority: 0.6,
+              type: 'path_info',
+              category: 'path_step',
+              action: 'path_step',
+              detail: '',
+            };
+            mapped.push(pathHeader, ...pathSteps);
+          }
+        }
+
+        setRecommendations(mapped);
         if (profileRes.status === 'fulfilled' && (profileRes.value as any)?.success) {
           const pData = (profileRes.value as any).data;
           setProfile(pData?.profile || pData || null);

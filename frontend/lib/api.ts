@@ -274,6 +274,10 @@ class ApiClient {
     return this.request(`/agent/learning-recommendations${q}`);
   }
 
+  async getAutoLearningPath() {
+    return this.request('/agent/auto-learning-path');
+  }
+
   async getDashboardStats() {
     return this.request('/agent/dashboard/stats');
   }
