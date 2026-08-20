@@ -167,7 +167,7 @@ eas build --platform ios
 |------|------|--------|
 | JWT_SECRET | JWT 签名密钥（必须配置） | 必填 |
 | DEBUG | 调试模式 | false |
-| APP_VERSION | 应用版本 | 7.2.0 |
+| APP_VERSION | 应用版本 | 8.6.0 |
 | ALLOWED_ORIGINS | CORS 白名单 | localhost:3000 |
 | MIMO_API_KEY | MiMo API 密钥 | 必填 |
 | MIMO_BASE_URL | MiMo API 地址 | https://api.xiaomimimo.com/v1 |

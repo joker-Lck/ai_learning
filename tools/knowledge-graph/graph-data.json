@@ -1,74 +1,74 @@
-{
+﻿{
   "nodes": [
     {
       "id": "db:ai_auth",
       "type": "database",
       "label": "ai_auth",
       "file": "data/databases/ai_auth.db",
-      "description": "认证与用户管理"
+      "description": "璁よ瘉涓庣敤鎴风鐞?
     },
     {
       "id": "db:ai_profiles",
       "type": "database",
       "label": "ai_profiles",
       "file": "data/databases/ai_profiles.db",
-      "description": "学生画像、成绩、错题、课表"
+      "description": "瀛︾敓鐢诲儚銆佹垚缁┿€侀敊棰樸€佽琛?
     },
     {
       "id": "db:ai_resources",
       "type": "database",
       "label": "ai_resources",
       "file": "data/databases/ai_resources.db",
-      "description": "学习资源与安全日志"
+      "description": "瀛︿範璧勬簮涓庡畨鍏ㄦ棩蹇?
     },
     {
       "id": "db:ai_paths",
       "type": "database",
       "label": "ai_paths",
       "file": "data/databases/ai_paths.db",
-      "description": "学习路径与进度"
+      "description": "瀛︿範璺緞涓庤繘搴?
     },
     {
       "id": "db:ai_tutor",
       "type": "database",
       "label": "ai_tutor",
       "file": "data/databases/ai_tutor.db",
-      "description": "辅导会话与知识引用"
+      "description": "杈呭浼氳瘽涓庣煡璇嗗紩鐢?
     },
     {
       "id": "db:ai_assessments",
       "type": "database",
       "label": "ai_assessments",
       "file": "data/databases/ai_assessments.db",
-      "description": "评估、活动、测验、题库"
+      "description": "璇勪及銆佹椿鍔ㄣ€佹祴楠屻€侀搴?
     },
     {
       "id": "db:ai_agents",
       "type": "database",
       "label": "ai_agents",
       "file": "data/databases/ai_agents.db",
-      "description": "智能体协作日志与任务"
+      "description": "鏅鸿兘浣撳崗浣滄棩蹇椾笌浠诲姟"
     },
     {
       "id": "db:ai_rag_knowledge",
       "type": "database",
       "label": "ai_rag_knowledge",
       "file": "data/databases/ai_rag_knowledge.db",
-      "description": "RAG知识库、FTS5索引、实体图谱"
+      "description": "RAG鐭ヨ瘑搴撱€丗TS5绱㈠紩銆佸疄浣撳浘璋?
     },
     {
       "id": "db:ai_memory",
       "type": "database",
       "label": "ai_memory",
       "file": "data/databases/ai_memory.db",
-      "description": "四层记忆系统(短期/情景/语义/实体)"
+      "description": "鍥涘眰璁板繂绯荤粺(鐭湡/鎯呮櫙/璇箟/瀹炰綋)"
     },
     {
       "id": "db:retrieval_eval",
       "type": "database",
       "label": "retrieval_eval",
       "file": "data/databases/retrieval_eval.db",
-      "description": "检索效果评估"
+      "description": "妫€绱㈡晥鏋滆瘎浼?
     },
     {
       "id": "table:ai_auth.users",
@@ -387,217 +387,217 @@
       "type": "service",
       "label": "adaptive_difficulty",
       "file": "services/adaptive_difficulty.py",
-      "description": "自适应难度"
+      "description": "鑷€傚簲闅惧害"
     },
     {
       "id": "service:adaptive_path",
       "type": "service",
       "label": "adaptive_path",
       "file": "services/adaptive_path.py",
-      "description": "自适应路径"
+      "description": "鑷€傚簲璺緞"
     },
     {
       "id": "service:advanced_retrieval_service",
       "type": "service",
       "label": "advanced_retrieval_service",
       "file": "services/advanced_retrieval_service.py",
-      "description": "高级检索服务-11种策略"
+      "description": "楂樼骇妫€绱㈡湇鍔?11绉嶇瓥鐣?
     },
     {
       "id": "agent:agent_coordinator",
       "type": "agent",
       "label": "agent_coordinator",
       "file": "services/agent_coordinator.py",
-      "description": "中央协调器-分发任务给5个专业智能体"
+      "description": "涓ぎ鍗忚皟鍣?鍒嗗彂浠诲姟缁?涓笓涓氭櫤鑳戒綋"
     },
     {
       "id": "infra:agent_message",
       "type": "infra",
       "label": "agent_message",
       "file": "services/agent_message.py",
-      "description": "消息协议-14种类型"
+      "description": "娑堟伅鍗忚-14绉嶇被鍨?
     },
     {
       "id": "service:animation_service",
       "type": "service",
       "label": "animation_service",
       "file": "services/animation_service.py",
-      "description": "动画生成服务"
+      "description": "鍔ㄧ敾鐢熸垚鏈嶅姟"
     },
     {
       "id": "service:answer_quality_scorer",
       "type": "service",
       "label": "answer_quality_scorer",
       "file": "services/answer_quality_scorer.py",
-      "description": "答案质量评分器"
+      "description": "绛旀璐ㄩ噺璇勫垎鍣?
     },
     {
       "id": "agent:assessment_agent",
       "type": "agent",
       "label": "assessment_agent",
       "file": "services/assessment_agent.py",
-      "description": "评估智能体-基于真实学生数据生成评估报告"
+      "description": "璇勪及鏅鸿兘浣?鍩轰簬鐪熷疄瀛︾敓鏁版嵁鐢熸垚璇勪及鎶ュ憡"
     },
     {
       "id": "service:auth_service",
       "type": "service",
       "label": "auth_service",
       "file": "services/auth_service.py",
-      "description": "认证服务-JWT认证"
+      "description": "璁よ瘉鏈嶅姟-JWT璁よ瘉"
     },
     {
       "id": "service:citation_annotator",
       "type": "service",
       "label": "citation_annotator",
       "file": "services/citation_annotator.py",
-      "description": "引用标注器"
+      "description": "寮曠敤鏍囨敞鍣?
     },
     {
       "id": "service:collaboration_service",
       "type": "service",
       "label": "collaboration_service",
       "file": "services/collaboration_service.py",
-      "description": "协同学习服务-学习小组"
+      "description": "鍗忓悓瀛︿範鏈嶅姟-瀛︿範灏忕粍"
     },
     {
       "id": "service:content_safety_service",
       "type": "service",
       "label": "content_safety_service",
       "file": "services/content_safety_service.py",
-      "description": "内容安全服务-敏感词检测+防幻觉"
+      "description": "鍐呭瀹夊叏鏈嶅姟-鏁忔劅璇嶆娴?闃插够瑙?
     },
     {
       "id": "service:context_compressor",
       "type": "service",
       "label": "context_compressor",
       "file": "services/context_compressor.py",
-      "description": "上下文压缩器"
+      "description": "涓婁笅鏂囧帇缂╁櫒"
     },
     {
       "id": "service:document_analysis_service",
       "type": "service",
       "label": "document_analysis_service",
       "file": "services/document_analysis_service.py",
-      "description": "文档分析服务"
+      "description": "鏂囨。鍒嗘瀽鏈嶅姟"
     },
     {
       "id": "service:enhanced_vision_service",
       "type": "service",
       "label": "enhanced_vision_service",
       "file": "services/enhanced_vision_service.py",
-      "description": "增强视觉服务"
+      "description": "澧炲己瑙嗚鏈嶅姟"
     },
     {
       "id": "service:image_service",
       "type": "service",
       "label": "image_service",
       "file": "services/image_service.py",
-      "description": "图片生成服务"
+      "description": "鍥剧墖鐢熸垚鏈嶅姟"
     },
     {
       "id": "service:knowledge_tracer",
       "type": "service",
       "label": "knowledge_tracer",
       "file": "services/knowledge_tracer.py",
-      "description": "知识追踪器-BKT"
+      "description": "鐭ヨ瘑杩借釜鍣?BKT"
     },
     {
       "id": "service:memory_extractor",
       "type": "service",
       "label": "memory_extractor",
       "file": "services/memory_extractor.py",
-      "description": "记忆提取器"
+      "description": "璁板繂鎻愬彇鍣?
     },
     {
       "id": "service:memory_service",
       "type": "service",
       "label": "memory_service",
       "file": "services/memory_service.py",
-      "description": "四层记忆系统-艾宾浩斯遗忘曲线"
+      "description": "鍥涘眰璁板繂绯荤粺-鑹惧娴╂柉閬楀繕鏇茬嚎"
     },
     {
       "id": "infra:message_bus",
       "type": "infra",
       "label": "message_bus",
       "file": "services/message_bus.py",
-      "description": "事件驱动消息总线"
+      "description": "浜嬩欢椹卞姩娑堟伅鎬荤嚎"
     },
     {
       "id": "service:multi_hop_retriever",
       "type": "service",
       "label": "multi_hop_retriever",
       "file": "services/multi_hop_retriever.py",
-      "description": "多跳推理检索器"
+      "description": "澶氳烦鎺ㄧ悊妫€绱㈠櫒"
     },
     {
       "id": "agent:path_agent",
       "type": "agent",
       "label": "path_agent",
       "file": "services/path_agent.py",
-      "description": "路径智能体-规划个性化学习路径"
+      "description": "璺緞鏅鸿兘浣?瑙勫垝涓€у寲瀛︿範璺緞"
     },
     {
       "id": "agent:profile_agent",
       "type": "agent",
       "label": "profile_agent",
       "file": "services/profile_agent.py",
-      "description": "画像智能体-8轮对话采集构建9维度学生画像"
+      "description": "鐢诲儚鏅鸿兘浣?8杞璇濋噰闆嗘瀯寤?缁村害瀛︾敓鐢诲儚"
     },
     {
       "id": "service:prompt_personalizer",
       "type": "service",
       "label": "prompt_personalizer",
       "file": "services/prompt_personalizer.py",
-      "description": "提示词个性化"
+      "description": "鎻愮ず璇嶄釜鎬у寲"
     },
     {
       "id": "service:qa_service",
       "type": "service",
       "label": "qa_service",
       "file": "services/qa_service.py",
-      "description": "AI调用封装层"
+      "description": "AI璋冪敤灏佽灞?
     },
     {
       "id": "service:query_processor",
       "type": "service",
       "label": "query_processor",
       "file": "services/query_processor.py",
-      "description": "查询处理器"
+      "description": "鏌ヨ澶勭悊鍣?
     },
     {
       "id": "service:reflector",
       "type": "service",
       "label": "reflector",
       "file": "services/reflector.py",
-      "description": "反思验证器"
+      "description": "鍙嶆€濋獙璇佸櫒"
     },
     {
       "id": "agent:resource_agent",
       "type": "agent",
       "label": "resource_agent",
       "file": "services/resource_agent.py",
-      "description": "资源智能体-生成7种多模态学习资源"
+      "description": "璧勬簮鏅鸿兘浣?鐢熸垚7绉嶅妯℃€佸涔犺祫婧?
     },
     {
       "id": "service:resource_export_service",
       "type": "service",
       "label": "resource_export_service",
       "file": "services/resource_export_service.py",
-      "description": "资源导出服务"
+      "description": "璧勬簮瀵煎嚭鏈嶅姟"
     },
     {
       "id": "service:retrieval_evaluator",
       "type": "service",
       "label": "retrieval_evaluator",
       "file": "services/retrieval_evaluator.py",
-      "description": "检索评估器"
+      "description": "妫€绱㈣瘎浼板櫒"
     },
     {
       "id": "service:self_learning_service",
       "type": "service",
       "label": "self_learning_service",
       "file": "services/self_learning_service.py",
-      "description": "自学习闭环"
+      "description": "鑷涔犻棴鐜?
     },
     {
       "id": "service:self_rag",
@@ -611,91 +611,91 @@
       "type": "service",
       "label": "spark_client",
       "file": "services/spark_client.py",
-      "description": "MiMo API客户端"
+      "description": "MiMo API瀹㈡埛绔?
     },
     {
       "id": "service:streaming_service",
       "type": "service",
       "label": "streaming_service",
       "file": "services/streaming_service.py",
-      "description": "SSE流式输出服务"
+      "description": "SSE娴佸紡杈撳嚭鏈嶅姟"
     },
     {
       "id": "service:student_data_service",
       "type": "service",
       "label": "student_data_service",
       "file": "services/student_data_service.py",
-      "description": "学生数据服务-课表/成绩/错题/学习计划"
+      "description": "瀛︾敓鏁版嵁鏈嶅姟-璇捐〃/鎴愮哗/閿欓/瀛︿範璁″垝"
     },
     {
       "id": "agent:tutor_agent",
       "type": "agent",
       "label": "tutor_agent",
       "file": "services/tutor_agent.py",
-      "description": "辅导智能体-多模态答疑集成记忆增强和Self-RAG"
+      "description": "杈呭鏅鸿兘浣?澶氭ā鎬佺瓟鐤戦泦鎴愯蹇嗗寮哄拰Self-RAG"
     },
     {
       "id": "service:video_generation_service",
       "type": "service",
       "label": "video_generation_service",
       "file": "services/video_generation_service.py",
-      "description": "视频脚本生成服务"
+      "description": "瑙嗛鑴氭湰鐢熸垚鏈嶅姟"
     },
     {
       "id": "data:collaboration_db",
       "type": "data_layer",
       "label": "collaboration_db",
       "file": "data/collaboration_db.py",
-      "description": "协同学习数据库"
+      "description": "鍗忓悓瀛︿範鏁版嵁搴?
     },
     {
       "id": "data:config",
       "type": "data_layer",
       "label": "config",
       "file": "data/config.py",
-      "description": "数据库配置"
+      "description": "鏁版嵁搴撻厤缃?
     },
     {
       "id": "data:dao",
       "type": "data_layer",
       "label": "dao",
       "file": "data/dao.py",
-      "description": "数据访问对象"
+      "description": "鏁版嵁璁块棶瀵硅薄"
     },
     {
       "id": "data:data_manager",
       "type": "data_layer",
       "label": "data_manager",
       "file": "data/data_manager.py",
-      "description": "缓存管理器"
+      "description": "缂撳瓨绠＄悊鍣?
     },
     {
       "id": "data:db_operations",
       "type": "data_layer",
       "label": "db_operations",
       "file": "data/db_operations.py",
-      "description": "数据库操作"
+      "description": "鏁版嵁搴撴搷浣?
     },
     {
       "id": "data:embedding_service",
       "type": "data_layer",
       "label": "embedding_service",
       "file": "data/embedding_service.py",
-      "description": "向量化服务"
+      "description": "鍚戦噺鍖栨湇鍔?
     },
     {
       "id": "data:qa_db_operations",
       "type": "data_layer",
       "label": "qa_db_operations",
       "file": "data/qa_db_operations.py",
-      "description": "QA数据库操作"
+      "description": "QA鏁版嵁搴撴搷浣?
     },
     {
       "id": "data:rag_knowledge_base",
       "type": "data_layer",
       "label": "rag_knowledge_base",
       "file": "data/rag_knowledge_base.py",
-      "description": "RAG知识库"
+      "description": "RAG鐭ヨ瘑搴?
     },
     {
       "id": "endpoint:POST/build-profile",
@@ -1710,28 +1710,28 @@
       "type": "prompt",
       "label": "ProfilePrompts",
       "file": "core/prompts.py",
-      "description": "画像构建提示词"
+      "description": "鐢诲儚鏋勫缓鎻愮ず璇?
     },
     {
       "id": "prompt:AnalysisPrompts",
       "type": "prompt",
       "label": "AnalysisPrompts",
       "file": "core/prompts.py",
-      "description": "学情分析提示词"
+      "description": "瀛︽儏鍒嗘瀽鎻愮ず璇?
     },
     {
       "id": "prompt:DocumentAnalysisPrompts",
       "type": "prompt",
       "label": "DocumentAnalysisPrompts",
       "file": "core/prompts.py",
-      "description": "文档分析提示词"
+      "description": "鏂囨。鍒嗘瀽鎻愮ず璇?
     },
     {
       "id": "prompt:VoiceQAPrompts",
       "type": "prompt",
       "label": "VoiceQAPrompts",
       "file": "core/prompts.py",
-      "description": "语音问答提示词"
+      "description": "璇煶闂瓟鎻愮ず璇?
     },
     {
       "id": "page:assessment",
@@ -1745,14 +1745,14 @@
       "type": "page",
       "label": "assessment-quiz",
       "file": "frontend/app/assessment-quiz/page.tsx",
-      "description": "测验页面"
+      "description": "娴嬮獙椤甸潰"
     },
     {
       "id": "page:dashboard",
       "type": "page",
       "label": "dashboard",
       "file": "frontend/app/dashboard/page.tsx",
-      "description": "工作台主页面"
+      "description": "宸ヤ綔鍙颁富椤甸潰"
     },
     {
       "id": "page:layout",
@@ -1815,14 +1815,14 @@
       "type": "component",
       "label": "DashboardContent",
       "file": "frontend/components/DashboardContent.tsx",
-      "description": "工作台内容"
+      "description": "宸ヤ綔鍙板唴瀹?
     },
     {
       "id": "component:FloatingMenu",
       "type": "component",
       "label": "FloatingMenu",
       "file": "frontend/components/layout/FloatingMenu.tsx",
-      "description": "浮动菜单"
+      "description": "娴姩鑿滃崟"
     },
     {
       "id": "component:Sidebar",
@@ -1836,49 +1836,49 @@
       "type": "component",
       "label": "AnalyticsModule",
       "file": "frontend/components/modules/AnalyticsModule.tsx",
-      "description": "分析模块"
+      "description": "鍒嗘瀽妯″潡"
     },
     {
       "id": "component:AssessmentModule",
       "type": "component",
       "label": "AssessmentModule",
       "file": "frontend/components/modules/AssessmentModule.tsx",
-      "description": "评估模块"
+      "description": "璇勪及妯″潡"
     },
     {
       "id": "component:BookResourceModule",
       "type": "component",
       "label": "BookResourceModule",
       "file": "frontend/components/modules/BookResourceModule.tsx",
-      "description": "图书资源模块"
+      "description": "鍥句功璧勬簮妯″潡"
     },
     {
       "id": "component:CollaborationModule",
       "type": "component",
       "label": "CollaborationModule",
       "file": "frontend/components/modules/CollaborationModule.tsx",
-      "description": "协同模块"
+      "description": "鍗忓悓妯″潡"
     },
     {
       "id": "component:MermaidDiagram",
       "type": "component",
       "label": "MermaidDiagram",
       "file": "frontend/components/modules/MermaidDiagram.tsx",
-      "description": "Mermaid图表渲染器"
+      "description": "Mermaid鍥捐〃娓叉煋鍣?
     },
     {
       "id": "component:PathModule",
       "type": "component",
       "label": "PathModule",
       "file": "frontend/components/modules/PathModule.tsx",
-      "description": "路径模块"
+      "description": "璺緞妯″潡"
     },
     {
       "id": "component:ProfileModule",
       "type": "component",
       "label": "ProfileModule",
       "file": "frontend/components/modules/ProfileModule.tsx",
-      "description": "画像模块"
+      "description": "鐢诲儚妯″潡"
     },
     {
       "id": "component:QuizHistoryPanel",
@@ -1920,63 +1920,63 @@
       "type": "component",
       "label": "QuizModule",
       "file": "frontend/components/modules/QuizModule.tsx",
-      "description": "测验模块"
+      "description": "娴嬮獙妯″潡"
     },
     {
       "id": "component:RagKnowledgeModule",
       "type": "component",
       "label": "RagKnowledgeModule",
       "file": "frontend/components/modules/RagKnowledgeModule.tsx",
-      "description": "知识库模块"
+      "description": "鐭ヨ瘑搴撴ā鍧?
     },
     {
       "id": "component:ResourcesModule",
       "type": "component",
       "label": "ResourcesModule",
       "file": "frontend/components/modules/ResourcesModule.tsx",
-      "description": "资源模块"
+      "description": "璧勬簮妯″潡"
     },
     {
       "id": "component:TutorModule",
       "type": "component",
       "label": "TutorModule",
       "file": "frontend/components/modules/TutorModule.tsx",
-      "description": "辅导模块"
+      "description": "杈呭妯″潡"
     },
     {
       "id": "component:VideoResourceModule",
       "type": "component",
       "label": "VideoResourceModule",
       "file": "frontend/components/modules/VideoResourceModule.tsx",
-      "description": "视频资源模块"
+      "description": "瑙嗛璧勬簮妯″潡"
     },
     {
       "id": "component:BackgroundEffects",
       "type": "component",
       "label": "BackgroundEffects",
       "file": "frontend/components/shared/BackgroundEffects.tsx",
-      "description": "背景特效"
+      "description": "鑳屾櫙鐗规晥"
     },
     {
       "id": "component:ErrorBoundary",
       "type": "component",
       "label": "ErrorBoundary",
       "file": "frontend/components/shared/ErrorBoundary.tsx",
-      "description": "错误边界"
+      "description": "閿欒杈圭晫"
     },
     {
       "id": "component:MarkdownRenderer",
       "type": "component",
       "label": "MarkdownRenderer",
       "file": "frontend/components/shared/MarkdownRenderer.tsx",
-      "description": "Markdown渲染器"
+      "description": "Markdown娓叉煋鍣?
     },
     {
       "id": "component:WorkSpaceSection",
       "type": "component",
       "label": "WorkSpaceSection",
       "file": "frontend/components/WorkSpaceSection.tsx",
-      "description": "工作区组件"
+      "description": "宸ヤ綔鍖虹粍浠?
     },
     {
       "id": "component:constants",
@@ -2004,7 +2004,7 @@
       "type": "config",
       "label": ".env",
       "file": ".env",
-      "description": "环境变量配置",
+      "description": "鐜鍙橀噺閰嶇疆",
       "config_type": "env"
     },
     {
@@ -2012,7 +2012,7 @@
       "type": "config",
       "label": "pyproject.toml",
       "file": "pyproject.toml",
-      "description": "Python项目配置",
+      "description": "Python椤圭洰閰嶇疆",
       "config_type": "toml"
     },
     {
@@ -2020,7 +2020,7 @@
       "type": "config",
       "label": "sensitive_words.json",
       "file": "config/sensitive_words.json",
-      "description": "敏感词库(127条)",
+      "description": "鏁忔劅璇嶅簱(127鏉?",
       "config_type": "json"
     },
     {
@@ -2028,7 +2028,7 @@
       "type": "config",
       "label": "docker-compose.yml",
       "file": "docker-compose.yml",
-      "description": "Docker服务编排",
+      "description": "Docker鏈嶅姟缂栨帓",
       "config_type": "yaml"
     },
     {
@@ -2036,7 +2036,7 @@
       "type": "config",
       "label": "Dockerfile",
       "file": "Dockerfile",
-      "description": "后端Docker镜像",
+      "description": "鍚庣Docker闀滃儚",
       "config_type": "docker"
     },
     {
@@ -2044,7 +2044,7 @@
       "type": "config",
       "label": "package.json",
       "file": "frontend/package.json",
-      "description": "前端依赖配置",
+      "description": "鍓嶇渚濊禆閰嶇疆",
       "config_type": "json"
     },
     {
@@ -2052,7 +2052,7 @@
       "type": "config",
       "label": "tailwind.config.ts",
       "file": "frontend/tailwind.config.ts",
-      "description": "Tailwind CSS配置",
+      "description": "Tailwind CSS閰嶇疆",
       "config_type": "ts"
     },
     {
@@ -2060,7 +2060,7 @@
       "type": "data",
       "label": "document_parser",
       "file": "",
-      "description": "文档解析器"
+      "description": "鏂囨。瑙ｆ瀽鍣?
     }
   ],
   "edges": [
@@ -3658,7 +3658,7 @@
   "metadata": {
     "generated_at": "2026-07-30T17:00:36.251468",
     "version": "1.0",
-    "project": "基于多智能体的个性化学习资源系统",
+    "project": "鍩轰簬澶氭櫤鑳戒綋鐨勪釜鎬у寲瀛︿範璧勬簮绯荤粺",
     "stats": {
       "total_nodes": 256,
       "total_edges": 318,

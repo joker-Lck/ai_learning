@@ -149,7 +149,7 @@ def merge_graph(draft: dict, annotations: dict) -> dict:
         "metadata": {
             "generated_at": datetime.now().isoformat(),
             "version": "1.0",
-            "project": "基于多智能体的个性化学习资源系统",
+            "project": "基于多智能体的个性化学习辅助系统",
             "stats": stats,
         },
     }

@@ -36,7 +36,7 @@ from core.logger import (
 )
 
 # ── 配置 ──
-APP_VERSION = os.getenv("APP_VERSION", "7.4.0")
+APP_VERSION = os.getenv("APP_VERSION", "8.6.0")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
 
@@ -132,8 +132,8 @@ async def lifespan(app: FastAPI):
 
 # ── FastAPI 实例 ──
 app = FastAPI(
-    title="基于多智能体的个性化学习资源系统",
-    description="多智能体协同架构，为学生提供个性化学习资源服务",
+    title="基于多智能体的个性化学习辅助系统",
+    description="多智能体协同架构，为学生提供个性化学习辅助服务",
     version=APP_VERSION,
     lifespan=lifespan,
     docs_url="/api/docs" if DEBUG else None,
@@ -293,7 +293,7 @@ async def health_check():
 @app.get("/api/info", tags=["系统"])
 async def system_info():
     return {
-        "name": "基于多智能体的个性化学习资源系统",
+        "name": "基于多智能体的个性化学习辅助系统",
         "version": APP_VERSION,
         "features": [
             "对话式学生画像构建 (8维度)",

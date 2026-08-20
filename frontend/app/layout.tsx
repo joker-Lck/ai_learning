@@ -1,4 +1,4 @@
-﻿// Polyfill for older browsers
+// Polyfill for older browsers
 import '../polyfill';
 
 import type { Metadata, Viewport } from 'next';
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'zh_CN',
     title: '多模态 AI 教学智能体',
-    description: '基于多智能体协同架构的个性化学习资源生成系统',
+    description: '基于多智能体协同架构的个性化学习辅助系统',
     siteName: 'AI 学习助手',
   },
   robots: {

@@ -124,7 +124,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,  # 保留控制台以便查看日志
+    console=False,  # 无终端窗口，日志写入文件
     icon=None,  # 可以添加 .ico 图标文件
 )
 

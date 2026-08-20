@@ -1,4 +1,4 @@
-﻿"""
+"""
 应用配置管理 — 基于 pydantic-settings 的环境隔离配置
 支持 .env 文件 + 环境变量覆盖
 """
@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # ── 应用 ──
     app_name: str = "AI Learning Agent"
-    app_version: str = "7.4.0"
+    app_version: str = "8.6.0"
     debug: bool = False
     environment: str = Field(default="development", alias="ENVIRONMENT")
 
