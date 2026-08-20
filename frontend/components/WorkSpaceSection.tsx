@@ -691,7 +691,7 @@ function RecentGeneratedList({ resources, onPreview, compact }: { resources: Api
   );
 }
 
-function SuggestionCard({ recommendations, onNavigateModule, compact }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void; compact?: boolean }) {
+function SuggestionCard({ recommendations, onNavigateModule, compact, dueNotes, onStartReview }: { recommendations: Recommendation[]; onNavigateModule: (m: ModuleType, ctx?: NavigationContext) => void; compact?: boolean; dueNotes?: any[]; onStartReview?: () => void }) {
   const categoryConfig: Record<string, { icon: typeof Lightbulb; color: string; bgColor: string; borderColor: string; label: string }> = {
     weakness:  { icon: Zap, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', label: '薄弱' },
     review:    { icon: Clock, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20', label: '复习' },
@@ -705,43 +705,91 @@ function SuggestionCard({ recommendations, onNavigateModule, compact }: { recomm
 
   const items = recommendations.slice(0, 4);
 
+  const dueDisplay = (dueNotes && dueNotes.length > 0) ? dueNotes.slice(0, 4) : [];
+
+  const subjectColors: Record<string, { bg: string; text: string; border: string }> = {
+    '数学': { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
+    '英语': { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
+    '物理': { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
+    '化学': { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20' },
+    '生物': { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/20' },
+  };
+  const defaultColor = { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' };
+
   return (
     <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05]">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-white">今日建议</h3>
-        <span className="text-[10px] text-white/20 ml-auto">AI 学习规划师</span>
+        {dueDisplay.length > 0 && (
+          <button onClick={onStartReview} className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors ml-auto">
+            错题复习 {dueNotes!.length} 道
+          </button>
+        )}
+        {!dueDisplay.length && <span className="text-[10px] text-white/20 ml-auto">AI 学习规划师</span>}
       </div>
-      {items.length === 0 ? (
+      {items.length === 0 && dueDisplay.length === 0 ? (
         <p className="text-xs text-white/25 text-center py-6">暂无建议，多使用系统后会自动生成</p>
       ) : (
-        <div className={`${compact ? 'space-y-2.5' : 'grid grid-cols-4 gap-3'}`}>
-          {items.map((item, i) => {
-            const cat = categoryConfig[item.category || ''] || { icon: Lightbulb, color: 'text-white/50', bgColor: 'bg-white/[0.04]', borderColor: 'border-white/[0.08]', label: '建议' };
-            const Icon = cat.icon;
-            const targetModule = actionModuleMap[item.action || ''] || 'tutor';
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06, duration: 0.25 }}
-                onClick={() => onNavigateModule(targetModule, { topic: item.topic, autoPlan: false })}
-                className={`group p-3 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${cat.borderColor} ${cat.bgColor}`}
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className={`w-6 h-6 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-3 h-3 ${cat.color}`} />
-                  </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${cat.bgColor} ${cat.color} font-medium`}>{cat.label}</span>
-                </div>
-                <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 truncate">{item.topic}</div>
-                <div className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{item.reason}</div>
-                {item.detail && <div className="text-[10px] text-white/15 mt-1 line-clamp-1">{item.detail}</div>}
-              </motion.div>
-            );
-          })}
-        </div>
+        <>
+          {items.length > 0 && (
+            <div className={`${compact ? 'space-y-2.5' : 'grid grid-cols-4 gap-3'} ${dueDisplay.length > 0 ? 'mb-4' : ''}`}>
+              {items.map((item, i) => {
+                const cat = categoryConfig[item.category || ''] || { icon: Lightbulb, color: 'text-white/50', bgColor: 'bg-white/[0.04]', borderColor: 'border-white/[0.08]', label: '建议' };
+                const Icon = cat.icon;
+                const targetModule = actionModuleMap[item.action || ''] || 'tutor';
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.06, duration: 0.25 }}
+                    onClick={() => onNavigateModule(targetModule, { topic: item.topic, autoPlan: false })}
+                    className={`group p-3 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${cat.borderColor} ${cat.bgColor}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className={`w-6 h-6 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
+                        <Icon className={`w-3 h-3 ${cat.color}`} />
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${cat.bgColor} ${cat.color} font-medium`}>{cat.label}</span>
+                    </div>
+                    <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 truncate">{item.topic}</div>
+                    <div className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{item.reason}</div>
+                    {item.detail && <div className="text-[10px] text-white/15 mt-1 line-clamp-1">{item.detail}</div>}
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+          {dueDisplay.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {dueDisplay.map((note, i) => {
+                const colors = subjectColors[note.subject] || defaultColor;
+                return (
+                  <motion.div
+                    key={note.id || i}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.06, duration: 0.25 }}
+                    onClick={onStartReview}
+                    className={`group p-3 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${colors.border} ${colors.bg}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Clock className="w-3 h-3 text-amber-400" />
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${colors.bg} ${colors.text} font-medium`}>{note.subject || '未知'}</span>
+                      {note.chapter && <span className="text-[10px] text-white/20 truncate">{note.chapter}</span>}
+                      <span className="text-[10px] text-white/15 ml-auto">复习 {note.review_count || 0} 次</span>
+                    </div>
+                    <div className="text-[13px] text-white/80 group-hover:text-white transition-colors font-medium mb-1 line-clamp-2">{note.question || '未知题目'}</div>
+                    {note.error_reason && (
+                      <div className="text-[10px] text-white/25 line-clamp-1">错因：{note.error_reason}</div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1042,40 +1090,16 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
           <Header profile={profile} stats={stats} />
           <QuickStartCard onNavigateModule={onNavigateModule} />
 
-          {/* 错题复习卡片 */}
-          {dueCount > 0 && (
-            <DueReviewSection
-              notes={dueNotes}
-              onStartReview={() => router.push('/dashboard?module=quiz&mode=review', { scroll: false })}
-            />
-          )}
-
-          {/* 当错题复习和今日建议都有内容时，将今日建议移到右侧边栏，确保最近生成完整展示 */}
-          {dueCount > 0 && recommendations.length > 0 ? (
-            <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
-              <div className="flex-[8] min-w-0">
-                <LatestAssessmentCard onNavigateModule={onNavigateModule} />
-                <RecentGeneratedList resources={resources} onPreview={setPreviewResource} compact />
-              </div>
-              <div className="flex-[2] min-w-0 flex flex-col gap-5">
-                <DashboardRadarChart profile={profile} />
-                <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} compact />
-              </div>
+          <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} dueNotes={dueNotes} onStartReview={() => router.push('/dashboard?module=quiz&mode=review', { scroll: false })} />
+          <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
+            <div className="flex-[7] min-w-0">
+              <LatestAssessmentCard onNavigateModule={onNavigateModule} />
+              <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
             </div>
-          ) : (
-            <>
-              <SuggestionCard recommendations={recommendations} onNavigateModule={onNavigateModule} />
-              <div className="flex gap-6 mt-5" style={{ minHeight: 'calc(100vh - 340px)' }}>
-                <div className="flex-[7] min-w-0">
-                  <LatestAssessmentCard onNavigateModule={onNavigateModule} />
-                  <RecentGeneratedList resources={resources} onPreview={setPreviewResource} />
-                </div>
-                <div className="flex-[3] min-w-0 flex flex-col gap-5">
-                  <DashboardRadarChart profile={profile} />
-                </div>
-              </div>
-            </>
-          )}
+            <div className="flex-[3] min-w-0 flex flex-col gap-5">
+              <DashboardRadarChart profile={profile} />
+            </div>
+          </div>
         </div>
       </main>
 
