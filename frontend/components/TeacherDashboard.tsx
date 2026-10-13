@@ -20,11 +20,13 @@ import {
   TeachingAssessmentView,
   TeachingQuizView,
 } from '@/components/teacher/TeacherModuleViews';
+import LessonPPTView from '@/components/teacher/LessonPPTView';
 
 type TeacherView =
   | 'overview' | 'classes' | 'students' | 'teachingResources'
   | 'teachingProfile' | 'teachingPath' | 'teachingTutor'
-  | 'teachingAssessment' | 'teachingQuiz' | 'teachingAnalytics';
+  | 'teachingAssessment' | 'teachingQuiz' | 'teachingAnalytics'
+  | 'teachingLesson';
 
 const NAV_ITEMS: Array<{
   view: TeacherView;
@@ -44,6 +46,7 @@ const NAV_ITEMS: Array<{
   { view: 'teachingTutor', label: '教学辅导', icon: Lightbulb, color: 'text-amber-300', desc: '备课答疑 / 高频提问', group: '教学功能' },
   { view: 'teachingAssessment', label: '班级评估', icon: ClipboardCheck, color: 'text-rose-400', desc: '单生 / 全班对比', group: '教学功能' },
   { view: 'teachingQuiz', label: '题库测验', icon: ClipboardCheck, color: 'text-orange-400', desc: '组卷发布 / 查看作答', group: '教学功能' },
+  { view: 'teachingLesson', label: '教案 & PPT', icon: BookOpen, color: 'text-violet-400', desc: 'AI 生成教案课件 / 导出', group: '教学功能' },
 ];
 
 export default function TeacherDashboard() {
@@ -194,6 +197,7 @@ function TeacherViewContent({ view }: { view: TeacherView }) {
       {view === 'teachingTutor' && <TeachingTutorView />}
       {view === 'teachingAssessment' && <TeachingAssessmentView />}
       {view === 'teachingQuiz' && <TeachingQuizView />}
+      {view === 'teachingLesson' && <LessonPPTView />}
     </motion.div>
   );
 }

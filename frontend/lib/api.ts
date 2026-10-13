@@ -955,6 +955,27 @@ class ApiClient {
   async leaveClass(classId: number) {
     return this.request(`/student/leave-class/${classId}`, { method: 'POST' });
   }
+
+  // ── 教案 & PPT 生成 ──
+
+  async generateLessonPPT(data: {
+    subject: string; topic: string; grade?: string;
+    duration?: number; style?: string; style_hint?: string;
+  }) {
+    return this.request('/lesson/generate', { method: 'POST', body: data });
+  }
+
+  async exportLessonPPTX(data: { ppt_content: any; style?: string }) {
+    return this.request('/lesson/export/pptx', { method: 'POST', body: data });
+  }
+
+  async exportLessonDocx(data: { lesson_plan: any }) {
+    return this.request('/lesson/export/docx', { method: 'POST', body: data });
+  }
+
+  async listLessonStyles() {
+    return this.request('/lesson/styles');
+  }
 }
 
 export const api = new ApiClient();

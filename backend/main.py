@@ -21,6 +21,7 @@ from slowapi.util import get_remote_address
 from backend.api.agent import router as agent_router
 from backend.api.auth import router as auth_router
 from backend.api.collaboration import router as collaboration_router
+from backend.api.lesson import router as lesson_router
 from backend.api.stream import router as stream_router
 from backend.api.student_class import router as student_class_router
 from backend.api.teacher import router as teacher_router
@@ -250,6 +251,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["认证"])
 app.include_router(collaboration_router, prefix="/api", tags=["协同学习"])
 app.include_router(teacher_router, prefix="/api/teacher", tags=["老师端"])
 app.include_router(student_class_router, prefix="/api/student", tags=["学生班级"])
+app.include_router(lesson_router, prefix="/api/lesson", tags=["教案PPT"])
 
 # 静态文件
 exports_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "exports")
