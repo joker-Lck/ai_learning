@@ -26,54 +26,6 @@ def clean_json_string(text):
     return text.strip()
 
 
-def safe_json_loads(text):
-    """安全解析 JSON，自动处理常见格式问题"""
-    import json
-
-    if not text:
-        return None
-
-    text = clean_json_string(text)
-
-    # 尝试直接解析
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-
-    # 使用宽松模式
-    try:
-        return json.loads(text, strict=False)
-    except json.JSONDecodeError:
-        pass
-
-    # 手动转义控制字符
-    def escape_control_chars(match):
-        """转义控制字符"""
-        char = match.group(0)
-        escape_map = {
-            '\n': '\\n',
-            '\t': '\\t',
-            '\r': '\\r',
-            '\b': '\\b',
-            '\f': '\\f',
-        }
-        return escape_map.get(char, f'\\u{ord(char):04x}')
-
-    def process_json_string(match):
-        """处理 JSON 字符串值"""
-        content = match.group(0)
-        content = re.sub(r'[\x00-\x1f]', escape_control_chars, content)
-        return content
-
-    text = re.sub(r'"([^"\\]*(?:\\.[^"\\]*)*)"', process_json_string, text)
-
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"无法解析 JSON：{e!s}")
-
-
 def format_file_size(size_bytes):
     """格式化文件大小"""
     if size_bytes < 1024:

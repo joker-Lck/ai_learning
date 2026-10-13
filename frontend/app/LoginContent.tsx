@@ -29,6 +29,7 @@ export default function LoginPage() {
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regEmail, setRegEmail] = useState('');
+  const [regRole, setRegRole] = useState<'student' | 'teacher'>('student');
 
   useEffect(() => {
     if (sessionStorage.getItem('guest_prompt') === '1') {
@@ -58,7 +59,13 @@ export default function LoginPage() {
         sessionStorage.removeItem('new_user_name');
         sessionStorage.removeItem('new_user_pass');
 
-        // 检查是否已有画像，决定跳转目标
+        // 按角色跳转
+        const role = user.role;
+        if (role === 'teacher' || role === 'admin') {
+          window.location.href = '/teacher';
+          return;
+        }
+        // 学生：检查是否已有画像，决定跳转目标
         try {
           const profileRes: any = await api.getProfile();
           const hasProfile = profileRes?.success && profileRes?.data?.has_profile;
@@ -83,16 +90,21 @@ export default function LoginPage() {
     if (regPassword.length < 6) { setError('密码至少 6 位'); return; }
     setLoading(true); setError('');
     try {
-      const res: any = await api.register(regUsername, regPassword, regEmail || undefined);
+      const res: any = await api.register(regUsername, regPassword, regEmail || undefined, regRole);
       if (res.success) {
         // 注册成功后自动登录
         if (res.token) {
-          // 后端返回了 token，直接登录
           localStorage.removeItem('is_guest');
-          localStorage.setItem('user_info', JSON.stringify({ id: res.user?.id || 0, username: regUsername, role: 'user' }));
+          const userRole = res.user?.role || regRole;
+          localStorage.setItem('user_info', JSON.stringify({ id: res.user?.id || 0, username: regUsername, role: userRole }));
           localStorage.setItem('auth_token', res.token);
           sessionStorage.setItem('new_user_register', '1');
-          window.location.href = '/assessment-quiz';
+          // 老师直接进老师端，学生进测评
+          if (userRole === 'teacher') {
+            window.location.href = '/teacher';
+          } else {
+            window.location.href = '/assessment-quiz';
+          }
         } else {
           // 兜底：手动调用登录
           sessionStorage.setItem('new_user_register', '1');
@@ -314,6 +326,32 @@ export default function LoginPage() {
                   exit={{ opacity: 0 }}
                   className="space-y-4"
                 >
+                  <div>
+                    <label className="block text-xs font-medium text-white/40 mb-1.5 tracking-wide">身份</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: 'student', label: '我是学生', desc: '个性化学习' },
+                        { value: 'teacher', label: '我是老师', desc: '班级管理与学情' },
+                      ].map(({ value, label, desc }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setRegRole(value as 'student' | 'teacher')}
+                          className={`
+                            px-3 py-2.5 rounded-lg border text-left transition-all
+                            ${regRole === value
+                              ? 'border-purple-400/50 bg-purple-500/15 text-white'
+                              : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:border-white/[0.12] hover:text-white/60'
+                            }
+                          `}
+                        >
+                          <span className="block text-sm font-medium">{label}</span>
+                          <span className="block text-[10px] mt-0.5 opacity-60">{desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-medium text-white/40 mb-1.5 tracking-wide">用户名</label>
                     <div className="relative group">

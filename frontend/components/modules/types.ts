@@ -1,6 +1,10 @@
 // 共享类型定义
 
-export type ModuleType = 'profile' | 'resources' | 'path' | 'tutor' | 'assessment' | 'rag' | 'collaboration' | 'quiz' | 'analytics' | null;
+export type ModuleType =
+  | 'profile' | 'resources' | 'path' | 'tutor' | 'assessment' | 'rag' | 'collaboration' | 'quiz' | 'analytics'
+  | 'classes' | 'students' | 'classAnalytics' | 'teachingProfile' | 'teachingResources'
+  | 'teachingPath' | 'teachingTutor' | 'teachingAssessment' | 'teachingQuiz' | 'teachingRag'
+  | null;
 
 export interface NavigationContext {
   subject?: string;
@@ -204,7 +208,7 @@ export interface PlanTask {
   type: string;  // 复习/预习/练习/备考
 }
 
-export type ProfileTab = 'profile' | 'schedule';
+export type ProfileTab = 'profile' | 'schedule' | 'myClass';
 
 // ==================== 在线做题类型 ====================
 
@@ -264,4 +268,53 @@ export interface WeakTopic {
   total: number;
   correct: number;
   accuracy: number;
+}
+
+// ==================== 老师端班级类型 ====================
+
+export interface ClassInfo {
+  id: number;
+  name: string;
+  teacher_id: number;
+  subject?: string;
+  grade_level?: string;
+  semester?: string;
+  invite_code: string;
+  is_open?: boolean | number;
+  max_students?: number | null;
+  description?: string;
+  student_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface StudentBrief {
+  id: number;
+  username: string;
+  email?: string;
+  joined_at?: string;
+  status?: string;
+  class_id?: number;
+  class_name?: string;
+}
+
+export interface StudentMonitorBrief {
+  user_id: number;
+  profile_scores?: Record<string, number>;
+  resource_count?: number;
+  quiz_count?: number;
+  quiz_avg_score?: number;
+  study_seconds?: number;
+}
+
+export interface StudentClassEntry {
+  id: number;
+  name: string;
+  subject?: string;
+  grade_level?: string;
+  semester?: string;
+  description?: string;
+  joined_at?: string;
+  status?: string;
+  teacher_name?: string;
 }

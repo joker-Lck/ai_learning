@@ -87,6 +87,22 @@
       "database": "ai_auth"
     },
     {
+      "id": "table:ai_auth.classes",
+      "type": "table",
+      "label": "classes",
+      "file": "scripts/init_databases.py",
+      "description": "ai_auth.classes",
+      "database": "ai_auth"
+    },
+    {
+      "id": "table:ai_auth.class_students",
+      "type": "table",
+      "label": "class_students",
+      "file": "scripts/init_databases.py",
+      "description": "ai_auth.class_students",
+      "database": "ai_auth"
+    },
+    {
       "id": "table:ai_profiles.student_profiles",
       "type": "table",
       "label": "student_profiles",
@@ -453,6 +469,13 @@
       "description": "答案引用标注 — 对关键声明标注来源文档"
     },
     {
+      "id": "service:class_service",
+      "type": "service",
+      "label": "class_service",
+      "file": "services/class_service.py",
+      "description": "班级管理与学情代查服务"
+    },
+    {
       "id": "service:collaboration_service",
       "type": "service",
       "label": "collaboration_service",
@@ -681,7 +704,7 @@
       "type": "data_layer",
       "label": "embedding_service",
       "file": "data/embedding_service.py",
-      "description": "向量化服务模块 - TF-IDF + SVD 降维"
+      "description": "向量化服务模块 - 预训练中文嵌入模型"
     },
     {
       "id": "data:qa_db_operations",
@@ -768,6 +791,14 @@
       "file": "backend/api/agent.py",
       "method": "GET",
       "path": "/learning-recommendations"
+    },
+    {
+      "id": "endpoint:GET/auto-learning-path",
+      "type": "endpoint",
+      "label": "GET /auto-learning-path",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/auto-learning-path"
     },
     {
       "id": "endpoint:POST/memory/maintenance",
@@ -1594,6 +1625,206 @@
       "path": "/plan-path"
     },
     {
+      "id": "endpoint:POST/join-class",
+      "type": "endpoint",
+      "label": "POST /join-class",
+      "file": "backend/api/student_class.py",
+      "method": "POST",
+      "path": "/join-class"
+    },
+    {
+      "id": "endpoint:GET/my-classes",
+      "type": "endpoint",
+      "label": "GET /my-classes",
+      "file": "backend/api/student_class.py",
+      "method": "GET",
+      "path": "/my-classes"
+    },
+    {
+      "id": "endpoint:POST/leave-class/{class_id}",
+      "type": "endpoint",
+      "label": "POST /leave-class/{class_id}",
+      "file": "backend/api/student_class.py",
+      "method": "POST",
+      "path": "/leave-class/{class_id}"
+    },
+    {
+      "id": "endpoint:POST/classes",
+      "type": "endpoint",
+      "label": "POST /classes",
+      "file": "backend/api/teacher.py",
+      "method": "POST",
+      "path": "/classes"
+    },
+    {
+      "id": "endpoint:GET/classes",
+      "type": "endpoint",
+      "label": "GET /classes",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/classes"
+    },
+    {
+      "id": "endpoint:GET/classes/{class_id}",
+      "type": "endpoint",
+      "label": "GET /classes/{class_id}",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/classes/{class_id}"
+    },
+    {
+      "id": "endpoint:PUT/classes/{class_id}",
+      "type": "endpoint",
+      "label": "PUT /classes/{class_id}",
+      "file": "backend/api/teacher.py",
+      "method": "PUT",
+      "path": "/classes/{class_id}"
+    },
+    {
+      "id": "endpoint:POST/classes/{class_id}/reset-code",
+      "type": "endpoint",
+      "label": "POST /classes/{class_id}/reset-code",
+      "file": "backend/api/teacher.py",
+      "method": "POST",
+      "path": "/classes/{class_id}/reset-code"
+    },
+    {
+      "id": "endpoint:POST/classes/{class_id}/close",
+      "type": "endpoint",
+      "label": "POST /classes/{class_id}/close",
+      "file": "backend/api/teacher.py",
+      "method": "POST",
+      "path": "/classes/{class_id}/close"
+    },
+    {
+      "id": "endpoint:POST/classes/{class_id}/open",
+      "type": "endpoint",
+      "label": "POST /classes/{class_id}/open",
+      "file": "backend/api/teacher.py",
+      "method": "POST",
+      "path": "/classes/{class_id}/open"
+    },
+    {
+      "id": "endpoint:GET/classes/{class_id}/students",
+      "type": "endpoint",
+      "label": "GET /classes/{class_id}/students",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/classes/{class_id}/students"
+    },
+    {
+      "id": "endpoint:DELETE/classes/{class_id}/students/{sid}",
+      "type": "endpoint",
+      "label": "DELETE /classes/{class_id}/students/{sid}",
+      "file": "backend/api/teacher.py",
+      "method": "DELETE",
+      "path": "/classes/{class_id}/students/{sid}"
+    },
+    {
+      "id": "endpoint:GET/classes/{class_id}/overview",
+      "type": "endpoint",
+      "label": "GET /classes/{class_id}/overview",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/classes/{class_id}/overview"
+    },
+    {
+      "id": "endpoint:GET/students",
+      "type": "endpoint",
+      "label": "GET /students",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/brief",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/brief",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/brief"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/profile",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/profile",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/profile"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/course-schedule",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/course-schedule",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/course-schedule"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/resources",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/resources",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/resources"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/learning-path",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/learning-path",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/learning-path"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/quiz",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/quiz",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/quiz"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/assessment",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/assessment",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/assessment"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/analytics/{metric}",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/analytics/{metric}",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/analytics/{metric}"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/activities",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/activities",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/activities"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/errors",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/errors",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/errors"
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/grades",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/grades",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/grades"
+    },
+    {
       "id": "prompt:ProfilePrompts",
       "type": "prompt",
       "label": "ProfilePrompts",
@@ -1674,6 +1905,12 @@
       "type": "page",
       "label": "resources",
       "file": "frontend/app/resources/page.tsx"
+    },
+    {
+      "id": "page:teacher",
+      "type": "page",
+      "label": "teacher",
+      "file": "frontend/app/teacher/page.tsx"
     },
     {
       "id": "page:tutor",
@@ -1826,6 +2063,42 @@
       "file": "frontend/components/shared/MarkdownRenderer.tsx"
     },
     {
+      "id": "component:ClassAnalyticsView",
+      "type": "component",
+      "label": "ClassAnalyticsView",
+      "file": "frontend/components/teacher/ClassAnalyticsView.tsx"
+    },
+    {
+      "id": "component:ClassModule",
+      "type": "component",
+      "label": "ClassModule",
+      "file": "frontend/components/teacher/ClassModule.tsx"
+    },
+    {
+      "id": "component:MyClassView",
+      "type": "component",
+      "label": "MyClassView",
+      "file": "frontend/components/teacher/MyClassView.tsx"
+    },
+    {
+      "id": "component:StudentMonitorView",
+      "type": "component",
+      "label": "StudentMonitorView",
+      "file": "frontend/components/teacher/StudentMonitorView.tsx"
+    },
+    {
+      "id": "component:TeacherModuleViews",
+      "type": "component",
+      "label": "TeacherModuleViews",
+      "file": "frontend/components/teacher/TeacherModuleViews.tsx"
+    },
+    {
+      "id": "component:TeacherDashboard",
+      "type": "component",
+      "label": "TeacherDashboard",
+      "file": "frontend/components/TeacherDashboard.tsx"
+    },
+    {
       "id": "component:WorkSpaceSection",
       "type": "component",
       "label": "WorkSpaceSection",
@@ -1915,6 +2188,16 @@
     {
       "source": "db:ai_auth",
       "target": "table:ai_auth.sessions",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_auth",
+      "target": "table:ai_auth.classes",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_auth",
+      "target": "table:ai_auth.class_students",
       "type": "contains_table"
     },
     {
@@ -2108,6 +2391,11 @@
       "type": "imports"
     },
     {
+      "source": "service:advanced_retrieval_service",
+      "target": "db:ai_rag_knowledge",
+      "type": "uses_database"
+    },
+    {
       "source": "agent:agent_coordinator",
       "target": "infra:message_bus",
       "type": "communicates_via"
@@ -2124,6 +2412,31 @@
     },
     {
       "source": "service:auth_service",
+      "target": "db:ai_auth",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
+      "target": "db:ai_paths",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
       "target": "db:ai_auth",
       "type": "uses_database"
     },
@@ -2304,16 +2617,11 @@
     },
     {
       "source": "data:collaboration_db",
-      "target": "db:ai_resources",
-      "type": "uses_database"
-    },
-    {
-      "source": "data:collaboration_db",
       "target": "db:ai_assessments",
       "type": "uses_database"
     },
     {
-      "source": "data:config",
+      "source": "data:collaboration_db",
       "target": "db:ai_resources",
       "type": "uses_database"
     },
@@ -2325,6 +2633,26 @@
     {
       "source": "data:config",
       "target": "db:ai_agents",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_rag_knowledge",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_assessments",
       "type": "uses_database"
     },
     {
@@ -2339,36 +2667,16 @@
     },
     {
       "source": "data:config",
-      "target": "db:ai_rag_knowledge",
-      "type": "uses_database"
-    },
-    {
-      "source": "data:config",
-      "target": "db:ai_assessments",
-      "type": "uses_database"
-    },
-    {
-      "source": "data:config",
       "target": "db:ai_memory",
       "type": "uses_database"
     },
     {
-      "source": "data:config",
-      "target": "db:ai_profiles",
-      "type": "uses_database"
-    },
-    {
-      "source": "data:dao",
-      "target": "db:ai_resources",
-      "type": "uses_database"
-    },
-    {
       "source": "data:dao",
       "target": "db:ai_assessments",
       "type": "uses_database"
     },
     {
-      "source": "data:db_operations",
+      "source": "data:dao",
       "target": "db:ai_resources",
       "type": "uses_database"
     },
@@ -2379,7 +2687,12 @@
     },
     {
       "source": "data:db_operations",
-      "target": "db:ai_paths",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:db_operations",
+      "target": "db:ai_resources",
       "type": "uses_database"
     },
     {
@@ -2389,7 +2702,7 @@
     },
     {
       "source": "data:db_operations",
-      "target": "db:ai_profiles",
+      "target": "db:ai_paths",
       "type": "uses_database"
     },
     {
@@ -2404,31 +2717,31 @@
     }
   ],
   "metadata": {
-    "generated_at": "2026-07-30T16:46:38.893933",
+    "generated_at": "2026-10-12T11:48:56.684461",
     "version": "1.0",
     "project_root": "C:\\Users\\Administrator\\Desktop\\软件杯\\code",
     "stats": {
-      "total_nodes": 255,
-      "total_edges": 99,
+      "total_nodes": 291,
+      "total_edges": 107,
       "node_types": {
         "database": 10,
-        "table": 39,
-        "service": 29,
+        "table": 41,
+        "service": 30,
         "agent": 6,
         "infra": 2,
         "data_layer": 8,
-        "endpoint": 112,
+        "endpoint": 138,
         "prompt": 4,
-        "page": 9,
+        "page": 10,
         "module": 1,
-        "component": 28,
+        "component": 34,
         "config": 7
       },
       "edge_types": {
-        "contains_table": 39,
+        "contains_table": 41,
         "imports": 25,
+        "uses_database": 38,
         "communicates_via": 2,
-        "uses_database": 32,
         "uses_prompt": 1
       }
     }

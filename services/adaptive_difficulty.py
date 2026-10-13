@@ -3,17 +3,7 @@
 纯规则实现，零 LLM 调用
 """
 
-from dataclasses import dataclass
 from core.logger import info
-
-
-@dataclass
-class DifficultyDecision:
-    """难度决策"""
-    difficulty: str          # easy/medium/hard
-    reason: str              # 决策原因
-    weak_topics: list        # 薄弱知识点
-    distribution: dict       # 题量分配
 
 
 class AdaptiveDifficultyEngine:

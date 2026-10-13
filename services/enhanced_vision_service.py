@@ -12,7 +12,7 @@ import io
 import json
 import re
 
-from core.logger import debug, error, info, warning
+from core.logger import debug
 
 
 class EnhancedVisionService:
@@ -44,7 +44,7 @@ class EnhancedVisionService:
             处理后的图片字节
         """
         try:
-            from PIL import Image, ImageEnhance, ImageFilter
+            from PIL import Image
 
             img = Image.open(io.BytesIO(image_bytes))
 
@@ -87,7 +87,7 @@ class EnhancedVisionService:
 
     def _enhance_auto(self, img):
         """自动增强（通用）"""
-        from PIL import ImageEnhance
+        from PIL import Image, ImageEnhance
 
         # 如果图片太小，放大到至少 1500px 宽
         if img.width < 1500:
@@ -107,7 +107,7 @@ class EnhancedVisionService:
 
     def _enhance_for_schedule(self, img):
         """课表专用增强 — 表格线条清晰化"""
-        from PIL import ImageEnhance, ImageFilter
+        from PIL import Image, ImageEnhance, ImageFilter
 
         # 放大
         if img.width < 2000:
@@ -130,7 +130,7 @@ class EnhancedVisionService:
 
     def _enhance_for_handwriting(self, img):
         """手写专用增强 — 笔迹强化"""
-        from PIL import ImageEnhance, ImageFilter
+        from PIL import Image, ImageEnhance, ImageFilter
 
         # 放大
         if img.width < 1500:
@@ -153,7 +153,7 @@ class EnhancedVisionService:
 
     def _enhance_for_document(self, img):
         """文档专用增强 — 打印文字清晰化"""
-        from PIL import ImageEnhance, ImageFilter
+        from PIL import Image, ImageEnhance
 
         # 放大
         if img.width < 1500:

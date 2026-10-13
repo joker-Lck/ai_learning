@@ -289,7 +289,7 @@ class ContentSafetyService:
     def _detect_sensitive_words(self, content: str) -> list[str]:
         """检测敏感词 - 使用AC自动机"""
         matches = self._ac_automaton.search(content)
-        hits = list(set(pattern for _, pattern, _ in matches))
+        hits = list({pattern for _, pattern, _ in matches})
         return hits
 
     def _detect_policy_violations(self, content: str) -> list[dict]:

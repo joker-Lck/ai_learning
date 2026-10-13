@@ -390,7 +390,7 @@ class EntityHandler(MemoryDB):
                 existing = similar
                 # 将新名称作为别名追加
                 old_alias = similar.get('entity_alias', '') or ''
-                aliases = set(a.strip() for a in old_alias.split(',') if a.strip())
+                aliases = {a.strip() for a in old_alias.split(',') if a.strip()}
                 aliases.add(entity_name)
                 entity_alias = ','.join(list(aliases)[:10])
                 info(f"实体模糊匹配: '{entity_name}' -> '{similar['entity_name']}' (sim={similar.get('_similarity', 0):.3f})")

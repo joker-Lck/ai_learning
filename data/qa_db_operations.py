@@ -258,11 +258,11 @@ class QADatabase:
             if not results:
                 return []
 
-            question_words = set(w.lower() for w in question_text.split() if len(w) > 1)
+            question_words = {w.lower() for w in question_text.split() if len(w) > 1}
             enriched_results = []
 
             for result in results:
-                answer_words = set(w.lower() for w in (result['question_text'] + ' ' + result['ai_response']).split() if len(w) > 1)
+                answer_words = {w.lower() for w in (result['question_text'] + ' ' + result['ai_response']).split() if len(w) > 1}
                 common_words = len(question_words & answer_words)
                 total_words = len(question_words | answer_words)
                 similarity = common_words / total_words if total_words > 0 else 0

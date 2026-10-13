@@ -5,7 +5,7 @@ import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
   CalendarDays, BarChart3, Plus, Check, X,
-  ChevronDown, Edit3, Save, Upload, Minus, Pencil, Camera,
+  ChevronDown, Edit3, Save, Upload, Minus, Pencil, Camera, Users,
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { PROFILE_DIMENSIONS } from './constants';
@@ -13,6 +13,7 @@ import type {
   DimensionChat, ProfileData, ProfileTab, CourseItem,
 } from './types';
 import { computeRadarData, type RadarDimension } from '@/lib/radar';
+import MyClassView from '@/components/teacher/MyClassView';
 
 interface ProfileModuleProps {
   currentStep: number;
@@ -40,6 +41,7 @@ interface ProfileModuleProps {
 const TABS: { key: ProfileTab; label: string; icon: any }[] = [
   { key: 'profile', label: '画像', icon: User },
   { key: 'schedule', label: '课程表', icon: CalendarDays },
+  { key: 'myClass', label: '我的班级', icon: Users },
 ];
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -156,6 +158,9 @@ export default memo(function ProfileModule(props: ProfileModuleProps) {
       </div>
       <div style={{ display: profileTab === 'schedule' ? 'block' : 'none' }}>
         <ScheduleTabContent courses={props.courses} loading={props.courseLoading} semester={currentSemester} onSave={props.handleSaveCourses} onImport={props.handleImportCourses} onConfirmImport={props.handleConfirmImportCourses} />
+      </div>
+      <div style={{ display: profileTab === 'myClass' ? 'block' : 'none' }}>
+        <MyClassTabContent />
       </div>
     </div>
   );
@@ -739,4 +744,10 @@ function ScheduleTabContent({ courses, loading, semester, onSave, onImport, onCo
       )}
     </div>
   );
+}
+
+// ==================== 我的班级 Tab ====================
+
+function MyClassTabContent() {
+  return <MyClassView />;
 }

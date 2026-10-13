@@ -22,6 +22,8 @@ from backend.api.agent import router as agent_router
 from backend.api.auth import router as auth_router
 from backend.api.collaboration import router as collaboration_router
 from backend.api.stream import router as stream_router
+from backend.api.student_class import router as student_class_router
+from backend.api.teacher import router as teacher_router
 from backend.exceptions import (
     AppException,
 )
@@ -47,7 +49,6 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 def _load_embedding_corpus():
     """加载语料用于训练 embedding 模型"""
     import glob
-    import json
     import sqlite3
 
     corpus = []
@@ -247,6 +248,8 @@ app.include_router(agent_router, prefix="/api", tags=["学习智能体"])
 app.include_router(stream_router, prefix="/api/stream", tags=["流式输出"])
 app.include_router(auth_router, prefix="/api/auth", tags=["认证"])
 app.include_router(collaboration_router, prefix="/api", tags=["协同学习"])
+app.include_router(teacher_router, prefix="/api/teacher", tags=["老师端"])
+app.include_router(student_class_router, prefix="/api/student", tags=["学生班级"])
 
 # 静态文件
 exports_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "exports")

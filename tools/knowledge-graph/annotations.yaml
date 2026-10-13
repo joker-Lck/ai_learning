@@ -1,4 +1,14 @@
 descriptions:
+  "service:class_service": "班级管理服务-班级CRUD/师生关系/学情代查"
+  "api:teacher": "老师端API-班级管理/学生学情代查"
+  "api:student_class": "学生侧班级API-邀请码入班/退出班级"
+  "component:TeacherDashboard": "老师工作台-侧边导航/视图分发"
+  "component:StudentMonitorView": "学生学情-学生列表/11Tab下钻详情"
+  "component:ClassModule": "班级管理-创建/邀请码/学生名单/移除"
+  "component:ClassAnalyticsView": "班级学情-聚合统计/学生排行"
+  "component:TeacherModuleViews": "老师端6大教学模块视图"
+  "component:MyClassView": "我的班级-学生入班/退出"
+
   "agent:agent_coordinator": "中央协调器-分发任务给5个专业智能体"
   "agent:profile_agent": "画像智能体-8轮对话采集构建9维度学生画像"
   "agent:resource_agent": "资源智能体-生成7种多模态学习资源"
@@ -803,6 +813,59 @@ extra_edges:
   - source: "config:tailwind.config.ts"
     target: "config:package.json"
     type: "configured_by"
+
+
+  # Teacher API (P0-P4)
+  - source: "api:teacher"
+    target: "service:class_service"
+    type: "depends_on"
+  - source: "api:teacher"
+    target: "service:auth_service"
+    type: "depends_on"
+  - source: "api:teacher"
+    target: "database:ai_auth"
+    type: "reads"
+
+  # Class Service
+  - source: "service:class_service"
+    target: "database:ai_auth"
+    type: "reads_writes"
+  - source: "service:class_service"
+    target: "database:ai_profiles"
+    type: "reads"
+  - source: "service:class_service"
+    target: "database:ai_resources"
+    type: "reads"
+  - source: "service:class_service"
+    target: "database:ai_assessments"
+    type: "reads"
+
+  # Student Class API
+  - source: "api:student_class"
+    target: "database:ai_auth"
+    type: "reads_writes"
+
+  # Teacher Dashboard components
+  - source: "component:TeacherDashboard"
+    target: "component:StudentMonitorView"
+    type: "renders"
+  - source: "component:TeacherDashboard"
+    target: "component:ClassModule"
+    type: "renders"
+  - source: "component:TeacherDashboard"
+    target: "component:ClassAnalyticsView"
+    type: "renders"
+  - source: "component:TeacherDashboard"
+    target: "component:TeacherModuleViews"
+    type: "renders"
+
+  # Student MyClass
+  - source: "component:MyClassView"
+    target: "api:student_class"
+    type: "calls"
+  - source: "component:ClassModule"
+    target: "api:teacher"
+    type: "calls"
 
 overrides:
   remove: []

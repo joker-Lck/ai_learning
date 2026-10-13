@@ -4,9 +4,7 @@ PDF 导入 RAG 知识库脚本
 """
 
 import os
-import io
 import sys
-import json
 
 # 确保项目根目录在 sys.path
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,7 +14,6 @@ if ROOT not in sys.path:
 from dotenv import load_dotenv
 load_dotenv()
 
-from core.logger import info, error
 
 
 def parse_pdf(filepath: str) -> str:

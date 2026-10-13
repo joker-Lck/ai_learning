@@ -18,6 +18,8 @@ interface AuthState {
   token: string | null;
   isLoggedIn: boolean;
   isGuest: boolean;
+  isTeacher: boolean;
+  isStudent: boolean;
   login: (user: User, token: string) => void;
   logout: () => void;
   setGuest: () => void;
@@ -29,13 +31,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   isLoggedIn: false,
   isGuest: false,
+  isTeacher: false,
+  isStudent: false,
 
   login: (user, token) => {
     localStorage.setItem('auth_token', token);
     localStorage.removeItem('is_guest');
     localStorage.setItem('user_info', JSON.stringify(user));
     api.setToken(token);
-    set({ user, token, isLoggedIn: true, isGuest: false });
+    set({
+      user, token, isLoggedIn: true, isGuest: false,
+      isTeacher: user.role === 'teacher' || user.role === 'admin',
+      isStudent: user.role === 'student' || user.role === 'user',
+    });
   },
 
   logout: () => {
@@ -72,6 +80,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       token: null,
       isLoggedIn: true,
       isGuest: true,
+      isTeacher: false,
+      isStudent: false,
     });
   },
 
@@ -83,19 +93,19 @@ export const useAuthStore = create<AuthState>((set) => ({
         token: null,
         isLoggedIn: true,
         isGuest: true,
+        isTeacher: false,
+        isStudent: false,
       });
       return;
     }
     const token = localStorage.getItem('auth_token');
     if (token) {
       api.setToken(token);
-      // 从 JWT 解析用户信息
-      let user = { id: 0, username: '用户', role: 'user' };
+      let user = { id: 0, username: '用户', role: 'student' };
       try {
         const payload = JSON.parse(atob(token.split('.')[1] ?? ''));
-        user = { id: payload.user_id || 0, username: payload.username || '用户', role: payload.role || 'user' };
+        user = { id: payload.user_id || 0, username: payload.username || '用户', role: payload.role || 'student' };
       } catch {}
-      // 优先使用 localStorage 中的完整信息
       try {
         const stored = localStorage.getItem('user_info');
         if (stored) user = JSON.parse(stored);
@@ -105,147 +115,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoggedIn: true,
         isGuest: false,
         user,
+        isTeacher: user.role === 'teacher' || user.role === 'admin',
+        isStudent: user.role === 'student' || user.role === 'user',
       });
     }
   },
-}));
-
-// ==================== 聊天状态 ====================
-
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-  source?: string;
-  ragDocs?: { title: string; subject: string }[];
-  isStreaming?: boolean;
-}
-
-interface ChatState {
-  messages: ChatMessage[];
-  isGenerating: boolean;
-  currentScenario: string;
-  addMessage: (msg: ChatMessage) => void;
-  updateLastMessage: (content: string) => void;
-  appendToLastMessage: (chunk: string) => void;
-  setGenerating: (v: boolean) => void;
-  setScenario: (s: string) => void;
-  clearMessages: () => void;
-}
-
-export const useChatStore = create<ChatState>((set, get) => ({
-  messages: [],
-  isGenerating: false,
-  currentScenario: '智能辅导',
-
-  addMessage: (msg) => set((state) => ({ messages: [...state.messages, msg] })),
-
-  updateLastMessage: (content) =>
-    set((state) => {
-      const messages = [...state.messages];
-      const last = messages[messages.length - 1];
-      if (last) {
-        messages[messages.length - 1] = { ...last, content };
-      }
-      return { messages };
-    }),
-
-  appendToLastMessage: (chunk) =>
-    set((state) => {
-      const messages = [...state.messages];
-      const last = messages[messages.length - 1];
-      if (last) {
-        messages[messages.length - 1] = { ...last, content: last.content + chunk };
-      }
-      return { messages };
-    }),
-
-  setGenerating: (v) => set({ isGenerating: v }),
-  setScenario: (s) => set({ currentScenario: s }),
-  clearMessages: () => set({ messages: [] }),
-}));
-
-// ==================== 课件生成状态 ====================
-
-interface SlideData {
-  title: string;
-  subtitle?: string;
-  content: string[];
-  layout?: string;
-  background?: any;
-  decorations?: any[];
-  image_suggestion?: string;
-}
-
-interface CoursewareState {
-  topic: string;
-  subject: string;
-  outline: string;
-  slides: SlideData[];
-  theme: any;
-  fastMode: boolean;
-  isGenerating: boolean;
-  generationStep: number;
-  generationProgress: number;
-  coursewareId: number | null;
-  generatedImages: any;
-  clarificationMessages: { role: string; content: string }[];
-  requirements: string[];
-
-  setTopic: (t: string) => void;
-  setFastMode: (v: boolean) => void;
-  setGenerating: (v: boolean) => void;
-  setProgress: (step: number, progress: number) => void;
-  setCoursewareResult: (result: any) => void;
-  addClarification: (msg: { role: string; content: string }) => void;
-  addRequirement: (r: string) => void;
-  reset: () => void;
-}
-
-const defaultCoursewareState = {
-  topic: '',
-  subject: '',
-  outline: '',
-  slides: [] as SlideData[],
-  theme: {},
-  fastMode: true,
-  isGenerating: false,
-  generationStep: 0,
-  generationProgress: 0,
-  coursewareId: null,
-  generatedImages: {},
-  clarificationMessages: [],
-  requirements: [],
-};
-
-export const useCoursewareStore = create<CoursewareState>((set) => ({
-  ...defaultCoursewareState,
-
-  setTopic: (t) => set({ topic: t }),
-  setFastMode: (v) => set({ fastMode: v }),
-  setGenerating: (v) => set({ isGenerating: v }),
-  setProgress: (step, progress) => set({ generationStep: step, generationProgress: progress }),
-
-  setCoursewareResult: (result) =>
-    set({
-      subject: result.subject || '',
-      outline: result.outline || '',
-      slides: result.slides || [],
-      theme: result.theme || {},
-      coursewareId: result.courseware_id || null,
-      generatedImages: result.generated_images || {},
-      isGenerating: false,
-      generationProgress: 100,
-    }),
-
-  addClarification: (msg) =>
-    set((state) => ({ clarificationMessages: [...state.clarificationMessages, msg] })),
-
-  addRequirement: (r) =>
-    set((state) => ({ requirements: [...state.requirements, r] })),
-
-  reset: () => set(defaultCoursewareState),
 }));
 
 // ==================== UI 状态 ====================

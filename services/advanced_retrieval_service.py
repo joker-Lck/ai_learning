@@ -16,7 +16,7 @@
 import json
 import re
 
-from core.logger import error, info, warning
+from core.logger import debug, error, info, warning
 
 
 class AdvancedRetrievalService:

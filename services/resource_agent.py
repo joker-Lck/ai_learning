@@ -138,7 +138,7 @@ class ResourceAgent:
                 "resources": generated_resources,
                 "resource_ids": resource_ids,
                 "count": len(generated_resources),
-                "types": list(set([r["type"] for r in generated_resources]))
+                "types": list({r["type"] for r in generated_resources})
             }
 
             info(f"资源生成完成,共 {len(generated_resources)} 个")

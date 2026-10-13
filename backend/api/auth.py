@@ -35,7 +35,10 @@ async def login(request: Request, req: LoginRequest):
             return AuthResponse(success=False, message=result["message"], error=result["message"])
 
         user = result["user"]
-        token = create_token(user["id"], user["username"], user.get("role", "user"))
+        # 存量兼容：role='user' 映射为 'student'
+        raw_role = user.get("role", "user")
+        role = "student" if raw_role == "user" else raw_role
+        token = create_token(user["id"], user["username"], role)
 
         user_login(req.username, True)
 
@@ -60,7 +63,7 @@ async def login(request: Request, req: LoginRequest):
             user=UserInfo(
                 id=user["id"],
                 username=user["username"],
-                role=user.get("role", "user"),
+                role=role,
                 email=user.get("email"),
             ),
             token=token,
@@ -76,7 +79,7 @@ async def register(request: Request, req: RegisterRequest):
     """用户注册（限流：5次/分钟）"""
     try:
         result = auth_service.register_user(
-            req.username, req.password, req.email
+            req.username, req.password, req.email, role=req.role.value
         )
 
         if not result["success"]:
@@ -84,12 +87,13 @@ async def register(request: Request, req: RegisterRequest):
 
         # 注册成功后自动登录，返回 token
         user_id = result.get("user_id", 0)
-        token = create_token(user_id, req.username, "user")
+        role_value = req.role.value
+        token = create_token(user_id, req.username, role_value)
 
         return AuthResponse(
             success=True,
             message=result["message"],
-            user=UserInfo(id=user_id, username=req.username, role="user"),
+            user=UserInfo(id=user_id, username=req.username, role=role_value),
             token=token,
         )
     except Exception as e:

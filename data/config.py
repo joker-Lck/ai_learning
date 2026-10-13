@@ -79,11 +79,6 @@ def get_paths_db_config():
     return {"database": get_paths_db_path()}
 
 
-def get_tutor_db_config():
-    """获取智能辅导数据库配置"""
-    return {"database": get_tutor_db_path()}
-
-
 def get_assessments_db_config():
     """获取学习评估数据库配置"""
     return {"database": get_assessments_db_path()}
@@ -94,24 +89,9 @@ def get_agents_db_config():
     return {"database": get_agents_db_path()}
 
 
-def get_rag_db_config():
-    """获取RAG知识库配置"""
-    return {"database": get_rag_db_path()}
-
-
-def get_memory_db_config():
-    """获取记忆系统配置"""
-    return {"database": get_memory_db_path()}
-
-
 def get_db_config():
     """获取默认数据库配置（向后兼容，返回auth数据库配置）"""
     return get_auth_db_config()
-
-
-def get_qa_db_config():
-    """获取QA数据库配置（向后兼容，返回tutor数据库配置）"""
-    return get_tutor_db_config()
 
 
 def get_accounts_db_config():

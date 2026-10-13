@@ -31,7 +31,10 @@ cp .env.example .env
 # 4. 初始化数据库
 python scripts/init_databases.py
 
-# 5. 创建管理员账户
+# 5. 执行老师端迁移（已有数据库需要执行一次）
+python scripts/migrate_teacher_roles.py
+
+# 6. 创建管理员账户
 python scripts/init_admin.py
 ```
 

@@ -159,8 +159,8 @@ class ApiClient {
     return this.request('/auth/login', { method: 'POST', body: { username, password } });
   }
 
-  async register(username: string, password: string, email?: string) {
-    return this.request('/auth/register', { method: 'POST', body: { username, password, email } });
+  async register(username: string, password: string, email?: string, role: 'student' | 'teacher' = 'student') {
+    return this.request('/auth/register', { method: 'POST', body: { username, password, email, role } });
   }
 
   async guestLogin() {
@@ -848,6 +848,112 @@ class ApiClient {
 
   async submitProfileAssessment(answers: Record<number, string>) {
     return this.request('/agent/profile/submit-assessment', { method: 'POST', body: { answers }, timeout: 60000 });
+  }
+
+  // ==================== 老师端 — 班级管理 API ====================
+
+  async createClass(data: { name: string; subject?: string; grade_level?: string; semester?: string; description?: string; max_students?: number | null }) {
+    return this.request('/teacher/classes', { method: 'POST', body: data });
+  }
+
+  async listClasses() {
+    return this.request('/teacher/classes');
+  }
+
+  async getClass(classId: number) {
+    return this.request(`/teacher/classes/${classId}`);
+  }
+
+  async updateClass(classId: number, data: Partial<{ name: string; subject: string; grade_level: string; semester: string; description: string; max_students: number | null }>) {
+    return this.request(`/teacher/classes/${classId}`, { method: 'PUT', body: data });
+  }
+
+  async resetInviteCode(classId: number) {
+    return this.request(`/teacher/classes/${classId}/reset-code`, { method: 'POST' });
+  }
+
+  async closeClass(classId: number) {
+    return this.request(`/teacher/classes/${classId}/close`, { method: 'POST' });
+  }
+
+  async openClass(classId: number) {
+    return this.request(`/teacher/classes/${classId}/open`, { method: 'POST' });
+  }
+
+  async listClassStudents(classId: number) {
+    return this.request(`/teacher/classes/${classId}/students`);
+  }
+
+  async removeClassStudent(classId: number, studentId: number) {
+    return this.request(`/teacher/classes/${classId}/students/${studentId}`, { method: 'DELETE' });
+  }
+
+  async getClassOverview(classId: number) {
+    return this.request(`/teacher/classes/${classId}/overview`);
+  }
+
+  // ==================== 老师端 — 学情代查 API ====================
+
+  async teacherListStudents() {
+    return this.request('/teacher/students');
+  }
+
+  async teacherStudentBrief(sid: number) {
+    return this.request(`/teacher/students/${sid}/brief`);
+  }
+
+  async teacherStudentProfile(sid: number) {
+    return this.request(`/teacher/students/${sid}/profile`);
+  }
+
+  async teacherStudentCourseSchedule(sid: number) {
+    return this.request(`/teacher/students/${sid}/course-schedule`);
+  }
+
+  async teacherStudentResources(sid: number) {
+    return this.request(`/teacher/students/${sid}/resources`);
+  }
+
+  async teacherStudentLearningPath(sid: number) {
+    return this.request(`/teacher/students/${sid}/learning-path`);
+  }
+
+  async teacherStudentQuiz(sid: number) {
+    return this.request(`/teacher/students/${sid}/quiz`);
+  }
+
+  async teacherStudentAssessment(sid: number) {
+    return this.request(`/teacher/students/${sid}/assessment`);
+  }
+
+  async teacherStudentAnalytics(sid: number, metric: string) {
+    return this.request(`/teacher/students/${sid}/analytics/${metric}`);
+  }
+
+  async teacherStudentActivities(sid: number) {
+    return this.request(`/teacher/students/${sid}/activities`);
+  }
+
+  async teacherStudentErrors(sid: number) {
+    return this.request(`/teacher/students/${sid}/errors`);
+  }
+
+  async teacherStudentGrades(sid: number) {
+    return this.request(`/teacher/students/${sid}/grades`);
+  }
+
+  // ==================== 学生侧 — 班级 API ====================
+
+  async joinClass(inviteCode: string) {
+    return this.request('/student/join-class', { method: 'POST', body: { invite_code: inviteCode } });
+  }
+
+  async myClasses() {
+    return this.request('/student/my-classes');
+  }
+
+  async leaveClass(classId: number) {
+    return this.request(`/student/leave-class/${classId}`, { method: 'POST' });
   }
 }
 

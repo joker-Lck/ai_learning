@@ -15,7 +15,6 @@
 """
 
 from dataclasses import dataclass
-from core.logger import info
 
 
 @dataclass

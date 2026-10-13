@@ -448,7 +448,7 @@ async def get_auto_learning_path(
     2. 无则基于学生画像薄弱点自动生成
     """
     try:
-        from datetime import datetime, timedelta
+        from datetime import datetime
         from data.db_operations import path_db
 
         user_id = user["id"]
@@ -612,7 +612,7 @@ async def get_latest_assessment(user: dict = Depends(require_auth)):
     """获取最新学习评估 — 基于问答/课程表/成绩/错题综合分析"""
     try:
         user_id = user["id"]
-        from data.db_operations import assessment_db, resource_db
+        from data.db_operations import assessment_db
 
         # ── 采集 4 个维度数据 ──
 

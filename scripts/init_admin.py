@@ -73,11 +73,11 @@ def create_default_admin():
 
 def create_test_users():
     """创建测试用户（可选）"""
-    
+
     print("\n" + "=" * 50)
     print("🧪 创建测试用户")
     print("=" * 50)
-    
+
     test_users = [
         {
             'username': 'test_teacher',
@@ -92,7 +92,7 @@ def create_test_users():
             'role': 'student'
         }
     ]
-    
+
     for user in test_users:
         print(f"\n 创建用户：{user['username']}")
         result = auth_service.register_user(
@@ -101,25 +101,25 @@ def create_test_users():
             email=user['email'],
             role=user['role']
         )
-        
+
         if result['success']:
             print(f"   ✅ 创建成功 (ID: {result['user_id']})")
         else:
             print(f"   ⚠️ {result['message']}")
-    
+
     print("\n" + "=" * 50)
 
 
 if __name__ == "__main__":
     # 创建默认管理员
     create_default_admin()
-    
+
     # 询问是否创建测试用户
     print("\n是否创建测试用户？（test_teacher 和 test_student）")
     confirm = input("(y/n): ")
-    
+
     if confirm.lower() == 'y':
         create_test_users()
-    
+
     print("\n✅ 初始化完成！")
     print("\n启动应用：启动.bat（Windows）或 python -m uvicorn backend.main:app --port 8000")

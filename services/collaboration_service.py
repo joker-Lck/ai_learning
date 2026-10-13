@@ -2,7 +2,6 @@
 协同学习小组服务层
 """
 
-from core.logger import error, info, warning
 
 
 class CollaborationService:

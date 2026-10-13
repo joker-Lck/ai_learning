@@ -48,7 +48,7 @@ def init_auth_database():
                 username TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
                 email TEXT,
-                role TEXT CHECK(role IN ('user', 'admin', 'guest')) DEFAULT 'user',
+                role TEXT CHECK(role IN ('user', 'admin', 'guest', 'teacher', 'student')) DEFAULT 'student',
                 major TEXT,
                 grade_level TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -66,8 +66,39 @@ def init_auth_database():
             );
             CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
             CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+            CREATE TABLE IF NOT EXISTS classes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                teacher_id INTEGER NOT NULL,
+                subject TEXT DEFAULT '',
+                grade_level TEXT DEFAULT '',
+                semester TEXT DEFAULT '',
+                invite_code TEXT NOT NULL UNIQUE,
+                is_open INTEGER DEFAULT 1,
+                max_students INTEGER DEFAULT NULL,
+                description TEXT DEFAULT '',
+                created_at TEXT DEFAULT (datetime('now','localtime')),
+                updated_at TEXT DEFAULT (datetime('now','localtime')),
+                FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_classes_teacher ON classes(teacher_id);
+
+            CREATE TABLE IF NOT EXISTS class_students (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                class_id INTEGER NOT NULL,
+                student_id INTEGER NOT NULL,
+                joined_at TEXT DEFAULT (datetime('now','localtime')),
+                status TEXT DEFAULT 'active',
+                UNIQUE(class_id, student_id),
+                FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+                FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_cs_class ON class_students(class_id);
+            CREATE INDEX IF NOT EXISTS idx_cs_student ON class_students(student_id);
         """)
         _add_updated_at_trigger(conn, 'users')
+        _add_updated_at_trigger(conn, 'classes')
         conn.commit()
         print("  [OK] 认证数据库初始化完成!")
     finally:

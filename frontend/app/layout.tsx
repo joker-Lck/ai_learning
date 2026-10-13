@@ -13,12 +13,12 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: '多模态 AI 教学智能体',
-    template: '%s | AI 学习助手',
+    default: '灵犀 · AI 学习助手',
+    template: '%s | 灵犀',
   },
-  description: '基于讯飞星火大模型的智能教学辅助系统 — 6大智能体协同，7种资源类型，个性化学习路径',
+  description: '基于多智能体协作的 AI 自适应学习引擎 — 6大智能体协同，个性化学习路径，班级学情管理',
   icons: { icon: '/favicon.ico' },
-  keywords: ['AI教学', '个性化学习', '智能辅导', '学习资源生成', '多智能体'],
+  keywords: ['AI教学', '个性化学习', '智能辅导', '学习资源生成', '多智能体', '班级管理', '学情分析'],
   authors: [{ name: 'AI Learning Team' }],
   openGraph: {
     type: 'website',

@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 import jwt
 from fastapi import Depends, Header, HTTPException, Request
 
-from data.data_manager import CacheManager
 
 # ── JWT 配置 ──
 _jwt_env = os.getenv("JWT_SECRET")
@@ -23,14 +22,6 @@ JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
 JWT_REFRESH_DAYS = int(os.getenv("JWT_REFRESH_DAYS", "7"))
 
 
-def get_api_config() -> dict:
-    config = CacheManager.load_env_config()
-    return {
-        "api_key": config.get("api_key", ""),
-        "base_url": config.get("base_url", "https://api.xiaomimimo.com/v1"),
-    }
-
-
 def create_token(user_id: int, username: str, role: str) -> str:
     """创建 JWT Token"""
     payload = {
@@ -40,17 +31,6 @@ def create_token(user_id: int, username: str, role: str) -> str:
         "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
         "iat": datetime.utcnow(),
         "type": "access",
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-
-def create_refresh_token(user_id: int) -> str:
-    """创建刷新 Token（长期有效）"""
-    payload = {
-        "user_id": user_id,
-        "exp": datetime.utcnow() + timedelta(days=JWT_REFRESH_DAYS),
-        "iat": datetime.utcnow(),
-        "type": "refresh",
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -106,13 +86,6 @@ async def require_auth(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
-async def require_admin(user: dict = Depends(get_current_user)) -> dict:
-    """要求管理员角色"""
-    if user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="需要管理员权限")
-    return user
-
-
 # ── RBAC 角色权限控制 ──
 
 ROLE_HIERARCHY = {
@@ -121,55 +94,6 @@ ROLE_HIERARCHY = {
     "student": 10,
     "guest": 0,
 }
-
-ROLE_PERMISSIONS = {
-    "admin": {"*"},
-    "teacher": {
-        "profile:read", "profile:write",
-        "resource:read", "resource:write", "resource:delete",
-        "path:read", "path:write",
-        "tutor:read", "tutor:write",
-        "assessment:read", "assessment:write",
-        "rag:read", "rag:write",
-        "feedback:read", "feedback:write",
-    },
-    "student": {
-        "profile:read", "profile:write:own",
-        "resource:read", "resource:write:own",
-        "path:read", "path:write:own",
-        "tutor:read", "tutor:write",
-        "assessment:read", "assessment:write:own",
-        "rag:read",
-        "feedback:write",
-    },
-    "guest": {
-        "profile:read",
-        "resource:read",
-        "tutor:read",
-    },
-}
-
-
-def require_permission(permission: str):
-    """RBAC 权限检查装饰器"""
-    async def checker(user: dict = Depends(get_current_user)) -> dict:
-        role = user.get("role", "guest")
-        perms = ROLE_PERMISSIONS.get(role, set())
-
-        if "*" in perms:
-            return user
-        if permission in perms:
-            return user
-        # 检查通配符权限（如 "profile:write:own" 匹配 "profile:write"）
-        base_perm = ":".join(permission.split(":")[:2])
-        if base_perm in perms or f"{base_perm}:own" in perms:
-            return user
-
-        raise HTTPException(
-            status_code=403,
-            detail=f"权限不足: 需要 {permission}，当前角色 {role}"
-        )
-    return checker
 
 
 def require_role(min_role: str):

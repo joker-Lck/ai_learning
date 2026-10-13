@@ -1,74 +1,74 @@
-﻿{
+{
   "nodes": [
     {
       "id": "db:ai_auth",
       "type": "database",
       "label": "ai_auth",
       "file": "data/databases/ai_auth.db",
-      "description": "璁よ瘉涓庣敤鎴风鐞?
+      "description": "认证与用户管理"
     },
     {
       "id": "db:ai_profiles",
       "type": "database",
       "label": "ai_profiles",
       "file": "data/databases/ai_profiles.db",
-      "description": "瀛︾敓鐢诲儚銆佹垚缁┿€侀敊棰樸€佽琛?
+      "description": "学生画像、成绩、错题、课表"
     },
     {
       "id": "db:ai_resources",
       "type": "database",
       "label": "ai_resources",
       "file": "data/databases/ai_resources.db",
-      "description": "瀛︿範璧勬簮涓庡畨鍏ㄦ棩蹇?
+      "description": "学习资源与安全日志"
     },
     {
       "id": "db:ai_paths",
       "type": "database",
       "label": "ai_paths",
       "file": "data/databases/ai_paths.db",
-      "description": "瀛︿範璺緞涓庤繘搴?
+      "description": "学习路径与进度"
     },
     {
       "id": "db:ai_tutor",
       "type": "database",
       "label": "ai_tutor",
       "file": "data/databases/ai_tutor.db",
-      "description": "杈呭浼氳瘽涓庣煡璇嗗紩鐢?
+      "description": "辅导会话与知识引用"
     },
     {
       "id": "db:ai_assessments",
       "type": "database",
       "label": "ai_assessments",
       "file": "data/databases/ai_assessments.db",
-      "description": "璇勪及銆佹椿鍔ㄣ€佹祴楠屻€侀搴?
+      "description": "评估、活动、测验、题库"
     },
     {
       "id": "db:ai_agents",
       "type": "database",
       "label": "ai_agents",
       "file": "data/databases/ai_agents.db",
-      "description": "鏅鸿兘浣撳崗浣滄棩蹇椾笌浠诲姟"
+      "description": "智能体协作日志与任务"
     },
     {
       "id": "db:ai_rag_knowledge",
       "type": "database",
       "label": "ai_rag_knowledge",
       "file": "data/databases/ai_rag_knowledge.db",
-      "description": "RAG鐭ヨ瘑搴撱€丗TS5绱㈠紩銆佸疄浣撳浘璋?
+      "description": "RAG知识库、FTS5索引、实体图谱"
     },
     {
       "id": "db:ai_memory",
       "type": "database",
       "label": "ai_memory",
       "file": "data/databases/ai_memory.db",
-      "description": "鍥涘眰璁板繂绯荤粺(鐭湡/鎯呮櫙/璇箟/瀹炰綋)"
+      "description": "四层记忆系统(短期/情景/语义/实体)"
     },
     {
       "id": "db:retrieval_eval",
       "type": "database",
       "label": "retrieval_eval",
       "file": "data/databases/retrieval_eval.db",
-      "description": "妫€绱㈡晥鏋滆瘎浼?
+      "description": "检索效果评估"
     },
     {
       "id": "table:ai_auth.users",
@@ -84,6 +84,22 @@
       "label": "sessions",
       "file": "scripts/init_databases.py",
       "description": "ai_auth.sessions",
+      "database": "ai_auth"
+    },
+    {
+      "id": "table:ai_auth.classes",
+      "type": "table",
+      "label": "classes",
+      "file": "scripts/init_databases.py",
+      "description": "ai_auth.classes",
+      "database": "ai_auth"
+    },
+    {
+      "id": "table:ai_auth.class_students",
+      "type": "table",
+      "label": "class_students",
+      "file": "scripts/init_databases.py",
+      "description": "ai_auth.class_students",
       "database": "ai_auth"
     },
     {
@@ -387,217 +403,224 @@
       "type": "service",
       "label": "adaptive_difficulty",
       "file": "services/adaptive_difficulty.py",
-      "description": "鑷€傚簲闅惧害"
+      "description": "自适应难度"
     },
     {
       "id": "service:adaptive_path",
       "type": "service",
       "label": "adaptive_path",
       "file": "services/adaptive_path.py",
-      "description": "鑷€傚簲璺緞"
+      "description": "自适应路径"
     },
     {
       "id": "service:advanced_retrieval_service",
       "type": "service",
       "label": "advanced_retrieval_service",
       "file": "services/advanced_retrieval_service.py",
-      "description": "楂樼骇妫€绱㈡湇鍔?11绉嶇瓥鐣?
+      "description": "高级检索服务-11种策略"
     },
     {
       "id": "agent:agent_coordinator",
       "type": "agent",
       "label": "agent_coordinator",
       "file": "services/agent_coordinator.py",
-      "description": "涓ぎ鍗忚皟鍣?鍒嗗彂浠诲姟缁?涓笓涓氭櫤鑳戒綋"
+      "description": "中央协调器-分发任务给5个专业智能体"
     },
     {
       "id": "infra:agent_message",
       "type": "infra",
       "label": "agent_message",
       "file": "services/agent_message.py",
-      "description": "娑堟伅鍗忚-14绉嶇被鍨?
+      "description": "消息协议-14种类型"
     },
     {
       "id": "service:animation_service",
       "type": "service",
       "label": "animation_service",
       "file": "services/animation_service.py",
-      "description": "鍔ㄧ敾鐢熸垚鏈嶅姟"
+      "description": "动画生成服务"
     },
     {
       "id": "service:answer_quality_scorer",
       "type": "service",
       "label": "answer_quality_scorer",
       "file": "services/answer_quality_scorer.py",
-      "description": "绛旀璐ㄩ噺璇勫垎鍣?
+      "description": "答案质量评分器"
     },
     {
       "id": "agent:assessment_agent",
       "type": "agent",
       "label": "assessment_agent",
       "file": "services/assessment_agent.py",
-      "description": "璇勪及鏅鸿兘浣?鍩轰簬鐪熷疄瀛︾敓鏁版嵁鐢熸垚璇勪及鎶ュ憡"
+      "description": "评估智能体-基于真实学生数据生成评估报告"
     },
     {
       "id": "service:auth_service",
       "type": "service",
       "label": "auth_service",
       "file": "services/auth_service.py",
-      "description": "璁よ瘉鏈嶅姟-JWT璁よ瘉"
+      "description": "认证服务-JWT认证"
     },
     {
       "id": "service:citation_annotator",
       "type": "service",
       "label": "citation_annotator",
       "file": "services/citation_annotator.py",
-      "description": "寮曠敤鏍囨敞鍣?
+      "description": "引用标注器"
+    },
+    {
+      "id": "service:class_service",
+      "type": "service",
+      "label": "class_service",
+      "file": "services/class_service.py",
+      "description": "班级管理服务-班级CRUD/师生关系/学情代查"
     },
     {
       "id": "service:collaboration_service",
       "type": "service",
       "label": "collaboration_service",
       "file": "services/collaboration_service.py",
-      "description": "鍗忓悓瀛︿範鏈嶅姟-瀛︿範灏忕粍"
+      "description": "协同学习服务-学习小组"
     },
     {
       "id": "service:content_safety_service",
       "type": "service",
       "label": "content_safety_service",
       "file": "services/content_safety_service.py",
-      "description": "鍐呭瀹夊叏鏈嶅姟-鏁忔劅璇嶆娴?闃插够瑙?
+      "description": "内容安全服务-敏感词检测+防幻觉"
     },
     {
       "id": "service:context_compressor",
       "type": "service",
       "label": "context_compressor",
       "file": "services/context_compressor.py",
-      "description": "涓婁笅鏂囧帇缂╁櫒"
+      "description": "上下文压缩器"
     },
     {
       "id": "service:document_analysis_service",
       "type": "service",
       "label": "document_analysis_service",
       "file": "services/document_analysis_service.py",
-      "description": "鏂囨。鍒嗘瀽鏈嶅姟"
+      "description": "文档分析服务"
     },
     {
       "id": "service:enhanced_vision_service",
       "type": "service",
       "label": "enhanced_vision_service",
       "file": "services/enhanced_vision_service.py",
-      "description": "澧炲己瑙嗚鏈嶅姟"
+      "description": "增强视觉服务"
     },
     {
       "id": "service:image_service",
       "type": "service",
       "label": "image_service",
       "file": "services/image_service.py",
-      "description": "鍥剧墖鐢熸垚鏈嶅姟"
+      "description": "图片生成服务"
     },
     {
       "id": "service:knowledge_tracer",
       "type": "service",
       "label": "knowledge_tracer",
       "file": "services/knowledge_tracer.py",
-      "description": "鐭ヨ瘑杩借釜鍣?BKT"
+      "description": "知识追踪器-BKT"
     },
     {
       "id": "service:memory_extractor",
       "type": "service",
       "label": "memory_extractor",
       "file": "services/memory_extractor.py",
-      "description": "璁板繂鎻愬彇鍣?
+      "description": "记忆提取器"
     },
     {
       "id": "service:memory_service",
       "type": "service",
       "label": "memory_service",
       "file": "services/memory_service.py",
-      "description": "鍥涘眰璁板繂绯荤粺-鑹惧娴╂柉閬楀繕鏇茬嚎"
+      "description": "四层记忆系统-艾宾浩斯遗忘曲线"
     },
     {
       "id": "infra:message_bus",
       "type": "infra",
       "label": "message_bus",
       "file": "services/message_bus.py",
-      "description": "浜嬩欢椹卞姩娑堟伅鎬荤嚎"
+      "description": "事件驱动消息总线"
     },
     {
       "id": "service:multi_hop_retriever",
       "type": "service",
       "label": "multi_hop_retriever",
       "file": "services/multi_hop_retriever.py",
-      "description": "澶氳烦鎺ㄧ悊妫€绱㈠櫒"
+      "description": "多跳推理检索器"
     },
     {
       "id": "agent:path_agent",
       "type": "agent",
       "label": "path_agent",
       "file": "services/path_agent.py",
-      "description": "璺緞鏅鸿兘浣?瑙勫垝涓€у寲瀛︿範璺緞"
+      "description": "路径智能体-规划个性化学习路径"
     },
     {
       "id": "agent:profile_agent",
       "type": "agent",
       "label": "profile_agent",
       "file": "services/profile_agent.py",
-      "description": "鐢诲儚鏅鸿兘浣?8杞璇濋噰闆嗘瀯寤?缁村害瀛︾敓鐢诲儚"
+      "description": "画像智能体-8轮对话采集构建9维度学生画像"
     },
     {
       "id": "service:prompt_personalizer",
       "type": "service",
       "label": "prompt_personalizer",
       "file": "services/prompt_personalizer.py",
-      "description": "鎻愮ず璇嶄釜鎬у寲"
+      "description": "提示词个性化"
     },
     {
       "id": "service:qa_service",
       "type": "service",
       "label": "qa_service",
       "file": "services/qa_service.py",
-      "description": "AI璋冪敤灏佽灞?
+      "description": "AI调用封装层"
     },
     {
       "id": "service:query_processor",
       "type": "service",
       "label": "query_processor",
       "file": "services/query_processor.py",
-      "description": "鏌ヨ澶勭悊鍣?
+      "description": "查询处理器"
     },
     {
       "id": "service:reflector",
       "type": "service",
       "label": "reflector",
       "file": "services/reflector.py",
-      "description": "鍙嶆€濋獙璇佸櫒"
+      "description": "反思验证器"
     },
     {
       "id": "agent:resource_agent",
       "type": "agent",
       "label": "resource_agent",
       "file": "services/resource_agent.py",
-      "description": "璧勬簮鏅鸿兘浣?鐢熸垚7绉嶅妯℃€佸涔犺祫婧?
+      "description": "资源智能体-生成7种多模态学习资源"
     },
     {
       "id": "service:resource_export_service",
       "type": "service",
       "label": "resource_export_service",
       "file": "services/resource_export_service.py",
-      "description": "璧勬簮瀵煎嚭鏈嶅姟"
+      "description": "资源导出服务"
     },
     {
       "id": "service:retrieval_evaluator",
       "type": "service",
       "label": "retrieval_evaluator",
       "file": "services/retrieval_evaluator.py",
-      "description": "妫€绱㈣瘎浼板櫒"
+      "description": "检索评估器"
     },
     {
       "id": "service:self_learning_service",
       "type": "service",
       "label": "self_learning_service",
       "file": "services/self_learning_service.py",
-      "description": "鑷涔犻棴鐜?
+      "description": "自学习闭环"
     },
     {
       "id": "service:self_rag",
@@ -611,91 +634,91 @@
       "type": "service",
       "label": "spark_client",
       "file": "services/spark_client.py",
-      "description": "MiMo API瀹㈡埛绔?
+      "description": "MiMo API客户端"
     },
     {
       "id": "service:streaming_service",
       "type": "service",
       "label": "streaming_service",
       "file": "services/streaming_service.py",
-      "description": "SSE娴佸紡杈撳嚭鏈嶅姟"
+      "description": "SSE流式输出服务"
     },
     {
       "id": "service:student_data_service",
       "type": "service",
       "label": "student_data_service",
       "file": "services/student_data_service.py",
-      "description": "瀛︾敓鏁版嵁鏈嶅姟-璇捐〃/鎴愮哗/閿欓/瀛︿範璁″垝"
+      "description": "学生数据服务-课表/成绩/错题/学习计划"
     },
     {
       "id": "agent:tutor_agent",
       "type": "agent",
       "label": "tutor_agent",
       "file": "services/tutor_agent.py",
-      "description": "杈呭鏅鸿兘浣?澶氭ā鎬佺瓟鐤戦泦鎴愯蹇嗗寮哄拰Self-RAG"
+      "description": "辅导智能体-多模态答疑集成记忆增强和Self-RAG"
     },
     {
       "id": "service:video_generation_service",
       "type": "service",
       "label": "video_generation_service",
       "file": "services/video_generation_service.py",
-      "description": "瑙嗛鑴氭湰鐢熸垚鏈嶅姟"
+      "description": "视频脚本生成服务"
     },
     {
       "id": "data:collaboration_db",
       "type": "data_layer",
       "label": "collaboration_db",
       "file": "data/collaboration_db.py",
-      "description": "鍗忓悓瀛︿範鏁版嵁搴?
+      "description": "协同学习数据库"
     },
     {
       "id": "data:config",
       "type": "data_layer",
       "label": "config",
       "file": "data/config.py",
-      "description": "鏁版嵁搴撻厤缃?
+      "description": "数据库配置"
     },
     {
       "id": "data:dao",
       "type": "data_layer",
       "label": "dao",
       "file": "data/dao.py",
-      "description": "鏁版嵁璁块棶瀵硅薄"
+      "description": "数据访问对象"
     },
     {
       "id": "data:data_manager",
       "type": "data_layer",
       "label": "data_manager",
       "file": "data/data_manager.py",
-      "description": "缂撳瓨绠＄悊鍣?
+      "description": "缓存管理器"
     },
     {
       "id": "data:db_operations",
       "type": "data_layer",
       "label": "db_operations",
       "file": "data/db_operations.py",
-      "description": "鏁版嵁搴撴搷浣?
+      "description": "数据库操作"
     },
     {
       "id": "data:embedding_service",
       "type": "data_layer",
       "label": "embedding_service",
       "file": "data/embedding_service.py",
-      "description": "鍚戦噺鍖栨湇鍔?
+      "description": "向量化服务"
     },
     {
       "id": "data:qa_db_operations",
       "type": "data_layer",
       "label": "qa_db_operations",
       "file": "data/qa_db_operations.py",
-      "description": "QA鏁版嵁搴撴搷浣?
+      "description": "QA数据库操作"
     },
     {
       "id": "data:rag_knowledge_base",
       "type": "data_layer",
       "label": "rag_knowledge_base",
       "file": "data/rag_knowledge_base.py",
-      "description": "RAG鐭ヨ瘑搴?
+      "description": "RAG知识库"
     },
     {
       "id": "endpoint:POST/build-profile",
@@ -776,6 +799,15 @@
       "file": "backend/api/agent.py",
       "method": "GET",
       "path": "/learning-recommendations",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/auto-learning-path",
+      "type": "endpoint",
+      "label": "GET /auto-learning-path",
+      "file": "backend/api/agent.py",
+      "method": "GET",
+      "path": "/auto-learning-path",
       "description": ""
     },
     {
@@ -1706,32 +1738,257 @@
       "description": ""
     },
     {
+      "id": "endpoint:POST/join-class",
+      "type": "endpoint",
+      "label": "POST /join-class",
+      "file": "backend/api/student_class.py",
+      "method": "POST",
+      "path": "/join-class",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/my-classes",
+      "type": "endpoint",
+      "label": "GET /my-classes",
+      "file": "backend/api/student_class.py",
+      "method": "GET",
+      "path": "/my-classes",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/leave-class/{class_id}",
+      "type": "endpoint",
+      "label": "POST /leave-class/{class_id}",
+      "file": "backend/api/student_class.py",
+      "method": "POST",
+      "path": "/leave-class/{class_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/classes",
+      "type": "endpoint",
+      "label": "POST /classes",
+      "file": "backend/api/teacher.py",
+      "method": "POST",
+      "path": "/classes",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/classes",
+      "type": "endpoint",
+      "label": "GET /classes",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/classes",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/classes/{class_id}",
+      "type": "endpoint",
+      "label": "GET /classes/{class_id}",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/classes/{class_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:PUT/classes/{class_id}",
+      "type": "endpoint",
+      "label": "PUT /classes/{class_id}",
+      "file": "backend/api/teacher.py",
+      "method": "PUT",
+      "path": "/classes/{class_id}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/classes/{class_id}/reset-code",
+      "type": "endpoint",
+      "label": "POST /classes/{class_id}/reset-code",
+      "file": "backend/api/teacher.py",
+      "method": "POST",
+      "path": "/classes/{class_id}/reset-code",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/classes/{class_id}/close",
+      "type": "endpoint",
+      "label": "POST /classes/{class_id}/close",
+      "file": "backend/api/teacher.py",
+      "method": "POST",
+      "path": "/classes/{class_id}/close",
+      "description": ""
+    },
+    {
+      "id": "endpoint:POST/classes/{class_id}/open",
+      "type": "endpoint",
+      "label": "POST /classes/{class_id}/open",
+      "file": "backend/api/teacher.py",
+      "method": "POST",
+      "path": "/classes/{class_id}/open",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/classes/{class_id}/students",
+      "type": "endpoint",
+      "label": "GET /classes/{class_id}/students",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/classes/{class_id}/students",
+      "description": ""
+    },
+    {
+      "id": "endpoint:DELETE/classes/{class_id}/students/{sid}",
+      "type": "endpoint",
+      "label": "DELETE /classes/{class_id}/students/{sid}",
+      "file": "backend/api/teacher.py",
+      "method": "DELETE",
+      "path": "/classes/{class_id}/students/{sid}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/classes/{class_id}/overview",
+      "type": "endpoint",
+      "label": "GET /classes/{class_id}/overview",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/classes/{class_id}/overview",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students",
+      "type": "endpoint",
+      "label": "GET /students",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/brief",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/brief",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/brief",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/profile",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/profile",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/profile",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/course-schedule",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/course-schedule",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/course-schedule",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/resources",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/resources",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/resources",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/learning-path",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/learning-path",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/learning-path",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/quiz",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/quiz",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/quiz",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/assessment",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/assessment",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/assessment",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/analytics/{metric}",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/analytics/{metric}",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/analytics/{metric}",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/activities",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/activities",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/activities",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/errors",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/errors",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/errors",
+      "description": ""
+    },
+    {
+      "id": "endpoint:GET/students/{sid}/grades",
+      "type": "endpoint",
+      "label": "GET /students/{sid}/grades",
+      "file": "backend/api/teacher.py",
+      "method": "GET",
+      "path": "/students/{sid}/grades",
+      "description": ""
+    },
+    {
       "id": "prompt:ProfilePrompts",
       "type": "prompt",
       "label": "ProfilePrompts",
       "file": "core/prompts.py",
-      "description": "鐢诲儚鏋勫缓鎻愮ず璇?
+      "description": "画像构建提示词"
     },
     {
       "id": "prompt:AnalysisPrompts",
       "type": "prompt",
       "label": "AnalysisPrompts",
       "file": "core/prompts.py",
-      "description": "瀛︽儏鍒嗘瀽鎻愮ず璇?
+      "description": "学情分析提示词"
     },
     {
       "id": "prompt:DocumentAnalysisPrompts",
       "type": "prompt",
       "label": "DocumentAnalysisPrompts",
       "file": "core/prompts.py",
-      "description": "鏂囨。鍒嗘瀽鎻愮ず璇?
+      "description": "文档分析提示词"
     },
     {
       "id": "prompt:VoiceQAPrompts",
       "type": "prompt",
       "label": "VoiceQAPrompts",
       "file": "core/prompts.py",
-      "description": "璇煶闂瓟鎻愮ず璇?
+      "description": "语音问答提示词"
     },
     {
       "id": "page:assessment",
@@ -1745,14 +2002,14 @@
       "type": "page",
       "label": "assessment-quiz",
       "file": "frontend/app/assessment-quiz/page.tsx",
-      "description": "娴嬮獙椤甸潰"
+      "description": "测验页面"
     },
     {
       "id": "page:dashboard",
       "type": "page",
       "label": "dashboard",
       "file": "frontend/app/dashboard/page.tsx",
-      "description": "宸ヤ綔鍙颁富椤甸潰"
+      "description": "工作台主页面"
     },
     {
       "id": "page:layout",
@@ -1797,6 +2054,13 @@
       "description": ""
     },
     {
+      "id": "page:teacher",
+      "type": "page",
+      "label": "teacher",
+      "file": "frontend/app/teacher/page.tsx",
+      "description": ""
+    },
+    {
       "id": "page:tutor",
       "type": "page",
       "label": "tutor",
@@ -1815,14 +2079,14 @@
       "type": "component",
       "label": "DashboardContent",
       "file": "frontend/components/DashboardContent.tsx",
-      "description": "宸ヤ綔鍙板唴瀹?
+      "description": "工作台内容"
     },
     {
       "id": "component:FloatingMenu",
       "type": "component",
       "label": "FloatingMenu",
       "file": "frontend/components/layout/FloatingMenu.tsx",
-      "description": "娴姩鑿滃崟"
+      "description": "浮动菜单"
     },
     {
       "id": "component:Sidebar",
@@ -1836,49 +2100,49 @@
       "type": "component",
       "label": "AnalyticsModule",
       "file": "frontend/components/modules/AnalyticsModule.tsx",
-      "description": "鍒嗘瀽妯″潡"
+      "description": "分析模块"
     },
     {
       "id": "component:AssessmentModule",
       "type": "component",
       "label": "AssessmentModule",
       "file": "frontend/components/modules/AssessmentModule.tsx",
-      "description": "璇勪及妯″潡"
+      "description": "评估模块"
     },
     {
       "id": "component:BookResourceModule",
       "type": "component",
       "label": "BookResourceModule",
       "file": "frontend/components/modules/BookResourceModule.tsx",
-      "description": "鍥句功璧勬簮妯″潡"
+      "description": "图书资源模块"
     },
     {
       "id": "component:CollaborationModule",
       "type": "component",
       "label": "CollaborationModule",
       "file": "frontend/components/modules/CollaborationModule.tsx",
-      "description": "鍗忓悓妯″潡"
+      "description": "协同模块"
     },
     {
       "id": "component:MermaidDiagram",
       "type": "component",
       "label": "MermaidDiagram",
       "file": "frontend/components/modules/MermaidDiagram.tsx",
-      "description": "Mermaid鍥捐〃娓叉煋鍣?
+      "description": "Mermaid图表渲染器"
     },
     {
       "id": "component:PathModule",
       "type": "component",
       "label": "PathModule",
       "file": "frontend/components/modules/PathModule.tsx",
-      "description": "璺緞妯″潡"
+      "description": "路径模块"
     },
     {
       "id": "component:ProfileModule",
       "type": "component",
       "label": "ProfileModule",
       "file": "frontend/components/modules/ProfileModule.tsx",
-      "description": "鐢诲儚妯″潡"
+      "description": "画像模块"
     },
     {
       "id": "component:QuizHistoryPanel",
@@ -1920,63 +2184,105 @@
       "type": "component",
       "label": "QuizModule",
       "file": "frontend/components/modules/QuizModule.tsx",
-      "description": "娴嬮獙妯″潡"
+      "description": "测验模块"
     },
     {
       "id": "component:RagKnowledgeModule",
       "type": "component",
       "label": "RagKnowledgeModule",
       "file": "frontend/components/modules/RagKnowledgeModule.tsx",
-      "description": "鐭ヨ瘑搴撴ā鍧?
+      "description": "知识库模块"
     },
     {
       "id": "component:ResourcesModule",
       "type": "component",
       "label": "ResourcesModule",
       "file": "frontend/components/modules/ResourcesModule.tsx",
-      "description": "璧勬簮妯″潡"
+      "description": "资源模块"
     },
     {
       "id": "component:TutorModule",
       "type": "component",
       "label": "TutorModule",
       "file": "frontend/components/modules/TutorModule.tsx",
-      "description": "杈呭妯″潡"
+      "description": "辅导模块"
     },
     {
       "id": "component:VideoResourceModule",
       "type": "component",
       "label": "VideoResourceModule",
       "file": "frontend/components/modules/VideoResourceModule.tsx",
-      "description": "瑙嗛璧勬簮妯″潡"
+      "description": "视频资源模块"
     },
     {
       "id": "component:BackgroundEffects",
       "type": "component",
       "label": "BackgroundEffects",
       "file": "frontend/components/shared/BackgroundEffects.tsx",
-      "description": "鑳屾櫙鐗规晥"
+      "description": "背景特效"
     },
     {
       "id": "component:ErrorBoundary",
       "type": "component",
       "label": "ErrorBoundary",
       "file": "frontend/components/shared/ErrorBoundary.tsx",
-      "description": "閿欒杈圭晫"
+      "description": "错误边界"
     },
     {
       "id": "component:MarkdownRenderer",
       "type": "component",
       "label": "MarkdownRenderer",
       "file": "frontend/components/shared/MarkdownRenderer.tsx",
-      "description": "Markdown娓叉煋鍣?
+      "description": "Markdown渲染器"
+    },
+    {
+      "id": "component:ClassAnalyticsView",
+      "type": "component",
+      "label": "ClassAnalyticsView",
+      "file": "frontend/components/teacher/ClassAnalyticsView.tsx",
+      "description": "班级学情-聚合统计/学生排行"
+    },
+    {
+      "id": "component:ClassModule",
+      "type": "component",
+      "label": "ClassModule",
+      "file": "frontend/components/teacher/ClassModule.tsx",
+      "description": "班级管理-创建/邀请码/学生名单/移除"
+    },
+    {
+      "id": "component:MyClassView",
+      "type": "component",
+      "label": "MyClassView",
+      "file": "frontend/components/teacher/MyClassView.tsx",
+      "description": "我的班级-学生入班/退出"
+    },
+    {
+      "id": "component:StudentMonitorView",
+      "type": "component",
+      "label": "StudentMonitorView",
+      "file": "frontend/components/teacher/StudentMonitorView.tsx",
+      "description": "学生学情-学生列表/11Tab下钻详情"
+    },
+    {
+      "id": "component:TeacherModuleViews",
+      "type": "component",
+      "label": "TeacherModuleViews",
+      "file": "frontend/components/teacher/TeacherModuleViews.tsx",
+      "description": "老师端6大教学模块视图"
+    },
+    {
+      "id": "component:TeacherDashboard",
+      "type": "component",
+      "label": "TeacherDashboard",
+      "file": "frontend/components/TeacherDashboard.tsx",
+      "description": "老师工作台-侧边导航/视图分发"
     },
     {
       "id": "component:WorkSpaceSection",
       "type": "component",
       "label": "WorkSpaceSection",
       "file": "frontend/components/WorkSpaceSection.tsx",
-      "description": "宸ヤ綔鍖虹粍浠?
+      "description": "工作区组件"
     },
     {
       "id": "component:constants",
@@ -2004,7 +2310,7 @@
       "type": "config",
       "label": ".env",
       "file": ".env",
-      "description": "鐜鍙橀噺閰嶇疆",
+      "description": "环境变量配置",
       "config_type": "env"
     },
     {
@@ -2012,7 +2318,7 @@
       "type": "config",
       "label": "pyproject.toml",
       "file": "pyproject.toml",
-      "description": "Python椤圭洰閰嶇疆",
+      "description": "Python项目配置",
       "config_type": "toml"
     },
     {
@@ -2020,7 +2326,7 @@
       "type": "config",
       "label": "sensitive_words.json",
       "file": "config/sensitive_words.json",
-      "description": "鏁忔劅璇嶅簱(127鏉?",
+      "description": "敏感词库(127条)",
       "config_type": "json"
     },
     {
@@ -2028,7 +2334,7 @@
       "type": "config",
       "label": "docker-compose.yml",
       "file": "docker-compose.yml",
-      "description": "Docker鏈嶅姟缂栨帓",
+      "description": "Docker服务编排",
       "config_type": "yaml"
     },
     {
@@ -2036,7 +2342,7 @@
       "type": "config",
       "label": "Dockerfile",
       "file": "Dockerfile",
-      "description": "鍚庣Docker闀滃儚",
+      "description": "后端Docker镜像",
       "config_type": "docker"
     },
     {
@@ -2044,7 +2350,7 @@
       "type": "config",
       "label": "package.json",
       "file": "frontend/package.json",
-      "description": "鍓嶇渚濊禆閰嶇疆",
+      "description": "前端依赖配置",
       "config_type": "json"
     },
     {
@@ -2052,7 +2358,7 @@
       "type": "config",
       "label": "tailwind.config.ts",
       "file": "frontend/tailwind.config.ts",
-      "description": "Tailwind CSS閰嶇疆",
+      "description": "Tailwind CSS配置",
       "config_type": "ts"
     },
     {
@@ -2060,7 +2366,49 @@
       "type": "data",
       "label": "document_parser",
       "file": "",
-      "description": "鏂囨。瑙ｆ瀽鍣?
+      "description": "文档解析器"
+    },
+    {
+      "id": "api:teacher",
+      "type": "api",
+      "label": "teacher",
+      "file": "",
+      "description": "老师端API-班级管理/学生学情代查"
+    },
+    {
+      "id": "database:ai_auth",
+      "type": "database",
+      "label": "ai_auth",
+      "file": "",
+      "description": ""
+    },
+    {
+      "id": "database:ai_profiles",
+      "type": "database",
+      "label": "ai_profiles",
+      "file": "",
+      "description": ""
+    },
+    {
+      "id": "database:ai_resources",
+      "type": "database",
+      "label": "ai_resources",
+      "file": "",
+      "description": ""
+    },
+    {
+      "id": "database:ai_assessments",
+      "type": "database",
+      "label": "ai_assessments",
+      "file": "",
+      "description": ""
+    },
+    {
+      "id": "api:student_class",
+      "type": "api",
+      "label": "student_class",
+      "file": "",
+      "description": "学生侧班级API-邀请码入班/退出班级"
     }
   ],
   "edges": [
@@ -2072,6 +2420,16 @@
     {
       "source": "db:ai_auth",
       "target": "table:ai_auth.sessions",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_auth",
+      "target": "table:ai_auth.classes",
+      "type": "contains_table"
+    },
+    {
+      "source": "db:ai_auth",
+      "target": "table:ai_auth.class_students",
       "type": "contains_table"
     },
     {
@@ -2265,6 +2623,11 @@
       "type": "imports"
     },
     {
+      "source": "service:advanced_retrieval_service",
+      "target": "db:ai_rag_knowledge",
+      "type": "uses_database"
+    },
+    {
       "source": "agent:agent_coordinator",
       "target": "infra:message_bus",
       "type": "communicates_via"
@@ -2281,6 +2644,31 @@
     },
     {
       "source": "service:auth_service",
+      "target": "db:ai_auth",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
+      "target": "db:ai_paths",
+      "type": "uses_database"
+    },
+    {
+      "source": "service:class_service",
       "target": "db:ai_auth",
       "type": "uses_database"
     },
@@ -2461,16 +2849,11 @@
     },
     {
       "source": "data:collaboration_db",
-      "target": "db:ai_resources",
-      "type": "uses_database"
-    },
-    {
-      "source": "data:collaboration_db",
       "target": "db:ai_assessments",
       "type": "uses_database"
     },
     {
-      "source": "data:config",
+      "source": "data:collaboration_db",
       "target": "db:ai_resources",
       "type": "uses_database"
     },
@@ -2486,6 +2869,26 @@
     },
     {
       "source": "data:config",
+      "target": "db:ai_rag_knowledge",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_resources",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
+      "target": "db:ai_assessments",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:config",
       "target": "db:ai_paths",
       "type": "uses_database"
     },
@@ -2496,36 +2899,16 @@
     },
     {
       "source": "data:config",
-      "target": "db:ai_rag_knowledge",
-      "type": "uses_database"
-    },
-    {
-      "source": "data:config",
-      "target": "db:ai_assessments",
-      "type": "uses_database"
-    },
-    {
-      "source": "data:config",
       "target": "db:ai_memory",
       "type": "uses_database"
     },
     {
-      "source": "data:config",
-      "target": "db:ai_profiles",
-      "type": "uses_database"
-    },
-    {
-      "source": "data:dao",
-      "target": "db:ai_resources",
-      "type": "uses_database"
-    },
-    {
       "source": "data:dao",
       "target": "db:ai_assessments",
       "type": "uses_database"
     },
     {
-      "source": "data:db_operations",
+      "source": "data:dao",
       "target": "db:ai_resources",
       "type": "uses_database"
     },
@@ -2536,7 +2919,12 @@
     },
     {
       "source": "data:db_operations",
-      "target": "db:ai_paths",
+      "target": "db:ai_profiles",
+      "type": "uses_database"
+    },
+    {
+      "source": "data:db_operations",
+      "target": "db:ai_resources",
       "type": "uses_database"
     },
     {
@@ -2546,7 +2934,7 @@
     },
     {
       "source": "data:db_operations",
-      "target": "db:ai_profiles",
+      "target": "db:ai_paths",
       "type": "uses_database"
     },
     {
@@ -3653,43 +4041,118 @@
       "source": "config:tailwind.config.ts",
       "target": "config:package.json",
       "type": "configured_by"
+    },
+    {
+      "source": "api:teacher",
+      "target": "service:class_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "api:teacher",
+      "target": "service:auth_service",
+      "type": "depends_on"
+    },
+    {
+      "source": "api:teacher",
+      "target": "database:ai_auth",
+      "type": "reads"
+    },
+    {
+      "source": "service:class_service",
+      "target": "database:ai_auth",
+      "type": "reads_writes"
+    },
+    {
+      "source": "service:class_service",
+      "target": "database:ai_profiles",
+      "type": "reads"
+    },
+    {
+      "source": "service:class_service",
+      "target": "database:ai_resources",
+      "type": "reads"
+    },
+    {
+      "source": "service:class_service",
+      "target": "database:ai_assessments",
+      "type": "reads"
+    },
+    {
+      "source": "api:student_class",
+      "target": "database:ai_auth",
+      "type": "reads_writes"
+    },
+    {
+      "source": "component:TeacherDashboard",
+      "target": "component:StudentMonitorView",
+      "type": "renders"
+    },
+    {
+      "source": "component:TeacherDashboard",
+      "target": "component:ClassModule",
+      "type": "renders"
+    },
+    {
+      "source": "component:TeacherDashboard",
+      "target": "component:ClassAnalyticsView",
+      "type": "renders"
+    },
+    {
+      "source": "component:TeacherDashboard",
+      "target": "component:TeacherModuleViews",
+      "type": "renders"
+    },
+    {
+      "source": "component:MyClassView",
+      "target": "api:student_class",
+      "type": "calls"
+    },
+    {
+      "source": "component:ClassModule",
+      "target": "api:teacher",
+      "type": "calls"
     }
   ],
   "metadata": {
-    "generated_at": "2026-07-30T17:00:36.251468",
+    "generated_at": "2026-10-12T11:49:01.711380",
     "version": "1.0",
-    "project": "鍩轰簬澶氭櫤鑳戒綋鐨勪釜鎬у寲瀛︿範璧勬簮绯荤粺",
+    "project": "基于多智能体的个性化学习辅助系统",
     "stats": {
-      "total_nodes": 256,
-      "total_edges": 318,
+      "total_nodes": 298,
+      "total_edges": 340,
       "node_types": {
-        "database": 10,
-        "table": 39,
-        "service": 29,
+        "database": 14,
+        "table": 41,
+        "service": 30,
         "agent": 6,
         "infra": 2,
         "data_layer": 8,
-        "endpoint": 112,
+        "endpoint": 138,
         "prompt": 4,
-        "page": 9,
+        "page": 10,
         "module": 1,
-        "component": 28,
+        "component": 34,
         "config": 7,
-        "data": 1
+        "data": 1,
+        "api": 2
       },
       "edge_types": {
-        "contains_table": 39,
+        "contains_table": 41,
         "imports": 31,
+        "uses_database": 39,
         "communicates_via": 7,
-        "uses_database": 33,
         "uses_prompt": 4,
-        "depends_on": 19,
+        "depends_on": 21,
         "coordinates": 5,
         "calls_service": 109,
         "uses_data_layer": 15,
         "configured_by": 7,
         "routes_to": 36,
-        "calls_endpoint": 13
+        "calls_endpoint": 13,
+        "reads": 4,
+        "reads_writes": 2,
+        "renders": 4,
+        "calls": 2
       },
       "top_connected": [
         {
@@ -3720,6 +4183,11 @@
         {
           "id": "service:advanced_retrieval_service",
           "label": "advanced_retrieval_service",
+          "degree": 14
+        },
+        {
+          "id": "db:ai_assessments",
+          "label": "ai_assessments",
           "degree": 13
         },
         {
@@ -3728,14 +4196,9 @@
           "degree": 13
         },
         {
-          "id": "db:ai_assessments",
-          "label": "ai_assessments",
-          "degree": 12
-        },
-        {
           "id": "db:ai_profiles",
           "label": "ai_profiles",
-          "degree": 11
+          "degree": 12
         },
         {
           "id": "data:config",
@@ -3748,6 +4211,16 @@
           "degree": 11
         },
         {
+          "id": "db:ai_rag_knowledge",
+          "label": "ai_rag_knowledge",
+          "degree": 10
+        },
+        {
+          "id": "service:class_service",
+          "label": "class_service",
+          "degree": 10
+        },
+        {
           "id": "agent:profile_agent",
           "label": "profile_agent",
           "degree": 10
@@ -3755,16 +4228,6 @@
         {
           "id": "agent:resource_agent",
           "label": "resource_agent",
-          "degree": 10
-        },
-        {
-          "id": "data:db_operations",
-          "label": "db_operations",
-          "degree": 10
-        },
-        {
-          "id": "component:QuizModule",
-          "label": "QuizModule",
           "degree": 10
         }
       ]

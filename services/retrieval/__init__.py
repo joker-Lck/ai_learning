@@ -1,2 +1,1 @@
-"""检索模块"""
-from services.advanced_retrieval_service import AdvancedRetrievalService, retrieval_service
+"""检索模块 — 请直接从 services.advanced_retrieval_service 导入。"""

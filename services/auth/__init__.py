@@ -1,2 +1,1 @@
-"""认证模块"""
-from services.auth_service import AuthService, auth_service
+"""认证模块 — 请直接从 services.auth_service 导入。"""

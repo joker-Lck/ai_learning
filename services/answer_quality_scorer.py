@@ -6,7 +6,6 @@
 import re
 from dataclasses import dataclass
 
-from core.logger import info
 
 # 不确定性标记
 UNCERTAINTY_MARKERS = [

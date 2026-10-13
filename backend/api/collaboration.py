@@ -4,9 +4,9 @@
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from backend.dependencies import get_current_user, require_auth
+from backend.dependencies import require_auth
 from backend.schemas.models import BaseResponse
-from core.logger import error, info
+from core.logger import error
 
 router = APIRouter(prefix="/collaboration", tags=["协同学习"])
 

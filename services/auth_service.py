@@ -1,4 +1,4 @@
-﻿"""
+"""
 用户认证服务模块
 处理用户登录、注册、密码加密等功能
 """
@@ -76,7 +76,7 @@ class AuthService:
         """检查是否需要重新哈希（旧版 SHA-256 → bcrypt）"""
         return not (stored_password.startswith('$2b$') or stored_password.startswith('$2a$'))
 
-    def register_user(self, username, password, email=None, role='user'):
+    def register_user(self, username, password, email=None, role='student'):
         """
         注册新用户
 
