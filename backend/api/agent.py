@@ -22,6 +22,7 @@ from services.assessment_agent import AssessmentAgent
 from services.document_analysis_service import document_analysis_service
 from services.path_agent import PathAgent
 from services.profile_agent import ProfileAgent
+from services.ragas_evaluator import ragas_evaluator
 from services.resource_export_service import resource_export_service
 
 router = APIRouter(prefix="/agent", tags=["学习智能体"])
@@ -2034,145 +2035,124 @@ async def trigger_learning_cycle(user=Depends(require_auth)):
 
 
 # ═══════════════════════════════════════════
-# 检索评测 API
+# RAGAS 评估 API（EduRAG 端到端评估）
 # ═══════════════════════════════════════════
 
-@router.get("/eval-retrieval/datasets", response_model=BaseResponse)
+@router.get("/eval-rag/datasets", response_model=BaseResponse)
 async def list_eval_datasets(user: dict = Depends(require_auth)):
-    """获取所有检索评测数据集"""
+    """获取所有 RAGAS 评估数据集"""
     try:
-        from services.retrieval_evaluator import retrieval_evaluator
-        datasets = retrieval_evaluator.get_datasets()
-        return BaseResponse(success=True, message="获取成功", data=datasets)
+        return BaseResponse(success=True, message="获取成功", data=ragas_evaluator.get_datasets())
     except Exception as e:
-        error(f"获取评测数据集失败: {e}")
+        error(f"获取评估数据集失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/eval-retrieval/datasets", response_model=BaseResponse)
-async def create_eval_dataset(
-    input_data: dict = Body(...),
-    user: dict = Depends(require_auth)
-):
-    """创建检索评测数据集"""
+@router.post("/eval-rag/datasets", response_model=BaseResponse)
+async def create_eval_dataset(input_data: dict = Body(...), user: dict = Depends(require_auth)):
+    """创建 RAGAS 评估数据集"""
     try:
-        from services.retrieval_evaluator import retrieval_evaluator
         name = input_data.get("name", "")
-        description = input_data.get("description", "")
         if not name:
             raise HTTPException(status_code=400, detail="数据集名称不能为空")
-        result = retrieval_evaluator.create_dataset(name, description)
-        return BaseResponse(**result)
+        return BaseResponse(**ragas_evaluator.create_dataset(name, input_data.get("description", "")))
     except HTTPException:
         raise
     except Exception as e:
-        error(f"创建评测数据集失败: {e}")
+        error(f"创建评估数据集失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/eval-retrieval/queries", response_model=BaseResponse)
-async def add_eval_query(
-    input_data: dict = Body(...),
-    user: dict = Depends(require_auth)
-):
-    """向数据集添加评测查询"""
-    try:
-        from services.retrieval_evaluator import retrieval_evaluator
-        dataset_id = input_data.get("dataset_id")
-        query = input_data.get("query", "")
-        relevant_doc_ids = input_data.get("relevant_doc_ids", [])
-        if not dataset_id or not query:
-            raise HTTPException(status_code=400, detail="dataset_id 和 query 不能为空")
-        result = retrieval_evaluator.add_query(dataset_id, query, relevant_doc_ids)
-        return BaseResponse(**result)
-    except HTTPException:
-        raise
-    except Exception as e:
-        error(f"添加评测查询失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/eval-retrieval/run", response_model=BaseResponse)
-async def run_eval_retrieval(
-    input_data: dict = Body(...),
-    user: dict = Depends(require_auth)
-):
+@router.post("/eval-rag/samples", response_model=BaseResponse)
+async def add_eval_sample(input_data: dict = Body(...), user: dict = Depends(require_auth)):
     """
-    运行检索评测
+    向数据集添加评估样本
 
-    请求体:
-    {
-        "dataset_id": 1,
-        "strategy": "hybrid",
-        "k": 5
-    }
+    请求体: {"dataset_id": 1, "user_input": "…", "reference": "…", "reference_contexts": [...]}
+    """
+    try:
+        dataset_id = input_data.get("dataset_id")
+        user_input = input_data.get("user_input") or input_data.get("query") or ""
+        if not dataset_id or not user_input:
+            raise HTTPException(status_code=400, detail="dataset_id 和 user_input 不能为空")
+        return BaseResponse(**ragas_evaluator.add_sample(
+            dataset_id=dataset_id,
+            user_input=user_input,
+            reference=input_data.get("reference") or input_data.get("ground_truth") or "",
+            reference_contexts=input_data.get("reference_contexts") or [],
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"添加评估样本失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/eval-rag/run", response_model=BaseResponse)
+async def run_eval_rag(input_data: dict = Body(...), user: dict = Depends(require_auth)):
+    """
+    运行 RAGAS 评估（检索 + 生成 + 指标评分）
+
+    请求体: {"dataset_id": 1, "strategy": "hybrid", "metrics": [...], "top_k": 5, "subject": "…"}
     """
     try:
         from data.rag_knowledge_base import rag_kb
-        from services.retrieval_evaluator import retrieval_evaluator
 
         dataset_id = input_data.get("dataset_id")
-        strategy = input_data.get("strategy", "hybrid")
-        k = input_data.get("k", 5)
-
         if not dataset_id:
             raise HTTPException(status_code=400, detail="dataset_id 不能为空")
+        strategy = input_data.get("strategy", "hybrid")
+        top_k = input_data.get("top_k", input_data.get("k", 5))
+        subject = input_data.get("subject")
 
-        # 构建检索函数
         def retrieval_fn(query: str):
             from data.embedding_service import embedding_service
-            embedding = embedding_service.get_embedding(query)
-            if strategy == "hybrid":
-                return rag_kb.hybrid_search(query, query_embedding=embedding, limit=k)
-            elif strategy == "fts5":
-                return rag_kb.search_documents_by_fulltext(query, limit=k)
-            elif strategy == "vector":
-                return rag_kb.search_documents_by_vector(embedding, limit=k)
-            else:
-                return rag_kb.hybrid_search(query, query_embedding=embedding, limit=k)
+            emb = embedding_service.get_embedding(query)
+            if strategy == "fts5":
+                return rag_kb.search_documents_by_fulltext(query, subject=subject, limit=top_k)
+            if strategy == "vector":
+                return rag_kb.search_documents_by_vector(emb, limit=top_k, query_text=query)
+            return rag_kb.hybrid_search(query, query_embedding=emb, subject=subject, limit=top_k)
 
-        result = retrieval_evaluator.run_evaluation(
+        return BaseResponse(**ragas_evaluator.run_evaluation(
             dataset_id=dataset_id,
             retrieval_fn=retrieval_fn,
             strategy_name=strategy,
-            k=k
-        )
-        return BaseResponse(**result)
+            metrics=input_data.get("metrics"),
+            top_k=top_k,
+            subject=subject,
+        ))
     except HTTPException:
         raise
     except Exception as e:
-        error(f"运行检索评测失败: {e}")
+        error(f"运行 RAGAS 评估失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/eval-retrieval/history", response_model=BaseResponse)
+@router.get("/eval-rag/history", response_model=BaseResponse)
 async def get_eval_history(
     dataset_id: int | None = Query(None),
-    user: dict = Depends(require_auth)
+    user: dict = Depends(require_auth),
 ):
-    """获取评测历史"""
+    """获取 RAGAS 评估历史"""
     try:
-        from services.retrieval_evaluator import retrieval_evaluator
-        history = retrieval_evaluator.get_history(dataset_id)
-        return BaseResponse(success=True, message="获取成功", data=history)
+        return BaseResponse(success=True, message="获取成功", data=ragas_evaluator.get_history(dataset_id))
     except Exception as e:
-        error(f"获取评测历史失败: {e}")
+        error(f"获取评估历史失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/eval-retrieval/compare", response_model=BaseResponse)
+@router.get("/eval-rag/compare", response_model=BaseResponse)
 async def compare_eval_strategies(
     dataset_id: int = Query(...),
-    k: int = Query(5),
-    user: dict = Depends(require_auth)
+    sort_by: str = Query("faithfulness"),
+    user: dict = Depends(require_auth),
 ):
-    """对比不同策略的评测结果"""
+    """对比不同检索/生成策略的 RAGAS 指标"""
     try:
-        from services.retrieval_evaluator import retrieval_evaluator
-        result = retrieval_evaluator.compare_strategies(dataset_id, k)
-        return BaseResponse(**result)
+        return BaseResponse(**ragas_evaluator.compare_strategies(dataset_id, sort_by=sort_by))
     except Exception as e:
-        error(f"对比评测策略失败: {e}")
+        error(f"对比评估策略失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

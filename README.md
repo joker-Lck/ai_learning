@@ -296,6 +296,7 @@
 | Pydantic | 2.0+ | 数据校验与序列化 |
 | bcrypt | 4.0+ | 密码哈希 |
 | slowapi | — | 速率限制中间件 |
+| RAGAS | 0.4+ | EduRAG 端到端评估（Faithfulness 等 5 指标） |
 
 ---
 
@@ -1132,6 +1133,7 @@ cd frontend && npm install && npm run build && npm start
 │   ├── message_bus.py              # 事件驱动消息总线
 │   ├── agent_message.py            # 消息协议定义（14 种类型）
 │   ├── advanced_retrieval_service.py # 高级检索（11 种策略）
+│   ├── ragas_evaluator.py          # RAGAS 评估框架（EduRAG 端到端评测）
 │   ├── content_safety_service.py   # 内容安全（AC 自动机 + 防幻觉）
 │   ├── streaming_service.py        # 流式输出服务
 │   ├── animation_service.py        # 教学动画生成
@@ -1217,10 +1219,22 @@ cd frontend && npm install && npm run build && npm start
 | API 响应 (P95) | <2s | 不含 AI 生成 |
 | RAG 检索 | ~5ms | FAISS 就绪时 |
 | 暴力余弦回退 | ~100ms | FAISS 不可用时 |
+| RAGAS 评估 | ~3s/样本 | 含检索+生成+5 指标评分 |
 
 ---
 
 ## 版本变更日志
+
+### v8.7.0 — RAGAS 评估框架（取代旧检索评测）
+
+**新增**：
+- 基于 [RAGAS](https://github.com/explodinggradients/ragas) 的 EduRAG 端到端评估
+- 5 项指标：Faithfulness / Context Precision / Context Recall / Answer Relevancy / Factual Correctness
+- API：`GET/POST /api/agent/eval-rag/{datasets,samples,run,history,compare}`
+
+**移除**：
+- 旧检索评测 `services/retrieval_evaluator.py`（NDCG@k / MRR / Recall@k）
+- 旧接口 `/eval-retrieval/*` 改为 `/eval-rag/*`
 
 ### v8.1.0（2026-07-19）— 用户体验全面升级
 

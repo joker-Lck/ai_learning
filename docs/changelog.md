@@ -1,5 +1,33 @@
 # 版本变更日志
 
+## v8.7.0 — RAGAS 评估框架（取代旧检索评测）
+
+### 新增
+- **RAGAS 评估框架** (`services/ragas_evaluator.py`)
+  - 基于 [RAGAS](https://github.com/explodinggradients/ragas) 的 EduRAG 端到端评估
+  - 指标：Faithfulness / Context Precision / Context Recall / Answer Relevancy / Factual Correctness
+  - 评估 LLM：MiMo（OpenAI 兼容，无 Key 时离线回退）；向量：本地 embedding 服务
+  - API：`/api/agent/eval-rag/{datasets,samples,run,history,compare}`
+  - 新增依赖 `ragas>=0.4.0`
+  - 评估结果持久化至 `retrieval_eval.eval_runs`
+
+### 移除
+- **旧检索评测** (`services/retrieval_evaluator.py`)
+  - NDCG@k / MRR / Recall@k 已由 RAGAS 指标取代
+  - 旧接口 `/eval-retrieval/*` 改为 `/eval-rag/*`
+
+### 兼容性
+- 兼容 langchain-community ≥ 0.4（VertexAI 移除 shim）
+- ragas 0.4 `evaluate()` 与 `metrics.collections` 双 API 兼容
+- 评估 LLM 输出按 prompt 内嵌 JSON Schema 生成，支持 `$ref`/`$defs`
+
+### 验证
+- E2E：创建数据集 → 3 样本 → 评估 → 5 指标入库 ✓
+  - faithfulness=1.0 / context_precision=1.0 / context_recall=1.0 / answer_relevancy=0.773 / factual_correctness=1.0
+- 单元测试：`tests/unit/test_ragas_evaluator.py` 15 passed ✓
+
+---
+
 ## v8.6.0 (2026-07-28) — AI 算法增强层（8 大算法模块）
 
 ### 新增 — 大模型输入前处理

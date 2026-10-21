@@ -155,16 +155,66 @@ Content-Type: application/json
 | GET | /learning-stats | 获取自学习统计 |
 | POST | /trigger-learning | 手动触发自学习循环 |
 
-### 检索评测（v8.0 新增）
+### RAGAS 评估（取代旧检索评测）
+
+基于 [RAGAS](https://github.com/explodinggradients/ragas) 的 EduRAG 端到端评估。
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
-| GET | /eval-retrieval/datasets | 获取评测数据集列表 |
-| POST | /eval-retrieval/datasets | 创建评测数据集 |
-| POST | /eval-retrieval/queries | 添加评测查询 |
-| POST | /eval-retrieval/run | 运行检索评测 |
-| GET | /eval-retrieval/history | 获取评测历史 |
-| GET | /eval-retrieval/compare | 对比策略评测结果 |
+| GET | /eval-rag/datasets | 获取评估数据集列表 |
+| POST | /eval-rag/datasets | 创建评估数据集 |
+| POST | /eval-rag/samples | 添加评估样本（user_input/reference） |
+| POST | /eval-rag/run | 运行 RAGAS 评估 |
+| GET | /eval-rag/history | 获取评估历史 |
+| GET | /eval-rag/compare | 对比策略指标 |
+
+**评估指标**
+
+| 指标 | 说明 | 需参考答案 |
+|------|------|-----------|
+| faithfulness | 答案是否忠实于检索上下文 | 否 |
+| context_precision | 检索上下文精确度 | 是 |
+| context_recall | 检索上下文召回率 | 是 |
+| answer_relevancy | 答案与问题相关性 | 否 |
+| factual_correctness | 事实正确性 | 是 |
+
+**请求示例**
+
+```bash
+POST /api/agent/eval-rag/datasets
+{"name": "edu_eval", "description": "EduRAG 评估集"}
+
+POST /api/agent/eval-rag/samples
+{
+  "dataset_id": 1,
+  "user_input": "什么是二叉树？",
+  "reference": "二叉树是每个节点最多有两个子节点的树形数据结构。",
+  "reference_contexts": ["二叉树是树形数据结构……"]
+}
+
+POST /api/agent/eval-rag/run
+{"dataset_id": 1, "strategy": "hybrid", "top_k": 5}
+```
+
+**响应示例**
+
+```json
+{
+  "success": true,
+  "framework": "ragas",
+  "strategy": "hybrid",
+  "metrics": {
+    "faithfulness": 1.0,
+    "context_precision": 1.0,
+    "context_recall": 1.0,
+    "answer_relevancy": 0.773,
+    "factual_correctness": 1.0
+  },
+  "total_samples": 3
+}
+```
+
+结果持久化至 `retrieval_eval` 库 `eval_runs` 表。
 
 ### Multi-Hop / ReAct（v8.0 新增）
 
