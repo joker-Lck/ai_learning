@@ -14,7 +14,7 @@
 """
 
 import json
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 import threading
 from datetime import datetime
 
@@ -868,8 +868,8 @@ class MemoryService:
     # ── 连接管理 ──────────────────────────────
 
     def connect(self):
-        self.conn = sqlite3.connect(self._db_path)
-        self.conn.row_factory = sqlite3.Row
+        self.conn = dbapi.connect(self._db_path)
+        self.conn.row_factory = dbapi.Row
         self.cursor = self.conn.cursor()
         self.short_term = ShortTermHandler(self.conn, self.cursor)
         self.episodic   = EpisodicHandler(self.conn, self.cursor)

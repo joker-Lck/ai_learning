@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     mimo_tts_model: str = "mimo-tts"
 
     # ── 数据库 ──
-    sqlite_db_dir: str = "data/databases"
+    legacy_db_dir: str = "data/databases"
 
     # ── 限流 ──
     rate_limit_global: str = "120/minute"

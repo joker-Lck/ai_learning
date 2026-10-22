@@ -18,9 +18,9 @@ from data.config import (
 
 
 def _conn(db_path: str):
-    from data import dbapi as sqlite3
-    c = sqlite3.connect(db_path, timeout=10)
-    c.row_factory = sqlite3.Row
+    from data import dbapi as dbapi
+    c = dbapi.connect(db_path, timeout=10)
+    c.row_factory = dbapi.Row
     c.execute("PRAGMA journal_mode=WAL")
     c.execute("PRAGMA foreign_keys=ON")
     return c

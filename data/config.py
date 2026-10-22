@@ -1,6 +1,6 @@
 """
 数据库配置模块 - MySQL 版本
-9 个独立 schema，与原 SQLite 文件一一对应。
+9 个独立 schema，与原 9 库架构一一对应。
 """
 
 import os
@@ -18,7 +18,7 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "123456")
 MYSQL_CHARSET = os.getenv("MYSQL_CHARSET", "utf8mb4")
 
 # 历史遗留：SQLite 目录（仅迁移脚本读取源数据用）
-SQLITE_DB_DIR = Path(os.getenv("SQLITE_DB_DIR", "data/databases"))
+LEGACY_SQLITE_DIR = Path(os.getenv("LEGACY_SQLITE_DIR", "data/databases"))
 
 # 库名映射
 DB_AUTH = "ai_auth"
@@ -45,7 +45,7 @@ def mysql_params() -> dict:
 
 
 # ==================== 库名获取（兼容旧 get_*_db_path） ====================
-# 旧代码写的是 sqlite3.connect(get_auth_db_path())，
+# 旧代码写的是 sqlite3.connect（现走 dbapi）(get_auth_db_path())，
 # 现在返回 MySQL 库名，由 data.dbapi.connect 解析。
 
 def get_auth_db_path() -> str:

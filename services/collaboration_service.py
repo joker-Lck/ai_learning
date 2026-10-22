@@ -20,7 +20,7 @@ class CollaborationService:
     def create_group(self, user_id: int, name: str, description: str = "",
                      subject: str = "综合") -> dict:
         """创建学习小组"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return {"success": False, "message": "数据库连接失败"}
         try:
             result = self.db.create_group(name, user_id, description, subject)
@@ -35,7 +35,7 @@ class CollaborationService:
 
     def join_group(self, user_id: int, invite_code: str) -> dict:
         """加入小组"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return {"success": False, "message": "数据库连接失败"}
         try:
             result = self.db.join_group(invite_code, user_id)
@@ -50,7 +50,7 @@ class CollaborationService:
 
     def leave_group(self, user_id: int, group_id: int) -> dict:
         """退出小组"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return {"success": False, "message": "数据库连接失败"}
         try:
             return self.db.leave_group(group_id, user_id)
@@ -59,7 +59,7 @@ class CollaborationService:
 
     def get_user_groups(self, user_id: int) -> list:
         """获取用户的小组列表"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return []
         try:
             return self.db.get_user_groups(user_id)
@@ -68,7 +68,7 @@ class CollaborationService:
 
     def get_group_detail(self, group_id: int, user_id: int) -> dict | None:
         """获取小组详情（含成员信息和用户角色）"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return None
         try:
             group = self.db.get_group_info(group_id)
@@ -89,7 +89,7 @@ class CollaborationService:
     def share_resource(self, user_id: int, group_id: int, resource_id: int,
                        resource_type: str = "document") -> dict:
         """共享资源到小组"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return {"success": False, "message": "数据库连接失败"}
         try:
             result = self.db.share_resource(group_id, resource_id, user_id, resource_type)
@@ -105,7 +105,7 @@ class CollaborationService:
 
     def get_shared_resources(self, group_id: int) -> list:
         """获取小组共享资源"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return []
         try:
             return self.db.get_shared_resources(group_id)
@@ -114,7 +114,7 @@ class CollaborationService:
 
     def get_group_activities(self, group_id: int, limit: int = 30) -> list:
         """获取小组动态"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return []
         try:
             return self.db.get_group_activities(group_id, limit)
@@ -124,7 +124,7 @@ class CollaborationService:
     def add_activity(self, group_id: int, user_id: int, activity_type: str,
                      content: str = "", metadata: dict | None = None) -> bool:
         """添加学习动态"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return False
         try:
             return self.db.add_activity(group_id, user_id, activity_type, content, metadata)
@@ -134,7 +134,7 @@ class CollaborationService:
     def add_review(self, user_id: int, group_id: int, resource_id: int,
                    rating: int, comment: str = "") -> dict:
         """添加互评"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return {"success": False, "message": "数据库连接失败"}
         try:
             result = self.db.add_review(group_id, resource_id, user_id, rating, comment)
@@ -150,7 +150,7 @@ class CollaborationService:
 
     def get_group_learning_stats(self, group_id: int) -> dict:
         """获取小组学习统计（进度对比）"""
-        if not self.db.connect():
+        if not self.dbapi.connect():
             return {"members": []}
         try:
             return self.db.get_group_learning_stats(group_id)

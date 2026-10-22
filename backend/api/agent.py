@@ -189,10 +189,10 @@ async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
 
         # 5. 保存评定记录到数据库
         try:
-            from data import dbapi as sqlite3
+            from data import dbapi as dbapi
 
             from data.config import get_memory_db_path
-            conn = sqlite3.connect(get_memory_db_path())
+            conn = dbapi.connect(get_memory_db_path())
             conn.execute("""
                 INSERT INTO profile_evaluations
                 (user_id, knowledge_base, cognitive_style, learning_goals,
@@ -1019,7 +1019,7 @@ async def list_resources(
         resource_db.cursor.execute(sql, params)
         rows = resource_db.cursor.fetchall()
 
-        # 解析 JSON 字段 (sqlite3.Row 不支持 .get()，先转 dict)
+        # 解析 JSON 字段 (dbapi.Row 不支持 .get()，先转 dict)
         rows = [dict(row) for row in rows]
         for row in rows:
             if row.get("content_data"):

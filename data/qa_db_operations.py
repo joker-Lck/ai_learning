@@ -1,7 +1,7 @@
-﻿"""AI 答疑专用数据库操作模块（JSON 格式存储） - SQLite 版本"""
+﻿"""AI 答疑专用数据库操作模块（JSON 格式存储）（MySQL）"""
 
 import json
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 import time
 from datetime import datetime
 
@@ -51,10 +51,10 @@ class QADatabase:
         self.cursor = None
 
     def _get_connection(self):
-        """获取 SQLite 连接"""
+        """获取 MySQL 连接"""
         db_path = get_tutor_db_path()
-        conn = sqlite3.connect(db_path, timeout=10)
-        conn.row_factory = sqlite3.Row
+        conn = dbapi.connect(db_path, timeout=10)
+        conn.row_factory = dbapi.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
@@ -90,7 +90,7 @@ class QADatabase:
             self.cursor.execute(sql, (username, email, role))
             self.conn.commit()
             return self.cursor.lastrowid
-        except sqlite3.IntegrityError:
+        except dbapi.IntegrityError:
             return self.get_user_by_username(username)['id']
         except Exception as e:
             error(f"添加用户失败：{e!s}")

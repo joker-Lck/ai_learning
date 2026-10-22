@@ -1,7 +1,7 @@
 """自学习闭环：反馈收集 → 经验筛选 → 数据增强 → 知识库增量更新"""
 
 import json
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 import uuid
 
 from core.logger import error, info, warning
@@ -59,7 +59,7 @@ class SelfLearningService:
         """
         try:
             from data.config import get_memory_db_path
-            conn = sqlite3.connect(get_memory_db_path())
+            conn = dbapi.connect(get_memory_db_path())
             cursor = conn.cursor()
 
             cursor.execute("""
@@ -100,8 +100,8 @@ class SelfLearningService:
 
         try:
             from data.config import get_memory_db_path
-            conn = sqlite3.connect(get_memory_db_path())
-            conn.row_factory = sqlite3.Row
+            conn = dbapi.connect(get_memory_db_path())
+            conn.row_factory = dbapi.Row
             cursor = conn.cursor()
 
             # 获取未处理的反馈
@@ -253,8 +253,8 @@ class SelfLearningService:
 
         try:
             from data.config import get_memory_db_path
-            conn = sqlite3.connect(get_memory_db_path())
-            conn.row_factory = sqlite3.Row
+            conn = dbapi.connect(get_memory_db_path())
+            conn.row_factory = dbapi.Row
             cursor = conn.cursor()
 
             cursor.execute("""
@@ -319,7 +319,7 @@ class SelfLearningService:
         """获取自学习统计"""
         try:
             from data.config import get_memory_db_path
-            conn = sqlite3.connect(get_memory_db_path())
+            conn = dbapi.connect(get_memory_db_path())
             cursor = conn.cursor()
 
             stats = {}

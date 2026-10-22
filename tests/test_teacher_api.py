@@ -33,9 +33,9 @@ class TestClassService:
         self.student_id = r2['user_id']
         yield
         # 清理
-        from data import dbapi as sqlite3
+        from data import dbapi as dbapi
         from data.config import get_auth_db_path
-        conn = sqlite3.connect(get_auth_db_path())
+        conn = dbapi.connect(get_auth_db_path())
         conn.execute("DELETE FROM class_students WHERE student_id=?", (self.student_id,))
         conn.execute("DELETE FROM classes WHERE teacher_id=?", (self.teacher_id,))
         conn.execute("DELETE FROM users WHERE id IN (?, ?)", (self.teacher_id, self.student_id))
@@ -90,9 +90,9 @@ class TestClassService:
         # 未加入时应返回 False
         assert self.cs.assert_student_in_teacher_class(self.teacher_id, self.student_id) is False
         # 手动加入
-        from data import dbapi as sqlite3
+        from data import dbapi as dbapi
         from data.config import get_auth_db_path
-        conn = sqlite3.connect(get_auth_db_path())
+        conn = dbapi.connect(get_auth_db_path())
         conn.execute(
             "INSERT INTO class_students (class_id, student_id) VALUES (?, ?)",
             (class_id, self.student_id)
@@ -105,9 +105,9 @@ class TestClassService:
     def test_remove_student(self):
         r = self.cs.create_class(self.teacher_id, '移除测试')
         class_id = r['class_id']
-        from data import dbapi as sqlite3
+        from data import dbapi as dbapi
         from data.config import get_auth_db_path
-        conn = sqlite3.connect(get_auth_db_path())
+        conn = dbapi.connect(get_auth_db_path())
         conn.execute(
             "INSERT INTO class_students (class_id, student_id) VALUES (?, ?)",
             (class_id, self.student_id)
@@ -120,9 +120,9 @@ class TestClassService:
     def test_list_all_students(self):
         r = self.cs.create_class(self.teacher_id, '全部学生测试')
         class_id = r['class_id']
-        from data import dbapi as sqlite3
+        from data import dbapi as dbapi
         from data.config import get_auth_db_path
-        conn = sqlite3.connect(get_auth_db_path())
+        conn = dbapi.connect(get_auth_db_path())
         conn.execute(
             "INSERT INTO class_students (class_id, student_id) VALUES (?, ?)",
             (class_id, self.student_id)
@@ -168,9 +168,9 @@ class TestStudentMonitorService:
 class TestRoleMigration:
 
     def test_no_legacy_user_roles(self):
-        from data import dbapi as sqlite3
+        from data import dbapi as dbapi
         from data.config import get_auth_db_path
-        conn = sqlite3.connect(get_auth_db_path())
+        conn = dbapi.connect(get_auth_db_path())
         count = conn.execute(
             "SELECT COUNT(*) FROM users WHERE role = 'user'"
         ).fetchone()[0]
@@ -178,9 +178,9 @@ class TestRoleMigration:
         assert count == 0, f"仍有 {count} 个存量 role='user' 未迁移"
 
     def test_classes_tables_exist(self):
-        from data import dbapi as sqlite3
+        from data import dbapi as dbapi
         from data.config import get_auth_db_path
-        conn = sqlite3.connect(get_auth_db_path())
+        conn = dbapi.connect(get_auth_db_path())
         tables = [
             r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('classes', 'class_students')"
@@ -191,9 +191,9 @@ class TestRoleMigration:
         assert 'class_students' in tables
 
     def test_role_check_allows_teacher_student(self):
-        from data import dbapi as sqlite3
+        from data import dbapi as dbapi
         from data.config import get_auth_db_path
-        conn = sqlite3.connect(get_auth_db_path())
+        conn = dbapi.connect(get_auth_db_path())
         # 验证 CHECK 约束包含 teacher/student
         schema = conn.execute(
             "SELECT sql FROM sqlite_master WHERE name='users'"

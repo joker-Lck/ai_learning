@@ -4,7 +4,7 @@ from core.logger import error, info, warning
 
 import json
 import os
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 import threading
 import time
 from collections import OrderedDict
@@ -515,7 +515,7 @@ class RAGKnowledgeBase:
     def _init_fts(self):
         """初始化 MySQL FULLTEXT 索引（迁移期兼容入口，DDL 已在建表脚本中完成）"""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = dbapi.connect(self.db_path)
             conn.execute("SELECT 1 FROM knowledge_documents LIMIT 1")
             conn.close()
         except Exception as e:
@@ -523,8 +523,8 @@ class RAGKnowledgeBase:
 
     def _get_connection(self):
         """获取 MySQL 连接"""
-        conn = sqlite3.connect(self.db_path, timeout=10)
-        conn.row_factory = sqlite3.Row
+        conn = dbapi.connect(self.db_path, timeout=10)
+        conn.row_factory = dbapi.Row
         return conn
 
     def connect(self):

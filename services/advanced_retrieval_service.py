@@ -454,9 +454,9 @@ class AdvancedRetrievalService:
             # 数据源2: knowledge_entity_graph（文档级实体关系图谱）
             try:
                 from data.config import get_rag_db_path
-                from data import dbapi as sqlite3
-                conn = sqlite3.connect(get_rag_db_path())
-                conn.row_factory = sqlite3.Row
+                from data import dbapi as dbapi
+                conn = dbapi.connect(get_rag_db_path())
+                conn.row_factory = dbapi.Row
                 cursor = conn.cursor()
 
                 for entity_name in entities[:3]:

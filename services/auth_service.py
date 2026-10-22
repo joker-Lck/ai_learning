@@ -4,7 +4,7 @@
 """
 
 import hashlib
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 
 import bcrypt
 
@@ -21,8 +21,8 @@ class AuthService:
 
     def _get_connection(self):
         """获取数据库连接"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = dbapi.connect(self.db_path)
+        conn.row_factory = dbapi.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn

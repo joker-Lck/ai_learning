@@ -50,7 +50,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 def _load_embedding_corpus():
     """加载语料用于训练 embedding 模型"""
     import glob
-    from data import dbapi as sqlite3
+    from data import dbapi as dbapi
 
     corpus = []
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -91,7 +91,7 @@ def _load_embedding_corpus():
     # 4. 知识库数据库（MySQL 各 schema）
     for schema in ('ai_rag_knowledge', 'ai_memory', 'ai_profiles', 'ai_tutor'):
         try:
-            conn = sqlite3.connect(schema)
+            conn = dbapi.connect(schema)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT table_name FROM information_schema.tables "
@@ -268,18 +268,18 @@ async def health_check():
     """详细健康检查，包含依赖状态"""
     checks = {"api": "ok"}
 
-    # SQLite 检查
+    # MySQL 检查
     try:
         from data.db_operations import profile_db
         if profile_db.connect():
             profile_db.cursor.execute("SELECT 1")
             profile_db.cursor.fetchone()
             profile_db.close()
-            checks["sqlite"] = "ok"
+            checks["mysql"] = "ok"
         else:
-            checks["sqlite"] = "error"
+            checks["mysql"] = "error"
     except Exception:
-        checks["sqlite"] = "error"
+        checks["mysql"] = "error"
 
     # 向量检索（Milvus）检查
     try:

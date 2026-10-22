@@ -9,14 +9,14 @@ from backend.schemas.models import BaseResponse, ClassJoinRequest
 from core.logger import error, info
 from data.config import get_auth_db_path
 
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 
 router = APIRouter()
 
 
 def _conn():
-    c = sqlite3.connect(get_auth_db_path(), timeout=10)
-    c.row_factory = sqlite3.Row
+    c = dbapi.connect(get_auth_db_path(), timeout=10)
+    c.row_factory = dbapi.Row
     c.execute("PRAGMA journal_mode=WAL")
     c.execute("PRAGMA foreign_keys=ON")
     return c

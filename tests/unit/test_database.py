@@ -1,7 +1,7 @@
 """单元测试：数据库操作（MySQL）"""
 import os
 
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 
 
 class TestDatabaseInit:
@@ -81,7 +81,7 @@ class TestMemoryDB:
     """测试记忆数据库表结构"""
 
     def _tables(self, schema: str) -> list[str]:
-        conn = sqlite3.connect(schema)
+        conn = dbapi.connect(schema)
         try:
             cursor = conn.execute(
                 "SELECT table_name FROM information_schema.tables "

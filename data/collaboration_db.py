@@ -3,7 +3,7 @@
 """
 
 import json
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 
 from core.logger import error, info
 
@@ -21,8 +21,8 @@ class CollaborationDB:
         try:
             from data.config import get_assessments_db_path
             self.db_path = get_assessments_db_path()
-            self.conn = sqlite3.connect(self.db_path)
-            self.conn.row_factory = sqlite3.Row
+            self.conn = dbapi.connect(self.db_path)
+            self.conn.row_factory = dbapi.Row
             self.cursor = self.conn.cursor()
             self._init_tables()
             return True

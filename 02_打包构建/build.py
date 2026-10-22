@@ -190,7 +190,7 @@ def assemble_dist():
                 shutil.rmtree(str(dest))
             shutil.copytree(str(src), str(dest))
 
-    # 确保 SQLite 数据库目录存在
+    # 确保 legacy 数据目录存在
     sqlite_dir = DIST_DIR / "data" / "databases"
     sqlite_dir.mkdir(parents=True, exist_ok=True)
 

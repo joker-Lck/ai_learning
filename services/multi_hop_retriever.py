@@ -2,7 +2,7 @@
 
 import json
 import re
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 
 from core.logger import debug, error, info, warning
 
@@ -505,7 +505,7 @@ class MultiHopRetriever:
                 return False
 
             from data.config import get_rag_db_path
-            conn = sqlite3.connect(get_rag_db_path())
+            conn = dbapi.connect(get_rag_db_path())
             cursor = conn.cursor()
 
             for ent in entities:
@@ -627,7 +627,7 @@ class MultiHopRetriever:
         """存储实体和关系到数据库"""
         try:
             from data.config import get_rag_db_path
-            conn = sqlite3.connect(get_rag_db_path())
+            conn = dbapi.connect(get_rag_db_path())
             cursor = conn.cursor()
 
             # 存储实体

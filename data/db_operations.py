@@ -1,10 +1,10 @@
 ﻿"""
-SQLite 数据库操作模块（JSON 格式存储）
+MySQL 数据库操作模块（JSON 格式存储）
 提供数据库 CRUD 操作，所有复杂数据以 JSON 格式存储
 """
 
 import json
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 from datetime import datetime
 
 from core.logger import db_operation_failed, db_operation_success, debug, error
@@ -30,12 +30,12 @@ class Database:
         try:
             config = self._config_func()
             db_path = config["database"]
-            self.conn = sqlite3.connect(db_path, timeout=10)
-            self.conn.row_factory = sqlite3.Row
+            self.conn = dbapi.connect(db_path, timeout=10)
+            self.conn.row_factory = dbapi.Row
             self.conn.execute("PRAGMA journal_mode=WAL")
             self.conn.execute("PRAGMA foreign_keys=ON")
             self.cursor = self.conn.cursor()
-            debug(f"SQLite 连接成功: {db_path}")
+            debug(f"MySQL 连接成功: {db_path}")
             return True
         except Exception as e:
             error(f"数据库连接失败：{e!s}")

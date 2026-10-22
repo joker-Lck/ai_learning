@@ -1,6 +1,6 @@
 """Pytest 全局 fixtures"""
 import os
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 import sys
 
 import pytest

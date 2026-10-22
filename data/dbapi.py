@@ -1,8 +1,8 @@
 """
-sqlite3 兼容层 — 基于 PyMySQL。
+dbapi 兼容层 — 基于 PyMySQL。
 
-业务代码里的 `import sqlite3` 可替换为 `from data import dbapi as sqlite3`，
-继续使用 `?` 占位符、`row_factory = sqlite3.Row`、`lastrowid`、PRAGMA 等旧接口。
+业务代码里的 `import sqlite3` 可替换为 `from data import dbapi as db`，
+继续使用 `?` 占位符、`row_factory = dbapi.Row`、`lastrowid`、PRAGMA 等旧接口。
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from pymysql import err as _pymysql_err
 from pymysql.connections import Connection as _PyMySQLConnection
 from pymysql.cursors import Cursor as _PyMySQLCursor
 
-# ── 兼容 sqlite3 的异常别名 ──────────────────────────────
+# ── 兼容 sqlite3 风格的异常别名 ──────────────────────────────
 Error = _pymysql_err.Error
 InterfaceError = _pymysql_err.InterfaceError
 DatabaseError = _pymysql_err.DatabaseError
@@ -192,7 +192,7 @@ def resolve_database(target: Any) -> str:
 
 
 class Row:
-    """模拟 sqlite3.Row：支持下标、列名、keys()、dict()。"""
+    """模拟 dbapi.Row：支持下标、列名、keys()、dict()。"""
 
     __slots__ = ("_keys", "_vals")
 
@@ -230,7 +230,7 @@ class Row:
 
 
 class Cursor(_PyMySQLCursor):
-    """支持 sqlite3.Row / dict 行对象与 lastrowid。"""
+    """支持 dbapi.Row / dict 行对象与 lastrowid。"""
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -291,7 +291,7 @@ class DictCursor(_PyMySQLCursor):
 
 
 class Connection:
-    """模拟 sqlite3.Connection 的常用接口。"""
+    """兼容 sqlite3.Connection 的常用接口。"""
 
     def __init__(self, database: str, **kwargs: Any):
         self._database = resolve_database(database)
@@ -305,7 +305,7 @@ class Connection:
     def _connect(self, params: dict[str, Any]) -> _PyMySQLConnection:
         return _pool_acquire(self._database)
 
-    # ── sqlite3 风格 API ──────────────────────────
+    # ── 兼容 API ──────────────────────────
     def cursor(self, factory: Any = None) -> Cursor:
         if factory is not None and factory is not Cursor:
             cur = self._conn.cursor()
@@ -380,7 +380,7 @@ class Connection:
         pass
 
     def backup(self, *args: Any, **kwargs: Any) -> None:
-        raise NotSupportedError("MySQL 不支持 sqlite3 backup API")
+        raise NotSupportedError("MySQL 不支持 backup API")
 
     def __enter__(self) -> "Connection":
         return self
@@ -429,7 +429,7 @@ def _split_sql(script: str) -> list[str]:
 
 
 def _adapt_sql(sql: str) -> str:
-    """把 SQLite 风格 SQL 适配为 MySQL 可执行形式。"""
+    """把 sqlite3 风格 SQL 适配为 MySQL 可执行形式。"""
     out = sql
     # 占位符：优先保留已是 %s 的写法，把 ? 换成 %s
     out = out.replace("?", "%s")
@@ -531,12 +531,12 @@ def connect(
     uri: bool = False,
     **kwargs: Any,
 ) -> Connection:
-    """sqlite3.connect 兼容入口。"""
+    """dbapi.connect 兼容入口。"""
     kwargs.pop("timeout", None)
     return Connection(database, **kwargs)
 
 
-# sqlite3.Row 导出
+# dbapi.Row 导出
 __all__ = [
     "connect",
     "Connection",

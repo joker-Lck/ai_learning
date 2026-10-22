@@ -1,6 +1,6 @@
 """
 AI 学习智能体 - 启动器（无终端版）
-管理 Node.js、FastAPI 两个子进程（SQLite 无需独立进程）
+管理 Node.js、FastAPI 两个子进程（MySQL 为外部服务）
 所有日志写入文件，错误通过 Windows 消息框提示
 """
 import os
@@ -28,7 +28,7 @@ FRONTEND_SERVER = FRONTEND_DIR / "server.js"
 LOGS_DIR = BASE_DIR / "logs"
 ENV_FILE = BASE_DIR / ".env"
 ENV_EXAMPLE = BASE_DIR / ".env.example"
-SQLITE_DB_DIR = BASE_DIR / "data" / "databases"
+LEGACY_SQLITE_DIR = BASE_DIR / "data" / "databases"
 
 # 端口配置
 BACKEND_PORT = 8000
@@ -123,9 +123,9 @@ def setup_env():
     return False
 
 
-def init_sqlite():
-    SQLITE_DB_DIR.mkdir(parents=True, exist_ok=True)
-    log(f"SQLite 数据目录: {SQLITE_DB_DIR}", "OK")
+def init_mysql():
+    LEGACY_SQLITE_DIR.mkdir(parents=True, exist_ok=True)
+    log(f"数据目录: {LEGACY_SQLITE_DIR}", "OK")
     return True
 
 
@@ -254,9 +254,9 @@ def main():
     if not setup_env():
         return
 
-    # 步骤 2: 初始化 SQLite
-    log("[2/5] 初始化 SQLite...")
-    init_sqlite()
+    # 步骤 2: 初始化 MySQL
+    log("[2/5] 初始化 MySQL...")
+    init_mysql()
 
     # 步骤 3: 初始化数据库
     log("[3/5] 初始化数据库...")

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import os
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -237,8 +237,8 @@ class RagasEvaluator:
 
     @contextmanager
     def _db(self) -> Iterator:
-        conn = sqlite3.connect(self._db_file)
-        conn.row_factory = sqlite3.Row
+        conn = dbapi.connect(self._db_file)
+        conn.row_factory = dbapi.Row
         try:
             yield conn
             conn.commit()
@@ -263,7 +263,7 @@ class RagasEvaluator:
                     (name, description),
                 )
             return {"success": True, "dataset_id": cur.lastrowid}
-        except sqlite3.IntegrityError:
+        except dbapi.IntegrityError:
             return {"success": False, "message": f"数据集 '{name}' 已存在"}
         except Exception as e:
             return {"success": False, "message": str(e)}
