@@ -8,25 +8,26 @@ from pathlib import Path
 
 block_cipher = None
 BASE_DIR = os.path.dirname(os.path.abspath(SPEC))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
 
 # ── 数据文件 ──
 datas = []
 
 # 配置文件
-if os.path.exists(os.path.join(BASE_DIR, '.env.example')):
-    datas.append((os.path.join(BASE_DIR, '.env.example'), '.'))
-if os.path.exists(os.path.join(BASE_DIR, 'config')):
-    datas.append((os.path.join(BASE_DIR, 'config'), 'config'))
+if os.path.exists(os.path.join(PROJECT_ROOT, '.env.example')):
+    datas.append((os.path.join(PROJECT_ROOT, '.env.example'), '.'))
+if os.path.exists(os.path.join(PROJECT_ROOT, 'config')):
+    datas.append((os.path.join(PROJECT_ROOT, 'config'), 'config'))
 
 # 脚本
-if os.path.exists(os.path.join(BASE_DIR, 'scripts')):
-    datas.append((os.path.join(BASE_DIR, 'scripts'), 'scripts'))
+if os.path.exists(os.path.join(PROJECT_ROOT, 'scripts')):
+    datas.append((os.path.join(PROJECT_ROOT, 'scripts'), 'scripts'))
 
 # 后端模块
-datas.append((os.path.join(BASE_DIR, 'backend'), 'backend'))
-datas.append((os.path.join(BASE_DIR, 'core'), 'core'))
-datas.append((os.path.join(BASE_DIR, 'services'), 'services'))
-datas.append((os.path.join(BASE_DIR, 'data'), 'data'))
+datas.append((os.path.join(PROJECT_ROOT, 'backend'), 'backend'))
+datas.append((os.path.join(PROJECT_ROOT, 'core'), 'core'))
+datas.append((os.path.join(PROJECT_ROOT, 'services'), 'services'))
+datas.append((os.path.join(PROJECT_ROOT, 'data'), 'data'))
 
 # ── 隐藏导入 ──
 hiddenimports = [
@@ -57,7 +58,8 @@ hiddenimports = [
 
     # 数据处理
     'numpy',
-    'faiss',
+    'pymilvus',
+    'milvus_lite',
     'pandas',
 
     # 文档处理
@@ -97,8 +99,8 @@ excludes = [
 ]
 
 a = Analysis(
-    ['launcher.py'],
-    pathex=[BASE_DIR],
+    [os.path.join(PROJECT_ROOT, '01_运行启动', 'launcher.py')],
+    pathex=[PROJECT_ROOT],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,

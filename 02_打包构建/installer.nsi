@@ -26,7 +26,7 @@ VIAddVersionKey "LegalCopyright" ""
 
 ; ── 安装页面 ──
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
+!insertmacro MUI_PAGE_LICENSE "..\LICENSE.txt"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
@@ -46,7 +46,7 @@ Section "核心文件（必需）" SecCore
     SetOutPath "$INSTDIR"
 
     ; PyInstaller 输出
-    File /r "dist\AI学习智能体\*.*"
+    File /r "..\dist\AI学习智能体\*.*"
 
     ; 创建必要目录
     CreateDirectory "$INSTDIR\logs"

@@ -1,6 +1,6 @@
-﻿"""Pytest 全局 fixtures"""
+"""Pytest 全局 fixtures"""
 import os
-import sqlite3
+from data import dbapi as sqlite3
 import sys
 
 import pytest
@@ -11,12 +11,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 @pytest.fixture
 def tmp_db(tmp_path):
-    """创建临时 SQLite 数据库"""
-    db_path = str(tmp_path / "test.db")
-    conn = sqlite3.connect(db_path)
-    conn.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)")
+    """创建临时测试数据库（MySQL schema）"""
+    from data import dbapi as dbapi_mod
+
+    schema = "ai_test_tmp"
+    conn = dbapi_mod.connect(schema)
+    conn.execute("CREATE TABLE IF NOT EXISTS test_table (id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))")
     conn.commit()
-    yield db_path
+    yield schema
     conn.close()
 
 

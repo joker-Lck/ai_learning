@@ -7,7 +7,7 @@
 """
 
 import shutil
-import sqlite3
+from data import dbapi as sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path

@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/Next.js-14-black?logo=next.js&logoColor=white" alt="Next.js">
   <img src="https://img.shields.io/badge/React_Native-0.76+-61DAFB?logo=react&logoColor=white" alt="React Native">
   <img src="https://img.shields.io/badge/MiMo-v2.5-purple" alt="MiMo">
-  <img src="https://img.shields.io/badge/SQLite-3-blue?logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/MySQL-8.0-blue?logo=mysql&logoColor=white" alt="MySQL">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
@@ -239,14 +239,14 @@
 │  │ 文本推理      │ │ 视觉理解     │ │ 图片生成      │ │ 语音合成   ││
 │  └──────────────┘ └──────────────┘ └──────────────┘ └────────────┘│
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐               │
-│  │TF-IDF+SVD   │ │ RAG 知识库    │ │ 内容安全服务  │               │
-│  │ 本地向量化   │ │ FAISS+FTS5   │ │ AC自动机      │               │
+│  │ BGE-M3(GPU) │ │ RAG 知识库    │ │ 内容安全服务  │               │
+│  │ 本地向量化   │ │ Milvus+FULLTEXT   │ │ AC自动机      │               │
 │  └──────────────┘ └──────────────┘ └──────────────┘               │
 ├────────────────────────────────────┬────────────────────────────────┤
 │                                     │                                │
 │                                     ▼                                │
 ├─────────────────────────────────────────────────────────────────────┤
-│                   数据层 (Data Layer) — 9 个独立 SQLite               │
+│                   数据层 (Data Layer) — 9 个独立 MySQL Schema         │
 │  ┌──────┐ ┌──────────┐ ┌──────────┐ ┌──────┐ ┌──────┐ ┌────────┐ │
 │  │ auth │ │ profiles │ │ resources│ │ paths│ │ tutor│ │ memory │ │
 │  └──────┘ └──────────┘ └──────────┘ └──────┘ └──────┘ └────────┘ │
@@ -289,8 +289,10 @@
 |------|------|------|
 | FastAPI | 0.110+ | 高性能异步 API 框架 |
 | Python | 3.14 | 后端运行环境 |
-| SQLite | 3.50+ | 嵌入式数据库（9 个独立实例） |
-| FAISS | 1.7+ | Facebook 向量相似度检索库 |
+| MySQL | 8.0+ | 关系数据库（9 个独立 Schema） |
+| Milvus | 2.4+ | 向量检索（Milvus Lite 本地） |
+| BGE-M3 | — | 嵌入模型（1024 维，GPU） |
+| Milvus | 1.7+ | 向量数据库（Milvus Lite 本地 / Server 远程） |
 | OpenAI SDK | 1.0+ | MiMo API 兼容客户端 |
 | SSE | — | Server-Sent Events 流式输出 |
 | Pydantic | 2.0+ | 数据校验与序列化 |
@@ -383,7 +385,7 @@ cd frontend && npm run dev
 或使用启动脚本：
 
 ```bash
-scripts\启动.bat          # 启动 Web 端
+01_运行启动\启动.bat          # 启动 Web 端
 scripts\启动移动端.bat      # 启动移动端
 ```
 
@@ -422,7 +424,10 @@ MIMO_IMAGE_MODEL=mimo-image                                 # 图片生成模型
 MIMO_TTS_MODEL=mimo-tts                                     # 语音合成模型
 
 # ===== 数据库配置 =====
-SQLITE_DB_DIR=data/databases                                # SQLite 数据库目录
+MYSQL_HOST=127.0.0.1                                       # MySQL 主机
+MYSQL_PORT=3306                                            # MySQL 端口
+MYSQL_USER=root                                            # MySQL 用户
+MYSQL_PASSWORD=123456                                      # MySQL 密码
 
 # ===== 其他配置 =====
 LOG_LEVEL=INFO                                              # 日志级别
@@ -441,7 +446,11 @@ RAG_SIMILARITY_THRESHOLD=0.8                                # RAG 相似度阈�
 | `MIMO_VISION_MODEL` | ❌ | `mimo-v2.5` | 视觉理解模型 |
 | `MIMO_IMAGE_MODEL` | ❌ | `mimo-image` | 图片生成模型 |
 | `MIMO_TTS_MODEL` | ❌ | `mimo-tts` | 语音合成模型 |
-| `SQLITE_DB_DIR` | ❌ | `data/databases` | 数据库存储目录 |
+| `MYSQL_HOST` | ❌ | `127.0.0.1` | MySQL 主机 |
+| `MYSQL_PORT` | ❌ | `3306` | MySQL 端口 |
+| `MYSQL_USER` | ❌ | `root` | MySQL 用户 |
+| `MYSQL_PASSWORD` | ❌ | `123456` | MySQL 密码 |
+| `EMBEDDING_MODEL` | ❌ | `BAAI/bge-m3` | 嵌入模型 |
 | `ALLOWED_ORIGINS` | ❌ | `http://localhost:3000` | CORS 允许的源 |
 | `LOG_LEVEL` | ❌ | `INFO` | 日志级别（DEBUG/INFO/WARNING/ERROR） |
 | `MAX_UPLOAD_SIZE` | ❌ | `50` | 单文件最大上传大小（MB） |
@@ -583,8 +592,10 @@ MiMo 分析学生当前知识水平，同时生成学习路径和学习计划。
 **支持格式**：TXT / MD / PDF / DOCX / PPTX / XLSX / CSV（单文件最大 20MB）
 
 **检索能力**：
-- KNN 关键词路径：SQLite FTS5 精确匹配
-- ANN 向量路径：FAISS + TF-IDF+SVD 语义匹配
+- KNN 关键词路径：MySQL FULLTEXT（ngram）精确匹配
+- BM25 路径：BM25 + Softmax 概率化排序
+- 混合检索：BM25 × 向量 Softmax 概率融合（权重 0.8/0.2）
+- ANN 向量路径：Milvus + TF-IDF+SVD 语义匹配
 - RRF 融合排序
 - 11 种高级检索策略
 
@@ -715,18 +726,19 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 ```
 用户查询
    │
-   ├── KNN 关键词路径 ──► SQLite FTS5 ──► Top-K 结果
+   ├── KNN 关键词路径 ──► MySQL FULLTEXT ──► Top-K 结果
+   ├── BM25 词项路径 ──► BM25+Softmax ──► Top-K 结果
    │   (专业术语精确匹配)
    │
-   ├── ANN 向量路径 ──► TF-IDF+SVD(动态维度) ──► FAISS 检索 ──► Top-K 结果
+   ├── ANN 向量路径 ──► TF-IDF+SVD(动态维度) ──► Milvus 检索 ──► Top-K 结果
    │                                                   │
    │                                            三级回退策略
    │                                            ┌──────┴──────┐
    │                                            ▼             ▼
    │                                      索引已就绪     索引未构建
-   │                                      FAISS搜索     惰性构建后搜索
+   │                                      Milvus搜索     惰性构建后搜索
    │                                            │
-   │                                            ▼ FAISS不可用
+   │                                            ▼ Milvus不可用
    │                                      暴力余弦回退(numpy)
    │
    └──────────────────┬──────────────────────────────────────┐
@@ -749,8 +761,10 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 | 策略 | 标识 | 说明 | 适用场景 |
 |------|------|------|---------|
 | 自动选择 | `auto` | 短查询用 HyDE，长查询用 RAG-Fusion | 默认 |
-| KNN 关键词 | `knn` | SQLite FTS5 全文索引 | 专业术语、公式 |
-| ANN 向量 | `ann` | FAISS + TF-IDF+SVD | 模糊语义查询 |
+| KNN 关键词 | `knn` | MySQL FULLTEXT 全文索引 | 专业术语、公式 |
+| BM25 排序 | `bm25` | BM25 + Softmax 概率化 | 关键词检索 + 分数校准 |
+| BM25×向量 | `bm25_vector` | Softmax 概率融合（0.8/0.2） | 混合检索推荐 |
+| ANN 向量 | `ann` | Milvus + TF-IDF+SVD | 模糊语义查询 |
 | 混合检索 | `hybrid` | KNN + ANN + RRF | 通用推荐 |
 | 假设性文档 | `hyde` | HyDE（Gao et al., 2023） | 短查询、概念性问题 |
 | 多查询 | `multi_query` | Multi-Query（LangChain, 2023） | 提高召回率 |
@@ -764,9 +778,9 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 
 | 级别 | 触发条件 | 检索方式 | 响应时间 |
 |------|---------|---------|---------|
-| L1 | FAISS 索引已就绪 | `IndexFlatIP` 内积搜索 | ~5ms |
-| L2 | FAISS 可用但索引为空 | 从 DB 加载构建索引后搜索 | ~500ms（首次） |
-| L3 | FAISS 不可用 | numpy 暴力余弦相似度 | ~100ms |
+| L1 | Milvus 索引已就绪 | `IndexFlatIP` 内积搜索 | ~5ms |
+| L2 | Milvus 可用但索引为空 | 从 DB 加载构建索引后搜索 | ~500ms（首次） |
+| L3 | Milvus 不可用 | numpy 暴力余弦相似度 | ~100ms |
 
 ### Embedding 技术参数
 
@@ -775,8 +789,8 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 | 实现方式 | TF-IDF + SVD | 本地实现（jieba分词 + scikit-learn） |
 | 向量维度 | 动态（50-200） | 根据语料自动计算 |
 | 文本截断 | 8000 字符 | 超长自动截断 |
-| 索引类型 | `faiss.IndexFlatIP` | L2 归一化后内积 ≡ 余弦相似度 |
-| 持久化 | `data/faiss_index/` | 二进制索引 + ID 映射 JSON |
+| 索引类型 | Milvus FLAT/COSINE | L2 归一化后内积 ≡ 余弦相似度 |
+| 持久化 | `~/.milvus/ai_learning.db` | Milvus Lite 本地文件 |
 
 ---
 
@@ -833,7 +847,7 @@ MiMo 生成回答（融合记忆上下文）
 
 ### 多数据库架构
 
-9 个独立 SQLite 数据库，功能完全隔离，无需外部数据库服务。
+9 个独立 MySQL Schema，功能完全隔离。访问层通过 `data/dbapi.py`（sqlite3 兼容层）对接 PyMySQL。
 
 | 数据库 | 文件 | 用途 | 核心表 |
 |--------|------|------|--------|
@@ -844,7 +858,7 @@ MiMo 生成回答（融合记忆上下文）
 | `ai_tutor` | `ai_tutor.db` | 智能辅导 | `tutor_sessions`, `tutor_messages`, `tutor_knowledge_refs` |
 | `ai_assessments` | `ai_assessments.db` | 效果评估 | `learning_assessments`, `assessment_dimensions`, `learning_activities` |
 | `ai_agents` | `ai_agents.db` | 智能体协作 | `agent_collaboration_logs`, `agent_tasks` |
-| `ai_rag_knowledge` | `ai_rag_knowledge.db` | RAG 知识库 | `knowledge_documents`, `knowledge_points`, `document_categories` + FTS5 |
+| `ai_rag_knowledge` | `ai_rag_knowledge` | RAG 知识库 | `knowledge_documents`, `knowledge_points`, `document_categories` + FULLTEXT |
 | `ai_memory` | `ai_memory.db` | 记忆系统 | 8 张记忆表（见下） |
 
 ### 记忆系统表结构
@@ -946,7 +960,7 @@ CREATE TABLE memory_metadata (
 
 | 端点 | 方法 | 功能 |
 |------|------|------|
-| `/api/health` | GET | 健康检查（SQLite/FAISS 状态） |
+| `/api/health` | GET | 健康检查（MySQL/Milvus 状态） |
 
 **交互式 API 文档**：启动后端后访问 http://localhost:8000/docs
 
@@ -1074,7 +1088,7 @@ verified = confidence ≥ 0.7
 ### Docker 部署
 
 ```bash
-# 一键启动（后端 + 前端 + SQLite）
+# 一键启动（后端 + 前端 + MySQL）
 docker-compose up -d
 ```
 
@@ -1082,10 +1096,10 @@ docker-compose up -d
 
 ```bash
 # PyInstaller 打包
-python build.py
+python 02_打包构建/build.py
 
 # NSIS 编译安装程序
-makensis installer.nsi
+makensis 02_打包构建/installer.nsi
 ```
 
 生成文件：
@@ -1141,7 +1155,7 @@ cd frontend && npm install && npm run build && npm start
 │   └── video_generation_service.py # 视频脚本生成
 │
 ├── data/                           # 数据访问层
-│   ├── rag_knowledge_base.py       # RAG 知识库（FAISS + 混合检索）
+│   ├── rag_knowledge_base.py       # RAG 知识库（Milvus + 混合检索）
 │   ├── embedding_service.py        # TF-IDF + SVD 本地向量化（jieba分词）
 │   ├── document_parser.py          # 文档解析（PDF/Word/Excel/PPT）
 │   ├── data_manager.py             # 数据管理器
@@ -1150,7 +1164,7 @@ cd frontend && npm install && npm run build && npm start
 │   ├── dao.py                      # DAO 层
 │   ├── config.py                   # 多数据库配置
 │   ├── redis_cache.py              # 缓存层
-│   └── databases/                  # 9 个 SQLite 数据库文件
+│   └── databases/                  # legacy SQLite（迁移脚本读取用）
 │
 ├── core/                           # 核心工具
 │   ├── logger.py                   # 结构化日志（JSON 格式，日志轮转）
@@ -1217,8 +1231,8 @@ cd frontend && npm install && npm run build && npm start
 | SSE 延迟 | <200ms | 首字节时间 |
 | 内容安全检查 | <100ms | AC 自动机 O(n) |
 | API 响应 (P95) | <2s | 不含 AI 生成 |
-| RAG 检索 | ~5ms | FAISS 就绪时 |
-| 暴力余弦回退 | ~100ms | FAISS 不可用时 |
+| RAG 检索 | ~5ms | Milvus 就绪时 |
+| 暴力余弦回退 | ~100ms | Milvus 不可用时 |
 | RAGAS 评估 | ~3s/样本 | 含检索+生成+5 指标评分 |
 
 ---
@@ -1302,7 +1316,7 @@ cd frontend && npm install && npm run build && npm start
 - 11 种高级检索策略
 - 防幻觉三重保障
 - 流式输出（SSE）
-- 多数据库架构（9 个独立 SQLite）
+- 多数据库架构（9 个独立 MySQL Schema）
 - 单页面导航系统
 
 ---
@@ -1349,7 +1363,7 @@ cd frontend && npm install && npm run build && npm start
 - 功能隔离，避免数据耦合
 - 性能优化，针对性优化不同数据类型
 - 故障隔离，单库故障不影响全局
-- RAG 知识库专业化（FTS5 全文索引）
+- RAG 知识库专业化（MySQL FULLTEXT + BM25 + Milvus 向量）
 - 无需外部数据库服务，部署简单
 
 ### Q5: 流式输出如何实现？
@@ -1359,7 +1373,7 @@ cd frontend && npm install && npm run build && npm start
 ### Q6: 如何备份数据库？
 
 ```bash
-# SQLite 数据库文件位于 data/databases/ 目录
+# MySQL 9 个 Schema：ai_auth / ai_profiles / ai_resources / ai_paths / ai_tutor / ai_assessments / ai_agents / ai_rag_knowledge / ai_memory
 # 直接复制 .db 文件即可备份
 copy data\databases\*.db backup\
 ```

@@ -9,7 +9,7 @@ from backend.schemas.models import BaseResponse, ClassJoinRequest
 from core.logger import error, info
 from data.config import get_auth_db_path
 
-import sqlite3
+from data import dbapi as sqlite3
 
 router = APIRouter()
 

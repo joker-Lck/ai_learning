@@ -10,11 +10,11 @@
    ├── KNN 关键词路径 ──→ SQLite FTS5 ──→ Top-K 结果
    │                       (专业术语精确匹配)
    │
-   ├── ANN 向量路径 ──→ Embedding(动态维度) ──→ FAISS ANN ──→ Top-K 结果
+   ├── ANN 向量路径 ──→ Embedding(动态维度) ──→ Milvus ANN ──→ Top-K 结果
    │                                          │
    │                                   三级回退策略
    │                                   ┌──────────────┐
-   │                                   │ L1: FAISS 搜索 │
+   │                                   │ L1: Milvus 搜索 │
    │                                   │ L2: 惰性构建   │
    │                                   │ L3: 暴力余弦   │
    │                                   └──────────────┘
@@ -46,11 +46,11 @@
 
 ## 2. ANN 向量检索
 
-**技术**：FAISS IndexFlatIP
+**技术**：Milvus IndexFlatIP
 
 | 参数 | 值 | 说明 |
 |------|------|------|
-| 索引类型 | `faiss.IndexFlatIP` | Flat Inner Product |
+| 索引类型 | Milvus FLAT/COSINE | Flat Inner Product |
 | 相似度原理 | L2 归一化后内积 | 等价于余弦相似度 |
 | 搜索复杂度 | O(n·d) | 精确线性扫描 |
 | 向量维度 | 动态（50-200） | TF-IDF + SVD 本地向量化（jieba分词） |
@@ -60,9 +60,9 @@
 
 | 级别 | 触发条件 | 检索方式 | 响应时间 |
 |------|---------|---------|---------|
-| L1 | FAISS 就绪 | IndexFlatIP 搜索 | ~5ms |
-| L2 | FAISS 可用但索引为空 | 惰性构建后搜索 | ~500ms（首次） |
-| L3 | FAISS 不可用 | 暴力余弦 KNN | ~100ms |
+| L1 | Milvus 就绪 | Milvus FLAT 搜索 | ~5ms |
+| L2 | Milvus 可用但索引为空 | 惰性构建后搜索 | ~500ms（首次） |
+| L3 | Milvus 不可用 | 暴力余弦 KNN | ~100ms |
 
 ## 3. RRF 融合排序
 
@@ -83,8 +83,9 @@ KNN 结果 + ANN 结果 → RRF 统一排序 → Top-N 返回。
 | 策略 | 说明 | 适用场景 |
 |------|------|----------|
 | `auto` | 自动选择（短查询用 HyDE，长查询用 RAG-Fusion） | 默认 |
-| `knn` | KNN 关键词检索（FTS5 精确匹配） | 专业术语、公式 |
-| `ann` | ANN 向量检索（FAISS 语义匹配） | 模糊语义查询 |
+| `knn` | KNN 关键词检索（MySQL FULLTEXT 精确匹配） | 专业术语、公式 |
+| `ann` | ANN 向量检索（Milvus 语义匹配） | 模糊语义查询 |
+| `bm25` | BM25 + Softmax 词项排序（概率化分数） | 关键词检索 + 分数校准 |
 | `hybrid` | KNN + ANN + RRF 混合（基座策略） | 通用推荐 |
 | `hyde` | 假设性文档嵌入（Gao et al., 2023） | 短查询、概念性问题 |
 | `multi_query` | 多查询检索（LangChain, 2023） | 提高召回率 |
@@ -96,10 +97,21 @@ KNN 结果 + ANN 结果 → RRF 统一排序 → Top-N 返回。
 | `hybrid_advl` | 基座 + HyDE + RAG-Fusion 三路 RRF | 平衡速度与精度 |
 | `ensemble` | 全部 6 种方法取并集，RRF 融合 | 最全面 |
 
+### BM25 + Softmax — 词项排序 + 概率校准
+
+```
+查询 → jieba 分词 → BM25 打分（IDF × 词频饱和 × 长度归一）→ Softmax 概率化 → Top-K
+```
+
+- BM25：经典词项排序函数，`k1=1.5, b=0.75`，IDF 用 Robertson/Sparck-Jones 平滑
+- Softmax：把原始分映射为概率分布（`temperature` 控制尖锐程度），便于多路融合与阈值截断
+- `fuse_probabilities()`：多路检索分数各自 Softmax 后加权平均，与向量路融合时使用
+- 代码：`data/bm25_softmax.py`（`BM25Index` / `BM25SoftmaxRetriever` / `softmax` / `fuse_probabilities`）
+
 ### HyDE — 假设性文档嵌入
 
 ```
-用户问题 → LLM 生成假设答案(200-400字) → 向量化 → FAISS 检索
+用户问题 → LLM 生成假设答案(200-400字) → 向量化 → Milvus 检索
 ```
 
 - 零侵入，仅改变查询端
@@ -146,7 +158,7 @@ KNN 结果 + ANN 结果 → RRF 统一排序 → Top-N 返回。
 
 | 文件 | 核心类/函数 | 说明 |
 |------|-----------|------|
-| `data/rag_knowledge_base.py` | `VectorIndexManager`, `RAGKnowledgeBase` | FAISS 向量索引 + 混合检索 |
+| `data/rag_knowledge_base.py` | `VectorIndexManager`, `RAGKnowledgeBase` | Milvus 向量索引 + 混合检索 |
 | `data/embedding_service.py` | `EmbeddingService` | TF-IDF + SVD 本地向量化（jieba分词） |
 | `services/advanced_retrieval_service.py` | `AdvancedRetrievalService` | 11 种高级检索策略 |
 | `services/content_safety_service.py` | `AntiHallucinationService` | 防幻觉验证 |

@@ -223,11 +223,11 @@ POST /api/agent/eval-rag/run
 | POST | /multi-hop-search | Multi-Hop 多跳推理检索（含可视化数据） |
 | POST | /react-search | ReAct 推理-检索交替检索 |
 
-### FAISS 索引（v8.0 新增）
+### Milvus 索引（v8.0 新增）
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
-| GET | /faiss-info | 获取 FAISS 索引信息 |
+| GET | /faiss-info | 获取 Milvus 索引信息 |
 
 ### Agent 可视化（v8.0 新增）
 

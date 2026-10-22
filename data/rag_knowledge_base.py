@@ -4,7 +4,7 @@ from core.logger import error, info, warning
 
 import json
 import os
-import sqlite3
+from data import dbapi as sqlite3
 import threading
 import time
 from collections import OrderedDict
@@ -91,8 +91,10 @@ class SemanticCache:
                         self._entries.pop(i)
                         return None
 
-            # 语义相似度匹配
+            # 语义相似度匹配（仅限同一策略命名空间，防止跨策略串结果）
             if query_embedding is not None:
+                # 命名空间 = key 的策略前缀（如 rag:bm25 / rag:hybrid）
+                ns = ":".join(key.split(":")[:2]) if ":" in key else key
                 query_vec = np.array(query_embedding, dtype='float32')
                 query_norm = np.linalg.norm(query_vec)
                 if query_norm > 0:
@@ -102,6 +104,10 @@ class SemanticCache:
                     best_idx = -1
                     for i, entry in enumerate(self._entries):
                         if entry.get("embedding") is None:
+                            continue
+                        # 只在同一命名空间内做语义匹配
+                        entry_ns = ":".join(entry["key"].split(":")[:2]) if ":" in entry["key"] else entry["key"]
+                        if entry_ns != ns:
                             continue
                         if time.time() - entry["timestamp"] >= self._ttl:
                             continue
@@ -161,39 +167,58 @@ def _clear_search_cache():
 
 
 # ═══════════════════════════════════════════
-# FAISS 向量索引管理器
+# Milvus 向量索引管理器
 # ═══════════════════════════════════════════
 
-# FAISS不支持中文路径，使用用户目录下的.faiss_index
-_INDEX_DIR = os.path.join(os.path.expanduser('~'), '.faiss_index')
-_INDEX_PATH = os.path.join(_INDEX_DIR, 'knowledge.index')
-_IDS_PATH = os.path.join(_INDEX_DIR, 'doc_ids.json')
+# Milvus Lite 不支持中文路径，存放在用户目录
+_INDEX_DIR = os.path.join(os.path.expanduser("~"), ".milvus")
+_MILVUS_URI = os.path.join(_INDEX_DIR, "ai_learning.db")
+_COLLECTION = "knowledge_vectors"
 
 
 class VectorIndexManager:
     """
-    基于 FAISS 的向量索引管理器
-    - 内存驻留索引，O(log n) 近似最近邻检索
-    - 自动持久化到磁盘，重启后快速加载
+    基于 Milvus 的向量索引管理器
+    - Milvus Lite 本地文件存储（可平滑切换到 Milvus Server / Zilliz Cloud）
+    - 支持原生向量删除（优于 FAISS 的重建方案）
+    - COSINE 余弦相似度
     - 文档变更时惰性重建
     - 支持定期全量重建以修正漂移
     """
 
     def __init__(self):
-        self._index = None
-        self._doc_ids = []
+        self._client = None
         self._dimension = 0
         self._lock = threading.Lock()
         self._dirty = False
         self._last_rebuild = 0
         self._rebuild_interval = 3600
-        self._faiss_available = False
+        self._milvus_available = False
+        self._count_cache = 0
+        self._index_kind = "AUTOINDEX"
         try:
-            import faiss as _faiss
-            self._faiss = _faiss
-            self._faiss_available = True
+            from pymilvus import MilvusClient  # noqa: F401
+
+            self._milvus_available = True
+            self._connect()
         except ImportError:
-            self._faiss = None
+            pass
+        except Exception as e:
+            warning(f"Milvus 连接失败：{e}")
+            self._milvus_available = False
+
+    # ── 兼容旧属性名 ──────────────────────────
+    @property
+    def _faiss_available(self) -> bool:
+        return self._milvus_available
+
+    @_faiss_available.setter
+    def _faiss_available(self, value: bool):
+        self._milvus_available = value
+
+    @property
+    def is_available(self) -> bool:
+        return self._milvus_available
 
     # ── 公开接口 ──────────────────────────────
 
@@ -204,71 +229,71 @@ class VectorIndexManager:
         返回: [{'id': doc_id, 'score': float}, ...]
         """
         with self._lock:
-            if not self._faiss_available or self._index is None or self._index.ntotal == 0:
+            if not self._milvus_available or not self._has_data():
                 return []
-
-            vec = np.array([query_embedding], dtype='float32')
-            self._faiss.normalize_L2(vec)
-
-            k = min(limit, self._index.ntotal)
-            scores, indices = self._index.search(vec, k)
-
-            results = []
-            for score, idx in zip(scores[0], indices[0], strict=False):
-                if idx < 0 or idx >= len(self._doc_ids):
-                    continue
-                results.append({
-                    'id': self._doc_ids[idx],
-                    'score': float(score)
-                })
-            return results
+            try:
+                vec = self._normalize(query_embedding)
+                # 维度守卫：与 collection 维度不一致时直接返回，避免检索崩溃
+                if self._dimension and len(vec) != self._dimension:
+                    warning(f"查询向量维度 {len(vec)} != 索引维度 {self._dimension}，跳过 Milvus 检索")
+                    return []
+                hits = self._client.search(
+                    collection_name=_COLLECTION,
+                    data=[vec],
+                    limit=limit,
+                    output_fields=["id"],
+                    search_params=getattr(self, "_search_params", None),
+                )
+                results = []
+                for hit in hits[0] if hits else []:
+                    results.append({
+                        "id": hit.get("id") if "id" in hit else hit.get("entity", {}).get("id"),
+                        "score": float(hit.get("distance", 0.0)),
+                    })
+                return results
+            except Exception as e:
+                warning(f"Milvus 检索失败: {e}")
+                return []
 
     def add_vectors(self, doc_ids: list, embeddings: list):
         """增量添加向量"""
-        if not doc_ids or not embeddings:
+        if not doc_ids or not embeddings or not self._milvus_available:
             return
-        if not self._faiss_available:
-            return
-
         with self._lock:
             dim = len(embeddings[0])
-            if self._index is None:
+            if dim <= 0:
+                return
+            if self._dimension == 0:
                 self._dimension = dim
-                self._index = self._create_index(dim)
             elif dim != self._dimension:
-                self._rebuild_internal([], [])
+                # 维度不一致时全量重建
+                warning(f"向量维度变化 {self._dimension} → {dim}，跳过增量添加")
+                return
 
-            vecs = np.array(embeddings, dtype='float32')
-            self._faiss.normalize_L2(vecs)
-            self._index.add(vecs)
-            self._doc_ids.extend(doc_ids)
-            self._dirty = True
-
-            # 检查是否需要升级索引类型
-            self._maybe_upgrade_index()
+            try:
+                self._ensure_collection(dim)
+                rows = [
+                    {"id": int(did), "vector": self._normalize(emb)}
+                    for did, emb in zip(doc_ids, embeddings, strict=False)
+                ]
+                self._client.insert(collection_name=_COLLECTION, data=rows)
+                self._count_cache += len(rows)
+                self._dirty = True
+            except Exception as e:
+                warning(f"Milvus 增量添加失败: {e}")
 
     def remove_by_ids(self, doc_ids: set):
-        """按 ID 移除向量（FAISS 不支持原生删除，需重建）"""
+        """按 ID 移除向量（Milvus 原生删除）"""
+        if not doc_ids or not self._milvus_available:
+            return
         with self._lock:
-            if not self._faiss_available or self._index is None or not doc_ids:
-                return
-
-            keep_mask = [i for i, did in enumerate(self._doc_ids) if did not in doc_ids]
-            if len(keep_mask) == len(self._doc_ids):
-                return
-
-            if len(keep_mask) == 0:
-                self._index = self._create_index(self._dimension)
-                self._doc_ids = []
-            else:
-                all_vecs = np.array(
-                    [self._index.reconstruct(i) for i in keep_mask], dtype='float32'
-                )
-                self._index = self._create_index(self._dimension)
-                self._index.add(all_vecs)
-                self._doc_ids = [self._doc_ids[i] for i in keep_mask]
-
-            self._dirty = True
+            try:
+                ids = [int(i) for i in doc_ids]
+                self._client.delete(collection_name=_COLLECTION, filter=f"id in {ids}")
+                self._count_cache = max(0, self._count_cache - len(ids))
+                self._dirty = True
+            except Exception as e:
+                warning(f"Milvus 删除失败: {e}")
 
     def rebuild(self, doc_ids: list, embeddings: list):
         """全量重建索引"""
@@ -276,66 +301,63 @@ class VectorIndexManager:
             self._rebuild_internal(doc_ids, embeddings)
 
     def save(self):
-        """持久化索引到磁盘"""
+        """持久化（Milvus Lite 自动落盘，此处仅 flush）"""
         with self._lock:
-            if not self._dirty or self._index is None:
+            if not self._milvus_available or not self._dirty:
                 return
-            os.makedirs(_INDEX_DIR, exist_ok=True)
             try:
-                self._faiss.write_index(self._index, _INDEX_PATH)
+                self._client.flush(_COLLECTION)
+                self._dirty = False
             except Exception as e:
-                warning(f"FAISS索引持久化失败: {e}")
-            try:
-                with open(_IDS_PATH, 'w', encoding='utf-8') as f:
-                    json.dump(self._doc_ids, f)
-            except Exception as e:
-                warning(f"文档ID映射持久化失败: {e}")
-            self._dirty = False
+                warning(f"Milvus flush 失败: {e}")
 
     def load(self) -> bool:
-        """从磁盘加载索引"""
+        """加载索引（Milvus Lite 自动加载，校验连通性）"""
         with self._lock:
-            if not self._faiss_available:
-                return False
-            if not os.path.exists(_INDEX_PATH) or not os.path.exists(_IDS_PATH):
+            if not self._milvus_available:
                 return False
             try:
-                self._index = self._faiss.read_index(_INDEX_PATH)
-                with open(_IDS_PATH, encoding='utf-8') as f:
-                    self._doc_ids = json.load(f)
-                self._dimension = self._index.d
-                self._dirty = False
-                return True
+                self._connect()
+                return self._has_data() or self._client.has_collection(_COLLECTION)
             except Exception:
                 return False
 
     @property
     def is_ready(self) -> bool:
-        return self._faiss_available and self._index is not None and self._index.ntotal > 0
+        return self._milvus_available and self._has_data()
 
     @property
     def total_vectors(self) -> int:
-        return self._index.ntotal if self._index else 0
+        if not self._milvus_available:
+            return 0
+        try:
+            with self._lock:
+                if not self._client.has_collection(_COLLECTION):
+                    return 0
+                res = self._client.query(
+                    collection_name=_COLLECTION,
+                    filter="",
+                    output_fields=["count(*)"],
+                )
+                if res:
+                    self._count_cache = int(list(res[0].values())[0])
+                return self._count_cache
+        except Exception:
+            return self._count_cache
 
     @property
     def index_type(self) -> str:
         """返回当前索引类型名称"""
-        if self._index is None:
+        if not self._milvus_available or not self._has_data():
             return "none"
-        type_name = type(self._index).__name__
-        if "HNSW" in type_name:
-            return "HNSW"
-        elif "IVF" in type_name:
-            return "IVFFlat"
-        elif "Flat" in type_name:
-            return "FlatIP"
-        return type_name
+        return self._index_kind
 
     @property
     def index_info(self) -> dict:
         """返回索引详细信息"""
         return {
             "type": self.index_type,
+            "engine": "Milvus",
             "total_vectors": self.total_vectors,
             "dimension": self._dimension,
             "is_ready": self.is_ready,
@@ -347,100 +369,136 @@ class VectorIndexManager:
                 rebuild_fn()
                 self._last_rebuild = time.time()
             except Exception as e:
-                warning(f"定期重建FAISS索引失败: {e}")
+                warning(f"定期重建向量索引失败: {e}")
 
     # ── 内部方法 ──────────────────────────────
 
-    def _maybe_upgrade_index(self):
-        """检查当前索引类型是否匹配文档量，不匹配则重建"""
-        n = len(self._doc_ids)
-        current = self.index_type
+    def _connect(self):
+        """连接 Milvus（Lite 本地文件 / Server URI）"""
+        from pymilvus import MilvusClient
 
-        need_upgrade = False
-        if n < 10_000 and current != "FlatIP":
-            need_upgrade = True
-        elif 10_000 <= n < 100_000 and current != "IVFFlat":
-            need_upgrade = True
-        elif n >= 100_000 and current != "HNSW":
-            need_upgrade = True
+        uri = os.getenv("MILVUS_URI", _MILVUS_URI)
+        token = os.getenv("MILVUS_TOKEN") or None
+        os.makedirs(os.path.dirname(uri) or ".", exist_ok=True)
+        self._client = MilvusClient(uri=uri, token=token) if token else MilvusClient(uri=uri)
 
-        if need_upgrade:
-            info(f"[FAISS] 索引升级: {current} → 文档数={n}, 重建中...")
-            # 保存所有向量
-            all_vecs = []
-            if self._index is not None and self._index.ntotal > 0:
-                try:
-                    all_vecs = [self._index.reconstruct(i) for i in range(self._index.ntotal)]
-                except Exception:
-                    pass
-            # 重建
-            self._index = self._create_index(self._dimension)
-            if all_vecs and self._index is not None:
-                vecs = np.array(all_vecs, dtype='float32')
-                self._faiss.normalize_L2(vecs)
-                self._index.add(vecs)
-            info(f"[FAISS] 索引升级完成: {self.index_type}, 向量数={self.total_vectors}")
+    def _has_data(self) -> bool:
+        try:
+            return self._client is not None and self._client.has_collection(_COLLECTION)
+        except Exception:
+            return False
+
+    def _ensure_collection(self, dim: int):
+        """确保 collection 存在且维度匹配"""
+        if self._client is None:
+            self._connect()
+        if self._client.has_collection(_COLLECTION):
+            desc = self._client.describe_collection(_COLLECTION)
+            existing_dim = 0
+            for f in desc.get("fields", []):
+                if f.get("name") == "vector":
+                    existing_dim = int((f.get("params") or {}).get("dim", 0))
+            if existing_dim and existing_dim != dim:
+                info(f"[Milvus] 维度变更 {existing_dim} → {dim}，重建 collection")
+                self._client.drop_collection(_COLLECTION)
+            else:
+                self._dimension = existing_dim or dim
+                return
+
+        self._client.create_collection(
+            collection_name=_COLLECTION,
+            dimension=dim,
+            metric_type="COSINE",
+            auto_id=False,
+        )
+        self._dimension = dim
+        self._count_cache = 0
+        self._pick_index_kind(dim)
+        self._create_index()
+        info(f"[Milvus] collection 创建完成: dim={dim}, metric=COSINE, index={self._index_kind}")
+
+    def _pick_index_kind(self, dim: int):
+        """按规模选择索引类型"""
+        n = self._count_cache
+        if n >= 100_000:
+            self._index_kind = "HNSW"
+        elif n >= 10_000:
+            self._index_kind = "IVF_FLAT"
+        else:
+            self._index_kind = "FLAT"
+
+    def _create_index(self):
+        """为向量字段建索引（HNSW/IVF_FLAT/FLAT 参数按规模调优）"""
+        if self._client is None:
+            return
+        try:
+            from pymilvus.milvus_client.index import IndexParams
+
+            if self._index_kind == "HNSW":
+                index_params = IndexParams(
+                    index_type="HNSW",
+                    metric_type="COSINE",
+                    params={"M": 32, "efConstruction": 200},
+                )
+                search_params = {"metric_type": "COSINE", "params": {"ef": 128}}
+            elif self._index_kind == "IVF_FLAT":
+                nlist = max(16, min(int((self._count_cache or 1024) ** 0.5), 4096))
+                index_params = IndexParams(
+                    index_type="IVF_FLAT",
+                    metric_type="COSINE",
+                    params={"nlist": nlist},
+                )
+                search_params = {"metric_type": "COSINE", "params": {"nprobe": min(max(1, nlist // 10), 64)}}
+            else:
+                index_params = IndexParams(index_type="FLAT", metric_type="COSINE", params={})
+                search_params = {"metric_type": "COSINE", "params": {}}
+
+            self._client.create_index(
+                collection_name=_COLLECTION,
+                index_params=index_params,
+            )
+            self._search_params = search_params
+            debug(f"[Milvus] 索引创建: {self._index_kind}")
+        except Exception as e:
+            warning(f"[Milvus] 索引创建失败（AUTOINDEX 兜底）: {e}")
+            self._search_params = {"metric_type": "COSINE", "params": {}}
+
+    @staticmethod
+    def _normalize(embedding) -> list:
+        """L2 归一化，配合 COSINE/内积"""
+        vec = np.asarray(embedding, dtype="float32").reshape(-1)
+        norm = float(np.linalg.norm(vec))
+        if norm > 0:
+            vec = vec / norm
+        return vec.tolist()
 
     def _rebuild_internal(self, doc_ids: list, embeddings: list):
         """内部重建（需已持有锁）"""
-        if not embeddings:
-            self._index = None
-            self._doc_ids = []
-            self._dimension = 0
-            self._dirty = True
+        if not self._milvus_available:
             return
+        try:
+            if self._client.has_collection(_COLLECTION):
+                self._client.drop_collection(_COLLECTION)
+            self._count_cache = 0
+            self._dimension = 0
 
-        self._dimension = len(embeddings[0])
-        self._index = self._create_index(self._dimension)
-        vecs = np.array(embeddings, dtype='float32')
-        self._faiss.normalize_L2(vecs)
-        self._index.add(vecs)
-        self._doc_ids = list(doc_ids)
-        self._dirty = True
+            if not embeddings:
+                self._dirty = True
+                return
 
-    def _create_index(self, dim: int):
-        """
-        创建 FAISS 索引 — 按文档量自动选择最优类型：
-        - <10,000:   IndexFlatIP (暴力检索，精确)
-        - 10,000-100,000: IndexIVFFlat (倒排索引，10-50x 加速)
-        - >100,000:  IndexHNSW (图索引，最高性能)
-        """
-        if dim <= 0 or not self._faiss_available:
-            return None
-
-        n = len(self._doc_ids)
-
-        if n < 10_000:
-            # 小规模：暴力检索，精确且快
-            return self._faiss.IndexFlatIP(dim)
-
-        elif n < 100_000:
-            # 中规模：IVF 倒排索引
-            nlist = max(1, min(int(n ** 0.5), 4096))
-            quantizer = self._faiss.IndexFlatIP(dim)
-            index = self._faiss.IndexIVFFlat(quantizer, dim, nlist,
-                                             self._faiss.METRIC_INNER_PRODUCT)
-            # IVF 需要训练，用已有向量训练
-            if self._index is not None and self._index.ntotal > 0:
-                try:
-                    train_vecs = np.array(
-                        [self._index.reconstruct(i) for i in range(min(n, self._index.ntotal))],
-                        dtype='float32'
-                    )
-                    index.train(train_vecs)
-                    index.nprobe = min(max(1, nlist // 10), 64)
-                except Exception:
-                    # 训练失败回退到 FlatIP
-                    return self._faiss.IndexFlatIP(dim)
-            return index
-
-        else:
-            # 大规模：HNSW 图索引
-            M = 32
-            index = self._faiss.IndexHNSWFlat(dim, M, self._faiss.METRIC_INNER_PRODUCT)
-            index.hnsw.efConstruction = 200
-            index.hnsw.efSearch = 128
-            return index
+            dim = len(embeddings[0])
+            self._ensure_collection(dim)
+            rows = [
+                {"id": int(did), "vector": self._normalize(emb)}
+                for did, emb in zip(doc_ids, embeddings, strict=False)
+            ]
+            self._client.insert(collection_name=_COLLECTION, data=rows)
+            self._client.flush(_COLLECTION)
+            self._count_cache = len(rows)
+            self._pick_index_kind(dim)
+            self._dirty = False
+        except Exception as e:
+            warning(f"Milvus 重建失败: {e}")
 
 
 # 全局单例
@@ -455,58 +513,33 @@ class RAGKnowledgeBase:
         self._init_fts()
 
     def _init_fts(self):
-        """初始化 FTS5 虚拟表（如果表已存在）"""
+        """初始化 MySQL FULLTEXT 索引（迁移期兼容入口，DDL 已在建表脚本中完成）"""
         try:
             conn = sqlite3.connect(self.db_path)
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='knowledge_documents'"
-            )
-            if cursor.fetchone() is None:
-                conn.close()
-                return
-            conn.execute("""
-                CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_documents_fts
-                USING fts5(title, subject, content='knowledge_documents', content_rowid='id')
-            """)
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS knowledge_documents_ai
-                AFTER INSERT ON knowledge_documents BEGIN
-                    INSERT INTO knowledge_documents_fts(rowid, title, subject)
-                    VALUES (new.id, new.title, new.subject);
-                END
-            """)
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS knowledge_documents_ad
-                AFTER DELETE ON knowledge_documents BEGIN
-                    INSERT INTO knowledge_documents_fts(knowledge_documents_fts, rowid, title, subject)
-                    VALUES('delete', old.id, old.title, old.subject);
-                END
-            """)
-            conn.execute("""
-                CREATE TRIGGER IF NOT EXISTS knowledge_documents_au
-                AFTER UPDATE ON knowledge_documents BEGIN
-                    INSERT INTO knowledge_documents_fts(knowledge_documents_fts, rowid, title, subject)
-                    VALUES('delete', old.id, old.title, old.subject);
-                    INSERT INTO knowledge_documents_fts(rowid, title, subject)
-                    VALUES (new.id, new.title, new.subject);
-                END
-            """)
-            conn.commit()
+            conn.execute("SELECT 1 FROM knowledge_documents LIMIT 1")
             conn.close()
         except Exception as e:
-            warning(f"FTS5 初始化失败：{e!s}")
+            warning(f"FULLTEXT 初始化检查失败：{e!s}")
 
     def _get_connection(self):
-        """获取 SQLite 连接"""
+        """获取 MySQL 连接"""
         conn = sqlite3.connect(self.db_path, timeout=10)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
     def connect(self):
-        """连接数据库"""
+        """连接数据库（已连且可用时复用，避免重复握手）"""
         try:
+            # 复用健康连接
+            if self.conn is not None and self.cursor is not None:
+                try:
+                    self.cursor.execute("SELECT 1")
+                    return True
+                except Exception:
+                    try:
+                        self.close()
+                    except Exception:
+                        pass
             self.conn = self._get_connection()
             self.cursor = self.conn.cursor()
             return True
@@ -622,13 +655,24 @@ class RAGKnowledgeBase:
             # 添加文档后清空搜索缓存
             _clear_search_cache()
 
-            # 增量更新 FAISS 索引
-            if embedding and vector_index._faiss_available:
+            # 增量更新向量索引 + BM25 索引
+            if embedding and vector_index.is_available:
                 try:
                     vector_index.add_vectors([doc_id], [embedding])
                     vector_index.save()
                 except Exception:
                     pass  # 索引更新失败不影响文档写入
+            try:
+                from data.bm25_softmax import bm25_retriever
+
+                bm25_text = " ".join(
+                    filter(None, [title or "", subject or "",
+                                  (document_data or {}).get("analysis", {}).get("summary", "") if isinstance(document_data, dict) else "",
+                                  content_text or ""])
+                )
+                bm25_retriever.index.upsert(int(doc_id), bm25_text[:5000])
+            except Exception:
+                pass
 
             return doc_id
         except Exception as e:
@@ -792,34 +836,51 @@ class RAGKnowledgeBase:
         finally:
             self.close()
 
-    def search_documents_by_vector(self, query_embedding, limit=5):
+    def search_documents_by_vector(self, query_embedding, limit=5, cache_ns="vector"):
         """
-        基于向量相似度检索文档（优先 FAISS，回退暴力搜索）
+        基于向量相似度检索文档（优先 Milvus，回退暴力搜索）
 
         参数：
         - query_embedding: 查询文本的向量
         - limit: 返回数量限制
+        - cache_ns: 语义缓存命名空间（hyde/ann 等调用方各自隔离）
 
         返回：
         - list: 按相似度排序的文档列表
         """
-        vector_index.maybe_rebuild(self._build_faiss_index)
+        # 语义缓存命中检查（key 需含查询指纹，避免不同查询命中同一缓存）
+        qhash = abs(hash(tuple(round(x, 4) for x in (query_embedding or [])[:8])))
+        cache_key = f"rag:{cache_ns}:{limit}:{qhash}"
+        cached = _semantic_cache.get(cache_key, query_embedding)
+        if cached is not None:
+            return cached
+
+        vector_index.maybe_rebuild(self._build_vector_index)
 
         if vector_index.is_ready:
-            return self._faiss_search(query_embedding, limit)
+            results = self._vector_search(query_embedding, limit)
+            if results:
+                _semantic_cache.set(cache_key, results, query_embedding)
+            return results
 
-        if vector_index._faiss_available:
+        if vector_index.is_available:
             try:
-                self._build_faiss_index()
+                self._build_vector_index()
                 if vector_index.is_ready:
-                    return self._faiss_search(query_embedding, limit)
+                    results = self._vector_search(query_embedding, limit)
+                    if results:
+                        _semantic_cache.set(cache_key, results, query_embedding)
+                    return results
             except Exception as e:
-                warning(f"FAISS 索引构建失败，回退暴力搜索: {e}")
+                warning(f"向量索引构建失败，回退暴力搜索: {e}")
 
-        return self._brute_force_vector_search(query_embedding, limit)
+        results = self._brute_force_vector_search(query_embedding, limit)
+        if results:
+            _semantic_cache.set(cache_key, results, query_embedding)
+        return results
 
-    def _faiss_search(self, query_embedding, limit):
-        """FAISS 检索 + 批量取文档"""
+    def _vector_search(self, query_embedding, limit):
+        """Milvus 检索 + 批量取文档"""
         try:
             hits = vector_index.search(query_embedding, limit)
             if not hits:
@@ -850,19 +911,21 @@ class RAGKnowledgeBase:
                     'subject': row['subject'],
                     'content_text': raw_text[:1000],
                     'similarity': score_map[did],
-                    'document_data': doc_data
+                    'probability': score_map[did],
+                    'document_data': doc_data,
+                    'retrieval_method': 'ann',
                 })
             return results
         except Exception as e:
-            error(f"FAISS 检索异常: {e}")
+            error(f"向量检索异常: {e}")
             return self._brute_force_vector_search(query_embedding, limit)
         finally:
             self.close()
 
-    def _build_faiss_index(self):
-        """从数据库加载所有 embedding 构建 FAISS 索引"""
+    def _build_vector_index(self):
+        """从数据库加载所有 embedding 构建 Milvus 索引"""
         self.connect()
-        sql = """SELECT id, document_data FROM knowledge_documents
+        sql = """SELECT id, embedding, document_data FROM knowledge_documents
                  WHERE embedding IS NOT NULL"""
         self.cursor.execute(sql)
         rows = self.cursor.fetchall()
@@ -870,10 +933,17 @@ class RAGKnowledgeBase:
         doc_ids = []
         embeddings = []
         for row in rows:
-            doc_data = row['document_data']
-            if isinstance(doc_data, str):
-                doc_data = json.loads(doc_data)
-            emb = doc_data.get('embedding') if doc_data else None
+            emb = row['embedding']
+            if isinstance(emb, str):
+                try:
+                    emb = json.loads(emb)
+                except Exception:
+                    emb = None
+            if not emb:
+                doc_data = row['document_data']
+                if isinstance(doc_data, str):
+                    doc_data = json.loads(doc_data)
+                emb = doc_data.get('embedding') if doc_data else None
             if emb:
                 doc_ids.append(row['id'])
                 embeddings.append(emb)
@@ -881,11 +951,11 @@ class RAGKnowledgeBase:
         if embeddings:
             vector_index.rebuild(doc_ids, embeddings)
             vector_index.save()
-            info(f"FAISS 索引构建完成: {len(embeddings)} 条向量")
+            info(f"向量索引构建完成: {len(embeddings)} 条向量")
         self.close()
 
     def _brute_force_vector_search(self, query_embedding, limit=5):
-        """暴力搜索（FAISS 不可用时的回退方案）- 使用numpy向量化加速"""
+        """暴力搜索（Milvus 不可用时的回退方案）- 使用numpy向量化加速"""
         try:
             self.connect()
             sql = """SELECT id, title, subject, document_data
@@ -963,6 +1033,12 @@ class RAGKnowledgeBase:
         2. JSON_EXTRACT LIKE — 摘要/知识点模糊匹配（补充覆盖）
         3. 去重合并，FULLTEXT 命中的排前面
         """
+        # 语义缓存命中检查
+        cache_key = f"rag:knn:{keywords}:{subject}:{limit}"
+        cached = _semantic_cache.get(cache_key, None)
+        if cached is not None:
+            return cached
+
         try:
             self.connect()
 
@@ -987,7 +1063,9 @@ class RAGKnowledgeBase:
                 return self._simple_search(keywords, subject, limit)
 
             enriched.sort(key=lambda x: x.get('similarity', 0), reverse=True)
-            return enriched[:limit]
+            results = enriched[:limit]
+            _semantic_cache.set(cache_key, results, None)
+            return results
 
         except Exception as e:
             warning(f"FULLTEXT 检索失败，降级 LIKE: {e}")
@@ -996,30 +1074,34 @@ class RAGKnowledgeBase:
             self.close()
 
     def _fulltext_title_search(self, keywords, subject, limit):
-        """FTS5 全文检索"""
+        """MySQL FULLTEXT 全文检索（ngram 解析器，支持中文）"""
         try:
-            # FTS5 查询：用双引号包裹关键词作为字面量
-            fts_query = " ".join(f'"{kw}"' for kw in keywords.split() if len(kw) > 1)
-            if not fts_query:
+            terms = [kw.strip() for kw in keywords.split() if len(kw.strip()) > 1]
+            if not terms:
+                # 单字查询也放行，ngram 可命中
+                terms = [keywords.strip()] if keywords.strip() else []
+            if not terms:
                 return []
+            # ngram 解析器下用自然语言模式更稳
+            fts_query = " ".join(terms)
 
             if subject:
-                sql = """SELECT kd.id, kd.title, kd.subject, kd.document_data, rank
-                         FROM knowledge_documents_fts fts
-                         JOIN knowledge_documents kd ON fts.rowid = kd.id
-                         WHERE knowledge_documents_fts MATCH ?
-                           AND kd.subject = ?
-                         ORDER BY rank
-                         LIMIT ?"""
-                self.cursor.execute(sql, (fts_query, subject, limit))
+                sql = """SELECT id, title, subject, document_data,
+                                MATCH(title, subject) AGAINST (%s IN NATURAL LANGUAGE MODE) AS rank_score
+                         FROM knowledge_documents
+                         WHERE MATCH(title, subject) AGAINST (%s IN NATURAL LANGUAGE MODE)
+                           AND subject = %s
+                         ORDER BY rank_score DESC
+                         LIMIT %s"""
+                self.cursor.execute(sql, (fts_query, fts_query, subject, limit))
             else:
-                sql = """SELECT kd.id, kd.title, kd.subject, kd.document_data, rank
-                         FROM knowledge_documents_fts fts
-                         JOIN knowledge_documents kd ON fts.rowid = kd.id
-                         WHERE knowledge_documents_fts MATCH ?
-                         ORDER BY rank
-                         LIMIT ?"""
-                self.cursor.execute(sql, (fts_query, limit))
+                sql = """SELECT id, title, subject, document_data,
+                                MATCH(title, subject) AGAINST (%s IN NATURAL LANGUAGE MODE) AS rank_score
+                         FROM knowledge_documents
+                         WHERE MATCH(title, subject) AGAINST (%s IN NATURAL LANGUAGE MODE)
+                         ORDER BY rank_score DESC
+                         LIMIT %s"""
+                self.cursor.execute(sql, (fts_query, fts_query, limit))
 
             results = []
             for row in self.cursor.fetchall():
@@ -1033,14 +1115,117 @@ class RAGKnowledgeBase:
                     'title': row['title'],
                     'subject': row['subject'],
                     'content_text': raw_text[:1000],
-                    'similarity': float(row.get('rank', 0)) * -1,  # rank 是负数，越小越好
+                    'similarity': float(row.get('rank_score') or 0),
                     'document_data': doc_data,
-                    'retrieval_method': 'fts5',
+                    'retrieval_method': 'fulltext',
                 })
             return results
         except Exception as e:
-            warning(f"FTS5 标题检索失败: {e}")
+            warning(f"FULLTEXT 标题检索失败: {e}")
             return []
+
+    def search_documents_by_bm25(self, query, subject=None, limit=10, temperature=1.0):
+        """
+        BM25 + Softmax 检索
+
+        参数：
+        - query: 查询文本
+        - subject: 学科过滤（可选）
+        - limit: 返回数量
+        - temperature: Softmax 温度（<1 更尖锐，>1 更平缓）
+
+        返回：
+        - list: 文档列表，含 probability（Softmax 概率）
+        """
+        # 语义缓存命中检查
+        cache_key = f"rag:bm25:{query}:{subject}:{limit}:{temperature}"
+        cached = _semantic_cache.get(cache_key, None)
+        if cached is not None:
+            return cached
+
+        try:
+            from data.bm25_softmax import bm25_retriever
+
+            if not bm25_retriever.is_ready:
+                self._build_bm25_index(bm25_retriever)
+
+            hits = bm25_retriever.retrieve(query, limit=limit * 2, temperature=temperature)
+            if not hits:
+                return self._simple_search(query, subject, limit)
+
+            self.connect()
+            doc_ids = [h["id"] for h in hits]
+            placeholders = ",".join(["?"] * len(doc_ids))
+            sql = f"""SELECT id, title, subject, document_data
+                      FROM knowledge_documents WHERE id IN ({placeholders})"""
+            self.cursor.execute(sql, doc_ids)
+            rows = {row["id"]: row for row in self.cursor.fetchall()}
+
+            results = []
+            for h in hits:
+                row = rows.get(h["id"])
+                if not row:
+                    continue
+                if subject and row["subject"] != subject:
+                    continue
+                doc_data = row["document_data"]
+                if isinstance(doc_data, str):
+                    doc_data = json.loads(doc_data)
+                raw_text = doc_data.get("content", {}).get("raw_text", "")
+                results.append({
+                    "id": row["id"],
+                    "title": row["title"],
+                    "subject": row["subject"],
+                    "content_text": raw_text[:1000],
+                    "similarity": h["score"],
+                    "probability": h["probability"],
+                    "document_data": doc_data,
+                    "retrieval_method": "bm25_softmax",
+                })
+                if len(results) >= limit:
+                    break
+
+            # 最终结果重归一化，保证 probability 对返回列表求和为 1
+            if results:
+                from data.bm25_softmax import softmax
+
+                probs = softmax([r["similarity"] for r in results], temperature=temperature)
+                for r, p in zip(results, probs, strict=False):
+                    r["probability"] = p
+
+            _semantic_cache.set(cache_key, results, None)
+            return results
+        except Exception as e:
+            warning(f"BM25 检索失败: {e}")
+            return self._simple_search(query, subject, limit)
+        finally:
+            self.close()
+
+    def _build_bm25_index(self, retriever):
+        """从数据库加载文档构建 BM25 索引"""
+        self.connect()
+        self.cursor.execute(
+            """SELECT id, title, subject, document_data FROM knowledge_documents"""
+        )
+        rows = []
+        for row in self.cursor.fetchall():
+            doc_data = row["document_data"]
+            if isinstance(doc_data, str):
+                try:
+                    doc_data = json.loads(doc_data)
+                except Exception:
+                    doc_data = {}
+            raw_text = (doc_data or {}).get("content", {}).get("raw_text", "")
+            summary = (doc_data or {}).get("analysis", {}).get("summary", "")
+            rows.append({
+                "id": row["id"],
+                "title": row["title"],
+                "subject": row["subject"],
+                "text": f"{summary} {raw_text}"[:5000],
+            })
+        n = retriever.build_from_rows(rows)
+        info(f"BM25 索引构建完成: {n} 篇文档")
+        self.close()
 
     def _json_like_search(self, keywords, subject, limit):
         """JSON 字段 LIKE 检索（摘要 + 知识点）"""
@@ -1083,6 +1268,104 @@ class RAGKnowledgeBase:
         except Exception as e:
             warning(f"JSON LIKE 检索失败: {e}")
             return []
+
+    def search_hybrid_bm25_vector(self, query, query_embedding=None, subject=None,
+                                  limit=5, temperature=1.0, weights=None):
+        """
+        BM25 + 向量 Softmax 概率融合混合检索
+
+        流程:
+          1. BM25 词项排序 → Softmax 概率
+          2. Milvus 向量检索 → Softmax 概率
+          3. 加权融合: fused = w_bm25·p_bm25 + w_vec·p_vec
+
+        参数：
+          query: 查询文本
+          query_embedding: 查询向量（可选，缺失时退化为纯 BM25）
+          subject: 学科过滤
+          limit: 返回数量
+          temperature: Softmax 温度
+          weights: [bm25权重, 向量权重]，默认 [0.8, 0.2]（BM25 优先）
+
+        返回：
+          文档列表，含 probability（融合概率，和为 1）、bm25_score、vector_score
+        """
+        from data.bm25_softmax import fuse_probabilities
+
+        if weights is None:
+            weights = [0.8, 0.2]
+        w_bm25, w_vec = float(weights[0]), float(weights[1])
+
+        pool = max(limit * 3, 15)
+
+        # ── 路径 1: BM25 ──
+        bm25_hits = self.search_documents_by_bm25(query, subject=subject, limit=pool,
+                                                  temperature=temperature)
+        bm25_pairs = [(d["id"], d["similarity"]) for d in bm25_hits if d.get("id") is not None]
+        bm25_map = {d["id"]: d for d in bm25_hits if d.get("id") is not None}
+
+        # ── 路径 2: 向量 ──
+        vec_pairs = []
+        vec_map = {}
+        if query_embedding:
+            vec_hits = self.search_documents_by_vector(query_embedding, limit=pool)
+            for d in vec_hits:
+                if d.get("id") is None:
+                    continue
+                if subject and d.get("subject") != subject:
+                    continue
+                vec_pairs.append((d["id"], d["similarity"]))
+                vec_map[d["id"]] = d
+
+        # ── 融合 ──
+        score_lists = [p for p in (bm25_pairs, vec_pairs) if p]
+        active_w = []
+        if bm25_pairs:
+            active_w.append(w_bm25)
+        if vec_pairs:
+            active_w.append(w_vec)
+        if not score_lists:
+            return []
+        if not active_w:
+            active_w = [1.0] * len(score_lists)
+
+        fused = fuse_probabilities(score_lists, weights=active_w, temperature=temperature)
+
+        # ── 直接复用两路已取到的文档元数据，省掉第三次查库 ──
+        data_map = {**bm25_map, **vec_map}
+
+        results = []
+        for doc_id, prob in fused[:limit]:
+            src = data_map.get(doc_id)
+            if not src:
+                continue
+            results.append({
+                "id": doc_id,
+                "title": src.get("title", ""),
+                "subject": src.get("subject", ""),
+                "content_text": src.get("content_text", ""),
+                "similarity": prob,
+                "probability": prob,
+                "bm25_score": bm25_map.get(doc_id, {}).get("similarity"),
+                "vector_score": vec_map.get(doc_id, {}).get("similarity"),
+                "document_data": src.get("document_data"),
+                "retrieval_method": "bm25_vector_hybrid",
+            })
+
+        if results:
+            from data.bm25_softmax import softmax
+
+            probs = softmax([r["similarity"] for r in results], temperature=temperature)
+            for r, p in zip(results, probs, strict=False):
+                r["probability"] = p
+                r["similarity"] = p
+
+        _semantic_cache.set(
+            f"rag:bm25vec:{query}:{subject}:{limit}",
+            results,
+            query_embedding,
+        )
+        return results
 
     def hybrid_search(self, query, query_embedding=None, subject=None,
                       limit=5, rrf_k=60):
@@ -1242,13 +1525,19 @@ class RAGKnowledgeBase:
             self.cursor.execute(sql, (doc_id,))
             self.conn.commit()
 
-            # 从 FAISS 索引中移除
-            if vector_index._faiss_available:
+            # 从向量索引 / BM25 索引中移除
+            if vector_index.is_available:
                 try:
                     vector_index.remove_by_ids({doc_id})
                     vector_index.save()
                 except Exception:
                     pass
+            try:
+                from data.bm25_softmax import bm25_retriever
+
+                bm25_retriever.index.remove(int(doc_id))
+            except Exception:
+                pass
 
             _clear_search_cache()
             return True

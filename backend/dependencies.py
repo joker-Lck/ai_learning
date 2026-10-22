@@ -6,7 +6,10 @@ import os
 from datetime import datetime, timedelta
 
 import jwt
+from dotenv import load_dotenv
 from fastapi import Depends, Header, HTTPException, Request
+
+load_dotenv()
 
 
 # ── JWT 配置 ──

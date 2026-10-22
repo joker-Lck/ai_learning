@@ -1,7 +1,7 @@
 """
 数据库迁移：为 error_notes 表添加间隔重复字段
 """
-import sqlite3
+from data import dbapi as sqlite3
 import os
 
 def get_db_path():

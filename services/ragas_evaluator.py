@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import os
-import sqlite3
+from data import dbapi as sqlite3
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -28,25 +28,25 @@ _REFERENCE_METRICS = frozenset({"context_precision", "context_recall", "factual_
 
 _DDL = (
     """CREATE TABLE IF NOT EXISTS eval_datasets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
-        description TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)""",
+        id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE,
+        description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
     """CREATE TABLE IF NOT EXISTS eval_samples (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, dataset_id INTEGER NOT NULL,
-        user_input TEXT NOT NULL, reference TEXT, reference_contexts TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        id BIGINT AUTO_INCREMENT PRIMARY KEY, dataset_id BIGINT NOT NULL,
+        user_input VARCHAR(255) NOT NULL, reference TEXT, reference_contexts TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (dataset_id) REFERENCES eval_datasets(id))""",
     """CREATE TABLE IF NOT EXISTS eval_runs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, dataset_id INTEGER NOT NULL,
-        strategy TEXT NOT NULL,
-        faithfulness REAL, context_precision REAL, context_recall REAL,
-        answer_relevancy REAL, factual_correctness REAL,
-        total_samples INTEGER, run_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        id BIGINT AUTO_INCREMENT PRIMARY KEY, dataset_id BIGINT NOT NULL,
+        strategy VARCHAR(255) NOT NULL,
+        faithfulness DOUBLE, context_precision DOUBLE, context_recall DOUBLE,
+        answer_relevancy DOUBLE, factual_correctness DOUBLE,
+        total_samples INT, run_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         metadata TEXT, FOREIGN KEY (dataset_id) REFERENCES eval_datasets(id))""",
 )
 
 
 def _db_path() -> str:
-    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "retrieval_eval.db")
+    return "retrieval_eval"
 
 
 def _require_ragas() -> bool:

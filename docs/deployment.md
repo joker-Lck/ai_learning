@@ -42,7 +42,7 @@ python scripts/init_admin.py
 
 ```bash
 # 方式1: 一键启动 (Windows)
-启动.bat
+01_运行启动\启动.bat
 
 # 方式2: 手动启动
 # 终端1 - 后端
@@ -110,10 +110,10 @@ docker-compose down
 
 ```bash
 # 一键构建
-python build.py
+python 02_打包构建/build.py
 
 # 编译 NSIS 安装程序
-makensis installer.nsi
+makensis 02_打包构建/installer.nsi
 ```
 
 ### 生成文件

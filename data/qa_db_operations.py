@@ -1,7 +1,7 @@
 ﻿"""AI 答疑专用数据库操作模块（JSON 格式存储） - SQLite 版本"""
 
 import json
-import sqlite3
+from data import dbapi as sqlite3
 import time
 from datetime import datetime
 

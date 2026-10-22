@@ -3,7 +3,7 @@
 """
 
 import json
-import sqlite3
+from data import dbapi as sqlite3
 
 from core.logger import error, info
 

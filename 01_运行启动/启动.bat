@@ -2,8 +2,8 @@
 chcp 65001 >nul 2>&1
 title AI Learning Agent
 setlocal
-set "ROOT=%~dp0"
-cd /d "%ROOT%"
+cd /d "%~dp0.."
+set "ROOT=%CD%\"
 
 echo ========================================
 echo   AI Learning Agent - Starting...

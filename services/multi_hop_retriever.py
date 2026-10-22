@@ -2,7 +2,7 @@
 
 import json
 import re
-import sqlite3
+from data import dbapi as sqlite3
 
 from core.logger import debug, error, info, warning
 

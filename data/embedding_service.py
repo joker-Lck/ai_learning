@@ -1,6 +1,6 @@
 """
-向量化服务模块 - 预训练中文嵌入模型
-模型: shibing624/text2vec-base-chinese (768维, 语义检索专用)
+向量化服务模块 - 多语言嵌入模型
+模型: BAAI/bge-m3 (EMBEDDING_MODEL 可改, 默认 text2vec 兼容历史 768 维向量)
 回退: TF-IDF + SVD (模型不可用时)
 """
 
@@ -14,24 +14,24 @@ from core.logger import error, info, warning
 
 load_dotenv(override=True)
 
-# HuggingFace 国内镜像 + 离线优先
+# HuggingFace 国内镜像（首次下载走镜像，之后本地缓存）
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
-# 模型配置
-DEFAULT_MODEL = os.getenv("EMBEDDING_MODEL", "shibing624/text2vec-base-chinese")
-MAX_SEQ_LENGTH = 512
+# 模型配置：默认 BGE-M3（1024维，GPU）；历史 768 维向量需重建
+DEFAULT_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+MAX_SEQ_LENGTH = int(os.getenv("EMBEDDING_MAX_SEQ", "8192"))
 
 
 class EmbeddingService:
     """向量化服务类 — 预训练模型 + TF-IDF 回退"""
 
     def __init__(self):
-        self._dim = 768  # text2vec-base-chinese 输出维度
+        self._dim = 1024  # BGE-M3 默认维度（模型加载后以实际为准）
         self._lock = threading.Lock()
         self._model = None
         self._model_loaded = False
         self._model_name = DEFAULT_MODEL
+        self._device = None
 
         # TF-IDF 回退相关
         self._tfidf_fallback = False
@@ -42,41 +42,50 @@ class EmbeddingService:
         self._vocab_size = int(os.getenv('EMBEDDING_VOCAB_SIZE', '20000'))
 
     def _load_model(self):
-        """懒加载预训练模型"""
+        """懒加载预训练模型（优先 GPU）"""
         if self._model_loaded:
             return
         with self._lock:
             if self._model_loaded:
                 return
             try:
+                import torch
                 from sentence_transformers import SentenceTransformer
-                info(f"加载嵌入模型: {self._model_name}")
-                self._model = SentenceTransformer(self._model_name)
-                self._dim = self._model.get_embedding_dimension()
+
+                self._device = "cuda" if torch.cuda.is_available() else "cpu"
+                info(f"加载嵌入模型: {self._model_name} (device={self._device})")
+                self._model = SentenceTransformer(self._model_name, device=self._device)
+                self._dim = self._model.get_sentence_embedding_dimension()
                 self._model_loaded = True
-                info(f"嵌入模型加载完成 (dim={self._dim})")
+                info(f"嵌入模型加载完成 (dim={self._dim}, device={self._device})")
             except Exception as e:
                 warning(f"预训练模型加载失败，回退到 TF-IDF: {e}")
                 self._tfidf_fallback = True
-                self._dim = 256
+                # 保持固定维度 768，与历史入库向量一致，避免索引维度漂移
 
     # ── 预训练模型路径 ──────────────────────
 
     def _encode(self, text: str) -> list[float]:
-        """使用预训练模型编码"""
+        """使用预训练模型编码（GPU）"""
         self._load_model()
         if self._model_loaded and self._model:
             text = text[:MAX_SEQ_LENGTH]
-            vec = self._model.encode(text, normalize_embeddings=True)
+            vec = self._model.encode(text, normalize_embeddings=True, device=self._device)
             return vec.tolist()
         return self._hash_fallback(text)
 
     def _encode_batch(self, texts: list[str]) -> list[list[float]]:
-        """批量编码"""
+        """批量编码（GPU）"""
         self._load_model()
         if self._model_loaded and self._model:
             texts = [t[:MAX_SEQ_LENGTH] if t else "" for t in texts]
-            vecs = self._model.encode(texts, normalize_embeddings=True, batch_size=32)
+            vecs = self._model.encode(
+                texts,
+                normalize_embeddings=True,
+                batch_size=32,
+                device=self._device,
+                show_progress_bar=False,
+            )
             return [v.tolist() for v in vecs]
         return [self._hash_fallback(t) for t in texts]
 
@@ -87,6 +96,8 @@ class EmbeddingService:
         训练 TF-IDF + SVD 回退模型
         预训练模型可用时此方法为空操作
         """
+        # 先尝试加载预训练模型，成功则无需 TF-IDF
+        self._load_model()
         if self._model_loaded:
             info("预训练模型已加载，跳过 TF-IDF 训练")
             return
@@ -144,9 +155,9 @@ class EmbeddingService:
                 self._svd = TruncatedSVD(n_components=n_components, random_state=42)
                 self._svd.fit(tfidf_matrix)
                 self._fitted = True
-                self._dim = n_components
+                # 不修改 self._dim —— 输出向量 pad/截断到固定维度，与入库向量对齐
                 self._tfidf_fallback = True
-                info(f"TF-IDF 回退训练完成 (dim={n_components})")
+                info(f"TF-IDF 回退训练完成 (svd_components={n_components}, output_dim={self._dim})")
             except Exception as e:
                 error(f"TF-IDF 训练失败: {e}")
 
@@ -168,10 +179,14 @@ class EmbeddingService:
 
         tfidf = vec.reshape(1, -1)
         result = self._svd.transform(tfidf)[0]
-        norm = np.linalg.norm(result)
+        # pad/截断到固定维度，保证与入库向量维度一致
+        out = np.zeros(self._dim, dtype=np.float32)
+        n = min(len(result), self._dim)
+        out[:n] = result[:n]
+        norm = np.linalg.norm(out)
         if norm > 0:
-            result = result / norm
-        return result.tolist()
+            out = out / norm
+        return out.tolist()
 
     def _hash_fallback(self, text: str) -> list[float]:
         """哈希回退（最后手段）"""
@@ -217,8 +232,9 @@ class EmbeddingService:
             if not text.strip():
                 return [0.0] * self._dim
 
-            # 优先预训练模型
-            if self._model_loaded or not self._tfidf_fallback:
+            # 优先预训练模型（懒加载）
+            self._load_model()
+            if self._model_loaded and self._model:
                 return self._encode(text)
 
             # TF-IDF 回退
@@ -236,7 +252,8 @@ class EmbeddingService:
         批量获取文本的向量表示
         """
         try:
-            if self._model_loaded or not self._tfidf_fallback:
+            self._load_model()
+            if self._model_loaded and self._model:
                 return self._encode_batch(texts)
 
             return [self.get_embedding(t) for t in texts]

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # 后端 API
   backend:
@@ -12,6 +10,8 @@ services:
       - .env
     volumes:
       - sqlite_data:/app/data/databases
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
     depends_on:
       redis:
         condition: service_healthy
@@ -19,9 +19,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: "1.0"
-    # 优化：日志限制
+          memory: 2G
+          cpus: "2.0"
     logging:
       driver: "json-file"
       options:
@@ -36,9 +35,12 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://backend:8000/api
+      - NEXT_PUBLIC_API_ORIGIN=http://backend:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     deploy:
       resources:
@@ -68,9 +70,10 @@ services:
       resources:
         limits:
           memory: 128M
-    # 优化：Redis 性能参数
     command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru --save "" --appendonly no
 
 volumes:
   sqlite_data:
   redis_data:
+  uploads_data:
+  logs_data:

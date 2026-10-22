@@ -1,21 +1,21 @@
-"""单元测试：数据库操作"""
+"""单元测试：数据库操作（MySQL）"""
 import os
-import sqlite3
+
+from data import dbapi as sqlite3
 
 
 class TestDatabaseInit:
-    """测试数据库初始化脚本"""
+    """测试数据库初始化"""
 
     def test_init_script_importable(self):
         """初始化脚本可以导入"""
-        import importlib
-        spec = importlib.util.spec_from_file_location(
-            "init_databases", "scripts/init_databases.py"
-        )
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("init_databases", "scripts/init_databases.py")
         assert spec is not None
 
-    def test_all_db_paths_defined(self):
-        """所有数据库路径已定义"""
+    def test_all_db_names_defined(self):
+        """所有数据库名已定义"""
         from data.config import (
             get_agents_db_path,
             get_assessments_db_path,
@@ -27,19 +27,20 @@ class TestDatabaseInit:
             get_resources_db_path,
             get_tutor_db_path,
         )
-        paths = [
+
+        names = [
             get_auth_db_path(), get_profile_db_path(), get_resources_db_path(),
             get_paths_db_path(), get_tutor_db_path(), get_assessments_db_path(),
             get_agents_db_path(), get_rag_db_path(), get_memory_db_path(),
         ]
-        assert len(paths) == 9
-        assert all(p.endswith(".db") for p in paths)
+        assert len(names) == 9
+        assert all(isinstance(n, str) and n.startswith("ai_") for n in names)
 
-    def test_db_path_format(self):
-        """数据库路径格式正确"""
+    def test_db_name_format(self):
+        """数据库名格式正确"""
         from data.config import get_auth_db_path
-        path = get_auth_db_path()
-        assert "ai_auth.db" in path
+
+        assert get_auth_db_path() == "ai_auth"
 
 
 class TestDAO:
@@ -47,28 +48,31 @@ class TestDAO:
 
     def test_resource_dao_import(self):
         from data.dao import ResourceDAO
+
         assert ResourceDAO is not None
 
     def test_activity_dao_import(self):
         from data.dao import ActivityDAO
+
         assert ActivityDAO is not None
 
     def test_dao_singletons(self):
         from data.dao import get_resource_dao
+
         dao1 = get_resource_dao()
         dao2 = get_resource_dao()
         assert dao1 is dao2  # 单例
 
     def test_db_operations_import(self):
         from data.db_operations import Database
+
         assert Database is not None
 
-    def test_db_context_manager(self, tmp_db):
+    def test_db_context_manager(self):
         """Database 上下文管理器"""
         from data.db_operations import Database
 
-        # 使用临时数据库
-        db = Database(config_func=lambda: {"database": tmp_db})
+        db = Database()
         assert db.connect() is True
         db.close()
 
@@ -76,34 +80,30 @@ class TestDAO:
 class TestMemoryDB:
     """测试记忆数据库表结构"""
 
-    def test_memory_tables_exist(self):
-        """记忆系统表存在"""
-        from data.config import get_memory_db_path
-        path = get_memory_db_path()
-        if os.path.exists(path):
-            conn = sqlite3.connect(path)
+    def _tables(self, schema: str) -> list[str]:
+        conn = sqlite3.connect(schema)
+        try:
             cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema=%s AND table_type='BASE TABLE'",
+                (schema,),
             )
-            tables = [row[0] for row in cursor.fetchall()]
+            return [row[0] for row in cursor.fetchall()]
+        finally:
             conn.close()
 
-            expected = ["short_term_memory", "episodic_memory", "semantic_memory",
-                       "entity_memory", "entity_relations", "memory_metadata"]
-            for t in expected:
-                assert t in tables, f"缺少表: {t}"
+    def test_memory_tables_exist(self):
+        """记忆系统表存在"""
+        tables = self._tables("ai_memory")
+        expected = [
+            "short_term_memory", "episodic_memory", "semantic_memory",
+            "entity_memory", "entity_relations", "memory_metadata",
+        ]
+        for t in expected:
+            assert t in tables, f"缺少表: {t}"
 
     def test_feedback_tables_exist(self):
         """反馈表存在"""
-        from data.config import get_memory_db_path
-        path = get_memory_db_path()
-        if os.path.exists(path):
-            conn = sqlite3.connect(path)
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
-            tables = [row[0] for row in cursor.fetchall()]
-            conn.close()
-
-            assert "user_feedback" in tables, "缺少 user_feedback 表"
-            assert "learning_experiences" in tables, "缺少 learning_experiences 表"
+        tables = self._tables("ai_memory")
+        assert "user_feedback" in tables, "缺少 user_feedback 表"
+        assert "learning_experiences" in tables, "缺少 learning_experiences 表"

@@ -1,7 +1,7 @@
 """自学习闭环：反馈收集 → 经验筛选 → 数据增强 → 知识库增量更新"""
 
 import json
-import sqlite3
+from data import dbapi as sqlite3
 import uuid
 
 from core.logger import error, info, warning

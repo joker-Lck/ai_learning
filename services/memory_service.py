@@ -14,7 +14,7 @@
 """
 
 import json
-import sqlite3
+from data import dbapi as sqlite3
 import threading
 from datetime import datetime
 

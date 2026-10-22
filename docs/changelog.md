@@ -1,5 +1,53 @@
 # 版本变更日志
 
+## v9.0.0 — 存储/向量/检索三层升级（MySQL + Milvus + BGE-M3）
+
+### 架构迁移
+- **SQLite → MySQL 8.0**
+  - 9 个独立 `.db` 文件 → 9 个 MySQL Schema（表结构一一对应）
+  - 新增 `data/dbapi.py`：sqlite3 兼容层（PyMySQL），保留 `?` 占位符 / `Row` / `lastrowid` / PRAGMA 接口
+  - 迁移脚本 `scripts/migrate_to_mysql.py`（`--schema` / `--data`）
+  - 数据库连接池（按 Schema 池化复用，`MYSQL_POOL_SIZE`）
+- **FAISS → Milvus（Milvus Lite）**
+  - `VectorIndexManager` 改用 `pymilvus.MilvusClient`，本地文件 `~/.milvus/ai_learning.db`
+  - 支持原生向量删除；按规模自动选 FLAT / IVF_FLAT / HNSW 索引
+  - `MILVUS_URI` / `MILVUS_TOKEN` 可切换到 Milvus Server / Zilliz Cloud
+- **嵌入模型 → BGE-M3（BAAI/bge-m3）**
+  - 1024 维，GPU 加速（RTX 5080 / CUDA）
+  - TF-IDF 回退仅在模型加载失败时启用（修复 fit() 抢跑导致的回退误触发）
+
+### 新增 — 检索能力
+- **BM25 + Softmax 检索模块** (`data/bm25_softmax.py`)
+  - `BM25Index`：增量倒排索引（`postings: term→docs`），增删 O(tokens)
+  - `softmax()`：数值稳定 Softmax，`temperature` 控制分布尖锐度
+  - `BM25SoftmaxRetriever`：分词(jieba) → BM25 → Softmax 概率化 → Top-K
+  - `fuse_probabilities()`：多路分数 Softmax 后加权融合
+- **BM25 × 向量混合检索** (`search_hybrid_bm25_vector`)
+  - Softmax 概率融合，默认权重 **BM25 0.8 / 向量 0.2**
+  - 策略路由：`bm25` / `bm25_vector` / `knn` / `ann` / `hybrid` / `auto`
+  - `auto` 策略默认走 BM25 优先混合（短查询 <15 字走 HyDE）
+- **MySQL FULLTEXT + ngram 解析器**：替换 SQLite FTS5，原生支持中文
+
+### 性能优化
+- 语义缓存全覆盖（BM25 / FULLTEXT / 向量 / 混合），按策略命名空间隔离
+- 缓存 key 含查询指纹，防止不同查询命中同一缓存
+- 健康连接复用，减少 MySQL 握手开销
+- 混合检索合并查库（3 次 → 2 次）
+- 文档增删同步维护 BM25 / Milvus 双索引
+
+### 文档
+- `docs/database.md` 重写为 MySQL 架构
+- `docs/retrieval.md` 补充 BM25+Softmax 与混合检索策略
+- `README.md` 架构图 / 技术栈 / 环境变量同步更新
+
+### 验证
+- 单元测试 79 passed
+- 服务实测：BGE-M3 语义检索区分度良好（cos 0.56–0.71）
+- 全策略 API 实测通过（8000 端口，MySQL + Milvus 健康）
+
+---
+
+
 ## v8.7.0 — RAGAS 评估框架（取代旧检索评测）
 
 ### 新增
@@ -268,7 +316,7 @@
   - 推理链路展示（跳数标签 + 关系 + 置信度）
   - Mermaid 知识关联图谱渲染
   - 新增 `POST /api/agent/multi-hop-search` 端点
-- **FAISS 索引升级**
+- **Milvus 索引升级**
   - 按文档量自动选择：<10K → FlatIP，10K-100K → IVFFlat，>100K → HNSW
   - `_maybe_upgrade_index()` 自动升级
   - `index_type` / `index_info` 属性监控

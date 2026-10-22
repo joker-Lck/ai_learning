@@ -4,7 +4,7 @@ SQLite 数据库操作模块（JSON 格式存储）
 """
 
 import json
-import sqlite3
+from data import dbapi as sqlite3
 from datetime import datetime
 
 from core.logger import db_operation_failed, db_operation_success, debug, error

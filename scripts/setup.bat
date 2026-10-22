@@ -117,7 +117,7 @@ echo ========================================
 echo.
 echo   Next steps:
 echo   1. Edit .env if needed (MIMO_API_KEY)
-echo   2. Run scripts\启动.bat to start the system
+echo   2. Run 01_运行启动\启动.bat to start the system
 echo   3. Open http://localhost:3000
 echo.
 pause

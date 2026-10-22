@@ -4,7 +4,7 @@
 """
 
 import hashlib
-import sqlite3
+from data import dbapi as sqlite3
 
 import bcrypt
 

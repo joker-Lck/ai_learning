@@ -189,7 +189,7 @@ async def evaluate_profile_with_ai(user: dict = Depends(require_auth)):
 
         # 5. 保存评定记录到数据库
         try:
-            import sqlite3
+            from data import dbapi as sqlite3
 
             from data.config import get_memory_db_path
             conn = sqlite3.connect(get_memory_db_path())
@@ -1655,14 +1655,14 @@ async def advanced_search(
     {
         "query": "检索内容",
         "subject": "学科（可选）",
-        "strategy": "auto|knn|ann|hybrid|hyde|multi_query|rag_fusion|contextual|graph|hybrid_advl|ensemble",
+        "strategy": "auto|knn|ann|bm25|bm25_vector|hybrid|hyde|multi_query|rag_fusion|contextual|graph|hybrid_advl|ensemble",
         "limit": 5
     }
 
     策略路由:
     - auto: 自动选择（短查询用 HyDE，长查询用 RAG-Fusion）
     - knn: KNN 关键词检索（MySQL FULLTEXT INDEX 精确匹配）
-    - ann: ANN 向量检索（FAISS 语义匹配）
+    - ann: ANN 向量检索（Milvus 语义匹配）
     - hybrid: KNN + ANN + RRF 混合检索（基座策略）
     - hyde: 假设性文档嵌入（2023）
     - multi_query: 多查询检索（2023）
@@ -2270,13 +2270,13 @@ async def react_search(
 
 @router.get("/faiss-info", response_model=BaseResponse)
 async def get_faiss_index_info(user: dict = Depends(require_auth)):
-    """获取 FAISS 索引信息（类型、向量数、维度）"""
+    """获取向量索引信息（引擎、类型、向量数、维度）— 路径保留兼容旧前端"""
     try:
         from data.rag_knowledge_base import vector_index
         info_data = vector_index.index_info
         return BaseResponse(success=True, message="获取成功", data=info_data)
     except Exception as e:
-        error(f"获取 FAISS 索引信息失败: {e}")
+        error(f"获取向量索引信息失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

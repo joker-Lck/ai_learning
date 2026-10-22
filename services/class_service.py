@@ -18,7 +18,7 @@ from data.config import (
 
 
 def _conn(db_path: str):
-    import sqlite3
+    from data import dbapi as sqlite3
     c = sqlite3.connect(db_path, timeout=10)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA journal_mode=WAL")

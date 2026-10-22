@@ -8,7 +8,7 @@ os.chdir(ROOT)
 from dotenv import load_dotenv
 load_dotenv()
 
-import sqlite3
+from data import dbapi as sqlite3
 from data.embedding_service import embedding_service
 
 db_path = os.path.join(ROOT, "data", "databases", "ai_rag_knowledge.db")

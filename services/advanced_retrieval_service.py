@@ -73,7 +73,7 @@ class AdvancedRetrievalService:
         HyDE 检索：LLM 生成假设答案 → 向量化 → ANN 检索
 
         流程：
-          query → LLM生成假设文档 → embedding → FAISS检索
+          query → LLM生成假设文档 → embedding → Milvus检索
           （HyDE 的核心是用假设文档的向量替代原始查询向量）
 
         参数：
@@ -96,7 +96,7 @@ class AdvancedRetrievalService:
                 warning("HyDE: 假设文档向量化失败，降级为混合检索")
                 return self._base_hybrid_search(query, subject, limit)
 
-            results = self.rag_kb.search_documents_by_vector(doc_embedding, limit=limit)
+            results = self.rag_kb.search_documents_by_vector(doc_embedding, limit=limit, cache_ns="hyde")
             for r in results:
                 r['retrieval_method'] = 'hyde'
             return results
@@ -454,7 +454,7 @@ class AdvancedRetrievalService:
             # 数据源2: knowledge_entity_graph（文档级实体关系图谱）
             try:
                 from data.config import get_rag_db_path
-                import sqlite3
+                from data import dbapi as sqlite3
                 conn = sqlite3.connect(get_rag_db_path())
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
@@ -669,7 +669,9 @@ class AdvancedRetrievalService:
                           短查询(<15字) → HyDE
                           长查询 → RAG-Fusion
           "knn"           KNN 关键词检索（MySQL FULLTEXT）
-          "ann"           ANN 向量检索（FAISS）
+          "ann"           ANN 向量检索（Milvus）
+          "bm25"          BM25 + Softmax 词项排序（概率化分数）
+          "bm25_vector"   BM25 + 向量 Softmax 概率融合（混合检索）
           "hybrid"        KNN + ANN + RRF 混合（基座）
           "hyde"          假设性文档嵌入（2023）
           "multi_query"   多查询检索（2023）
@@ -686,8 +688,15 @@ class AdvancedRetrievalService:
         elif strategy == "ann":
             embedding = self.embedding_service.get_embedding(query)
             if embedding:
-                return self.rag_kb.search_documents_by_vector(embedding, limit)
+                return self.rag_kb.search_documents_by_vector(embedding, limit, cache_ns="ann")
             return []
+        elif strategy in ("bm25", "bm25_softmax"):
+            return self.rag_kb.search_documents_by_bm25(query, subject=subject, limit=limit)
+        elif strategy in ("bm25_vector", "hybrid_bm25", "bm25_ann"):
+            query_embedding = self.embedding_service.get_embedding(query)
+            return self.rag_kb.search_hybrid_bm25_vector(
+                query, query_embedding=query_embedding, subject=subject, limit=limit
+            )
         elif strategy == "hybrid":
             return self._base_hybrid_search(query, subject, limit)
         elif strategy == "hyde":
@@ -761,16 +770,22 @@ class AdvancedRetrievalService:
         self, user_id: int, query: str, subject: str, limit: int
     ) -> list[dict]:
         """
-        自动策略路由：
+        自动策略路由（BM25 优先）：
 
         查询特征 → 策略选择：
+          默认            → BM25 优先混合检索（bm25_vector，权重 0.7/0.3）
           < 15 字（短查询/概念性） → HyDE（生成假设答案扩展语义）
-          ≥ 15 字（长查询/具体性） → RAG-Fusion + 基座混合
         """
         if len(query) < 15:
-            return self.hyde_search(query, subject, limit)
-        else:
-            return self.rag_fusion_search(query, subject, limit)
+            try:
+                return self.hyde_search(query, subject, limit)
+            except Exception as e:
+                warning(f"auto→HyDE 失败，降级 BM25 混合: {e}")
+
+        query_embedding = self.embedding_service.get_embedding(query)
+        return self.rag_kb.search_hybrid_bm25_vector(
+            query, query_embedding=query_embedding, subject=subject, limit=limit
+        )
 
     def _hybrid_advanced_search(
         self, user_id: int, query: str, subject: str, limit: int
@@ -857,7 +872,7 @@ class AdvancedRetrievalService:
         try:
             embedding = self.embedding_service.get_embedding(query)
             if embedding:
-                return self.rag_kb.search_documents_by_vector(embedding, limit=limit)
+                return self.rag_kb.search_documents_by_vector(embedding, limit=limit, cache_ns="fallback")
         except Exception as e:
             error(f"降级向量检索也失败: {e}")
         return []

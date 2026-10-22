@@ -50,7 +50,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 def _load_embedding_corpus():
     """加载语料用于训练 embedding 模型"""
     import glob
-    import sqlite3
+    from data import dbapi as sqlite3
 
     corpus = []
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -88,17 +88,20 @@ def _load_embedding_corpus():
     except Exception:
         pass
 
-    # 4. 知识库数据库
-    db_dir = os.path.join(base_dir, 'data', 'databases')
-    for db_file in glob.glob(os.path.join(db_dir, '*.db')):
+    # 4. 知识库数据库（MySQL 各 schema）
+    for schema in ('ai_rag_knowledge', 'ai_memory', 'ai_profiles', 'ai_tutor'):
         try:
-            conn = sqlite3.connect(db_file)
+            conn = sqlite3.connect(schema)
             cursor = conn.cursor()
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            cursor.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema=%s AND table_type='BASE TABLE'",
+                (schema,),
+            )
             tables = [r[0] for r in cursor.fetchall()]
             for table in tables:
                 try:
-                    cursor.execute(f'SELECT * FROM [{table}] LIMIT 200')
+                    cursor.execute(f'SELECT * FROM `{table}` LIMIT 200')
                     for row in cursor.fetchall():
                         for cell in row:
                             if isinstance(cell, str) and len(cell) > 100:
@@ -278,12 +281,12 @@ async def health_check():
     except Exception:
         checks["sqlite"] = "error"
 
-    # FAISS 检查
+    # 向量检索（Milvus）检查
     try:
         from data.rag_knowledge_base import vector_index
-        checks["faiss"] = "ok" if vector_index._faiss_available else "unavailable"
+        checks["milvus"] = "ok" if vector_index.is_available else "unavailable"
     except Exception:
-        checks["faiss"] = "error"
+        checks["milvus"] = "error"
 
     all_ok = all(v == "ok" for v in checks.values())
     return {

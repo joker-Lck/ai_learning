@@ -10,7 +10,7 @@ import zipfile
 import urllib.request
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 DIST_DIR = BASE_DIR / "dist" / "AI学习智能体"
 BUILD_DIR = BASE_DIR / "build"
 NODE_PORTABLE_DIR = BASE_DIR / "node_portable"
@@ -121,7 +121,7 @@ def build_frontend():
 
 def run_pyinstaller():
     """运行 PyInstaller"""
-    spec_file = BASE_DIR / "ai_learning_agent.spec"
+    spec_file = BASE_DIR / "02_打包构建" / "ai_learning_agent.spec"
     if not spec_file.exists():
         log("ai_learning_agent.spec 不存在", "ERROR")
         return False

@@ -19,7 +19,7 @@ from pathlib import Path
 if getattr(sys, 'frozen', False):
     BASE_DIR = Path(sys.executable).parent
 else:
-    BASE_DIR = Path(__file__).parent
+    BASE_DIR = Path(__file__).resolve().parent.parent
 
 NODE_DIR = BASE_DIR / "node"
 NODE_EXE = NODE_DIR / "node.exe"
