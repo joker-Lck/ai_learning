@@ -97,7 +97,7 @@ docker-compose down
 ```
 1. 构建前端 (npm run build)
    ↓
-2. 下载便携 Node.js / SQLite
+2. 下载便携 Node.js；安装 MySQL 8.0
    ↓
 3. PyInstaller 打包后端为 EXE
    ↓

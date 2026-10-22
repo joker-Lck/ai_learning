@@ -39,7 +39,7 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                             ▼                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │              数据层 (Data Layer) — 9 个独立 SQLite 数据库   │  │
+│  │              数据层 (Data Layer) — 9 个独立 MySQL Schema   │  │
 │  │  auth │ profiles │ resources │ paths │ tutor │ memory    │  │
 │  │  assessments │ agents │ rag_knowledge                    │  │
 │  └──────────────────────────────────────────────────────────┘  │
@@ -87,10 +87,11 @@
 |------|------|------|
 | FastAPI | 0.110+ | 高性能 API 框架 |
 | Python | 3.8+ | 后端运行环境 |
-| SQLite | 3.50+ | 9 个独立数据库 |
+| MySQL | 8.0+ | 9 个独立 Schema |
 | Milvus | 2.4+ | 向量检索（Milvus Lite） |
+| BGE-M3 | — | 嵌入模型（1024 维 GPU） |
 | MiMo AI | mimo-v2.5-pro | 大语言模型（文本推理、视觉理解、图片生成、语音合成） |
-| TF-IDF + SVD | 本地实现 | 文本向量化（jieba分词 + TF-IDF + SVD降维，维度动态计算） |
+| TF-IDF + SVD | 本地实现 | 嵌入回退（BGE-M3 不可用时，jieba 分词 + SVD 降维） |
 
 ## 扩展服务
 
@@ -169,5 +170,5 @@
 | ai_tutor | 辅导 | tutor_sessions, messages, knowledge_refs |
 | ai_assessments | 评估 | assessments, dimensions, activities |
 | ai_agents | 协作 | collaboration_logs, tasks |
-| ai_rag_knowledge | 知识库 | documents, points, categories（FTS5） |
+| ai_rag_knowledge | 知识库 | documents, points, categories（FULLTEXT ngram） |
 | ai_memory | 记忆 | 8 张记忆表 |

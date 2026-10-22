@@ -83,7 +83,7 @@
 | 视觉理解 | `mimo-v2.5` | 图片识别、OCR 文字提取、图表理解、手写识别 |
 | 图片生成 | `mimo-image` | 教学示意图、知识点图解、概念可视化 |
 | 语音合成 | `mimo-tts` | 文字转语音、音频讲解生成 |
-| 文本向量化 | TF-IDF + SVD | 本地向量化（jieba分词），驱动 RAG 语义检索 |
+| 文本向量化 | BGE-M3（GPU） | 本地 1024 维向量，驱动 RAG 语义检索（回退 TF-IDF + SVD） |
 
 ### 多智能体协同架构
 
@@ -189,7 +189,7 @@
 - 共享计算函数：`frontend/lib/radar.ts`
 - Recharts `RadarChart` 组件，紫色主题（`#a78bfa`）
 - AI 评分缓存：`localStorage`（24小时 TTL）
-- 评定记录持久化：`profile_evaluations` 表（ai_memory.db）
+- 评定记录持久化：`profile_evaluations` 表（ai_memory schema）
 - API 端点：`POST /api/agent/evaluate-profile`
 
 ---
@@ -595,7 +595,7 @@ MiMo 分析学生当前知识水平，同时生成学习路径和学习计划。
 - KNN 关键词路径：MySQL FULLTEXT（ngram）精确匹配
 - BM25 路径：BM25 + Softmax 概率化排序
 - 混合检索：BM25 × 向量 Softmax 概率融合（权重 0.8/0.2）
-- ANN 向量路径：Milvus + TF-IDF+SVD 语义匹配
+- ANN 向量路径：BGE-M3 + Milvus 语义匹配
 - RRF 融合排序
 - 11 种高级检索策略
 
@@ -691,7 +691,7 @@ AssessmentAgent ──► 异步评估 ──► 返回用户
     ▼
 ┌──────────────────────────────────────────────────────────┐
 │  embedding_service.py  (EmbeddingService 单例)            │
-│  · get_embedding()     — 文本向量化 (动态维度)            │
+│  · get_embedding()     — 文本向量化 (BGE-M3 1024维)        │
 │  · cosine_similarity() — 余弦相似度计算                   │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -704,7 +704,7 @@ AssessmentAgent ──► 异步评估 ──► 返回用户
 | 视觉理解 | `{base_url}/chat/completions` | `mimo-v2.5` |
 | 图片生成 | `{base_url}/images/generations` | `mimo-image` |
 | 语音合成 | `{base_url}/audio/speech` | `mimo-tts` |
-| 文本向量化 | 本地实现 | TF-IDF + SVD（jieba分词） |
+| 文本向量化 | 本地实现 | BGE-M3 1024 维（回退 TF-IDF + SVD） |
 
 ### 复杂度分层调用
 
@@ -730,7 +730,7 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
    ├── BM25 词项路径 ──► BM25+Softmax ──► Top-K 结果
    │   (专业术语精确匹配)
    │
-   ├── ANN 向量路径 ──► TF-IDF+SVD(动态维度) ──► Milvus 检索 ──► Top-K 结果
+   ├── ANN 向量路径 ──► BGE-M3(1024维) ──► Milvus 检索 ──► Top-K 结果
    │                                                   │
    │                                            三级回退策略
    │                                            ┌──────┴──────┐
@@ -764,7 +764,7 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 | KNN 关键词 | `knn` | MySQL FULLTEXT 全文索引 | 专业术语、公式 |
 | BM25 排序 | `bm25` | BM25 + Softmax 概率化 | 关键词检索 + 分数校准 |
 | BM25×向量 | `bm25_vector` | Softmax 概率融合（0.8/0.2） | 混合检索推荐 |
-| ANN 向量 | `ann` | Milvus + TF-IDF+SVD | 模糊语义查询 |
+| ANN 向量 | `ann` | BGE-M3 + Milvus | 模糊语义查询 |
 | 混合检索 | `hybrid` | KNN + ANN + RRF | 通用推荐 |
 | 假设性文档 | `hyde` | HyDE（Gao et al., 2023） | 短查询、概念性问题 |
 | 多查询 | `multi_query` | Multi-Query（LangChain, 2023） | 提高召回率 |
@@ -786,9 +786,9 @@ MiMoClient 提供按复杂度分层的调用方法，自动选择合适的参数
 
 | 参数 | 值 | 说明 |
 |------|------|------|
-| 实现方式 | TF-IDF + SVD | 本地实现（jieba分词 + scikit-learn） |
-| 向量维度 | 动态（50-200） | 根据语料自动计算 |
-| 文本截断 | 8000 字符 | 超长自动截断 |
+| 实现方式 | BAAI/bge-m3（GPU） | sentence-transformers；回退 TF-IDF + SVD |
+| 向量维度 | 1024 | 模型不可用时回退 TF-IDF + SVD |
+| 文本截断 | 8192 字符 | 超长自动截断 |
 | 索引类型 | Milvus FLAT/COSINE | L2 归一化后内积 ≡ 余弦相似度 |
 | 持久化 | `~/.milvus/ai_learning.db` | Milvus Lite 本地文件 |
 
@@ -847,19 +847,19 @@ MiMo 生成回答（融合记忆上下文）
 
 ### 多数据库架构
 
-9 个独立 MySQL Schema，功能完全隔离。访问层通过 `data/dbapi.py`（sqlite3 兼容层）对接 PyMySQL。
+9 个独立 MySQL Schema，功能完全隔离。访问层通过 `data/dbapi.py`（dbapi 兼容层，sqlite3 风格 API）对接 PyMySQL。
 
-| 数据库 | 文件 | 用途 | 核心表 |
-|--------|------|------|--------|
-| `ai_auth` | `ai_auth.db` | 认证与用户管理 | `users`, `sessions` |
-| `ai_profiles` | `ai_profiles.db` | 学生画像 | `student_profiles`, `course_schedules`, `student_grades`, `error_notes`, `study_plans` |
-| `ai_resources` | `ai_resources.db` | 学习资源 | `learning_resources`, `resource_safety_logs` |
-| `ai_paths` | `ai_paths.db` | 学习路径 | `learning_paths`, `path_progress` |
-| `ai_tutor` | `ai_tutor.db` | 智能辅导 | `tutor_sessions`, `tutor_messages`, `tutor_knowledge_refs` |
-| `ai_assessments` | `ai_assessments.db` | 效果评估 | `learning_assessments`, `assessment_dimensions`, `learning_activities` |
-| `ai_agents` | `ai_agents.db` | 智能体协作 | `agent_collaboration_logs`, `agent_tasks` |
-| `ai_rag_knowledge` | `ai_rag_knowledge` | RAG 知识库 | `knowledge_documents`, `knowledge_points`, `document_categories` + FULLTEXT |
-| `ai_memory` | `ai_memory.db` | 记忆系统 | 8 张记忆表（见下） |
+| 数据库 | 用途 | 核心表 |
+|--------|------|--------|
+| `ai_auth` | 认证与用户管理 | `users`, `sessions` |
+| `ai_profiles` | 学生画像 | `student_profiles`, `course_schedules`, `student_grades`, `error_notes`, `study_plans` |
+| `ai_resources` | 学习资源 | `learning_resources`, `resource_safety_logs` |
+| `ai_paths` | 学习路径 | `learning_paths`, `path_progress` |
+| `ai_tutor` | 智能辅导 | `tutor_sessions`, `tutor_messages`, `tutor_knowledge_refs` |
+| `ai_assessments` | 效果评估 | `learning_assessments`, `assessment_dimensions`, `learning_activities` |
+| `ai_agents` | 智能体协作 | `agent_collaboration_logs`, `agent_tasks` |
+| `ai_rag_knowledge` | RAG 知识库 | `knowledge_documents`, `knowledge_points`, `document_categories` + FULLTEXT |
+| `ai_memory` | 记忆系统 | 8 张记忆表（见下） |
 
 ### 记忆系统表结构
 
@@ -1156,7 +1156,7 @@ cd frontend && npm install && npm run build && npm start
 │
 ├── data/                           # 数据访问层
 │   ├── rag_knowledge_base.py       # RAG 知识库（Milvus + 混合检索）
-│   ├── embedding_service.py        # TF-IDF + SVD 本地向量化（jieba分词）
+│   ├── embedding_service.py        # BGE-M3 向量化（回退 TF-IDF + SVD）
 │   ├── document_parser.py          # 文档解析（PDF/Word/Excel/PPT）
 │   ├── data_manager.py             # 数据管理器
 │   ├── db_operations.py            # 数据库操作
@@ -1164,7 +1164,7 @@ cd frontend && npm install && npm run build && npm start
 │   ├── dao.py                      # DAO 层
 │   ├── config.py                   # 多数据库配置
 │   ├── redis_cache.py              # 缓存层
-│   └── databases/                  # legacy SQLite（迁移脚本读取用）
+│   └── databases/                  # legacy 数据目录（迁移脚本读取用）
 │
 ├── core/                           # 核心工具
 │   ├── logger.py                   # 结构化日志（JSON 格式，日志轮转）
@@ -1364,7 +1364,7 @@ cd frontend && npm install && npm run build && npm start
 - 性能优化，针对性优化不同数据类型
 - 故障隔离，单库故障不影响全局
 - RAG 知识库专业化（MySQL FULLTEXT + BM25 + Milvus 向量）
-- 无需外部数据库服务，部署简单
+- 需本地运行 MySQL 8.0（向量索引为 Milvus Lite，免 Docker）
 
 ### Q5: 流式输出如何实现？
 
@@ -1374,8 +1374,10 @@ cd frontend && npm install && npm run build && npm start
 
 ```bash
 # MySQL 9 个 Schema：ai_auth / ai_profiles / ai_resources / ai_paths / ai_tutor / ai_assessments / ai_agents / ai_rag_knowledge / ai_memory
-# 直接复制 .db 文件即可备份
-copy data\databases\*.db backup\
+mysqldump -uroot -p --databases ai_auth ai_profiles ai_resources ai_paths ai_tutor ai_assessments ai_agents ai_rag_knowledge ai_memory > backup.sql
+
+# 向量索引（Milvus Lite）
+copy %USERPROFILE%\.milvus\ai_learning.db backup\
 ```
 
 ### Q7: 如何导入 RAG 知识库数据？

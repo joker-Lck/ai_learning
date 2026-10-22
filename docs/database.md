@@ -49,31 +49,31 @@ ai_memory (记忆系统) → 辅导增强
 
 ## 访问层
 
-业务代码通过 `data/dbapi.py` 访问数据库，它是 **sqlite3 兼容层**（基于 PyMySQL）：
+业务代码通过 `data/dbapi.py` 访问数据库，它是 **dbapi 兼容层**（基于 PyMySQL，保留 sqlite3 风格调用）：
 
 ```python
-from data import dbapi as sqlite3
+from data import dbapi as dbapi
 from data.config import get_auth_db_path
 
-conn = sqlite3.connect(get_auth_db_path())  # → MySQL schema `ai_auth`
-conn.row_factory = sqlite3.Row
+conn = dbapi.connect(get_auth_db_path())  # → MySQL schema `ai_auth`
+conn.row_factory = dbapi.Row
 cur = conn.cursor()
 cur.execute("SELECT * FROM users WHERE username = ?", (name,))  # ? 占位符
 ```
 
 兼容特性：
 
-| sqlite3 接口 | MySQL 实现 |
+| 兼容接口 | MySQL 实现 |
 |-------------|-----------|
 | `?` 占位符 | 自动转换为 `%s` |
-| `row_factory = sqlite3.Row` | 支持下标 + 列名访问 |
+| `row_factory = dbapi.Row` | 支持下标 + 列名访问 |
 | `cursor.lastrowid` | `INSERT` 自增 ID |
 | `PRAGMA ...` | 无操作（自动忽略） |
-| `sqlite3.IntegrityError` | 映射 pymysql 异常 |
+| `dbapi.IntegrityError` | 映射 pymysql 异常 |
 
 ## 全文检索
 
-原 SQLite FTS5 已替换为 **MySQL FULLTEXT + ngram 解析器**（支持中文）：
+全文检索使用 **MySQL FULLTEXT + ngram 解析器**（支持中文）：
 
 ```sql
 -- 索引
@@ -97,7 +97,7 @@ LIMIT 10;
 # 建库建表（9 个 schema）
 python scripts/migrate_to_mysql.py --schema
 
-# 从 legacy SQLite 文件导入数据
+# 从 legacy 数据文件导入（一次性迁移）
 python scripts/migrate_to_mysql.py --data
 
 # 兼容旧入口
@@ -109,8 +109,8 @@ python scripts/init_databases.py
 | 优势 | 说明 |
 |------|------|
 | 功能隔离 | 避免数据耦合，各模块独立 schema |
-| 并发能力 | MySQL InnoDB 行锁，优于 SQLite 文件锁 |
+| 并发能力 | MySQL InnoDB 行锁，支持多写 |
 | 全文检索 | ngram FULLTEXT 原生支持中文 |
 | 易于维护 | 模块化设计，单库故障不影响全局 |
 | 高可用性 | 支持主从复制、备份与容灾 |
-| 代码兼容 | dbapi 兼容层保留 sqlite3 调用风格 |
+| 代码兼容 | dbapi 兼容层保留 sqlite3 风格调用 |

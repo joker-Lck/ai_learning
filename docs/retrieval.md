@@ -7,10 +7,11 @@
 ```
 用户查询
    │
-   ├── KNN 关键词路径 ──→ SQLite FTS5 ──→ Top-K 结果
+   ├── KNN 关键词路径 ──→ MySQL FULLTEXT ──→ Top-K 结果
+   ├── BM25 词项路径 ──→ BM25+Softmax ──→ Top-K 结果
    │                       (专业术语精确匹配)
    │
-   ├── ANN 向量路径 ──→ Embedding(动态维度) ──→ Milvus ANN ──→ Top-K 结果
+   ├── ANN 向量路径 ──→ BGE-M3(1024维) ──→ Milvus ANN ──→ Top-K 结果
    │                                          │
    │                                   三级回退策略
    │                                   ┌──────────────┐
@@ -38,10 +39,10 @@
 
 ## 1. KNN 关键词检索
 
-**技术**：SQLite FTS5 全文索引
+**技术**：MySQL FULLTEXT（ngram 解析器）
 
 - 精确匹配专业术语、公式、代码
-- 使用 `CREATE VIRTUAL TABLE ... USING fts5(tokenize='unicode61')` 创建
+- 使用 `ALTER TABLE ... ADD FULLTEXT KEY ... WITH PARSER ngram` 创建
 - 配合同步触发器维护索引
 
 ## 2. ANN 向量检索
@@ -53,7 +54,7 @@
 | 索引类型 | Milvus FLAT/COSINE | Flat Inner Product |
 | 相似度原理 | L2 归一化后内积 | 等价于余弦相似度 |
 | 搜索复杂度 | O(n·d) | 精确线性扫描 |
-| 向量维度 | 动态（50-200） | TF-IDF + SVD 本地向量化（jieba分词） |
+| 向量维度 | 1024 | BGE-M3（GPU）；不可用时回退 TF-IDF + SVD |
 | 并发安全 | `threading.Lock` | 保护所有索引读写 |
 
 ### 三级回退策略
