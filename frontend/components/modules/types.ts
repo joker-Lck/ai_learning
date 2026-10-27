@@ -208,7 +208,7 @@ export interface PlanTask {
   type: string;  // 复习/预习/练习/备考
 }
 
-export type ProfileTab = 'profile' | 'schedule' | 'myClass';
+export type ProfileTab = 'profile' | 'schedule' | 'myClass' | 'classAssignments';
 
 // ==================== 在线做题类型 ====================
 

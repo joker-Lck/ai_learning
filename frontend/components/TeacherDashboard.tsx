@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   Users, BarChart3, BookOpen, Brain, Router, Lightbulb,
   ClipboardCheck, PieChart, Database, GraduationCap,
-  LogOut, Settings,
+  LogOut, Settings, FileText, CheckCheck,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { FullBackground } from '@/components/shared/BackgroundEffects';
@@ -21,12 +21,14 @@ import {
   TeachingQuizView,
 } from '@/components/teacher/TeacherModuleViews';
 import LessonPPTView from '@/components/teacher/LessonPPTView';
+import ExamPaperView from '@/components/teacher/ExamPaperView';
+import GradingView from '@/components/teacher/GradingView';
 
 type TeacherView =
   | 'overview' | 'classes' | 'students' | 'teachingResources'
   | 'teachingProfile' | 'teachingPath' | 'teachingTutor'
   | 'teachingAssessment' | 'teachingQuiz' | 'teachingAnalytics'
-  | 'teachingLesson';
+  | 'teachingLesson' | 'aiExam' | 'examGrading';
 
 const NAV_ITEMS: Array<{
   view: TeacherView;
@@ -47,6 +49,8 @@ const NAV_ITEMS: Array<{
   { view: 'teachingAssessment', label: '班级评估', icon: ClipboardCheck, color: 'text-rose-400', desc: '单生 / 全班对比', group: '教学功能' },
   { view: 'teachingQuiz', label: '题库测验', icon: ClipboardCheck, color: 'text-orange-400', desc: '组卷发布 / 查看作答', group: '教学功能' },
   { view: 'teachingLesson', label: '教案 & PPT', icon: BookOpen, color: 'text-violet-400', desc: 'AI 生成教案课件 / 导出', group: '教学功能' },
+  { view: 'aiExam', label: 'AI 出题 / 组卷', icon: FileText, color: 'text-teal-400', desc: '智能命题 / 试卷导出 / 发布', group: '教学功能' },
+  { view: 'examGrading', label: '批改主观题', icon: CheckCheck, color: 'text-pink-400', desc: '手写识别 / AI 批改 / 班级报告', group: '教学功能' },
 ];
 
 export default function TeacherDashboard() {
@@ -198,6 +202,8 @@ function TeacherViewContent({ view }: { view: TeacherView }) {
       {view === 'teachingAssessment' && <TeachingAssessmentView />}
       {view === 'teachingQuiz' && <TeachingQuizView />}
       {view === 'teachingLesson' && <LessonPPTView />}
+      {view === 'aiExam' && <ExamPaperView />}
+      {view === 'examGrading' && <GradingView />}
     </motion.div>
   );
 }

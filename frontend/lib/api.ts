@@ -976,6 +976,146 @@ class ApiClient {
   async listLessonStyles() {
     return this.request('/lesson/styles');
   }
+
+  // ==================== 老师端 — AI 出题 / 组卷 API ====================
+
+  async generateExamPaper(data: {
+    subject: string; grade?: string; topic?: string; knowledge_points?: string[];
+    difficulty?: string; paper_type?: string; title?: string; total_score?: number;
+    duration_minutes?: number; question_spec?: Record<string, number>; use_bank?: boolean;
+  }) {
+    return this.request('/exam/papers/generate', { method: 'POST', body: data, timeout: 120000 });
+  }
+
+  async saveExamPaper(data: any) {
+    return this.request('/exam/papers', { method: 'POST', body: data });
+  }
+
+  async listExamPapers(params?: { subject?: string; paper_type?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.subject) qs.set('subject', params.subject);
+    if (params?.paper_type) qs.set('paper_type', params.paper_type);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return this.request(`/exam/papers${suffix}`);
+  }
+
+  async getExamPaper(paperId: number) {
+    return this.request(`/exam/papers/${paperId}`);
+  }
+
+  async updateExamPaper(paperId: number, data: any) {
+    return this.request(`/exam/papers/${paperId}`, { method: 'PUT', body: data });
+  }
+
+  async deleteExamPaper(paperId: number) {
+    return this.request(`/exam/papers/${paperId}`, { method: 'DELETE' });
+  }
+
+  async exportExamPaper(paperId: number) {
+    return this.request(`/exam/papers/${paperId}/export`, { method: 'POST', timeout: 60000 });
+  }
+
+  async downloadExamFile(filename: string): Promise<boolean> {
+    // 带 Bearer 头取 blob 触发下载（window.open 无法带认证头）
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const res = await fetch(`${API_BASE}/exam/download/${encodeURIComponent(filename)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return false;
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return true;
+  }
+
+  async assignExamPaper(paperId: number, data: { class_id: number; due_at?: string; title?: string; allow_late?: boolean }) {
+    return this.request(`/exam/papers/${paperId}/assign`, { method: 'POST', body: data });
+  }
+
+  async listExamAssignments() {
+    return this.request('/exam/assignments');
+  }
+
+  async getExamAssignment(assignmentId: number) {
+    return this.request(`/exam/assignments/${assignmentId}`);
+  }
+
+  async closeExamAssignment(assignmentId: number) {
+    return this.request(`/exam/assignments/${assignmentId}/close`, { method: 'POST' });
+  }
+
+  // ==================== 老师端 — 主观题批改 API ====================
+
+  async createExamSubmission(data: { assignment_id: number; student_id?: number }) {
+    return this.request('/exam/submissions', { method: 'POST', body: data });
+  }
+
+  async listExamSubmissions(assignmentId: number) {
+    return this.request(`/exam/assignments/${assignmentId}/submissions`);
+  }
+
+  async getExamSubmission(submissionId: number) {
+    return this.request(`/exam/submissions/${submissionId}`);
+  }
+
+  async uploadExamAnswerImage(submissionId: number, questionId: number, file: File, ocr = true) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.upload(`/exam/submissions/${submissionId}/answers/${questionId}/image?ocr=${ocr ? 'true' : 'false'}`, formData);
+  }
+
+  async getExamAnswerImageBlobUrl(answerId: number): Promise<string | null> {
+    // 手写答案图片需带 Bearer 头，<img src> 无法携带，故取 blob 生成 objectURL
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const res = await fetch(`${API_BASE}/exam/answers/${answerId}/image`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  }
+
+  async ocrExamAnswer(answerId: number) {
+    return this.request(`/exam/answers/${answerId}/ocr`, { method: 'POST', timeout: 60000 });
+  }
+
+  async updateExamAnswer(answerId: number, data: { answer_text: string }) {
+    return this.request(`/exam/answers/${answerId}`, { method: 'PUT', body: data });
+  }
+
+  async gradeExamAnswer(answerId: number) {
+    return this.request(`/exam/answers/${answerId}/grade`, { method: 'POST', timeout: 90000 });
+  }
+
+  async gradeExamSubmission(submissionId: number) {
+    return this.request(`/exam/submissions/${submissionId}/grade`, { method: 'POST', timeout: 180000 });
+  }
+
+  async reviewExamAnswer(answerId: number, data: { teacher_score?: number | null; teacher_feedback?: string }) {
+    return this.request(`/exam/answers/${answerId}/review`, { method: 'PUT', body: data });
+  }
+
+  async getExamClassReport(assignmentId: number) {
+    return this.request(`/exam/assignments/${assignmentId}/report`);
+  }
+
+  // ==================== 学生端 — 班级作业 API ====================
+
+  async myExamAssignments() {
+    return this.request('/exam/my-assignments');
+  }
+
+  async getExamAssignmentPaper(assignmentId: number) {
+    return this.request(`/exam/assignments/${assignmentId}/paper`);
+  }
+
+  async submitExamAssignment(assignmentId: number, data: { answers: { question_id: number; answer_text: string }[] }) {
+    return this.request(`/exam/assignments/${assignmentId}/submit`, { method: 'POST', body: data, timeout: 60000 });
+  }
 }
 
 export const api = new ApiClient();

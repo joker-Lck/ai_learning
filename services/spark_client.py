@@ -365,7 +365,17 @@ class MiMoClient:
         """
         try:
             info("MiMo OCR 文字识别...")
-            prompt = "请识别这张图片中的所有文字内容，保持原始格式和排版。只输出识别到的文字，不要添加任何解释。"
+            if ocr_type == "handwriting":
+                prompt = (
+                    "这是一张包含手写文字的图片（可能是学生的手写作答）。"
+                    "请逐字识别其中所有手写与印刷文字，保持原有排版顺序。"
+                    "尽量准确还原每个字，无法辨认的字用〔?〕代替。"
+                    "只输出识别到的文字，不要添加任何解释或翻译。"
+                )
+            elif ocr_type == "print":
+                prompt = "请识别这张图片中的所有印刷文字内容，保持原始格式和排版。只输出识别到的文字，不要添加任何解释。"
+            else:
+                prompt = "请识别这张图片中的所有文字内容，保持原始格式和排版。只输出识别到的文字，不要添加任何解释。"
             result = self.chat_with_image(prompt, image_b64, max_tokens=4000)
             if result and not result.startswith("错误"):
                 info(f"OCR 识别成功: {len(result)} 字符")

@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # ── 应用 ──
     app_name: str = "AI Learning Agent"
-    app_version: str = "8.6.0"
+    app_version: str = "9.1.0"
     debug: bool = False
     environment: str = Field(default="development", alias="ENVIRONMENT")
 

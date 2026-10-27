@@ -5,7 +5,7 @@ import {
   Send, Target, CheckCircle, Loader2, ChevronLeft, ChevronRight,
   User, BookOpen, Brain, Lightbulb, Sparkles, GraduationCap, Clock, Trophy,
   CalendarDays, BarChart3, Plus, Check, X,
-  ChevronDown, Edit3, Save, Upload, Minus, Pencil, Camera, Users,
+  ChevronDown, Edit3, Save, Upload, Minus, Pencil, Camera, Users, ClipboardList,
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { PROFILE_DIMENSIONS } from './constants';
@@ -14,6 +14,7 @@ import type {
 } from './types';
 import { computeRadarData, type RadarDimension } from '@/lib/radar';
 import MyClassView from '@/components/teacher/MyClassView';
+import ClassAssignmentsView from '@/components/teacher/ClassAssignmentsView';
 
 interface ProfileModuleProps {
   currentStep: number;
@@ -42,6 +43,7 @@ const TABS: { key: ProfileTab; label: string; icon: any }[] = [
   { key: 'profile', label: '画像', icon: User },
   { key: 'schedule', label: '课程表', icon: CalendarDays },
   { key: 'myClass', label: '我的班级', icon: Users },
+  { key: 'classAssignments', label: '班级作业', icon: ClipboardList },
 ];
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -161,6 +163,9 @@ export default memo(function ProfileModule(props: ProfileModuleProps) {
       </div>
       <div style={{ display: profileTab === 'myClass' ? 'block' : 'none' }}>
         <MyClassTabContent />
+      </div>
+      <div style={{ display: profileTab === 'classAssignments' ? 'block' : 'none' }}>
+        <ClassAssignmentsView />
       </div>
     </div>
   );

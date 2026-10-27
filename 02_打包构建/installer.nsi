@@ -1,4 +1,4 @@
-; AI 学习智能体 - NSIS 安装脚本
+﻿; AI 学习智能体 - NSIS 安装脚本
 ; 需要 NSIS 3.0+ 编译
 Unicode true
 
@@ -13,9 +13,9 @@ InstallDirRegKey HKLM "Software\AI学习智能体" "InstallDir"
 RequestExecutionLevel admin
 
 ; ── 版本信息 ──
-VIProductVersion "8.6.0.0"
+VIProductVersion "9.1.0.0"
 VIAddVersionKey "ProductName" "AI 学习智能体"
-VIAddVersionKey "FileVersion" "8.6.0"
+VIAddVersionKey "FileVersion" "9.1.0"
 VIAddVersionKey "FileDescription" "基于多智能体的个性化学习辅助系统"
 VIAddVersionKey "LegalCopyright" ""
 
@@ -71,7 +71,7 @@ Section "核心文件（必需）" SecCore
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AI学习智能体" \
         "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AI学习智能体" \
-        "DisplayVersion" "8.6.0"
+        "DisplayVersion" "9.1.0"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AI学习智能体" \
         "Publisher" "AI Learning Team"
 SectionEnd

@@ -21,6 +21,7 @@ from slowapi.util import get_remote_address
 from backend.api.agent import router as agent_router
 from backend.api.auth import router as auth_router
 from backend.api.collaboration import router as collaboration_router
+from backend.api.exam import router as exam_router
 from backend.api.lesson import router as lesson_router
 from backend.api.stream import router as stream_router
 from backend.api.student_class import router as student_class_router
@@ -39,7 +40,7 @@ from core.logger import (
 )
 
 # ── 配置 ──
-APP_VERSION = os.getenv("APP_VERSION", "8.6.0")
+APP_VERSION = os.getenv("APP_VERSION", "9.1.0")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
 
@@ -255,6 +256,7 @@ app.include_router(collaboration_router, prefix="/api", tags=["协同学习"])
 app.include_router(teacher_router, prefix="/api/teacher", tags=["老师端"])
 app.include_router(student_class_router, prefix="/api/student", tags=["学生班级"])
 app.include_router(lesson_router, prefix="/api/lesson", tags=["教案PPT"])
+app.include_router(exam_router, prefix="/api/exam", tags=["AI出题与批改"])
 
 # 静态文件
 exports_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "exports")

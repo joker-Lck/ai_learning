@@ -164,21 +164,6 @@ SCHEMA: dict[str, list[str]] = {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """,
         """
-        CREATE TABLE IF NOT EXISTS question_bank (
-            id BIGINT AUTO_INCREMENT PRIMARY KEY,
-            subject VARCHAR(255) NOT NULL,
-            question_type VARCHAR(64) NOT NULL,
-            question_text TEXT NOT NULL,
-            options TEXT,
-            correct_answer TEXT NOT NULL,
-            explanation TEXT,
-            knowledge_point VARCHAR(255),
-            difficulty VARCHAR(32) DEFAULT 'medium',
-            use_count INT DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """,
-        """
         CREATE TABLE IF NOT EXISTS study_plans (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT NOT NULL,
@@ -369,6 +354,125 @@ SCHEMA: dict[str, list[str]] = {
             time_spent_seconds INT DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             KEY idx_quiz_answers_session (session_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS question_bank (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            subject VARCHAR(255) NOT NULL,
+            question_type VARCHAR(64) NOT NULL,
+            question_text TEXT NOT NULL,
+            options TEXT,
+            correct_answer TEXT NOT NULL,
+            explanation TEXT,
+            knowledge_point VARCHAR(255),
+            difficulty VARCHAR(32) DEFAULT 'medium',
+            use_count INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS exam_papers (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            teacher_id BIGINT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            subject VARCHAR(255) DEFAULT '',
+            grade VARCHAR(64) DEFAULT '',
+            topic VARCHAR(255) DEFAULT '',
+            paper_type VARCHAR(32) DEFAULT 'practice',
+            total_score DOUBLE DEFAULT 100,
+            duration_minutes INT DEFAULT 60,
+            difficulty VARCHAR(32) DEFAULT 'medium',
+            knowledge_points TEXT,
+            question_source VARCHAR(32) DEFAULT 'ai',
+            status VARCHAR(32) DEFAULT 'draft',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_exam_papers_teacher (teacher_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS exam_questions (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            paper_id BIGINT NOT NULL,
+            q_index INT NOT NULL,
+            question_type VARCHAR(64) NOT NULL,
+            question_text TEXT NOT NULL,
+            options TEXT,
+            correct_answer TEXT,
+            reference_answer TEXT,
+            scoring_points TEXT,
+            explanation TEXT,
+            knowledge_point VARCHAR(255),
+            difficulty VARCHAR(32) DEFAULT 'medium',
+            score DOUBLE DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_exam_questions_paper (paper_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS exam_assignments (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            paper_id BIGINT NOT NULL,
+            class_id BIGINT NOT NULL,
+            assigned_by BIGINT NOT NULL,
+            title VARCHAR(255) DEFAULT '',
+            due_at TIMESTAMP NULL DEFAULT NULL,
+            status VARCHAR(32) DEFAULT 'active',
+            allow_late TINYINT DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_exam_assign_paper (paper_id),
+            KEY idx_exam_assign_class (class_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS exam_submissions (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            assignment_id BIGINT NOT NULL,
+            paper_id BIGINT NOT NULL,
+            student_id BIGINT NOT NULL,
+            status VARCHAR(32) DEFAULT 'in_progress',
+            objective_score DOUBLE DEFAULT 0,
+            ai_score DOUBLE DEFAULT 0,
+            final_score DOUBLE DEFAULT 0,
+            total_score DOUBLE DEFAULT 0,
+            submitted_at TIMESTAMP NULL DEFAULT NULL,
+            graded_at TIMESTAMP NULL DEFAULT NULL,
+            reviewed_at TIMESTAMP NULL DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_exam_sub_assign_student (assignment_id, student_id),
+            KEY idx_exam_sub_student (student_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS exam_answers (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            submission_id BIGINT NOT NULL,
+            question_id BIGINT NOT NULL,
+            q_index INT NOT NULL,
+            question_type VARCHAR(64),
+            question_text TEXT,
+            answer_text LONGTEXT,
+            answer_image_path VARCHAR(512),
+            ocr_text LONGTEXT,
+            ocr_confidence DOUBLE DEFAULT 0,
+            ocr_engine VARCHAR(64) DEFAULT '',
+            correct_answer TEXT,
+            reference_answer TEXT,
+            max_score DOUBLE DEFAULT 0,
+            is_correct TINYINT DEFAULT 0,
+            ai_score DOUBLE DEFAULT 0,
+            score DOUBLE DEFAULT 0,
+            feedback TEXT,
+            rag_evidence TEXT,
+            knowledge_hits TEXT,
+            grade_status VARCHAR(32) DEFAULT 'pending',
+            teacher_score DOUBLE DEFAULT NULL,
+            teacher_feedback TEXT,
+            reviewed_at TIMESTAMP NULL DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_exam_answers_sub (submission_id),
+            KEY idx_exam_answers_question (question_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """,
         """
@@ -770,7 +874,7 @@ SKIP_TABLES = {
 # 有外键依赖时的导入顺序
 TABLE_ORDER = {
     "ai_auth": ["users", "sessions", "classes", "class_students"],
-    "ai_profiles": ["student_profiles", "course_schedules", "student_grades", "error_notes", "question_bank", "study_plans"],
+    "ai_profiles": ["student_profiles", "course_schedules", "student_grades", "error_notes", "study_plans"],
     "ai_resources": ["learning_resources", "resource_safety_logs"],
     "ai_paths": ["learning_paths", "path_progress"],
     "ai_tutor": ["tutor_sessions", "tutor_messages", "tutor_knowledge_refs"],
@@ -780,6 +884,12 @@ TABLE_ORDER = {
         "learning_activities",
         "quiz_sessions",
         "quiz_answers",
+        "question_bank",
+        "exam_papers",
+        "exam_questions",
+        "exam_assignments",
+        "exam_submissions",
+        "exam_answers",
         "study_groups",
         "group_members",
         "shared_resources",
