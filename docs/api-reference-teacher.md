@@ -1,6 +1,8 @@
 # 教师端 API 参考
 
-> 教师端 REST API 接口文档 — 班级管理 + 学情代查 + 学生入班
+> 教师端 REST API 接口文档 — 班级管理 + 学情代查 + 学生入班 + AI 出题/组卷 + 主观题批改
+>
+> **版本**：v9.1.0
 
 ---
 
@@ -319,7 +321,226 @@ POST /api/student/leave-class/{class_id}
 
 ---
 
-## 四、错误码汇总
+## 四、AI 出题/组卷 + 主观题批改（`/api/exam`，v9.1.0 新增）
+
+> 全部挂载于 `/api/exam`，共 **26 个端点**。教师端（A/B/C 组）需 `teacher` 或 `admin` 角色；学生端（D 组）登录即可。完整条目见 [api-reference.md](api-reference.md#考试批改接口-apiexamv910-新增)。
+
+### 4.1 端点总览
+
+#### A. 组卷与试卷管理（teacher）
+
+```http
+POST   /api/exam/papers/generate              AI 组卷（仅预览，不落库）
+POST   /api/exam/papers                       保存试卷
+GET    /api/exam/papers                       我的试卷列表（?subject=&paper_type=）
+GET    /api/exam/papers/{id}                  试卷详情（含题目）
+PUT    /api/exam/papers/{id}                  更新试卷（含题目整体替换）
+DELETE /api/exam/papers/{id}                  删除试卷
+POST   /api/exam/papers/{id}/export           导出可打印 DOCX（试题卷+答案解析）
+GET    /api/exam/download/{filename}          下载导出文件（防目录穿越）
+```
+
+#### B. 发布到班级（teacher）
+
+```http
+POST   /api/exam/papers/{id}/assign           发布试卷到班级
+GET    /api/exam/assignments                  我发布的作业/考试列表
+GET    /api/exam/assignments/{id}             发布详情（含试卷题目）
+POST   /api/exam/assignments/{id}/close       截止收卷
+```
+
+#### C. 提交与批改（teacher 为主）
+
+```http
+POST   /api/exam/submissions                        创建/获取作答记录
+GET    /api/exam/assignments/{id}/submissions       提交列表（批改进度一览）
+GET    /api/exam/submissions/{id}                   提交详情（逐题作答+批改结果）
+POST   /api/exam/submissions/{id}/answers/{qid}/image?ocr=   上传手写图+自动OCR
+GET    /api/exam/answers/{id}/image                 查看手写答案图片（权限校验）
+POST   /api/exam/answers/{id}/ocr                   执行/重跑手写识别
+PUT    /api/exam/answers/{id}                       修改作答文本（OCR修正）
+POST   /api/exam/answers/{id}/grade                 AI 批改单题
+POST   /api/exam/submissions/{id}/grade             AI 批改整卷
+PUT    /api/exam/answers/{id}/review                教师复核改分（最终分以教师为准）
+GET    /api/exam/assignments/{id}/report            班级批改报告
+```
+
+#### D. 学生端（登录即可）
+
+```http
+GET    /api/exam/my-assignments                 我的班级作业列表
+GET    /api/exam/assignments/{id}/paper         作业题目（脱敏不含答案，须在班级内）
+POST   /api/exam/assignments/{id}/submit        提交作答（文本答案）
+```
+
+学生也可 `POST /api/exam/submissions` 建自己的作答记录，并上传手写图。
+
+### 4.2 AI 组卷
+
+```http
+POST /api/exam/papers/generate
+```
+
+**请求体**：
+```json
+{
+  "subject": "数据结构",
+  "grade": "大一",
+  "topic": "二叉树",
+  "knowledge_points": ["二叉树遍历", "平衡树"],
+  "difficulty": "medium",
+  "paper_type": "practice",
+  "title": "二叉树练习卷",
+  "total_score": 100,
+  "duration_minutes": 60,
+  "use_bank": true,
+  "question_spec": { "multiple_choice": 5, "judge": 3, "fill_blank": 3, "short_answer": 2 }
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| subject | string | | 学科（默认「综合」） |
+| grade | string | | 年级 |
+| topic | string | | 主题 |
+| knowledge_points | string[] | | 知识点 |
+| difficulty | string | | easy/medium/hard/mixed |
+| paper_type | string | | practice / exam |
+| total_score | number | | 总分，按题型权重折算每题分值 |
+| duration_minutes | int | | 时长（分钟） |
+| use_bank | bool | | 题库复用（≤50% 来自题库） |
+| question_spec | object | | 各题型数量（默认 5/3/3/2） |
+
+**响应**：
+```json
+{
+  "success": true,
+  "data": {
+    "paper": { "title": "二叉树练习卷", "subject": "数据结构", "total_score": 100, "difficulty": "medium" },
+    "questions": [
+      {
+        "q_index": 1,
+        "question_type": "multiple_choice",
+        "question_text": "……",
+        "options": ["A. …", "B. …"],
+        "correct_answer": "A",
+        "reference_answer": "",
+        "scoring_points": [],
+        "explanation": "……",
+        "knowledge_point": "二叉树遍历",
+        "difficulty": "medium",
+        "score": 4.0
+      }
+    ],
+    "reused_count": 4,
+    "generated_count": 9
+  }
+}
+```
+
+- 取材链路：RAG 知识库取材 → 题库复用（≤50%）→ LLM 生成 → 分值折算
+- **仅预览不落库**；确认后 `POST /api/exam/papers` 保存
+- LLM 失败自动兜底模板题，仍返回 `success=true`
+
+### 4.3 发布与批改
+
+**发布到班级**
+
+```http
+POST /api/exam/papers/{paper_id}/assign
+{
+  "class_id": 1,
+  "due_at": "2026-11-01 23:59:00",
+  "title": "第3周作业",
+  "allow_late": true
+}
+```
+
+**上传手写答案**（multipart/form-data）
+
+```http
+POST /api/exam/submissions/{submission_id}/answers/{question_id}/image?ocr=true
+Content-Type: multipart/form-data
+
+file: <jpg|png|bmp|webp，≤15MB>
+```
+
+响应：
+```json
+{
+  "success": true,
+  "data": {
+    "answer_id": 12,
+    "ocr_text": "……",
+    "ocr_confidence": 0.91,
+    "ocr_engine": "rapidocr",
+    "segments": [{"text": "……", "confidence": 0.93}],
+    "low_confidence": false
+  }
+}
+```
+
+- 识别链路：手写增强预处理 → **RapidOCR/PP-OCRv6(onnxruntime)** 主力 → 置信度 < 0.55 或无文本切 MiMo 视觉手写 prompt 兜底 → 择优
+- 依赖：`rapidocr` + `onnxruntime`（见 [deployment.md](deployment.md)）
+- 前端下载手写图/文件须走 blob + Bearer（`<img src>`/`window.open` 带不了认证头会 401）
+
+**单题 AI 批改**
+
+```http
+POST /api/exam/answers/{answer_id}/grade
+```
+
+- 客观题（multiple_choice/judge/fill_blank）：自动判分
+- 主观题（short_answer）：RAG 检索评分依据（`rag_evidence`）→ LLM 评分（分数/评语/知识点命中缺失/改进建议）→ 关键词兜底
+
+响应：
+```json
+{
+  "success": true,
+  "data": {
+    "ai_score": 8.5,
+    "score": 8.5,
+    "feedback": "……",
+    "knowledge_hits": ["二叉树遍历"],
+    "rag_evidence": "……",
+    "grade_status": "ai_graded"
+  }
+}
+```
+
+**教师复核改分**（最终成绩以教师为准）
+
+```http
+PUT /api/exam/answers/{answer_id}/review
+{ "teacher_score": 8.5, "teacher_feedback": "思路正确，步骤不完整" }
+```
+
+**班级批改报告**
+
+```http
+GET /api/exam/assignments/{assignment_id}/report
+```
+
+响应 `data`：得分分布 / 逐题统计 / 薄弱知识点 / 排名。
+
+### 4.4 题型与批改状态
+
+| 题型 | 值 | 判分方式 |
+|------|-----|---------|
+| 选择题 | multiple_choice | 自动判分 |
+| 判断题 | judge | 自动判分 |
+| 填空题 | fill_blank | 自动判分 |
+| 简答题 | short_answer（=主观题） | RAG + AI 评分 + 教师复核 |
+
+| grade_status | 说明 |
+|--------------|------|
+| pending | 未批改 |
+| ai_graded | AI 已批改 |
+| teacher_reviewed | 教师已复核 |
+
+---
+
+## 五、错误码汇总
 
 | HTTP 状态码 | 场景 |
 |------------|------|

@@ -1,5 +1,36 @@
 # 版本变更日志
 
+## v9.1.0 — 教师 AI 出题/组卷 + 主观题批改（手写识别 + RAG 评分）
+
+### 新增 — 教师 AI 出题 / 组卷
+- **AI 组卷引擎** (`services/exam_paper_service.py`)
+  - 组卷流程：RAG 知识库取材（题目贴合教材）→ 题库复用（每题型 ≤50%，`question_bank`）→ LLM 生成剩余题 → 分值折算（按题型权重，合计=总分）
+  - 题型：选择(multiple_choice)/判断(judge)/填空(fill_blank)/简答(short_answer=主观题，带参考答案+评分要点)
+  - 试卷 CRUD、预览编辑、发布到班级（含截止时间）；LLM 失败自动兜底模板题
+  - 导出可打印 DOCX 试卷（试题卷 + 答案解析分页，`services/exam_docx_service.py` → `exports/`）
+- **教师端 UI** `frontend/components/teacher/ExamPaperView.tsx`：生成试卷 → 预览编辑 → 保存/导出/发布（3 Tab：生成试卷 / 我的试卷 / 发布管理）
+
+### 新增 — 主观题批改
+- **手写识别** (`services/handwriting_ocr_service.py`)：enhanced_vision 手写增强预处理 → **RapidOCR/PP-OCRv6（onnxruntime）** 主力识别 → 置信度<0.55 或无文本时切 MiMo 视觉模型手写专用 prompt 兜底 → 择优返回（text/confidence/engine/segments/low_confidence）。新增依赖 `rapidocr` + `onnxruntime`
+- **AI 批改** (`services/grading_service.py`)：客观题自动判分；主观题 = RAG 知识库检索评分依据（`_rag_evidence`）+ LLM 评分（分数+评语+知识点命中/缺失+改进建议），LLM 失败关键词覆盖兜底
+- **教师复核改分**（最终成绩以教师为准）+ **班级批改报告**（得分分布 / 逐题统计 / 共性薄弱知识点 / 成绩排名）
+- **教师端 UI** `frontend/components/teacher/GradingView.tsx`：作业 → 提交 → 批改工作台（手写图预览/OCR 校正/AI 评分卡/RAG 依据/复核）+ 班级报告
+- **学生端 UI** `frontend/components/teacher/ClassAssignmentsView.tsx`（ProfileModule「班级作业」tab）：查看作业 → 文本/手写图作答 → 交卷
+
+### 数据库（ai_assessments 库新增 5 表）
+- `exam_papers` / `exam_questions`（reference_answer 参考答案 + scoring_points 评分要点）/ `exam_assignments`（发布到班级）/ `exam_submissions` / `exam_answers`（手写图路径 + ocr_text/confidence/engine + ai_score + teacher_score + rag_evidence + knowledge_hits + grade_status）
+- 修复：`question_bank` 原被错放进 `ai_profiles`（导致题库复用失效），已迁回 `ai_assessments`
+- 建表：`python scripts/migrate_to_mysql.py --schema`（幂等）
+
+### API（`backend/api/exam.py`，`/api/exam`，26 端点）
+- 老师端：组卷/试卷 CRUD/导出/发布、提交列表、上传手写图+自动 OCR、单题/整卷 AI 批改、教师复核、班级报告
+- 学生端：我的作业、取题（脱敏不含答案）、提交作答（文本+手写图）
+
+### 依赖
+- 新增 `rapidocr>=1.3.0`、`onnxruntime>=1.17.0`
+
+---
+
 ## v9.0.0 — 存储/向量/检索三层升级（MySQL + Milvus + BGE-M3）
 
 ### 架构迁移

@@ -1,11 +1,14 @@
 # 部署指南
 
+> **版本**：v9.1.0
+
 ## 方式一：本地开发
 
 ### 环境要求
 
 - Python 3.8+
 - Node.js 18+
+- MySQL 8.0+
 - npm 或 yarn
 
 ### 快速配置
@@ -21,22 +24,30 @@ setup.bat
 # 1. 安装后端依赖
 pip install -r backend/requirements.txt
 
-# 2. 安装前端依赖
+# 2. 安装手写识别依赖（v9.1.0 主观题批改）
+pip install rapidocr onnxruntime
+
+# 3. 安装前端依赖
 cd frontend && npm install && cd ..
 
-# 3. 配置环境变量
+# 4. 配置环境变量
 cp .env.example .env
-# 编辑 .env，填写 MiMo API 配置
+# 编辑 .env，填写 MiMo API 配置 + MySQL 连接配置
 
-# 4. 初始化数据库
-python scripts/init_databases.py
+# 5. 初始化数据库（9 个 MySQL schema，含 exam 表）
+python scripts/migrate_to_mysql.py --schema
 
-# 5. 执行老师端迁移（已有数据库需要执行一次）
+# 6. 从 legacy 数据文件导入（一次性迁移，新环境可跳过）
+python scripts/migrate_to_mysql.py --data
+
+# 7. 执行老师端迁移（旧环境已有数据库时执行一次）
 python scripts/migrate_teacher_roles.py
 
-# 6. 创建管理员账户
+# 8. 创建管理员账户
 python scripts/init_admin.py
 ```
+
+> 兼容旧入口：`python scripts/init_databases.py` 等价于 `migrate_to_mysql.py --schema`。
 
 ### 启动服务
 
@@ -134,44 +145,15 @@ makensis 02_打包构建/installer.nsi
 
 ---
 
-## 方式四：移动端 App
-
-### 开发环境
-
-```bash
-# 安装 Expo CLI
-npm install -g expo-cli
-
-# 进入 mobile 目录
-cd mobile
-
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npx expo start
-```
-
-### 构建发布
-
-```bash
-# 构建 Android APK
-eas build --platform android
-
-# 构建 iOS IPA
-eas build --platform ios
-```
-
----
-
 ## 环境变量
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | JWT_SECRET | JWT 签名密钥（必须配置） | 必填 |
 | DEBUG | 调试模式 | false |
-| APP_VERSION | 应用版本 | 8.6.0 |
+| APP_VERSION | 应用版本 | 9.1.0 |
 | ALLOWED_ORIGINS | CORS 白名单 | localhost:3000 |
+| MYSQL_HOST / MYSQL_PORT / MYSQL_USER / MYSQL_PASSWORD | MySQL 8.0 连接（9 个 schema） | 127.0.0.1:3306/root |
 | MIMO_API_KEY | MiMo API 密钥 | 必填 |
 | MIMO_BASE_URL | MiMo API 地址 | https://api.xiaomimimo.com/v1 |
 | MIMO_MODEL | 推理模型 | mimo-v2.5-pro |
@@ -180,3 +162,12 @@ eas build --platform ios
 | MIMO_TTS_MODEL | 语音合成模型 | mimo-tts |
 | LOG_LEVEL | 日志级别 | INFO |
 | MAX_UPLOAD_SIZE | 上传限制(MB) | 50 |
+
+## 依赖说明（v9.1.0 新增）
+
+| 依赖 | 用途 |
+|------|------|
+| `rapidocr` | 手写答案识别主力引擎（PP-OCRv6） |
+| `onnxruntime` | RapidOCR 推理运行时 |
+
+> 手写识别链路：增强预处理 → RapidOCR 主力 → 置信度 < 0.55 或无文本时切 MiMo 视觉模型兜底 → 择优返回。

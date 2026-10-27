@@ -1,20 +1,23 @@
 # 系统架构设计
 
+> **版本**：v9.1.0
+
 ## 整体架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        用户层 (User Layer)                       │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │ Web 前端  │ │ 移动 App  │ │ API 文档  │ │ 管理后台  │           │
-│  │ Next.js   │ │ React     │ │ Swagger   │ │ —        │           │
-│  └────┬─────┘ │ Native    │ └────┬─────┘ └────┬─────┘           │
-│       │       └────┬─────┘      │             │                 │
-├───────┴────────────┴────────────┴─────────────┴─────────────────┤
+│  ┌──────────────────────┐  ┌──────────┐  ┌──────────┐           │
+│  │ Web 前端（含教师端）  │  │ API 文档  │  │ 管理后台  │           │
+│  │ Next.js 14            │  │ Swagger   │  │ —        │           │
+│  └──────────┬───────────┘  └────┬─────┘  └────┬─────┘           │
+│             │                   │             │                 │
+├─────────────┴───────────────────┴─────────────┴─────────────────┤
 │                    ▼            ▼            ▼                   │
 │              ┌─────────────────────────────┐                    │
 │              │   FastAPI 后端 (REST + SSE)  │                    │
 │              │   JWT 认证 + 限流 + 校验      │                    │
+│              │   /api/auth /api/agent /api/exam …                │
 │              └──────────────┬──────────────┘                    │
 ├─────────────────────────────┼───────────────────────────────────┤
 │                             ▼                                   │
@@ -35,13 +38,18 @@
 │  │  │ MiMo LLM      │  │ RAG 知识库    │  │ 内容安全服务   │  │  │
 │  │  │ mimo-v2.5-pro  │  │ Milvus + FULLTEXT │  │ AC自动机+防幻觉│  │  │
 │  │  └──────────────┘  └──────────────┘  └───────────────┘  │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │ 出题/组卷 + 批改服务（v9.1.0）                       │ │  │
+│  │  │ exam_paper_service │ grading_service                │ │  │
+│  │  │ handwriting_ocr_service │ exam_docx_service          │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
 │  └──────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
 │                             ▼                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │              数据层 (Data Layer) — 9 个独立 MySQL Schema   │  │
-│  │  auth │ profiles │ resources │ paths │ tutor │ memory    │  │
-│  │  assessments │ agents │ rag_knowledge                    │  │
+│  │              数据层 (Data Layer) — 9 个 MySQL Schema       │  │
+│  │  ai_auth │ ai_profiles │ ai_resources │ ai_paths │ ai_tutor │
+│  │  ai_memory │ ai_assessments │ ai_agents │ ai_rag_knowledge  │
 │  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -71,32 +79,27 @@
 | Mermaid | 11.15+ | 图表渲染 |
 | Recharts | 2.12+ | 数据可视化 |
 
-### 移动端
-
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| React Native | 0.76+ | 跨平台移动框架 |
-| Expo | 52+ | 开发工具链 |
-| NativeWind | 4.0+ | Tailwind CSS for RN |
-| Victory Native | 41+ | 数据可视化 |
-| React Native Reanimated | 3.16+ | 动画 |
-
 ### 后端
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | FastAPI | 0.110+ | 高性能 API 框架 |
 | Python | 3.8+ | 后端运行环境 |
-| MySQL | 8.0+ | 9 个独立 Schema |
-| Milvus | 2.4+ | 向量检索（Milvus Lite） |
-| BGE-M3 | — | 嵌入模型（1024 维 GPU） |
-| MiMo AI | mimo-v2.5-pro | 大语言模型（文本推理、视觉理解、图片生成、语音合成） |
+| MySQL | 8.0+ | 9 个 schema（ai_auth/ai_profiles/ai_resources/ai_paths/ai_tutor/ai_assessments/ai_agents/ai_rag_knowledge/ai_memory） |
+| Milvus | 2.4+ | 向量检索（Milvus Lite，collection `knowledge_vectors`，dim=1024） |
+| BGE-M3 | BAAI/bge-m3 | 嵌入模型（1024 维 GPU） |
+| MiMo AI | mimo-v2.5-pro / mimo-v2.5 | 大语言模型（文本推理、视觉理解、图片生成、语音合成） |
+| RapidOCR | PP-OCRv6 | 手写答案识别主力引擎（onnxruntime 推理） |
 | TF-IDF + SVD | 本地实现 | 嵌入回退（BGE-M3 不可用时，jieba 分词 + SVD 降维） |
 
 ## 扩展服务
 
 | 服务 | 文件 | 说明 |
 |------|------|------|
+| ExamPaperService | `services/exam_paper_service.py` | AI 组卷：RAG 取材→题库复用≤50%→LLM 生成→分值折算；试卷 CRUD、发布到班级（v9.1.0） |
+| GradingService | `services/grading_service.py` | 主观题批改：RAG 评分依据 + LLM 评分 + 关键词兜底；教师复核；班级报告（v9.1.0） |
+| HandwritingOCRService | `services/handwriting_ocr_service.py` | 手写识别：RapidOCR 主力 + MiMo 视觉兜底，择优返回（v9.1.0） |
+| ExamDocxService | `services/exam_docx_service.py` | 试卷导出 DOCX（试题卷 + 答案解析分页）（v9.1.0） |
 | Reflector | `services/reflector.py` | 反思验证器：答案质量评分 + 证据链检查 + 低分自动重生成 |
 | Multi-Hop Retriever | `services/multi_hop_retriever.py` | 多跳推理检索：逻辑图 + 2-5跳探索 + 证据链验证 |
 | Self-Learning | `services/self_learning_service.py` | 自学习闭环：反馈收集 → 经验筛选 → 数据增强 → RAG更新 |
@@ -159,16 +162,16 @@
 | 代码规范 | Ruff linter + pre-commit hooks |
 | 依赖 | pyproject.toml（主依赖+dev依赖分离） |
 
-## 多数据库架构
+## 多数据库架构（9 个 MySQL schema）
 
-| 数据库 | 用途 | 核心表 |
+| Schema | 用途 | 核心表 |
 |--------|------|--------|
-| ai_auth | 认证 | users, sessions |
+| ai_auth | 认证 | users, sessions, classes, class_students |
 | ai_profiles | 画像 | student_profiles, course_schedules, grades, error_notes, study_plans |
 | ai_resources | 资源 | learning_resources, safety_logs |
 | ai_paths | 路径 | learning_paths, path_progress |
 | ai_tutor | 辅导 | tutor_sessions, messages, knowledge_refs |
-| ai_assessments | 评估 | assessments, dimensions, activities |
+| ai_assessments | 评估/考试 | assessments, dimensions, activities, quiz_sessions, **exam_papers, exam_questions, exam_assignments, exam_submissions, exam_answers**（v9.1.0） |
 | ai_agents | 协作 | collaboration_logs, tasks |
 | ai_rag_knowledge | 知识库 | documents, points, categories（FULLTEXT ngram） |
 | ai_memory | 记忆 | 8 张记忆表 |

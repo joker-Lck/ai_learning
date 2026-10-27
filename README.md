@@ -2,16 +2,18 @@
 
 <p align="center">
   <b>AI-Powered Personalized Learning Resource Generation System</b><br>
-  基于 MiMo 大模型 · 6 智能体协同 · 7 种资源类型 · 9 个独立数据库 · RAG 混合检索
+  基于 MiMo 大模型 · 6 智能体协同 · 7 种资源类型 · 9 个 MySQL Schema · RAG 混合检索 · 教师 AI 出题/批改<br>
+  <b>当前版本：v9.1.0</b>
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/version-v9.1.0-blue" alt="version">
   <img src="https://img.shields.io/badge/Python-3.14-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/Next.js-14-black?logo=next.js&logoColor=white" alt="Next.js">
-  <img src="https://img.shields.io/badge/React_Native-0.76+-61DAFB?logo=react&logoColor=white" alt="React Native">
   <img src="https://img.shields.io/badge/MiMo-v2.5-purple" alt="MiMo">
   <img src="https://img.shields.io/badge/MySQL-8.0-blue?logo=mysql&logoColor=white" alt="MySQL">
+  <img src="https://img.shields.io/badge/Milvus-2.4+-00B4D8" alt="Milvus">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
@@ -31,7 +33,6 @@
 - [记忆系统](#记忆系统)
 - [数据库设计](#数据库设计)
 - [API 接口](#api-接口)
-- [移动端 App](#移动端-app)
 - [安全机制](#安全机制)
 - [部署指南](#部署指南)
 - [项目结构](#项目结构)
@@ -47,6 +48,8 @@
 
 本系统是一个面向高等教育场景的**个性化学习学习资源平台**，采用**多智能体协同架构**，基于 **MiMo 大模型** 驱动，为学生提供智能化的学习支持服务。
 
+系统服务**学生**与**教师**双角色：学生端覆盖画像、资源、路径、辅导、评估等 6 大功能模块；教师端提供班级管理、学情查看，以及 **AI 出题/组卷**与**主观题批改（手写识别 + RAG 知识库匹配评分）**能力。
+
 ### 解决的核心问题
 
 | 传统学习痛点 | 本系统解决方案 |
@@ -56,6 +59,7 @@
 | 缺乏个性化学习路径 | AI 分析当前水平，规划最优路径 |
 | 答疑依赖教师时间 | 24/7 智能辅导 + 记忆增强 |
 | 学习效果难以量化 | 多维度评估报告 + 可视化 |
+| 教师出题批改耗时费力 | AI 出题/组卷 + 手写主观题自动批改（教师复核） |
 | AI 回答存在幻觉 | RAG + 事实核查 + 引用溯源三重防护 |
 
 ### 核心数据
@@ -65,8 +69,9 @@
 | 专业智能体 | 6 个 |
 | 学习资源类型 | 7 种 |
 | 学生画像维度 | 9 个 |
-| 独立数据库 | 9 个 |
+| MySQL Schema | 9 个 |
 | 数据库表 | 30+ 张 |
+| 考试题型 | 4 种（选择/判断/填空/简答） |
 | 检索策略 | 11 种 |
 | 消息类型 | 14 种 |
 | 敏感词库 | 127 条 |
@@ -192,6 +197,17 @@
 - 评定记录持久化：`profile_evaluations` 表（ai_memory schema）
 - API 端点：`POST /api/agent/evaluate-profile`
 
+### 教师端 AI 出题/组卷 + 主观题批改（v9.1.0）
+
+| 能力 | 说明 |
+|------|------|
+| **AI 出题/组卷** | RAG 知识库取材 + 题库复用（≤50%）+ LLM 生成 + 自动分值折算；生成→预览编辑→保存；试卷导出 DOCX（试题卷 + 答案解析分页）；一键发布到班级 |
+| **主观题批改** | 手写识别（手写增强预处理 → RapidOCR/PP-OCRv6 主力 → MiMo 视觉兜底 → 择优）+ RAG 检索评分依据 + LLM 评分（分数/评语/知识点命中缺失/改进建议）+ 关键词兜底 |
+| **教师复核** | 客观题自动判分；主观题 AI 批改后教师可复核改分，最终分以教师为准 |
+| **班级批改报告** | 得分分布、逐题统计、薄弱知识点、排名 |
+
+支持 4 种题型：选择（multiple_choice）/ 判断（judge）/ 填空（fill_blank）/ 简答（short_answer，主观题）。
+
 ---
 
 ## 技术架构
@@ -201,19 +217,20 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         用户层 (User Layer)                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │  Web 前端     │  │  移动端 App   │  │  API 文档     │              │
-│  │  Next.js 14   │  │  React Native │  │  Swagger UI   │              │
-│  │  TypeScript   │  │  Expo 52      │  │  /docs        │              │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘              │
-├─────────┴──────────────────┴──────────────────┴─────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐              │
+│  │  Web 前端     │  │  API 文档     │              │
+│  │  Next.js 14   │  │  Swagger UI   │              │
+│  │  TypeScript   │  │  /docs        │              │
+│  └──────┬───────┘  └──────┬───────┘              │
+├─────────┴──────────────────┴─────────────────────┤
 │                              │ HTTP + SSE                            │
 │                              ▼                                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                         API 层 (FastAPI)                             │
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │  /api/auth/*   认证授权  │  /api/agent/*  核心业务           │    │
-│  │  /api/stream/* 流式输出  │  /api/health   健康检查           │    │
+│  │  /api/stream/* 流式输出  │  /api/exam/*   出题/批改          │    │
+│  │  /api/health   健康检查  │  /api/teacher/* 教师端             │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │  JWT认证 + Pydantic校验 + 速率限制 + 8种自定义异常 + 安全头          │
 ├────────────────────────────────────┬────────────────────────────────┤
@@ -273,16 +290,6 @@
 | react-markdown | 9.0+ | Markdown 渲染 |
 | KaTeX | 1.0+ | 数学公式渲染 |
 
-**前端 (移动端)**
-
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| React Native | 0.76+ | 跨平台移动框架 |
-| Expo | 52+ | 开发工具链 |
-| NativeWind | 4.0+ | Tailwind CSS for RN |
-| Victory Native | 41+ | 数据可视化（雷达图） |
-| React Native Reanimated | 3.16+ | 高性能动画 |
-
 **后端**
 
 | 技术 | 版本 | 用途 |
@@ -290,9 +297,9 @@
 | FastAPI | 0.110+ | 高性能异步 API 框架 |
 | Python | 3.14 | 后端运行环境 |
 | MySQL | 8.0+ | 关系数据库（9 个独立 Schema） |
-| Milvus | 2.4+ | 向量检索（Milvus Lite 本地） |
+| Milvus | 2.4+ | 向量数据库（Milvus Lite 本地 / Server 远程） |
 | BGE-M3 | — | 嵌入模型（1024 维，GPU） |
-| Milvus | 1.7+ | 向量数据库（Milvus Lite 本地 / Server 远程） |
+| RapidOCR | — | 手写识别（PP-OCRv6，onnxruntime 推理） |
 | OpenAI SDK | 1.0+ | MiMo API 兼容客户端 |
 | SSE | — | Server-Sent Events 流式输出 |
 | Pydantic | 2.0+ | 数据校验与序列化 |
@@ -386,7 +393,6 @@ cd frontend && npm run dev
 
 ```bash
 01_运行启动\启动.bat          # 启动 Web 端
-scripts\启动移动端.bat      # 启动移动端
 ```
 
 **步骤 7：访问系统**
@@ -412,7 +418,7 @@ JWT_SECRET=your_random_secret_key_here_at_least_32_chars   # JWT 签名密钥（
 
 # ===== 应用配置 =====
 DEBUG=false                                                 # 调试模式
-APP_VERSION=7.2.0                                           # 应用版本
+APP_VERSION=9.1.0                                           # 应用版本
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001  # CORS 白名单
 
 # ===== MiMo AI 配置 =====
@@ -598,6 +604,33 @@ MiMo 分析学生当前知识水平，同时生成学习路径和学习计划。
 - ANN 向量路径：BGE-M3 + Milvus 语义匹配
 - RRF 融合排序
 - 11 种高级检索策略
+
+### 8. 教师端：AI 出题/组卷 + 主观题批改
+
+教师工作台新增「AI 出题/组卷」与「批改主观题」两个模块（`frontend/components/teacher/`）。
+
+#### AI 出题/组卷（`ExamPaperView.tsx`）
+
+| 环节 | 说明 |
+|------|------|
+| AI 组卷 | RAG 知识库取材 → 题库复用（≤50%）→ LLM 生成 → 分值折算；LLM 失败自动兜底模板题 |
+| 预览编辑 | 生成后预览，可编辑题目/分值后保存为试卷 |
+| 试卷管理 | 试卷 CRUD、导出 DOCX（试题卷 + 答案解析分页，存 `exports/`） |
+| 发布到班级 | 一键布置为班级作业，学生端作答 |
+
+支持 4 种题型：**选择 / 判断 / 填空 / 简答（主观题）**。
+
+#### 批改主观题（`GradingView.tsx`）
+
+| 环节 | 说明 |
+|------|------|
+| 手写识别 | 手写增强预处理 → RapidOCR/PP-OCRv6（onnxruntime）主力 → 置信度不足时 MiMo 视觉手写 prompt 兜底 → 择优；返回文本/置信度/识别引擎/分段 |
+| AI 批改 | RAG 检索评分依据 + LLM 评分（分数、评语、知识点命中/缺失、改进建议）+ 关键词兜底 |
+| 客观题判分 | 选择/判断/填空自动判分 |
+| 教师复核 | 教师可复核改分，最终分以教师为准 |
+| 班级报告 | 得分分布、逐题统计、薄弱知识点、排名 |
+
+学生端在「班级作业」（`ClassAssignmentsView.tsx`）查看作业并提交文本或手写图片作答。
 
 ---
 
@@ -856,10 +889,22 @@ MiMo 生成回答（融合记忆上下文）
 | `ai_resources` | 学习资源 | `learning_resources`, `resource_safety_logs` |
 | `ai_paths` | 学习路径 | `learning_paths`, `path_progress` |
 | `ai_tutor` | 智能辅导 | `tutor_sessions`, `tutor_messages`, `tutor_knowledge_refs` |
-| `ai_assessments` | 效果评估 | `learning_assessments`, `assessment_dimensions`, `learning_activities` |
+| `ai_assessments` | 效果评估 + 考试批改 | `learning_assessments`, `assessment_dimensions`, `learning_activities`, `exam_papers`, `exam_questions`, `exam_assignments`, `exam_submissions`, `exam_answers` |
 | `ai_agents` | 智能体协作 | `agent_collaboration_logs`, `agent_tasks` |
 | `ai_rag_knowledge` | RAG 知识库 | `knowledge_documents`, `knowledge_points`, `document_categories` + FULLTEXT |
 | `ai_memory` | 记忆系统 | 8 张记忆表（见下） |
+
+### 考试批改表（ai_assessments Schema，v9.1.0 新增）
+
+| 表 | 用途 |
+|----|------|
+| `exam_papers` | 试卷（AI 组卷 / 手动保存） |
+| `exam_questions` | 试题（`reference_answer` 参考答案 + `scoring_points` 评分要点 JSON） |
+| `exam_assignments` | 试卷发布到班级 |
+| `exam_submissions` | 学生作答记录 |
+| `exam_answers` | 逐题作答（手写图路径、`ocr_text`/`confidence`/`engine`、`ai_score`、`teacher_score`、`rag_evidence`、`knowledge_hits`、`grade_status`：pending / ai_graded / teacher_reviewed） |
+
+建表真源：`scripts/migrate_to_mysql.py`。
 
 ### 记忆系统表结构
 
@@ -956,6 +1001,29 @@ CREATE TABLE memory_metadata (
 | `/api/stream/check-content-safety` | POST | 内容安全检查 |
 | `/api/stream/verify-fact` | POST | 事实验证 |
 
+### 教师端考试批改 API（`/api/exam`，v9.1.0）
+
+核心端点（完整 26 个见 [教师端 API 参考](docs/api-reference-teacher.md)）：
+
+| 端点 | 方法 | 功能 | 角色 |
+|------|------|------|------|
+| `/api/exam/papers/generate` | POST | AI 组卷（仅预览不落库） | 教师 |
+| `/api/exam/papers` | POST/GET | 保存试卷 / 试卷列表 | 教师 |
+| `/api/exam/papers/{id}` | GET/PUT/DELETE | 试卷详情 / 编辑 / 删除 | 教师 |
+| `/api/exam/papers/{id}/export` | POST | 导出试卷 DOCX | 教师 |
+| `/api/exam/papers/{id}/assign` | POST | 发布试卷到班级 | 教师 |
+| `/api/exam/assignments/{id}/submissions` | GET | 查看提交列表 | 教师 |
+| `/api/exam/submissions/{id}/answers/{qid}/image` | POST | 上传手写答案图 + 自动 OCR | 教师/学生 |
+| `/api/exam/answers/{id}/grade` | POST | 单题 AI 批改 | 教师 |
+| `/api/exam/submissions/{id}/grade` | POST | 整卷 AI 批改 | 教师 |
+| `/api/exam/answers/{id}/review` | PUT | 教师复核改分 | 教师 |
+| `/api/exam/assignments/{id}/report` | GET | 班级批改报告 | 教师 |
+| `/api/exam/my-assignments` | GET | 我的班级作业 | 学生 |
+| `/api/exam/assignments/{id}/paper` | GET | 作业试卷（题目脱敏） | 学生 |
+| `/api/exam/assignments/{id}/submit` | POST | 提交作答 | 学生 |
+
+教师端班级管理 / 学情代查接口另见 `/api/teacher/*`（[教师端 API 参考](docs/api-reference-teacher.md)）。
+
 ### 系统 API
 
 | 端点 | 方法 | 功能 |
@@ -963,53 +1031,6 @@ CREATE TABLE memory_metadata (
 | `/api/health` | GET | 健康检查（MySQL/Milvus 状态） |
 
 **交互式 API 文档**：启动后端后访问 http://localhost:8000/docs
-
----
-
-## 移动端 App
-
-### 技术架构
-
-```
-┌─────────────────────────────────────────┐
-│  React Native + Expo 52                 │
-│  ┌───────────────────────────────────┐  │
-│  │  App Router (Expo Router)         │  │
-│  │  ┌─────────┐  ┌───────────────┐  │  │
-│  │  │ (auth)  │  │    (tabs)     │  │  │
-│  │  │ login   │  │ index         │  │  │
-│  │  │ register│  │ tutor         │  │  │
-│  │  └─────────┘  │ resources     │  │  │
-│  │               │ profile       │  │  │
-│  │               └───────────────┘  │  │
-│  └───────────────────────────────────┘  │
-│  ┌───────────────────────────────────┐  │
-│  │  components/ ui/ chat/ dashboard/ │  │
-│  │  stores/ hooks/ constants/ lib/   │  │
-│  └───────────────────────────────────┘  │
-└─────────────────────────────────────────┘
-```
-
-### 功能模块
-
-| 模块 | 功能 |
-|------|------|
-| 工作台 | 统计卡片、最近资源、今日建议、协同动态 |
-| 智能辅导 | 聊天界面、SSE 流式输出、学科选择 |
-| 学习资源 | 7 种类型选择、难度配置、MiMo 生成 |
-| 学生画像 | 9 维度画像、课程表、成绩、错题 |
-| 学习路径 | 路径可视化、进度跟踪 |
-| 效果评估 | 多维度评分、改进建议 |
-
-### 启动方式
-
-```bash
-cd mobile
-npm install
-npx expo start
-```
-
-使用 Expo Go 扫码在真机测试，或使用 Android Studio / Xcode 模拟器运行。
 
 ---
 
@@ -1128,6 +1149,8 @@ cd frontend && npm install && npm run build && npm start
 │   ├── api/
 │   │   ├── agent.py                # 多智能体 API 端点
 │   │   ├── stream.py               # 流式输出（SSE）
+│   │   ├── exam.py                 # AI 出题/组卷 + 主观题批改 API（/api/exam）
+│   │   ├── teacher.py              # 教师端 API（班级管理、学情）
 │   │   └── auth.py                 # 认证 API
 │   ├── main.py                     # FastAPI 应用入口
 │   ├── dependencies.py             # JWT 认证、权限校验
@@ -1152,7 +1175,11 @@ cd frontend && npm install && npm run build && npm start
 │   ├── streaming_service.py        # 流式输出服务
 │   ├── animation_service.py        # 教学动画生成
 │   ├── image_service.py            # 图片/SVG 生成
-│   └── video_generation_service.py # 视频脚本生成
+│   ├── video_generation_service.py # 视频脚本生成
+│   ├── exam_paper_service.py       # AI 组卷（RAG 取材 + LLM 生成 + 试卷 CRUD）
+│   ├── grading_service.py          # 主观题批改（RAG 评分依据 + LLM 评分 + 教师复核）
+│   ├── handwriting_ocr_service.py  # 手写识别（RapidOCR/PP-OCRv6 + MiMo 视觉兜底）
+│   └── exam_docx_service.py        # 试卷导出 DOCX
 │
 ├── data/                           # 数据访问层
 │   ├── rag_knowledge_base.py       # RAG 知识库（Milvus + 混合检索）
@@ -1185,6 +1212,7 @@ cd frontend && npm install && npm run build && npm start
 │   │   └── profile/                # 学生画像
 │   ├── components/
 │   │   ├── shared/                 # 共享组件
+│   │   ├── teacher/                # 教师端（ExamPaperView 出题/组卷、GradingView 批改主观题）
 │   │   └── modules/                # 6 大功能模块组件
 │   ├── lib/
 │   │   ├── api.ts                  # API 客户端（重试 + 超时）
@@ -1193,20 +1221,6 @@ cd frontend && npm install && npm run build && npm start
 │   ├── stores/index.ts             # Zustand 状态管理
 │   ├── styles/globals.css          # 全局样式
 │   └── middleware.ts               # 安全头中间件
-│
-├── mobile/                         # 移动端（React Native + Expo）
-│   ├── app/
-│   │   ├── (auth)/                 # 登录/注册
-│   │   └── (tabs)/                 # Tab 导航页面
-│   ├── components/
-│   │   ├── ui/                     # 基础 UI 组件
-│   │   ├── chat/                   # 聊天组件
-│   │   └── dashboard/              # 工作台组件
-│   ├── lib/api.ts                  # API 客户端
-│   ├── stores/                     # Zustand 状态管理
-│   ├── hooks/                      # 自定义 Hooks
-│   ├── constants/                  # 常量配置
-│   └── android/                    # Android 原生配置
 │
 ├── docs/                           # 项目文档
 ├── scripts/                        # 初始化与启动脚本
@@ -1238,6 +1252,24 @@ cd frontend && npm install && npm run build && npm start
 ---
 
 ## 版本变更日志
+
+### v9.1.0（当前版本）— 教师 AI 出题/组卷 + 主观题批改
+
+**新增**：
+- AI 出题/组卷：RAG 知识库取材 → 题库复用（≤50%）→ LLM 生成 → 分值折算；试卷 CRUD、发布到班级、导出 DOCX（试题卷 + 答案解析分页）
+- 主观题批改：手写识别（RapidOCR/PP-OCRv6 + MiMo 视觉兜底）+ RAG 检索评分依据 + LLM 评分（分数/评语/知识点命中缺失/改进建议）+ 关键词兜底
+- 教师复核改分（最终分以教师为准）、班级批改报告（得分分布/逐题统计/薄弱知识点/排名）
+- `/api/exam/*` 共 26 端点；`ai_assessments` Schema 新增 `exam_papers` / `exam_questions` / `exam_assignments` / `exam_submissions` / `exam_answers` 5 张表
+- 教师端 `ExamPaperView`（AI 出题/组卷）、`GradingView`（批改主观题）；学生端「班级作业」作答（文本/手写图）
+- 题型：multiple_choice / judge / fill_blank / short_answer
+
+### v9.0.0 — 存储/向量/检索三层升级
+
+**升级**：
+- 存储：SQLite → **MySQL 8.0**（9 个 Schema，`data/dbapi.py` sqlite3 兼容层对接 PyMySQL，迁移脚本 `scripts/migrate_to_mysql.py`）
+- 向量：FAISS → **Milvus**（Milvus Lite，collection `knowledge_vectors`，dim=1024）
+- 嵌入：text2vec → **BGE-M3**（BAAI/bge-m3，1024 维 GPU，TF-IDF + SVD 仅作回退）
+- 检索：BM25+Softmax + BM25×向量混合（权重 0.8/0.2）+ HyDE/RAG-Fusion/Graph 等 11 种策略
 
 ### v8.7.0 — RAGAS 评估框架（取代旧检索评测）
 
@@ -1282,7 +1314,7 @@ cd frontend && npm install && npm run build && npm start
 ### v7.3.0（2026-07）
 
 **新增**：
-- 移动端 App（React Native + Expo），覆盖全部 6 大功能模块
+- 移动端 App（React Native + Expo），覆盖全部 6 大功能模块（注：移动端已于后续版本移除，`mobile/` 目录已删除）
 - 完整文档体系（docs/ 目录，11 篇文档）
 
 ### v7.2.0（2026-06）
@@ -1330,13 +1362,14 @@ cd frontend && npm install && npm run build && npm start
 | [文档中心](docs/README.md) | 文档导航首页 |
 | [系统架构](docs/architecture.md) | 整体架构、技术选型、设计原则 |
 | [API 接口参考](docs/api-reference.md) | 完整 API 端点列表与参数说明 |
-| [数据库设计](docs/database.md) | 9 个数据库、30+ 张表结构 |
+| [教师端 API 参考](docs/api-reference-teacher.md) | 班级管理 + AI 出题/组卷与批改接口 |
+| [教师端使用指南](docs/teacher-guide.md) | 班级管理、AI 出题/组卷、批改主观题 |
+| [数据库设计](docs/database.md) | 9 个 MySQL Schema、30+ 张表结构 |
 | [多智能体系统](docs/agents.md) | 6 个智能体、协作流程、消息协议 |
 | [检索算法详解](docs/retrieval.md) | 混合检索、11 种策略、三级回退 |
 | [记忆系统](docs/memory-system.md) | 四层记忆、遗忘机制、记忆增强 |
 | [安全机制](docs/security.md) | JWT、限流、防幻觉、异常体系 |
-| [部署指南](docs/deployment.md) | Docker、打包、App 构建 |
-| [移动端开发](docs/mobile-app.md) | React Native 开发指南 |
+| [部署指南](docs/deployment.md) | Docker 部署、PyInstaller 打包、NSIS 安装包 |
 | [版本变更日志](docs/changelog.md) | 版本变更记录 |
 
 ---
@@ -1358,7 +1391,7 @@ cd frontend && npm install && npm run build && npm start
 2. **事实核查**：交叉验证关键实体，置信度 < 0.7 标记为"可能存在幻觉"
 3. **引用溯源**：标注信息来源，支持验证
 
-### Q4: 为什么选择 9 个独立数据库？
+### Q4: 为什么选择 9 个独立 MySQL Schema？
 
 - 功能隔离，避免数据耦合
 - 性能优化，针对性优化不同数据类型
@@ -1387,16 +1420,6 @@ python scripts/init_rag_db.py
 ```
 
 支持 TXT/MD/PDF/DOCX/PPTX/XLSX/CSV 格式，单文件最大 20MB。
-
-### Q8: 移动端如何启动？
-
-```bash
-cd mobile
-npm install
-npx expo start
-```
-
-使用 Expo Go 扫码在真机测试。
 
 ---
 

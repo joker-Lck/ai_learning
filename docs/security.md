@@ -1,4 +1,6 @@
-﻿# 安全机制
+# 安全机制
+
+> **版本**：v9.1.0
 
 ## 认证与授权
 
@@ -93,6 +95,17 @@
 confidence = rag_similarity × 0.6 + fact_check_score × 0.4
 verified = confidence ≥ 0.7
 ```
+
+## 考试/批改相关安全（v9.1.0）
+
+| 措施 | 说明 |
+|------|------|
+| 手写图存取权限 | `GET /api/exam/answers/{id}/image` 仅允许**提交本人、任课教师、管理员**访问，其余返回 403 |
+| 题目脱敏 | 学生端 `GET /api/exam/assignments/{id}/paper` 返回题目不含正确答案/参考答案/评分要点 |
+| 上传校验 | 手写图仅接受 jpg/png/bmp/webp，单文件 ≤ 15MB，空文件拒绝 |
+| 目录穿越防护 | 导出文件下载 `GET /api/exam/download/{filename}` 用 `Path(filename).name` 取纯文件名，限定 `exports/` 目录 |
+| 教师端端点鉴权 | 组卷/批改/复核/班级报告等端点均要求 `teacher` 及以上角色 |
+| 作答归属校验 | 学生只能创建/修改自己的作答记录，教师可代建与批改本班提交 |
 
 ## 异常处理体系
 

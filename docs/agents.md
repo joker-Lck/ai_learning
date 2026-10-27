@@ -1,5 +1,7 @@
 # 多智能体系统设计
 
+> **版本**：v9.1.0
+
 ## 智能体角色
 
 系统包含 **6 个专业智能体**，通过事件驱动消息总线分工协作。
@@ -137,6 +139,15 @@
 - **数据增强**：基于高质量 QA 对生成变体
 - **增量更新**：自动写入 RAG 知识库
 
+### 出题/批改服务（v9.1.0，服务层非智能体）
+
+教师 AI 出题/组卷与主观题批改为**服务层**模块（挂 `/api/exam`），不参与消息总线协作：
+
+- `exam_paper_service` — 组卷时复用 RAG 知识库取材（与 TutorAgent 同一检索栈）
+- `grading_service` — 主观题批改用 RAG 检索评分依据（`rag_evidence`）+ LLM 评分，教师复核为准
+- `handwriting_ocr_service` — 手写识别（RapidOCR 主力 + MiMo 视觉兜底）
+- `exam_docx_service` — 试卷导出 DOCX
+
 ## 源文件
 
 | 文件 | 说明 |
@@ -152,3 +163,7 @@
 | `services/reflector.py` | 反思验证器 |
 | `services/multi_hop_retriever.py` | 多跳推理检索 |
 | `services/self_learning_service.py` | 自学习闭环 |
+| `services/exam_paper_service.py` | AI 组卷服务（v9.1.0） |
+| `services/grading_service.py` | 主观题批改服务（v9.1.0） |
+| `services/handwriting_ocr_service.py` | 手写识别服务（v9.1.0） |
+| `services/exam_docx_service.py` | 试卷 DOCX 导出（v9.1.0） |

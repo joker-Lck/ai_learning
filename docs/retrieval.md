@@ -1,5 +1,7 @@
 # 检索算法详解
 
+> **版本**：v9.1.0
+
 ## 混合检索架构
 
 系统采用 **KNN + ANN + RRF** 三路混合检索，兼顾语义相似度和关键词精确匹配。
@@ -160,6 +162,14 @@ KNN 结果 + ANN 结果 → RRF 统一排序 → Top-N 返回。
 | 文件 | 核心类/函数 | 说明 |
 |------|-----------|------|
 | `data/rag_knowledge_base.py` | `VectorIndexManager`, `RAGKnowledgeBase` | Milvus 向量索引 + 混合检索 |
-| `data/embedding_service.py` | `EmbeddingService` | TF-IDF + SVD 本地向量化（jieba分词） |
+| `data/embedding_service.py` | `EmbeddingService` | BGE-M3(1024维 GPU) 主力嵌入；不可用时 TF-IDF + SVD 回退 |
 | `services/advanced_retrieval_service.py` | `AdvancedRetrievalService` | 11 种高级检索策略 |
 | `services/content_safety_service.py` | `AntiHallucinationService` | 防幻觉验证 |
+
+## 批改场景的 RAG 应用（v9.1.0）
+
+主观题批改（`services/grading_service.py`）复用同一检索栈：
+
+- 批改前以「题目 + 参考答案 + 评分要点」为查询，经 `smart_search()` 检索知识库，作为**评分依据**（写入 `exam_answers.rag_evidence`）
+- 评分 Prompt 将该依据作为「标准答案参照」注入，再由 LLM 给出分数/评语/知识点命中缺失
+- LLM 不可用时退化为关键词兜底评分；检索结果同时用于班级报告的「薄弱知识点」统计
