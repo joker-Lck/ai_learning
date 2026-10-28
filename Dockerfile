@@ -3,13 +3,18 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# 编译工具（pymilvus / scikit-network 等可能需要）
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Debian APT 国内镜像源（deb.debian.org 在容器内不通）
+RUN find /etc/apt -name "*.sources" -o -name "*.list" | xargs sed -i 's|deb.debian.org|mirrors.aliyun.com|g' 2>/dev/null; \
+    apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ && \
     rm -rf /var/lib/apt/lists/*
 
+# pip 国内镜像加速
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
+    --trusted-host mirrors.aliyun.com \
+    -r requirements.txt
 
 # ── 运行阶段 ──
 FROM python:3.11-slim
@@ -35,6 +40,9 @@ RUN SITE=$(python -c "import langchain_community, pathlib; print(pathlib.Path(la
 
 # 应用代码
 COPY . .
+
+# Python 路径
+ENV PYTHONPATH=/app
 
 # 运行时目录
 RUN mkdir -p data/databases logs uploads exports

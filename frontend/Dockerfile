@@ -1,17 +1,20 @@
 # ── 构建阶段 ──
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# npm 国内镜像加速
+RUN npm config set registry https://registry.npmmirror.com
+
 COPY package*.json ./
-RUN npm ci --prefer-offline --no-audit --no-fund
+RUN npm install --prefer-offline --no-audit --no-fund
 
 COPY . .
 ENV NODE_ENV=production
-RUN npm run build
+RUN mkdir -p public && npm run build
 
 # ── 运行阶段 ──
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
