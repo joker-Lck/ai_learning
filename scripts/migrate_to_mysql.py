@@ -357,6 +357,20 @@ SCHEMA: dict[str, list[str]] = {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """,
         """
+        CREATE TABLE IF NOT EXISTS learning_gain_snapshots (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            session_id VARCHAR(64),
+            phase VARCHAR(16) NOT NULL,
+            knowledge_point VARCHAR(191) NOT NULL,
+            mastery DECIMAL(6,4) DEFAULT 0,
+            source VARCHAR(32) DEFAULT 'bkt',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_lgs_user_kp (user_id, knowledge_point),
+            KEY idx_lgs_session (session_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        """
         CREATE TABLE IF NOT EXISTS question_bank (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             subject VARCHAR(255) NOT NULL,
@@ -606,6 +620,24 @@ SCHEMA: dict[str, list[str]] = {
             point_name VARCHAR(255) NOT NULL,
             UNIQUE KEY uk_knowledge_points (doc_id, point_name),
             CONSTRAINT fk_knowledge_points_doc FOREIGN KEY (doc_id) REFERENCES knowledge_documents(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_chunks (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            doc_id BIGINT NOT NULL,
+            chunk_order INT DEFAULT 0,
+            chunk_id VARCHAR(64),
+            level INT DEFAULT 4,
+            section_path VARCHAR(512),
+            heading VARCHAR(255),
+            kind VARCHAR(32) DEFAULT 'body',
+            content_text LONGTEXT,
+            char_start INT DEFAULT 0,
+            char_end INT DEFAULT 0,
+            KEY idx_knowledge_chunks_doc (doc_id),
+            KEY idx_knowledge_chunks_chunk (chunk_id),
+            CONSTRAINT fk_knowledge_chunks_doc FOREIGN KEY (doc_id) REFERENCES knowledge_documents(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """,
         """
@@ -884,6 +916,7 @@ TABLE_ORDER = {
         "learning_activities",
         "quiz_sessions",
         "quiz_answers",
+        "learning_gain_snapshots",
         "question_bank",
         "exam_papers",
         "exam_questions",
@@ -901,6 +934,7 @@ TABLE_ORDER = {
         "document_categories",
         "knowledge_documents",
         "knowledge_points",
+        "knowledge_chunks",
         "document_category_relation",
         "document_usage_log",
         "knowledge_entity_graph",

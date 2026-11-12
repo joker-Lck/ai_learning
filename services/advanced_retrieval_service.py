@@ -717,6 +717,23 @@ class AdvancedRetrievalService:
             return self._hybrid_advanced_search(user_id, query, subject, limit)
         elif strategy == "ensemble":
             return self._ensemble_search(user_id, query, subject, limit)
+        elif strategy in ("structural", "long_context", "structure"):
+            # 教学结构感知检索（T1）：分块级命中 + 长上下文组装
+            embedding = self.embedding_service.get_embedding(query)
+            if embedding:
+                results = self.rag_kb.search_chunks_structural(
+                    embedding, subject=subject, limit=limit
+                )
+                if results:
+                    # 教学法对齐（T4）：误解感知重排 + 脚手架序
+                    try:
+                        from services.pedagogy_aligner import pedagogy_aligner
+                        results = pedagogy_aligner.align(results, user_id, query)
+                    except Exception as e:
+                        warning(f"教学对齐降级: {e}")
+                    return results
+            # 分块索引为空/失败 → 降级到 BM25 混合
+            return self._base_hybrid_search(query, subject, limit)
         else:
             return self._auto_search(user_id, query, subject, limit)
 
@@ -766,23 +783,72 @@ class AdvancedRetrievalService:
             warning(f"ReAct 检索失败: {e}")
             return self._base_hybrid_search(query, None, limit)
 
+    def query_complexity(self, query: str) -> str:
+        """查询复杂度分级（T5 成本路由）
+
+        simple   事实性短查询（定义/公式背诵）→ 轻检索（BM25）
+        medium   常规问答 → 混合检索
+        complex  多跳/推导/比较/长问题 → 深度检索（结构/Multi-Hop）
+        """
+        q = query.strip()
+        if not q:
+            return "simple"
+        complex_pat = re.compile(
+            r"(为什么|怎么推|推导|证明|比较|区别|分析|综合|评价|步骤|异同|优缺点|来龙去脉)")
+        simple_pat = re.compile(r"^(什么是|定义|含义|公式|背诵|默写|多少|几个|谁|何时|哪里)")
+        if len(q) > 60 or complex_pat.search(q):
+            return "complex"
+        if len(q) < 20 and simple_pat.search(q):
+            return "simple"
+        return "medium"
+
     def _auto_search(
         self, user_id: int, query: str, subject: str, limit: int
     ) -> list[dict]:
         """
-        自动策略路由（BM25 优先）：
+        自动策略路由（成本感知，T5）：
 
-        查询特征 → 策略选择：
-          默认            → BM25 优先混合检索（bm25_vector，权重 0.7/0.3）
-          < 15 字（短查询/概念性） → HyDE（生成假设答案扩展语义）
+        查询复杂度 → 策略选择：
+          simple  → BM25 词项检索（最便宜，跳过向量编码）
+          medium  → BM25 优先混合检索（bm25_vector）
+          complex → 结构感知检索（长上下文组装）+ 教学对齐
+        短查询（<15 字）→ HyDE（生成假设答案扩展语义）
         """
+        complexity = self.query_complexity(query)
+        debug(f"[CostRoute] complexity={complexity} query_len={len(query)}")
+
         if len(query) < 15:
             try:
                 return self.hyde_search(query, subject, limit)
             except Exception as e:
                 warning(f"auto→HyDE 失败，降级 BM25 混合: {e}")
 
+        # simple：轻量 BM25，跳过向量编码成本
+        if complexity == "simple":
+            try:
+                results = self.rag_kb.search_documents_by_bm25(query, subject=subject, limit=limit)
+                if results:
+                    return results
+            except Exception as e:
+                warning(f"auto→BM25 失败，降级混合: {e}")
+
         query_embedding = self.embedding_service.get_embedding(query)
+
+        # complex：结构感知检索（T1）+ 教学对齐（T4）
+        if complexity == "complex" and query_embedding:
+            try:
+                results = self.rag_kb.search_chunks_structural(
+                    query_embedding, subject=subject, limit=limit
+                )
+                if results:
+                    try:
+                        from services.pedagogy_aligner import pedagogy_aligner
+                        results = pedagogy_aligner.align(results, user_id, query)
+                    except Exception:
+                        pass
+                    return results
+            except Exception as e:
+                warning(f"auto→structural 失败，降级 BM25 混合: {e}")
         return self.rag_kb.search_hybrid_bm25_vector(
             query, query_embedding=query_embedding, subject=subject, limit=limit
         )

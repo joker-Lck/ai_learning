@@ -23,6 +23,7 @@ from services.document_analysis_service import document_analysis_service
 from services.path_agent import PathAgent
 from services.profile_agent import ProfileAgent
 from services.ragas_evaluator import ragas_evaluator
+from services.learning_gain_evaluator import learning_gain_evaluator
 from services.resource_export_service import resource_export_service
 
 router = APIRouter(prefix="/agent", tags=["学习智能体"])
@@ -2139,6 +2140,111 @@ async def get_eval_history(
         return BaseResponse(success=True, message="获取成功", data=ragas_evaluator.get_history(dataset_id))
     except Exception as e:
         error(f"获取评估历史失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ═══════════════════════════════════════════
+# 学习增益评估 API（教育 RAG 学习成效维度）
+# ═══════════════════════════════════════════
+
+@router.post("/eval-rag/learning-gain/snapshot", response_model=BaseResponse)
+async def capture_learning_snapshot(input_data: dict = Body(...), user: dict = Depends(require_auth)):
+    """
+    捕获学习前/后 BKT 掌握度快照（前测/后测配对）
+
+    请求体: {"user_id": 1, "knowledge_points": ["x1", "x2"], "phase": "pre"|"post", "session_id": "s1"}
+    """
+    try:
+        user_id = input_data.get("user_id") or user.get("user_id")
+        phase = input_data.get("phase", "pre")
+        return BaseResponse(**learning_gain_evaluator.capture_snapshot(
+            user_id=int(user_id),
+            knowledge_points=input_data.get("knowledge_points") or [],
+            phase=phase,
+            session_id=input_data.get("session_id"),
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"学习快照失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/eval-rag/learning-gain/compute", response_model=BaseResponse)
+async def compute_learning_gain(input_data: dict = Body(...), user: dict = Depends(require_auth)):
+    """
+    计算学习增益（Hake 归一化增益：逐知识点 + 聚合）
+
+    请求体: {"user_id": 1, "session_id": "s1"}
+    """
+    try:
+        user_id = input_data.get("user_id") or user.get("user_id")
+        return BaseResponse(**learning_gain_evaluator.compute_gain(
+            user_id=int(user_id),
+            session_id=input_data.get("session_id"),
+            knowledge_points=input_data.get("knowledge_points"),
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"学习增益计算失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/eval-rag/learning-gain/correction", response_model=BaseResponse)
+async def misconception_correction(input_data: dict = Body(...), user: dict = Depends(require_auth)):
+    """
+    误解纠正率：同一知识点「先答错→后答对」的比例
+
+    请求体: {"user_id": 1, "subject": "数学"}
+    """
+    try:
+        user_id = input_data.get("user_id") or user.get("user_id")
+        return BaseResponse(**learning_gain_evaluator.misconception_correction_rate(
+            user_id=int(user_id),
+            subject=input_data.get("subject"),
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"误解纠正率计算失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/eval-rag/learning-gain/coverage", response_model=BaseResponse)
+async def knowledge_coverage(input_data: dict = Body(...), user: dict = Depends(require_auth)):
+    """
+    知识覆盖率：问题所需知识点被检索证据覆盖的比例（与结构感知检索闭环）
+
+    请求体: {"knowledge_points": ["定理1", "韦达定理"], "retrieved": [{"content_text": "...", "section_path": "..."}]}
+    """
+    try:
+        return BaseResponse(**learning_gain_evaluator.knowledge_coverage(
+            query_knowledge_points=input_data.get("knowledge_points") or [],
+            retrieved_chunks=input_data.get("retrieved") or input_data.get("chunks") or [],
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"知识覆盖率计算失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/eval-rag/learning-gain/report", response_model=BaseResponse)
+async def learning_report(
+    user_id: int | None = Query(None),
+    session_id: str | None = Query(None),
+    user: dict = Depends(require_auth),
+):
+    """学习成效报告：增益 + 误解纠正率 + 弱项 一站式"""
+    try:
+        uid = user_id or user.get("user_id")
+        return BaseResponse(**learning_gain_evaluator.learning_report(
+            user_id=int(uid), session_id=session_id
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"学习报告生成失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -242,6 +242,38 @@ class TutorAgent:
                 except Exception as self_rag_err:
                     debug(f"Self-RAG 后置校验跳过: {self_rag_err}")
 
+                # 6.7 忠实度门控（T3）：句级归因核查 + 证据不足拒答降级
+                try:
+                    from services.faithfulness_verifier import faithfulness_verifier
+                    answer_text_for_faith = answer_data.get('text_answer', {})
+                    if isinstance(answer_text_for_faith, dict):
+                        answer_text_for_faith = answer_text_for_faith.get('summary', str(answer_text_for_faith))
+                    rag_docs_for_faith = relevant_memories.get('rag_docs', [])
+                    if rag_docs_for_faith and answer_text_for_faith:
+                        faith_report = faithfulness_verifier.verify(
+                            str(answer_text_for_faith), rag_docs_for_faith
+                        )
+                        faith_d = faith_report.to_dict()
+                        answer_data['faithfulness'] = {
+                            "verdict": faith_d["verdict"],
+                            "supported_ratio": faith_d["supported_ratio"],
+                            "numeric_consistency": faith_d["numeric_consistency"],
+                            "contradictions": faith_d["contradictions"][:3],
+                            "suspicious_evidence": faith_d["suspicious_evidence"][:3],
+                        }
+                        # 伪忠实/证据不足 → 拒答降级（保留有支撑内容 + 显式声明）
+                        if faith_d["verdict"] in ("unfaithful", "insufficient_evidence"):
+                            if isinstance(answer_data.get('text_answer'), dict):
+                                answer_data['text_answer']['summary'] = faith_d["qualified_answer"]
+                            else:
+                                answer_data['text_answer'] = {"summary": faith_d["qualified_answer"], "steps": []}
+                            info(f"[Faithfulness] 拒答降级: verdict={faith_d['verdict']}")
+                        elif faith_d["verdict"] == "partial" and faith_d["qualified_answer"]:
+                            if isinstance(answer_data.get('text_answer'), dict):
+                                answer_data['text_answer']['summary'] = faith_d["qualified_answer"]
+                except Exception as faith_err:
+                    debug(f"忠实度门控跳过: {faith_err}")
+
                 # 7. 保存问答记录
                 self._save_tutor_record(user_id, question, answer_data)
 

@@ -186,7 +186,7 @@ class VectorIndexManager:
     - 支持定期全量重建以修正漂移
     """
 
-    def __init__(self):
+    def __init__(self, collection: str | None = None):
         self._client = None
         self._dimension = 0
         self._lock = threading.Lock()
@@ -196,6 +196,7 @@ class VectorIndexManager:
         self._milvus_available = False
         self._count_cache = 0
         self._index_kind = "AUTOINDEX"
+        self._collection = collection or _COLLECTION
         try:
             from pymilvus import MilvusClient  # noqa: F401
 
@@ -238,7 +239,7 @@ class VectorIndexManager:
                     warning(f"查询向量维度 {len(vec)} != 索引维度 {self._dimension}，跳过 Milvus 检索")
                     return []
                 hits = self._client.search(
-                    collection_name=_COLLECTION,
+                    collection_name=self._collection,
                     data=[vec],
                     limit=limit,
                     output_fields=["id"],
@@ -276,7 +277,7 @@ class VectorIndexManager:
                     {"id": int(did), "vector": self._normalize(emb)}
                     for did, emb in zip(doc_ids, embeddings, strict=False)
                 ]
-                self._client.insert(collection_name=_COLLECTION, data=rows)
+                self._client.insert(collection_name=self._collection, data=rows)
                 self._count_cache += len(rows)
                 self._dirty = True
             except Exception as e:
@@ -289,7 +290,7 @@ class VectorIndexManager:
         with self._lock:
             try:
                 ids = [int(i) for i in doc_ids]
-                self._client.delete(collection_name=_COLLECTION, filter=f"id in {ids}")
+                self._client.delete(collection_name=self._collection, filter=f"id in {ids}")
                 self._count_cache = max(0, self._count_cache - len(ids))
                 self._dirty = True
             except Exception as e:
@@ -306,7 +307,7 @@ class VectorIndexManager:
             if not self._milvus_available or not self._dirty:
                 return
             try:
-                self._client.flush(_COLLECTION)
+                self._client.flush(self._collection)
                 self._dirty = False
             except Exception as e:
                 warning(f"Milvus flush 失败: {e}")
@@ -318,7 +319,7 @@ class VectorIndexManager:
                 return False
             try:
                 self._connect()
-                return self._has_data() or self._client.has_collection(_COLLECTION)
+                return self._has_data() or self._client.has_collection(self._collection)
             except Exception:
                 return False
 
@@ -332,10 +333,10 @@ class VectorIndexManager:
             return 0
         try:
             with self._lock:
-                if not self._client.has_collection(_COLLECTION):
+                if not self._client.has_collection(self._collection):
                     return 0
                 res = self._client.query(
-                    collection_name=_COLLECTION,
+                    collection_name=self._collection,
                     filter="",
                     output_fields=["count(*)"],
                 )
@@ -384,7 +385,7 @@ class VectorIndexManager:
 
     def _has_data(self) -> bool:
         try:
-            return self._client is not None and self._client.has_collection(_COLLECTION)
+            return self._client is not None and self._client.has_collection(self._collection)
         except Exception:
             return False
 
@@ -392,21 +393,21 @@ class VectorIndexManager:
         """确保 collection 存在且维度匹配"""
         if self._client is None:
             self._connect()
-        if self._client.has_collection(_COLLECTION):
-            desc = self._client.describe_collection(_COLLECTION)
+        if self._client.has_collection(self._collection):
+            desc = self._client.describe_collection(self._collection)
             existing_dim = 0
             for f in desc.get("fields", []):
                 if f.get("name") == "vector":
                     existing_dim = int((f.get("params") or {}).get("dim", 0))
             if existing_dim and existing_dim != dim:
                 info(f"[Milvus] 维度变更 {existing_dim} → {dim}，重建 collection")
-                self._client.drop_collection(_COLLECTION)
+                self._client.drop_collection(self._collection)
             else:
                 self._dimension = existing_dim or dim
                 return
 
         self._client.create_collection(
-            collection_name=_COLLECTION,
+            collection_name=self._collection,
             dimension=dim,
             metric_type="COSINE",
             auto_id=False,
@@ -454,7 +455,7 @@ class VectorIndexManager:
                 search_params = {"metric_type": "COSINE", "params": {}}
 
             self._client.create_index(
-                collection_name=_COLLECTION,
+                collection_name=self._collection,
                 index_params=index_params,
             )
             self._search_params = search_params
@@ -477,8 +478,8 @@ class VectorIndexManager:
         if not self._milvus_available:
             return
         try:
-            if self._client.has_collection(_COLLECTION):
-                self._client.drop_collection(_COLLECTION)
+            if self._client.has_collection(self._collection):
+                self._client.drop_collection(self._collection)
             self._count_cache = 0
             self._dimension = 0
 
@@ -492,8 +493,8 @@ class VectorIndexManager:
                 {"id": int(did), "vector": self._normalize(emb)}
                 for did, emb in zip(doc_ids, embeddings, strict=False)
             ]
-            self._client.insert(collection_name=_COLLECTION, data=rows)
-            self._client.flush(_COLLECTION)
+            self._client.insert(collection_name=self._collection, data=rows)
+            self._client.flush(self._collection)
             self._count_cache = len(rows)
             self._pick_index_kind(dim)
             self._dirty = False
@@ -503,6 +504,8 @@ class VectorIndexManager:
 
 # 全局单例
 vector_index = VectorIndexManager()
+# 分块级向量索引（教学结构感知 RAG：检索粒度=文本块而非整文档）
+chunk_vector_index = VectorIndexManager(collection="knowledge_chunk_vectors")
 
 
 class RAGKnowledgeBase:
@@ -671,6 +674,12 @@ class RAGKnowledgeBase:
                                   content_text or ""])
                 )
                 bm25_retriever.index.upsert(int(doc_id), bm25_text[:5000])
+            except Exception:
+                pass
+
+            # 教学结构感知分块索引（T1）：分块级向量 + 章节路径元数据
+            try:
+                self.index_document_chunks(doc_id, content_text, title=title)
             except Exception:
                 pass
 
@@ -1623,4 +1632,242 @@ class RAGKnowledgeBase:
 
 
 # 创建全局 RAG 知识库实例
+    # ─── 教学结构感知检索（分块级索引 + 长上下文组装）──────────
+
+    def ensure_chunk_table(self):
+        """确保 knowledge_chunks 表存在（分块级索引，独立于文档级索引）"""
+        try:
+            self.connect()
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_chunks (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    doc_id BIGINT NOT NULL,
+                    chunk_order INT DEFAULT 0,
+                    chunk_id VARCHAR(64),
+                    level INT DEFAULT 4,
+                    section_path VARCHAR(512),
+                    heading VARCHAR(255),
+                    kind VARCHAR(32) DEFAULT 'body',
+                    content_text LONGTEXT,
+                    char_start INT DEFAULT 0,
+                    char_end INT DEFAULT 0,
+                    KEY idx_knowledge_chunks_doc (doc_id),
+                    KEY idx_knowledge_chunks_chunk (chunk_id),
+                    CONSTRAINT fk_knowledge_chunks_doc FOREIGN KEY (doc_id)
+                        REFERENCES knowledge_documents(id) ON DELETE CASCADE
+                )""")
+            self.conn.commit()
+            return True
+        except Exception as e:
+            warning(f"knowledge_chunks 建表失败: {e}")
+            return False
+        finally:
+            self.close()
+
+    def index_document_chunks(self, doc_id, content_text, title=""):
+        """按教学结构切块并建立分块级索引（结构感知 RAG 的入库路径）
+
+        - 切块携带 section_path / kind 元数据（见 data/structure_chunker.py）
+        - 分块向量写入 Milvus collection `knowledge_chunk_vectors`
+        - 元数据落 knowledge_chunks 表，检索时可回溯教学位置
+
+        返回: 分块数量（失败返回 0，不影响文档主入库）
+        """
+        if not content_text or not content_text.strip():
+            return 0
+        try:
+            from data.structure_chunker import StructureChunker
+
+            tree = StructureChunker(max_length=900, min_length=60).chunk(content_text, doc_id=doc_id)
+            if not tree.chunks:
+                return 0
+
+            self.ensure_chunk_table()
+            self.connect()
+
+            # 批量取块向量（BGE-M3；TF-IDF 回退路径同样可用）
+            texts = [c.text for c in tree.chunks]
+            try:
+                from data.embedding_service import embedding_service
+                vectors = embedding_service.get_embeddings(texts)
+            except Exception as e:
+                warning(f"分块向量生成失败，仅存文本: {e}")
+                vectors = [None] * len(texts)
+
+            sql = """INSERT INTO knowledge_chunks
+                    (doc_id, chunk_order, chunk_id, level, section_path, heading,
+                     kind, content_text, char_start, char_end)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+            chunk_db_ids = []
+            chunk_vecs = []
+            for c, vec in zip(tree.chunks, vectors):
+                self.cursor.execute(sql, (
+                    doc_id, c.order, c.chunk_id, c.level,
+                    (c.section_path or "")[:512], (c.heading or "")[:255],
+                    c.kind, c.text, c.char_start, c.char_end,
+                ))
+                chunk_db_ids.append(self.cursor.lastrowid)
+                if vec:
+                    chunk_vecs.append(vec)
+            self.conn.commit()
+
+            # 分块向量入 Milvus（id=chunk 表主键，与文档级索引隔离）
+            if chunk_db_ids and chunk_vecs and len(chunk_vecs) == len(chunk_db_ids):
+                try:
+                    chunk_vector_index.add_vectors(chunk_db_ids, chunk_vecs)
+                    chunk_vector_index.save()
+                except Exception as e:
+                    warning(f"分块向量入索引失败: {e}")
+
+            info(f"文档 {doc_id} 结构化分块完成: {len(tree.chunks)} 块, "
+                 f"结构节点 {tree.stats.get('n_sections', 0)}")
+            return len(tree.chunks)
+        except Exception as e:
+            warning(f"分块索引失败（文档主数据不受影响）: {e}")
+            return 0
+        finally:
+            self.close()
+
+    def search_chunks_structural(self, query_embedding, subject=None, limit=5,
+                                 expand=True, neighbor_window=1, max_chars=4800):
+        """结构感知检索：分块级向量命中 → 长上下文组装
+
+        参数:
+            query_embedding: 查询向量
+            subject: 学科过滤（可选）
+            limit: 返回上下文条数
+            expand: 是否做邻域上下文组装（长上下文）
+            neighbor_window: 命中块前后各取几个同节邻接块
+            max_chars: 组装预算（字符）
+
+        返回: [{id(=doc_id), title, subject, content_text(组装后上下文),
+                section_path, chunk_ids, similarity, probability,
+                retrieval_method: 'structural', expanded}]
+        """
+        if not query_embedding:
+            return []
+        if not chunk_vector_index.is_available:
+            return []
+        try:
+            from data.structure_chunker import expand_context
+
+            hits = chunk_vector_index.search(query_embedding, max(limit * 3, 15))
+            if not hits:
+                return []
+            chunk_ids = [h["id"] for h in hits]
+            score_map = {h["id"]: h["score"] for h in hits}
+
+            self.connect()
+            placeholders = ",".join(["?"] * len(chunk_ids))
+            sql = f"""SELECT c.id, c.doc_id, c.chunk_order, c.chunk_id, c.level,
+                             c.section_path, c.heading, c.kind, c.content_text,
+                             d.title, d.subject
+                      FROM knowledge_chunks c
+                      JOIN knowledge_documents d ON d.id = c.doc_id
+                      WHERE c.id IN ({placeholders})"""
+            self.cursor.execute(sql, chunk_ids)
+            rows = self.cursor.fetchall()
+
+            hit_chunks = []
+            for r in rows:
+                r = dict(r)
+                if subject and r.get("subject") != subject:
+                    continue
+                hit_chunks.append({
+                    "chunk_db_id": r["id"],
+                    "doc_id": r["doc_id"],
+                    "order": r["chunk_order"],
+                    "chunk_id": r["chunk_id"],
+                    "section_path": r["section_path"] or "",
+                    "heading": r["heading"] or "",
+                    "kind": r["kind"] or "body",
+                    "text": r["content_text"] or "",
+                    "title": r["title"] or "",
+                    "subject": r["subject"] or "",
+                    "similarity": score_map.get(r["id"], 0.0),
+                })
+            if not hit_chunks:
+                return []
+
+            if not expand:
+                results = [{
+                    "id": c["doc_id"],
+                    "title": c["title"],
+                    "subject": c["subject"],
+                    "content_text": c["text"][:1000],
+                    "section_path": c["section_path"],
+                    "kind": c["kind"],
+                    "chunk_ids": [c["chunk_id"]],
+                    "similarity": c["similarity"],
+                    "probability": c["similarity"],
+                    "retrieval_method": "structural",
+                    "expanded": False,
+                } for c in hit_chunks[:limit]]
+                return results
+
+            # 长上下文组装：同文档全量块参与邻域扩展
+            doc_ids = {c["doc_id"] for c in hit_chunks}
+            ph = ",".join(["?"] * len(doc_ids))
+            self.cursor.execute(
+                f"""SELECT id, doc_id, chunk_order, chunk_id, section_path,
+                           heading, kind, content_text
+                    FROM knowledge_chunks WHERE doc_id IN ({ph})""",
+                list(doc_ids))
+            all_chunks = []
+            for r in self.cursor.fetchall():
+                r = dict(r)
+                all_chunks.append({
+                    "chunk_db_id": r["id"],
+                    "doc_id": r["doc_id"],
+                    "order": r["chunk_order"],
+                    "chunk_id": r["chunk_id"],
+                    "section_path": r["section_path"] or "",
+                    "heading": r["heading"] or "",
+                    "kind": r["kind"] or "body",
+                    "text": r["content_text"] or "",
+                })
+
+            ctx_list = expand_context(hit_chunks, all_chunks, max_chars=max_chars,
+                                      neighbor_window=neighbor_window)
+            results = []
+            for ctx in ctx_list[:limit]:
+                results.append({
+                    "id": ctx.get("doc_id"),
+                    "title": ctx.get("title", ""),
+                    "subject": next((c["subject"] for c in hit_chunks
+                                     if c["doc_id"] == ctx.get("doc_id")), ""),
+                    "content_text": ctx["context_text"],
+                    "section_path": ctx.get("section_path", ""),
+                    "kind": "context",
+                    "chunk_ids": ctx.get("chunk_ids", []),
+                    "similarity": ctx.get("score", 0.0),
+                    "probability": ctx.get("score", 0.0),
+                    "retrieval_method": "structural",
+                    "expanded": ctx.get("expanded", False),
+                })
+            return results
+        except Exception as e:
+            warning(f"结构检索失败: {e}")
+            return []
+        finally:
+            self.close()
+
+    def get_chunks_by_doc(self, doc_id):
+        """取文档全量分块（评估/调试用）"""
+        try:
+            self.ensure_chunk_table()
+            self.connect()
+            self.cursor.execute(
+                """SELECT id, chunk_order, chunk_id, level, section_path, heading,
+                          kind, content_text, char_start, char_end
+                   FROM knowledge_chunks WHERE doc_id = ? ORDER BY chunk_order""",
+                (doc_id,))
+            return [dict(r) for r in self.cursor.fetchall()]
+        except Exception as e:
+            warning(f"取分块失败: {e}")
+            return []
+        finally:
+            self.close()
+
+
 rag_kb = RAGKnowledgeBase()

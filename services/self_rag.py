@@ -244,6 +244,19 @@ class SelfRAG:
         quality_score += min(overlap_ratio * 2, 0.4)  # 词汇重叠贡献最多0.4
         quality_score += min(avg_score * 0.6, 0.6)    # 检索分数贡献最多0.6
 
+        # 忠实度信号（T3）：句级归因核查结果纳入质量分
+        faith_signal = {}
+        try:
+            from services.faithfulness_verifier import faithfulness_verifier
+            report = faithfulness_verifier.verify(answer, retrieved_docs)
+            faith_signal = {
+                "verdict": report.verdict,
+                "supported_ratio": round(report.supported_ratio, 3),
+            }
+            quality_score = quality_score * (0.6 + 0.4 * report.supported_ratio)
+        except Exception:
+            pass
+
         is_sufficient = quality_score >= 0.3
         should_retry = quality_score < 0.2 and len(retrieved_docs) < 3
 
@@ -260,6 +273,7 @@ class SelfRAG:
             "quality_score": round(quality_score, 3),
             "should_retry": should_retry,
             "retry_strategy": retry_strategy,
+            "faithfulness": faith_signal,
             "reason": f"quality={quality_score:.3f}, overlap={overlap_ratio:.2f}, avg_score={avg_score:.3f}",
         }
 

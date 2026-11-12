@@ -391,6 +391,35 @@ class GradingService:
             f"- 《{e.get('title', '资料')}》：{e.get('content', '')[:300]}" for e in rag_evidence
         ) or "（知识库暂无相关内容，按通用评分标准评阅）"
 
+        # 依据质量门控（T3）：评分要点覆盖度 + 疑似证据检测，弱依据提示教师复核
+        evidence_quality = {"coverage": None, "n_points": len(scoring_points),
+                            "suspicious": [], "weak": True}
+        try:
+            from services.learning_gain_evaluator import learning_gain_evaluator
+            from services.faithfulness_verifier import faithfulness_verifier
+            if scoring_points and rag_evidence:
+                cov = learning_gain_evaluator.knowledge_coverage(
+                    scoring_points,
+                    [{"content_text": e.get("content", ""), "section_path": e.get("section_path", "")}
+                     for e in rag_evidence],
+                )
+                if cov.get("success"):
+                    evidence_quality["coverage"] = cov["data"].get("coverage")
+                    evidence_quality["missing_points"] = cov["data"].get("missing", [])
+                sus = faithfulness_verifier.detect_suspicious_evidence(
+                    [{"content_text": e.get("content", ""), "title": e.get("title", "")}
+                     for e in rag_evidence]
+                )
+                evidence_quality["suspicious"] = sus[:3]
+                evidence_quality["weak"] = (evidence_quality["coverage"] or 0) < 0.6 or bool(sus)
+            elif not rag_evidence:
+                evidence_quality["weak"] = True
+        except Exception as eq_err:
+            debug(f"依据质量门控降级: {eq_err}")
+
+        if evidence_quality["weak"]:
+            evidence_text += "\n（⚠ 依据质量提示：知识库依据可能不完整，评分仅供教师复核参考）"
+
         points_text = "\n".join(f"{i + 1}. {p}" for i, p in enumerate(scoring_points)) or "（按参考答案要点给分）"
 
         prompt = GRADE_SUBJECTIVE_PROMPT.format(
@@ -423,6 +452,7 @@ class GradingService:
             result = self._fallback_grade(student_text, scoring_points, max_score)
 
         result["rag_evidence"] = rag_evidence
+        result["evidence_quality"] = evidence_quality
         if result.get("improvement"):
             result["comment"] = (result.get("comment") or "") + f" 建议：{result['improvement']}"
         return result
