@@ -558,17 +558,12 @@ class AntiHallucinationService:
         return list(set(entities))
 
     def _calculate_text_similarity(self, text1: str, text2: str) -> float:
-        """计算文本相似度(简化版Jaccard相似度)"""
+        """计算文本相似度(简化版Jaccard相似度，共享实现)"""
+        from core.text_utils import jaccard
+
         words1 = set(text1.lower().split())
         words2 = set(text2.lower().split())
-
-        if not words1 or not words2:
-            return 0.0
-
-        intersection = words1 & words2
-        union = words1 | words2
-
-        return len(intersection) / len(union)
+        return jaccard(words1, words2)
 
 
 # 全局服务实例

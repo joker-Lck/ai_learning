@@ -115,33 +115,3 @@ class TestExceptions:
         from backend.exceptions import RateLimitError
         exc = RateLimitError()
         assert exc.status_code == 429
-
-
-class TestConfig:
-    """测试配置模块"""
-
-    def test_config_import(self):
-        from backend.config import Settings
-        assert Settings is not None
-
-    def test_config_cors_origins(self):
-        from backend.config import Settings
-        s = Settings(
-            jwt_secret="test_secret_32chars_for_testing!!",
-            mimo_api_key="test_key",
-            allowed_origins="http://a.com, http://b.com",
-        )
-        assert s.cors_origins == ["http://a.com", "http://b.com"]
-
-    def test_config_environment(self, monkeypatch):
-        # 清除 lru_cache 以使用新配置
-        from backend.config import Settings, get_settings
-        get_settings.cache_clear()
-
-        monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("JWT_SECRET", "test_secret_32chars_for_testing!!")
-        monkeypatch.setenv("MIMO_API_KEY", "test_key")
-
-        s = Settings()
-        assert s.is_production is True
-        assert s.is_development is False

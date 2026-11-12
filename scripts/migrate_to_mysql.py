@@ -25,14 +25,10 @@ load_dotenv(BASE_DIR / ".env")
 
 import pymysql
 
-# ── 连接参数 ────────────────────────────────────────────
-MYSQL = {
-    "host": os.getenv("MYSQL_HOST", "127.0.0.1"),
-    "port": int(os.getenv("MYSQL_PORT", "3306")),
-    "user": os.getenv("MYSQL_USER", "root"),
-    "password": os.getenv("MYSQL_PASSWORD", "123456"),
-    "charset": os.getenv("MYSQL_CHARSET", "utf8mb4"),
-}
+# ── 连接参数（统一走 data.config.mysql_params）─────────
+from data.config import mysql_params as _mysql_params
+
+MYSQL = _mysql_params()
 SQLITE_DIR = Path(os.getenv("SQLITE_DB_DIR", str(BASE_DIR / "data" / "databases")))
 
 # ── MySQL 建表语句（由 SQLite schema 转换而来） ──────────

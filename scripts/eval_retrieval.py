@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """BM25 / 向量 / 混合检索效果对比评测"""
 import sys
 sys.path.insert(0, ".")

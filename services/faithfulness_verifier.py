@@ -74,7 +74,7 @@ class FaithfulnessReport:
 
 
 # 数字/公式锚点：整数、小数、分数、百分数（过滤纯序号<10 的单数字，噪声太大）
-_NUM_RE = re.compile(r"\d+\.\d+|\d{2,}|\d+/\d+|\d+%|\d+\s*[×x*]\s*10")
+from core.text_utils import NUM_RE as _NUM_RE
 # 指令注入/投毒信号
 _DIRECTIVE_RE = re.compile(
     r"(忽略(此前|之前|以上)?(的)?(指令|问题|内容)|ignore\s+(previous|above)|"
@@ -181,9 +181,11 @@ class FaithfulnessVerifier:
         ev_words = self._tokenize(ev_sent)
         if not sent_words or not ev_words:
             return 0.0
-        jac = len(sent_words & ev_words) / max(len(sent_words | ev_words), 1)
+        from core.text_utils import containment, jaccard
+
+        jac = jaccard(sent_words, ev_words)
         # 包含度：答案词被证据覆盖的比例（答案短句常是证据子集）
-        contain = len(sent_words & ev_words) / max(len(sent_words), 1)
+        contain = containment(sent_words, ev_words)
         score = max(jac, contain * 0.9)
         # 数字锚点加成：句中数字出现在证据中
         nums = self._extract_numbers(sent)
@@ -332,7 +334,9 @@ class FaithfulnessVerifier:
 
     @staticmethod
     def _extract_numbers(text: str) -> list[str]:
-        return [m.group(0).replace(" ", "") for m in _NUM_RE.finditer(text)]
+        from core.text_utils import extract_numbers
+
+        return extract_numbers(text)
 
     def _missing_numbers(self, claim: str, evidence_sent: str) -> list[str]:
         nums = self._extract_numbers(claim)

@@ -46,7 +46,8 @@ class CitationAnnotator:
             source_map[i + 1] = title[:50]
 
             # 按句号/换行分句
-            sentences = re.split(r'[。！？\n]', content)
+            from core.text_utils import split_sentences
+            sentences = split_sentences(content, seps='。！？\n')
             for sent in sentences:
                 sent = sent.strip()
                 if len(sent) >= 10:
@@ -60,7 +61,8 @@ class CitationAnnotator:
             )
 
         # 2. 对答案中的句子逐句匹配
-        answer_sentences = re.split(r'(?<=[。！？\n])', answer)
+        from core.text_utils import split_sentences
+        answer_sentences = split_sentences(answer, seps='。！？\n', keep_seps=True)
         annotated_parts = []
         citation_count = 0
 
@@ -112,12 +114,10 @@ class CitationAnnotator:
         return words
 
     def _jaccard(self, set_a: set, set_b: set) -> float:
-        """Jaccard 相似度"""
-        if not set_a or not set_b:
-            return 0.0
-        intersection = len(set_a & set_b)
-        union = len(set_a | set_b)
-        return intersection / union if union > 0 else 0.0
+        """Jaccard 相似度（共享实现）"""
+        from core.text_utils import jaccard
+
+        return jaccard(set_a, set_b)
 
 
 # 全局单例

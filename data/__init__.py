@@ -6,7 +6,6 @@
 from .config import get_db_config
 from .db_operations import Database, db
 from .embedding_service import EmbeddingService, embedding_service
-from .qa_db_operations import qa_db
 from .rag_knowledge_base import rag_kb, vector_index
 from .bm25_softmax import bm25_retriever, softmax, fuse_probabilities
 
@@ -16,7 +15,6 @@ __all__ = [
     'db',
     'embedding_service',
     'get_db_config',
-    'qa_db',
     'rag_kb',
     'vector_index',
 ]

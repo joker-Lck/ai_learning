@@ -51,14 +51,9 @@ _load_env()
 
 
 def get_mysql_params() -> dict[str, Any]:
-    return {
-        "host": os.getenv("MYSQL_HOST", "127.0.0.1"),
-        "port": int(os.getenv("MYSQL_PORT", "3306")),
-        "user": os.getenv("MYSQL_USER", "root"),
-        "password": os.getenv("MYSQL_PASSWORD", "123456"),
-        "charset": os.getenv("MYSQL_CHARSET", "utf8mb4"),
-        "autocommit": False,
-    }
+    from data.config import mysql_params
+
+    return mysql_params()
 
 
 # ═══════════════════════════════════════════

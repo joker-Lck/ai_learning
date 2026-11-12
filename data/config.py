@@ -10,12 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# MySQL 连接参数
-MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "123456")
-MYSQL_CHARSET = os.getenv("MYSQL_CHARSET", "utf8mb4")
 
 # 历史遗留：SQLite 目录（仅迁移脚本读取源数据用）
 LEGACY_SQLITE_DIR = Path(os.getenv("LEGACY_SQLITE_DIR", "data/databases"))
@@ -33,13 +27,13 @@ DB_MEMORY = "ai_memory"
 
 
 def mysql_params() -> dict:
-    """返回 PyMySQL 连接参数。"""
+    """返回 PyMySQL 连接参数（唯一实现，调用时读 env）。"""
     return {
-        "host": MYSQL_HOST,
-        "port": MYSQL_PORT,
-        "user": MYSQL_USER,
-        "password": MYSQL_PASSWORD,
-        "charset": MYSQL_CHARSET,
+        "host": os.getenv("MYSQL_HOST", "127.0.0.1"),
+        "port": int(os.getenv("MYSQL_PORT", "3306")),
+        "user": os.getenv("MYSQL_USER", "root"),
+        "password": os.getenv("MYSQL_PASSWORD", "123456"),
+        "charset": os.getenv("MYSQL_CHARSET", "utf8mb4"),
         "autocommit": False,
     }
 

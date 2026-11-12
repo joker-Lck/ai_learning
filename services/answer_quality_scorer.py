@@ -127,7 +127,9 @@ class AnswerQualityScorer:
         if not q_words:
             return 0.5
 
-        overlap = len(q_words & a_words) / len(q_words)
+        from core.text_utils import containment
+
+        overlap = containment(q_words, a_words)
         return min(overlap * 1.8, 1.0)
 
     def _score_confidence(self, answer: str) -> float:
@@ -146,7 +148,9 @@ class AnswerQualityScorer:
         if not c_words:
             return 0.5
 
-        overlap = len(c_words & a_words) / len(c_words)
+        from core.text_utils import containment
+
+        overlap = containment(c_words, a_words)
         return min(overlap * 2.5, 1.0)
 
     def _detect_flags(self, answer: str) -> list:
@@ -166,7 +170,9 @@ class AnswerQualityScorer:
             flags.append("unclosed_code_block")
 
         # 重复内容（连续重复句子）
-        sentences = [s.strip() for s in answer.split("。") if len(s.strip()) > 10]
+        from core.text_utils import split_sentences
+
+        sentences = split_sentences(answer, seps="。", min_len=11)
         if len(sentences) >= 3:
             for i in range(len(sentences) - 2):
                 if sentences[i] == sentences[i + 1] == sentences[i + 2]:

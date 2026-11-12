@@ -19,6 +19,34 @@ import re
 from core.logger import debug, error, info, warning
 
 
+def _rrf_fuse(
+    ranked_lists: list[list[dict]],
+    rrf_k: int,
+    limit: int,
+    method: str,
+    score_key: str = "rrf_score",
+) -> list[dict]:
+    """RRF 融合多路排名列表：score(d) = Σ 1/(k + rank_i(d))"""
+    rrf_scores: dict = {}
+    data_map: dict = {}
+    for ranked in ranked_lists:
+        for rank, doc in enumerate(ranked):
+            doc_id = doc.get("id")
+            if doc_id is None:
+                continue
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
+            data_map[doc_id] = doc
+
+    sorted_ids = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
+    results = []
+    for doc_id in sorted_ids[:limit]:
+        doc = data_map[doc_id]
+        doc[score_key] = rrf_scores[doc_id]
+        doc["retrieval_method"] = method
+        results.append(doc)
+    return results
+
+
 class AdvancedRetrievalService:
     """高级检索服务（懒加载，首次调用时初始化依赖）"""
 
@@ -227,36 +255,14 @@ class AdvancedRetrievalService:
 
             ranked_lists = []
             for q in all_queries:
-                q_embedding = self.embedding_service.get_embedding(q)
-                hits = self.rag_kb.hybrid_search(
-                    query=q, query_embedding=q_embedding,
-                    subject=subject, limit=limit * 3,
-                )
+                hits = self._base_hybrid_search(q, subject, limit * 3)
                 if hits:
                     ranked_lists.append(hits)
 
             if not ranked_lists:
                 return self._fallback_vector_search(query, limit)
 
-            rrf_scores = {}
-            doc_data_map = {}
-            for ranked in ranked_lists:
-                for rank, doc in enumerate(ranked):
-                    doc_id = doc.get('id')
-                    if doc_id is None:
-                        continue
-                    rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
-                    doc_data_map[doc_id] = doc
-
-            sorted_ids = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
-            results = []
-            for doc_id in sorted_ids[:limit]:
-                doc = doc_data_map[doc_id]
-                doc['rrf_score'] = rrf_scores[doc_id]
-                doc['retrieval_method'] = 'rag_fusion'
-                results.append(doc)
-
-            return results
+            return _rrf_fuse(ranked_lists, rrf_k, limit, 'rag_fusion')
 
         except Exception as e:
             error(f"RAG-Fusion 检索失败: {e}")
@@ -281,11 +287,7 @@ class AdvancedRetrievalService:
         参考：Anthropic Contextual Retrieval (2024)
         """
         try:
-            query_embedding = self.embedding_service.get_embedding(query)
-            candidates = self.rag_kb.hybrid_search(
-                query=query, query_embedding=query_embedding,
-                subject=subject, limit=20,
-            )
+            candidates = self._base_hybrid_search(query, subject, 20)
             if not candidates:
                 return []
 
@@ -381,11 +383,7 @@ class AdvancedRetrievalService:
             graph_context = self._traverse_graph(user_id, entities, graph_depth)
             expanded_query = self._expand_query_with_graph(query, graph_context)
 
-            expanded_embedding = self.embedding_service.get_embedding(expanded_query)
-            results = self.rag_kb.hybrid_search(
-                query=expanded_query, query_embedding=expanded_embedding,
-                subject=subject, limit=limit * 2,
-            )
+            results = self._base_hybrid_search(expanded_query, subject, limit * 2)
 
             if subject:
                 results = [r for r in results if r.get('subject') == subject] + \
@@ -606,27 +604,10 @@ class AdvancedRetrievalService:
         return contextualized if contextualized else paragraphs
 
     def _split_paragraphs(self, text: str, max_length: int = 500) -> list[str]:
-        """将文本分割为段落"""
-        if not text:
-            return []
-        paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
-        result = []
-        for para in paragraphs:
-            if len(para) <= max_length:
-                result.append(para)
-            else:
-                sentences = para.split('。')
-                current = ""
-                for sentence in sentences:
-                    if len(current + sentence) <= max_length:
-                        current += sentence + "。"
-                    else:
-                        if current:
-                            result.append(current.strip())
-                        current = sentence + "。"
-                if current:
-                    result.append(current.strip())
-        return result[:100]
+        """将文本分割为段落（共享实现见 core.text_utils）"""
+        from core.text_utils import split_paragraphs
+
+        return split_paragraphs(text, max_length=max_length)
 
     # ══════════════════════════════════════════
     # 7. 混合基座检索 — KNN + ANN + RRF
@@ -718,44 +699,56 @@ class AdvancedRetrievalService:
         elif strategy == "ensemble":
             return self._ensemble_search(user_id, query, subject, limit)
         elif strategy in ("structural", "long_context", "structure"):
-            # 教学结构感知检索（T1）：分块级命中 + 长上下文组装
-            embedding = self.embedding_service.get_embedding(query)
-            if embedding:
-                results = self.rag_kb.search_chunks_structural(
-                    embedding, subject=subject, limit=limit
-                )
-                if results:
-                    # 教学法对齐（T4）：误解感知重排 + 脚手架序
-                    try:
-                        from services.pedagogy_aligner import pedagogy_aligner
-                        results = pedagogy_aligner.align(results, user_id, query)
-                    except Exception as e:
-                        warning(f"教学对齐降级: {e}")
-                    return results
+            # 教学结构感知检索（T1）：分块级命中 + 长上下文组装 + 教学法对齐（T4）
+            results = self._structural_search(user_id, query, subject, limit)
+            if results:
+                return results
             # 分块索引为空/失败 → 降级到 BM25 混合
             return self._base_hybrid_search(query, subject, limit)
         else:
             return self._auto_search(user_id, query, subject, limit)
+
+    def _evidence_to_docs(self, result: dict, method: str, limit: int) -> list[dict]:
+        """把 multi_hop/retrieve 的 evidence_chain 转换为统一文档格式"""
+        docs = []
+        for e in result.get("evidence_chain", []):
+            docs.append({
+                "id": e.get("doc_id"),
+                "title": e.get("title", ""),
+                "content": e.get("content", ""),
+                "content_text": e.get("content", ""),
+                "score": e.get("score", 0),
+                "retrieval_method": method,
+                "hop": e.get("hop", 0),
+                "relation": e.get("relation", ""),
+            })
+        return docs[:limit]
+
+    def _structural_search(self, user_id: int, query: str, subject: str | None, limit: int, embedding: list | None = None) -> list[dict] | None:
+        """教学结构感知检索 + 教学法对齐；失败返回 None 由调用方降级"""
+        try:
+            if embedding is None:
+                embedding = self.embedding_service.get_embedding(query)
+            if not embedding:
+                return None
+            results = self.rag_kb.search_chunks_structural(embedding, subject=subject, limit=limit)
+            if results:
+                try:
+                    from services.pedagogy_aligner import pedagogy_aligner
+                    results = pedagogy_aligner.align(results, user_id, query)
+                except Exception as e:
+                    warning(f"教学对齐降级: {e}")
+            return results
+        except Exception as e:
+            warning(f"结构感知检索失败: {e}")
+            return None
 
     def _multi_hop_search(self, user_id: int, query: str, limit: int) -> list[dict]:
         """多跳推理检索"""
         try:
             from services.multi_hop_retriever import multi_hop_retriever
             result = multi_hop_retriever.retrieve(query=query, user_id=user_id, limit=limit)
-            # 转换为统一格式
-            docs = []
-            for e in result.get("evidence_chain", []):
-                docs.append({
-                    "id": e.get("doc_id"),
-                    "title": e.get("title", ""),
-                    "content": e.get("content", ""),
-                    "content_text": e.get("content", ""),
-                    "score": e.get("score", 0),
-                    "retrieval_method": "multi_hop",
-                    "hop": e.get("hop", 0),
-                    "relation": e.get("relation", ""),
-                })
-            return docs[:limit]
+            return self._evidence_to_docs(result, "multi_hop", limit)
         except Exception as e:
             warning(f"Multi-Hop 检索失败: {e}")
             return self._base_hybrid_search(query, None, limit)
@@ -765,20 +758,7 @@ class AdvancedRetrievalService:
         try:
             from services.multi_hop_retriever import multi_hop_retriever
             result = multi_hop_retriever.react_retrieve(query=query, user_id=user_id, limit=limit)
-            # 转换为统一格式
-            docs = []
-            for e in result.get("evidence_chain", []):
-                docs.append({
-                    "id": e.get("doc_id"),
-                    "title": e.get("title", ""),
-                    "content": e.get("content", ""),
-                    "content_text": e.get("content", ""),
-                    "score": e.get("score", 0),
-                    "retrieval_method": "react",
-                    "hop": e.get("hop", 0),
-                    "relation": e.get("relation", ""),
-                })
-            return docs[:limit]
+            return self._evidence_to_docs(result, "react", limit)
         except Exception as e:
             warning(f"ReAct 检索失败: {e}")
             return self._base_hybrid_search(query, None, limit)
@@ -836,19 +816,9 @@ class AdvancedRetrievalService:
 
         # complex：结构感知检索（T1）+ 教学对齐（T4）
         if complexity == "complex" and query_embedding:
-            try:
-                results = self.rag_kb.search_chunks_structural(
-                    query_embedding, subject=subject, limit=limit
-                )
-                if results:
-                    try:
-                        from services.pedagogy_aligner import pedagogy_aligner
-                        results = pedagogy_aligner.align(results, user_id, query)
-                    except Exception:
-                        pass
-                    return results
-            except Exception as e:
-                warning(f"auto→structural 失败，降级 BM25 混合: {e}")
+            results = self._structural_search(user_id, query, subject, limit, embedding=query_embedding)
+            if results:
+                return results
         return self.rag_kb.search_hybrid_bm25_vector(
             query, query_embedding=query_embedding, subject=subject, limit=limit
         )
@@ -858,9 +828,7 @@ class AdvancedRetrievalService:
     ) -> list[dict]:
         """HyDE + RAG-Fusion + 基座KNN+ANN 三路 RRF 融合"""
         rrf_k = 60
-        scores = {}
-        data_map = {}
-
+        ranked_lists = []
         methods = [
             ('base_hybrid', lambda: self._base_hybrid_search(query, subject, limit * 2)),
             ('hyde', lambda: self.hyde_search(query, subject, limit * 2)),
@@ -869,24 +837,11 @@ class AdvancedRetrievalService:
 
         for method_name, method_fn in methods:
             try:
-                results = method_fn()
-                for rank, doc in enumerate(results):
-                    doc_id = doc.get('id')
-                    if doc_id is None:
-                        continue
-                    scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
-                    data_map[doc_id] = doc
+                ranked_lists.append(method_fn())
             except Exception as e:
                 warning(f"Hybrid_Advl 中 {method_name} 失败: {e}")
 
-        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
-        results = []
-        for doc_id in sorted_ids[:limit]:
-            doc = data_map[doc_id]
-            doc['retrieval_method'] = 'hybrid_advl'
-            doc['hybrid_score'] = scores[doc_id]
-            results.append(doc)
-        return results
+        return _rrf_fuse(ranked_lists, rrf_k, limit, 'hybrid_advl', score_key='hybrid_score')
 
     def _ensemble_search(
         self, user_id: int, query: str, subject: str, limit: int
@@ -898,9 +853,7 @@ class AdvancedRetrievalService:
              Contextual、Graph-Enhanced
         """
         rrf_k = 60
-        scores = {}
-        data_map = {}
-
+        ranked_lists = []
         methods = [
             ('base_hybrid', lambda: self._base_hybrid_search(query, subject, limit * 2)),
             ('hyde', lambda: self.hyde_search(query, subject, limit * 2)),
@@ -912,24 +865,11 @@ class AdvancedRetrievalService:
 
         for method_name, method_fn in methods:
             try:
-                results = method_fn()
-                for rank, doc in enumerate(results):
-                    doc_id = doc.get('id')
-                    if doc_id is None:
-                        continue
-                    scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (rrf_k + rank + 1)
-                    data_map[doc_id] = doc
+                ranked_lists.append(method_fn())
             except Exception as e:
                 warning(f"Ensemble 中 {method_name} 失败: {e}")
 
-        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
-        results = []
-        for doc_id in sorted_ids[:limit]:
-            doc = data_map[doc_id]
-            doc['retrieval_method'] = 'ensemble'
-            doc['ensemble_score'] = scores[doc_id]
-            results.append(doc)
-        return results
+        return _rrf_fuse(ranked_lists, rrf_k, limit, 'ensemble', score_key='ensemble_score')
 
     # ── 回退方法 ──────────────────────────────
 

@@ -24,7 +24,6 @@ class CollaborationDB:
             self.conn = dbapi.connect(self.db_path)
             self.conn.row_factory = dbapi.Row
             self.cursor = self.conn.cursor()
-            self._init_tables()
             return True
         except Exception as e:
             error(f"协同学习数据库连接失败: {e}")
@@ -37,81 +36,6 @@ class CollaborationDB:
                 self.conn.close()
             except Exception:
                 pass
-
-    def _init_tables(self):
-        """初始化表结构"""
-        try:
-            # 小组表
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS study_groups (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    description TEXT DEFAULT '',
-                    creator_id INTEGER NOT NULL,
-                    invite_code TEXT UNIQUE NOT NULL,
-                    max_members INTEGER DEFAULT 50,
-                    subject TEXT DEFAULT '综合',
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            # 成员关系表
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS group_members (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    group_id INTEGER NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    role TEXT DEFAULT 'member',
-                    joined_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(group_id, user_id),
-                    FOREIGN KEY (group_id) REFERENCES study_groups(id)
-                )
-            """)
-
-            # 共享资源表
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS shared_resources (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    group_id INTEGER NOT NULL,
-                    resource_id INTEGER NOT NULL,
-                    resource_type TEXT DEFAULT 'document',
-                    shared_by INTEGER NOT NULL,
-                    shared_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (group_id) REFERENCES study_groups(id)
-                )
-            """)
-
-            # 学习动态表
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS learning_activities_feed (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    group_id INTEGER NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    activity_type TEXT NOT NULL,
-                    content TEXT DEFAULT '',
-                    metadata TEXT DEFAULT '{}',
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (group_id) REFERENCES study_groups(id)
-                )
-            """)
-
-            # 互评表
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS peer_reviews (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    group_id INTEGER NOT NULL,
-                    resource_id INTEGER NOT NULL,
-                    reviewer_id INTEGER NOT NULL,
-                    rating INTEGER DEFAULT 0,
-                    comment TEXT DEFAULT '',
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (group_id) REFERENCES study_groups(id)
-                )
-            """)
-
-            self.conn.commit()
-        except Exception as e:
-            error(f"初始化协同学习表失败: {e}")
 
     # ═══════════════════════════════════════
     # 小组管理
