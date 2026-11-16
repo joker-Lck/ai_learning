@@ -539,19 +539,5 @@ class AssessmentAgent:
 
     def _get_user_profile(self, user_id: int) -> dict | None:
         """获取用户画像"""
-        try:
-            from data.db_operations import profile_db
-            with profile_db:
-                sql = "SELECT profile_data FROM student_profiles WHERE user_id = ? ORDER BY version DESC LIMIT 1"
-                profile_db.cursor.execute(sql, (user_id,))
-                result = profile_db.cursor.fetchone()
-
-                if result:
-                    row = dict(result)
-                    if row.get("profile_data"):
-                        return json.loads(row["profile_data"])
-                return None
-
-        except Exception as e:
-            error(f"获取用户画像失败: {e!s}")
-            return None
+        from data.db_operations import get_student_profile_data
+        return get_student_profile_data(user_id)

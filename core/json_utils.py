@@ -9,8 +9,6 @@ from typing import Any
 
 # 预编译正则表达式以提升性能
 _CODE_FENCE_RE = re.compile(r'```(?:json)?\s*\n(.*?)\n\s*```', re.DOTALL)
-_JSON_OBJECT_RE = re.compile(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', re.DOTALL)
-_JSON_ARRAY_RE = re.compile(r'\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]', re.DOTALL)
 
 
 def safe_parse_json(text: str) -> Any | None:

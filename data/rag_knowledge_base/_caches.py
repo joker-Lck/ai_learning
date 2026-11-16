@@ -152,7 +152,6 @@ class SemanticCache:
 
 _query_cache = LRUCache(max_size=200, ttl=600)
 _semantic_cache = SemanticCache(max_size=200, ttl=600, similarity_threshold=0.92)
-_CACHE_TTL = 600
 
 def _clear_search_cache():
     """清空搜索缓存"""

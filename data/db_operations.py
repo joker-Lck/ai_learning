@@ -3,6 +3,8 @@ MySQL 数据库操作模块（JSON 格式存储）
 提供数据库 CRUD 操作，所有复杂数据以 JSON 格式存储
 """
 
+import json
+
 from data import dbapi as dbapi
 
 from core.logger import db_operation_failed, debug, error
@@ -68,3 +70,20 @@ resource_db = Database(config_func=get_resources_db_config)
 path_db = Database(config_func=get_paths_db_config)
 assessment_db = Database(config_func=get_assessments_db_config)
 agent_db = Database(config_func=get_agents_db_config)
+
+
+def get_student_profile_data(user_id: int) -> dict | None:
+    """获取用户画像数据（student_profiles 表最新版本的 profile_data）"""
+    try:
+        with profile_db:
+            sql = "SELECT profile_data FROM student_profiles WHERE user_id = ? ORDER BY version DESC LIMIT 1"
+            profile_db.cursor.execute(sql, (user_id,))
+            result = profile_db.cursor.fetchone()
+            if result:
+                row = dict(result)
+                if row.get("profile_data"):
+                    return json.loads(row["profile_data"])
+            return None
+    except Exception as e:
+        error(f"获取用户画像失败: {e!s}")
+        return None

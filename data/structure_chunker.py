@@ -413,18 +413,25 @@ def expand_context(
                 used_orders.add(o)
             members.sort(key=lambda x: x.get("order", 0))
 
-            # 组装：段首带路径标题，段间空行
-            parts = []
+            # 组装：命中块优先、两侧交替取块、按预算截断；输出按阅读序
+            center_idx = next((i for i, c in enumerate(members) if c.get("order") == center), 0)
+            picked = []
             total = 0
-            used_ids = []
-            for c in members:
-                t = c.get("text", "")
-                seg = t if not parts else t  # 同窗口内连续正文
-                if total + len(seg) > max_chars and parts:
-                    break
-                parts.append(seg)
-                used_ids.append(c.get("chunk_id"))
-                total += len(seg)
+            for delta in range(len(members)):
+                for idx in ([center_idx + delta, center_idx - delta] if delta else [center_idx]):
+                    if not 0 <= idx < len(members):
+                        continue
+                    c = members[idx]
+                    if any(p is c for p in picked):
+                        continue
+                    seg = c.get("text", "")
+                    if total + len(seg) > max_chars and picked:
+                        continue
+                    picked.append(c)
+                    total += len(seg)
+            picked.sort(key=lambda x: x.get("order", 0))
+            parts = [c.get("text", "") for c in picked]
+            used_ids = [c.get("chunk_id") for c in picked]
             path = h.get("section_path") or members[0].get("section_path", "")
             context_text = f"【{path}】\n" + "\n".join(parts) if path else "\n".join(parts)
             contexts.append(

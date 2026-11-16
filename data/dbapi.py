@@ -157,19 +157,6 @@ def _pool_release(database: str, conn: _PyMySQLConnection) -> None:
             pass
 
 
-def close_all_pools() -> None:
-    """测试/退出时清空连接池"""
-    with _pools_lock:
-        for pool in _pools.values():
-            while True:
-                try:
-                    conn = pool.get_nowait()
-                    conn.close()
-                except Exception:
-                    break
-        _pools.clear()
-
-
 def resolve_database(target: Any) -> str:
     """把历史「文件路径 / 配置 dict / 库名」统一解析成 MySQL 库名。"""
     if target is None:
@@ -386,9 +373,6 @@ class Connection:
         else:
             self.rollback()
         self.close()
-
-
-_PLACEHOLDER_RE = re.compile(r"(?<!%)%s|\?")
 
 
 def _split_sql(script: str) -> list[str]:

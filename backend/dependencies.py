@@ -22,7 +22,6 @@ JWT_SECRET = _jwt_env
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
-JWT_REFRESH_DAYS = int(os.getenv("JWT_REFRESH_DAYS", "7"))
 
 
 def create_token(user_id: int, username: str, role: str) -> str:
