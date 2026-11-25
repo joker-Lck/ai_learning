@@ -1,0 +1,1150 @@
+[
+ {
+  "query": "在抽出的 10 个产品中，哪些是随机事件",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 873,
+  "unit_end": 4292,
+  "kind": "example"
+ },
+ {
+  "query": "例1和例2中的样本空间各包含哪些样本点",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 4292,
+  "unit_end": 4443,
+  "kind": "example"
+ },
+ {
+  "query": "样本空间 $$ \\Omega_2 $$ 由哪些样本点构成",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 4443,
+  "unit_end": 5035,
+  "kind": "example"
+ },
+ {
+  "query": "例3和例4中的样本空间分别是什么",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 5035,
+  "unit_end": 5219,
+  "kind": "example"
+ },
+ {
+  "query": "“最多发现 2 件次品”如何用 $A_0,A_1,\\cdots,A_5$ 表示",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 10544,
+  "unit_end": 10955,
+  "kind": "example"
+ },
+ {
+  "query": "指示灯不亮的条件是什么",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 10955,
+  "unit_end": 11900,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算从 $N$ 个产品中取 $n$ 个，恰有 $m$ 个次品的概率",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 12834,
+  "unit_end": 12902,
+  "kind": "example"
+ },
+ {
+  "query": "第 $k$ 次取得白球的概率如何计算",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 13118,
+  "unit_end": 13208,
+  "kind": "example"
+ },
+ {
+  "query": "事件 $A$ 的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 13733,
+  "unit_end": 13898,
+  "kind": "example"
+ },
+ {
+  "query": "甲乙两人会面的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 16792,
+  "unit_end": 16902,
+  "kind": "example"
+ },
+ {
+  "query": "这根针与直线相交的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 17309,
+  "unit_end": 17401,
+  "kind": "example"
+ },
+ {
+  "query": "互不相容事件的概率加法公式是什么",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 18855,
+  "unit_end": 18930,
+  "kind": "theorem"
+ },
+ {
+  "query": "互不相容完备事件组的概率和是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 19239,
+  "unit_end": 19360,
+  "kind": "theorem"
+ },
+ {
+  "query": "互不相容完备事件组的概率之和等于多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 19360,
+  "unit_end": 19661,
+  "kind": "theorem"
+ },
+ {
+  "query": "取出的3个产品中有次品的概率如何计算",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 19661,
+  "unit_end": 19728,
+  "kind": "theorem"
+ },
+ {
+  "query": "取出3个产品中有次品的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 19728,
+  "unit_end": 19792,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算两个事件并集的概率",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 20464,
+  "unit_end": 20556,
+  "kind": "theorem"
+ },
+ {
+  "query": "公式 (1.32) 的具体内容是什么",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 21468,
+  "unit_end": 22729,
+  "kind": "theorem"
+ },
+ {
+  "query": "条件概率的计算公式是什么",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 22729,
+  "unit_end": 22869,
+  "kind": "theorem"
+ },
+ {
+  "query": "如何计算多个事件同时发生的概率",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 23622,
+  "unit_end": 23757,
+  "kind": "theorem"
+ },
+ {
+  "query": "第三次才取得合格品的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 23757,
+  "unit_end": 23940,
+  "kind": "theorem"
+ },
+ {
+  "query": "第三次才取得合格品的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 23940,
+  "unit_end": 24010,
+  "kind": "example"
+ },
+ {
+  "query": "全概率公式的作用是什么",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 26705,
+  "unit_end": 27131,
+  "kind": "theorem"
+ },
+ {
+  "query": "任选一个袋子，取出两球都是白球的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 27131,
+  "unit_end": 27275,
+  "kind": "example"
+ },
+ {
+  "query": "各批产品通过检查的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 27763,
+  "unit_end": 28014,
+  "kind": "example"
+ },
+ {
+  "query": "贝叶斯公式如何推导",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 28816,
+  "unit_end": 29121,
+  "kind": "theorem"
+ },
+ {
+  "query": "试验结果呈阳性反应的被检查者确实患有癌症的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 29861,
+  "unit_end": 30044,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算两个独立事件同时发生的概率",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 33850,
+  "unit_end": 33955,
+  "kind": "theorem"
+ },
+ {
+  "query": "n次都取得合格品的概率如何计算",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 33955,
+  "unit_end": 34057,
+  "kind": "theorem"
+ },
+ {
+  "query": "放回抽样中，n次都取得合格品的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 34057,
+  "unit_end": 34177,
+  "kind": "example"
+ },
+ {
+  "query": "加工出来的零件的次品率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 34442,
+  "unit_end": 34523,
+  "kind": "example"
+ },
+ {
+  "query": "n个元件串联时系统的可靠性如何计算",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 35730,
+  "unit_end": 36022,
+  "kind": "example"
+ },
+ {
+  "query": "在独立试验中，事件 $A$ 恰好发生 $m$ 次的概率如何计算",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 36957,
+  "unit_end": 37131,
+  "kind": "theorem"
+ },
+ {
+  "query": "次品数等于2的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 37767,
+  "unit_end": 37835,
+  "kind": "example"
+ },
+ {
+  "query": "三局二胜制下甲获胜的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 38192,
+  "unit_end": 38290,
+  "kind": "example"
+ },
+ {
+  "query": "在这段时间内有 2～4 台机床需要维修的概率是多少",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 39412,
+  "unit_end": 39527,
+  "kind": "example"
+ },
+ {
+  "query": "需要多少个开关并联才能使警报器可靠性不低于 0.9999",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 39980,
+  "unit_end": 40147,
+  "kind": "example"
+ },
+ {
+  "query": "概率的单调性指的是什么",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 42897,
+  "unit_end": 43058,
+  "kind": "theorem"
+ },
+ {
+  "query": "任一随机事件 $A$ 的概率满足什么不等式",
+  "doc": "第一章 随机事件及其概率",
+  "unit_start": 43058,
+  "unit_end": 43527,
+  "kind": "theorem"
+ },
+ {
+  "query": "能否用假设检验判断这批灯泡的均值是否为1600",
+  "doc": "第七章 假设检验",
+  "unit_start": 234,
+  "unit_end": 402,
+  "kind": "example"
+ },
+ {
+  "query": "能否认为这批电灯泡的使用寿命均值不小于 1600 h",
+  "doc": "第七章 假设检验",
+  "unit_start": 4490,
+  "unit_end": 4572,
+  "kind": "example"
+ },
+ {
+  "query": "已知σ=5时，如何判断包装机工作是否正常",
+  "doc": "第七章 假设检验",
+  "unit_start": 9718,
+  "unit_end": 9948,
+  "kind": "example"
+ },
+ {
+  "query": "试制的这批电子元件的平均使用寿命是否有显著提高",
+  "doc": "第七章 假设检验",
+  "unit_start": 11103,
+  "unit_end": 11284,
+  "kind": "example"
+ },
+ {
+  "query": "已知均值时，如何检验方差是否小于等于25",
+  "doc": "第七章 假设检验",
+  "unit_start": 13218,
+  "unit_end": 13332,
+  "kind": "example"
+ },
+ {
+  "query": "处理后含脂率的均值是否显著降低",
+  "doc": "第七章 假设检验",
+  "unit_start": 16060,
+  "unit_end": 16277,
+  "kind": "example"
+ },
+ {
+  "query": "如何检验处理前后含脂率的方差是否有显著差异",
+  "doc": "第七章 假设检验",
+  "unit_start": 20121,
+  "unit_end": 20229,
+  "kind": "example"
+ },
+ {
+  "query": "能否用显著性水平 0.05 判断次品率不超过 3%",
+  "doc": "第七章 假设检验",
+  "unit_start": 21689,
+  "unit_end": 21806,
+  "kind": "example"
+ },
+ {
+  "query": "如何检验放射粒子数服从泊松分布",
+  "doc": "第七章 假设检验",
+  "unit_start": 25518,
+  "unit_end": 25639,
+  "kind": "example"
+ },
+ {
+  "query": "如何检验零件尺寸偏差服从正态分布",
+  "doc": "第七章 假设检验",
+  "unit_start": 26856,
+  "unit_end": 26967,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算\"0—1\"分布随机变量的数学期望",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 1511,
+  "unit_end": 1606,
+  "kind": "example"
+ },
+ {
+  "query": "哪种验血方案更节省化验次数",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 2055,
+  "unit_end": 2361,
+  "kind": "example"
+ },
+ {
+  "query": "柯西分布的数学期望是否存在",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 3917,
+  "unit_end": 4022,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算随机变量 $X$ 和 $Y$ 的数学期望",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 5413,
+  "unit_end": 5474,
+  "kind": "example"
+ },
+ {
+  "query": "随机变量 $Y=X^2$ 的数学期望是多少",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 6851,
+  "unit_end": 7021,
+  "kind": "example"
+ },
+ {
+  "query": "随机变量 $Y=\\sin X$ 的数学期望是多少",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 7498,
+  "unit_end": 7565,
+  "kind": "example"
+ },
+ {
+  "query": "该公司应储备多少商品才能使利润期望最大",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 7969,
+  "unit_end": 8144,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算 $ Z = X^2 + Y^2 $ 的数学期望",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 9508,
+  "unit_end": 9677,
+  "kind": "example"
+ },
+ {
+  "query": "常量的数学期望等于什么",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 10288,
+  "unit_end": 10353,
+  "kind": "theorem"
+ },
+ {
+  "query": "常量与随机变量乘积的数学期望如何计算",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 10433,
+  "unit_end": 10511,
+  "kind": "theorem"
+ },
+ {
+  "query": "两个随机变量的和的数学期望等于它们的数学期望的和吗",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 10695,
+  "unit_end": 10768,
+  "kind": "theorem"
+ },
+ {
+  "query": "定理4和定理5分别说明了什么数学期望的性质",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 11283,
+  "unit_end": 11393,
+  "kind": "theorem"
+ },
+ {
+  "query": "两个独立随机变量乘积的数学期望如何计算",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 11393,
+  "unit_end": 11468,
+  "kind": "theorem"
+ },
+ {
+  "query": "恰好领到自己所带礼品的人数的数学期望是多少",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 12029,
+  "unit_end": 12145,
+  "kind": "theorem"
+ },
+ {
+  "query": "恰好领到自己所带礼品的人数 $X$ 的数学期望是多少",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 12145,
+  "unit_end": 12255,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算服从\"0—1\"分布的随机变量的方差",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 15346,
+  "unit_end": 15443,
+  "kind": "example"
+ },
+ {
+  "query": "随机变量 $X$ 与 $Y$ 的期望与方差如何计算",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 15588,
+  "unit_end": 15656,
+  "kind": "example"
+ },
+ {
+  "query": "常量与随机变量乘积的方差如何计算",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 16973,
+  "unit_end": 17033,
+  "kind": "theorem"
+ },
+ {
+  "query": "常量与随机变量乘积的方差如何计算",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 17100,
+  "unit_end": 17179,
+  "kind": "theorem"
+ },
+ {
+  "query": "两个独立随机变量的和的方差如何计算",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 17327,
+  "unit_end": 17398,
+  "kind": "theorem"
+ },
+ {
+  "query": "定理4中，有限个独立随机变量的和的方差等于什么",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 17687,
+  "unit_end": 17795,
+  "kind": "theorem"
+ },
+ {
+  "query": "什么是标准化的随机变量",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 17795,
+  "unit_end": 17902,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算指数分布随机变量的k阶原点矩",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 25514,
+  "unit_end": 25578,
+  "kind": "example"
+ },
+ {
+  "query": "协方差的计算公式是什么",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 26774,
+  "unit_end": 26891,
+  "kind": "theorem"
+ },
+ {
+  "query": "求协方差 $\\mathrm{cov}(X,Y)$ 的值是多少",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 27083,
+  "unit_end": 27346,
+  "kind": "example"
+ },
+ {
+  "query": "独立的随机变量是否一定不相关",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 27672,
+  "unit_end": 27738,
+  "kind": "theorem"
+ },
+ {
+  "query": "随机变量 $X\\pm Y$ 的方差如何计算",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 28327,
+  "unit_end": 28423,
+  "kind": "theorem"
+ },
+ {
+  "query": "定理4中提到的公式如何证明",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 28827,
+  "unit_end": 29845,
+  "kind": "theorem"
+ },
+ {
+  "query": "如何计算协方差和相关系数",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 29845,
+  "unit_end": 30005,
+  "kind": "example"
+ },
+ {
+  "query": "随机变量相关系数的绝对值为什么不超过1",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 30726,
+  "unit_end": 30793,
+  "kind": "theorem"
+ },
+ {
+  "query": "当 $Y$ 与 $X$ 线性相关时，相关系数 $R(X,Y)$ 的绝对值等于 1 吗",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 31170,
+  "unit_end": 31336,
+  "kind": "theorem"
+ },
+ {
+  "query": "独立的随机变量相关系数是否一定为零",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 32244,
+  "unit_end": 33137,
+  "kind": "theorem"
+ },
+ {
+  "query": "切比雪夫不等式的内容是什么",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 33137,
+  "unit_end": 33406,
+  "kind": "theorem"
+ },
+ {
+  "query": "大数定律的条件和结论是什么",
+  "doc": "第三章 随机变量的数字特征",
+  "unit_start": 36955,
+  "unit_end": 38225,
+  "kind": "theorem"
+ },
+ {
+  "query": "随机变量X的可能取值有哪些",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 494,
+  "unit_end": 1152,
+  "kind": "example"
+ },
+ {
+  "query": "例2和例3中的随机变量分别对应什么实际问题",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 1152,
+  "unit_end": 1330,
+  "kind": "example"
+ },
+ {
+  "query": "如何用随机变量表示抛硬币的结果",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 1330,
+  "unit_end": 1573,
+  "kind": "example"
+ },
+ {
+  "query": "随机变量 $X$ 表示什么",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 1573,
+  "unit_end": 3441,
+  "kind": "example"
+ },
+ {
+  "query": "取球次数的概率分布如何计算",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 3441,
+  "unit_end": 3536,
+  "kind": "example"
+ },
+ {
+  "query": "当 $N\\to\\infty$ 时，超几何分布近似服从什么分布",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 8407,
+  "unit_end": 8653,
+  "kind": "theorem"
+ },
+ {
+  "query": "当 $n$ 很大时，二项分布近似于什么分布",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 10855,
+  "unit_end": 11044,
+  "kind": "theorem"
+ },
+ {
+  "query": "不放回抽样时，次品数服从什么分布",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 11778,
+  "unit_end": 11871,
+  "kind": "example"
+ },
+ {
+  "query": "零件尺寸偏差区间为(-15,-10)的频率是多少",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 13792,
+  "unit_end": 16945,
+  "kind": "example"
+ },
+ {
+  "query": "击中点与靶心距离的分布函数如何求",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 16945,
+  "unit_end": 17262,
+  "kind": "example"
+ },
+ {
+  "query": "电子元件寿命的分布函数如何求解",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 18017,
+  "unit_end": 18204,
+  "kind": "example"
+ },
+ {
+  "query": "如何求解连续随机变量 $X$ 的概率密度中的常数 $A$",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 21370,
+  "unit_end": 21514,
+  "kind": "example"
+ },
+ {
+  "query": "误差绝对值不超过 0.002 s 的概率是多少",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 23144,
+  "unit_end": 23262,
+  "kind": "example"
+ },
+ {
+  "query": "这种电子元件能使用 1000 h 以上的概率是多少",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 24182,
+  "unit_end": 24352,
+  "kind": "example"
+ },
+ {
+  "query": "此人能得到银行服务的概率是多少",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 24463,
+  "unit_end": 24654,
+  "kind": "example"
+ },
+ {
+  "query": "随机变量 $Y_1=-2X$ 的概率分布如何计算",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 25928,
+  "unit_end": 26127,
+  "kind": "example"
+ },
+ {
+  "query": "Y 的可能取值及对应概率是什么",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 26742,
+  "unit_end": 26875,
+  "kind": "example"
+ },
+ {
+  "query": "当 $b > 0$ 时，如何求 $Y = a + bX$ 的概率密度",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 28289,
+  "unit_end": 28372,
+  "kind": "example"
+ },
+ {
+  "query": "Y=sinX 的概率密度如何求",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 29108,
+  "unit_end": 29273,
+  "kind": "example"
+ },
+ {
+  "query": "求一等品和二等品件数的二维联合概率分布",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 31400,
+  "unit_end": 31480,
+  "kind": "example"
+ },
+ {
+  "query": "二维随机变量 $(X,Y)$ 的联合概率密度如何求",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 34945,
+  "unit_end": 35100,
+  "kind": "example"
+ },
+ {
+  "query": "如何求随机变量 $X$ 的边缘分布函数",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 37861,
+  "unit_end": 38044,
+  "kind": "example"
+ },
+ {
+  "query": "已知抽取的 4 件产品中有 2 件二等品，求一等品件数的条件概率分布是什么",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 40236,
+  "unit_end": 40347,
+  "kind": "example"
+ },
+ {
+  "query": "随机变量 $X$ 与 $Y$ 是否独立",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 44995,
+  "unit_end": 45135,
+  "kind": "example"
+ },
+ {
+  "query": "Z=X+Y 的分布是什么",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 48306,
+  "unit_end": 48554,
+  "kind": "example"
+ },
+ {
+  "query": "Z=X+Y 的分布是什么",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 49513,
+  "unit_end": 49725,
+  "kind": "example"
+ },
+ {
+  "query": "Z=X+Y的分布密度函数是什么",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 50950,
+  "unit_end": 51021,
+  "kind": "example"
+ },
+ {
+  "query": "如何求随机变量 $Z=X+Y$ 的概率密度",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 52186,
+  "unit_end": 52330,
+  "kind": "example"
+ },
+ {
+  "query": "随机变量 $Z = \\frac{X}{Y}$ 的概率密度如何求",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 54366,
+  "unit_end": 54606,
+  "kind": "example"
+ },
+ {
+  "query": "如何求随机变量 $Z=X^2+Y^2$ 的概率密度",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 55402,
+  "unit_end": 55571,
+  "kind": "example"
+ },
+ {
+  "query": "仪器使用寿命的概率密度如何计算",
+  "doc": "第二章 随机变量及其分布",
+  "unit_start": 57500,
+  "unit_end": 57644,
+  "kind": "example"
+ },
+ {
+  "query": "样本均值的方差是多少",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 8265,
+  "unit_end": 8492,
+  "kind": "theorem"
+ },
+ {
+  "query": "样本方差的计算公式是什么",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 9560,
+  "unit_end": 9677,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算样本均值、样本方差及样本二阶中心矩的观测值",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 10492,
+  "unit_end": 10667,
+  "kind": "example"
+ },
+ {
+  "query": "服从卡方分布的随机变量的概率密度函数是什么",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 11865,
+  "unit_end": 13146,
+  "kind": "theorem"
+ },
+ {
+  "query": "随机变量 $T$ 的概率密度函数是什么",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 13146,
+  "unit_end": 15123,
+  "kind": "theorem"
+ },
+ {
+  "query": "随机变量 $F$ 的概率密度函数是什么",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 15123,
+  "unit_end": 18339,
+  "kind": "theorem"
+ },
+ {
+  "query": "样本均值服从什么分布",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 18339,
+  "unit_end": 18525,
+  "kind": "theorem"
+ },
+ {
+  "query": "统计量 $u$ 服从什么分布",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 18783,
+  "unit_end": 18968,
+  "kind": "theorem"
+ },
+ {
+  "query": "统计量 $\\chi^2$ 服从什么分布",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 18968,
+  "unit_end": 19180,
+  "kind": "theorem"
+ },
+ {
+  "query": "样本均值与样本方差是否独立",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 19552,
+  "unit_end": 20231,
+  "kind": "theorem"
+ },
+ {
+  "query": "统计量 $t$ 服从什么分布",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 20231,
+  "unit_end": 20412,
+  "kind": "theorem"
+ },
+ {
+  "query": "样本均值与总体均值之差的绝对值小于 2 的概率是多少",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 20884,
+  "unit_end": 20990,
+  "kind": "example"
+ },
+ {
+  "query": "已知 $\\mu=0$ 时，求 $\\sum_{i=1}^{16}X_i^2<128$ 的概率是多少",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 21408,
+  "unit_end": 21607,
+  "kind": "example"
+ },
+ {
+  "query": "统计量 $ U $ 服从什么分布",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 22986,
+  "unit_end": 23346,
+  "kind": "theorem"
+ },
+ {
+  "query": "统计量 $ U $ 的分布是什么",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 23844,
+  "unit_end": 24174,
+  "kind": "theorem"
+ },
+ {
+  "query": "定理6中统计量T服从什么分布",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 24174,
+  "unit_end": 24594,
+  "kind": "theorem"
+ },
+ {
+  "query": "统计量 $ F $ 的分布是什么",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 25324,
+  "unit_end": 25688,
+  "kind": "theorem"
+ },
+ {
+  "query": "F 统计量服从什么分布",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 26148,
+  "unit_end": 26399,
+  "kind": "theorem"
+ },
+ {
+  "query": "样本均值差 $\\overline{X}-\\overline{Y}$ 大于 6 的概率是多少",
+  "doc": "第五章 数理统计的基本知识",
+  "unit_start": 26737,
+  "unit_end": 26939,
+  "kind": "example"
+ },
+ {
+  "query": "如何求参数 $\\theta$ 的矩估计值",
+  "doc": "第六章 参数估计",
+  "unit_start": 2375,
+  "unit_end": 2487,
+  "kind": "example"
+ },
+ {
+  "query": "如何用矩估计法估计正态分布的均值和方差",
+  "doc": "第六章 参数估计",
+  "unit_start": 3002,
+  "unit_end": 3133,
+  "kind": "example"
+ },
+ {
+  "query": "参数 $\\lambda$ 的最大似然估计值如何计算",
+  "doc": "第六章 参数估计",
+  "unit_start": 5764,
+  "unit_end": 5878,
+  "kind": "example"
+ },
+ {
+  "query": "参数 $\\lambda$ 的最大似然估计值如何求",
+  "doc": "第六章 参数估计",
+  "unit_start": 7297,
+  "unit_end": 7509,
+  "kind": "example"
+ },
+ {
+  "query": "如何求正态分布参数的最大似然估计值",
+  "doc": "第六章 参数估计",
+  "unit_start": 8316,
+  "unit_end": 8450,
+  "kind": "example"
+ },
+ {
+  "query": "参数 $\\theta$ 的最大似然估计量如何求",
+  "doc": "第六章 参数估计",
+  "unit_start": 9672,
+  "unit_end": 9794,
+  "kind": "example"
+ },
+ {
+  "query": "样本方差为何用 $n-1$ 而不是 $n$",
+  "doc": "第六章 参数估计",
+  "unit_start": 11004,
+  "unit_end": 11217,
+  "kind": "theorem"
+ },
+ {
+  "query": "$\\alpha$ 与 $\\beta$ 哪个更优",
+  "doc": "第六章 参数估计",
+  "unit_start": 11217,
+  "unit_end": 11540,
+  "kind": "example"
+ },
+ {
+  "query": "哪个是更有效的估计量",
+  "doc": "第六章 参数估计",
+  "unit_start": 13423,
+  "unit_end": 13699,
+  "kind": "example"
+ },
+ {
+  "query": "置信水平为 0.95 时，这批零件直径均值的置信区间是多少",
+  "doc": "第六章 参数估计",
+  "unit_start": 19286,
+  "unit_end": 19488,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算零件直径均值的置信区间",
+  "doc": "第六章 参数估计",
+  "unit_start": 21032,
+  "unit_end": 21098,
+  "kind": "example"
+ },
+ {
+  "query": "已知均值时，如何计算方差的置信区间",
+  "doc": "第六章 参数估计",
+  "unit_start": 23646,
+  "unit_end": 23744,
+  "kind": "example"
+ },
+ {
+  "query": "两台机床滚珠直径均值差的置信区间如何计算",
+  "doc": "第六章 参数估计",
+  "unit_start": 27372,
+  "unit_end": 27755,
+  "kind": "example"
+ },
+ {
+  "query": "已知均值时，如何求方差比的置信区间",
+  "doc": "第六章 参数估计",
+  "unit_start": 31340,
+  "unit_end": 31508,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算优质品率的置信区间",
+  "doc": "第六章 参数估计",
+  "unit_start": 34490,
+  "unit_end": 34565,
+  "kind": "example"
+ },
+ {
+  "query": "如何求指数分布参数的置信区间",
+  "doc": "第六章 参数估计",
+  "unit_start": 36195,
+  "unit_end": 36309,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算使用寿命均值的单侧置信下限",
+  "doc": "第六章 参数估计",
+  "unit_start": 37422,
+  "unit_end": 37675,
+  "kind": "example"
+ },
+ {
+  "query": "正态分布下，X 落在 $(\\mu-k\\sigma,\\mu+k\\sigma)$ 内的概率如何计算",
+  "doc": "第四章 正态分布",
+  "unit_start": 2456,
+  "unit_end": 2565,
+  "kind": "example"
+ },
+ {
+  "query": "公共汽车车门高度应设计为多少才能保证成年男子上车时头碰车门顶的概率不超过0.025",
+  "doc": "第四章 正态分布",
+  "unit_start": 3392,
+  "unit_end": 3488,
+  "kind": "example"
+ },
+ {
+  "query": "如何求随机变量 $Y=X^2$ 的概率密度",
+  "doc": "第四章 正态分布",
+  "unit_start": 3841,
+  "unit_end": 3901,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算 $Y=X^2$ 的数学期望与方差",
+  "doc": "第四章 正态分布",
+  "unit_start": 6670,
+  "unit_end": 6731,
+  "kind": "example"
+ },
+ {
+  "query": "二维正态分布的最高峰出现在哪个点",
+  "doc": "第四章 正态分布",
+  "unit_start": 11839,
+  "unit_end": 12912,
+  "kind": "theorem"
+ },
+ {
+  "query": "Z=X²+Y²的概率密度如何求",
+  "doc": "第四章 正态分布",
+  "unit_start": 12912,
+  "unit_end": 12988,
+  "kind": "example"
+ },
+ {
+  "query": "如何计算随机变量 $Z$ 的数学期望与方差",
+  "doc": "第四章 正态分布",
+  "unit_start": 13686,
+  "unit_end": 13900,
+  "kind": "example"
+ },
+ {
+  "query": "Y=a+bX服从什么分布",
+  "doc": "第四章 正态分布",
+  "unit_start": 15108,
+  "unit_end": 15246,
+  "kind": "theorem"
+ },
+ {
+  "query": "标准化后的随机变量服从什么分布",
+  "doc": "第四章 正态分布",
+  "unit_start": 15883,
+  "unit_end": 16030,
+  "kind": "theorem"
+ },
+ {
+  "query": "独立正态分布随机变量的和是否仍服从正态分布",
+  "doc": "第四章 正态分布",
+  "unit_start": 16030,
+  "unit_end": 16220,
+  "kind": "theorem"
+ },
+ {
+  "query": "定理3中线性组合的分布参数如何计算",
+  "doc": "第四章 正态分布",
+  "unit_start": 17442,
+  "unit_end": 17736,
+  "kind": "theorem"
+ },
+ {
+  "query": "如何计算 $|X-Y|$ 的数学期望与方差",
+  "doc": "第四章 正态分布",
+  "unit_start": 17736,
+  "unit_end": 17820,
+  "kind": "example"
+ },
+ {
+  "query": "300 个数相加时舍入误差总和绝对值小于 $10^{-3}$ 的概率是多少",
+  "doc": "第四章 正态分布",
+  "unit_start": 22093,
+  "unit_end": 22181,
+  "kind": "example"
+ },
+ {
+  "query": "任一时刻有 144～160 台机器工作的概率是多少",
+  "doc": "第四章 正态分布",
+  "unit_start": 23653,
+  "unit_end": 23819,
+  "kind": "example"
+ }
+]

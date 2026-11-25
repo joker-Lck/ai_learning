@@ -86,6 +86,32 @@ def main():
     assert r5, "align 为空"
     assert r5[0]["_pedagogy_bonus"] > 0, "首位应有教学加权"
 
+    # ── 6. 教法依赖回链：例题 → 所依定理 → 定义 ──
+    all_chunks = [
+        {"chunk_id": "c_def", "content_text": "定义2：设A、B为事件，P(B)>0，则P(A|B)=P(AB)/P(B)。",
+         "kind": "definition", "order": 2, "section_path": "3.2 › 一、条件概率公式"},
+        {"chunk_id": "c_thm", "content_text": "定理1（全概率公式）：设B1,B2为完备事件组，P(A)=ΣP(Bi)P(A|Bi)。",
+         "kind": "theorem", "order": 3, "section_path": "3.2 › 一、条件概率公式"},
+        {"chunk_id": "c_ex", "content_text": "例题1：袋中3个红球2个白球，由定理1得P(A)=3/5。",
+         "kind": "example", "order": 4, "section_path": "3.2 › 一、条件概率公式"},
+        {"chunk_id": "c_other", "content_text": "定理9：与本节无关。",
+         "kind": "theorem", "order": 9, "section_path": "4.1"},
+    ]
+    hit = [dict(all_chunks[2], similarity=0.9)]
+    r6 = pa.dependency_expand(hit, all_chunks)
+    ids6 = {c.get("chunk_id") for c in r6}
+    kinds6 = sorted(c["kind"] for c in r6)
+    print(f"[6] dependency_expand ids={ids6}")
+    assert "c_thm" in ids6, "应按显式引用拉入定理1"
+    assert "c_def" in ids6, "应逐级补齐定义2"
+    assert "c_other" not in ids6, "不应跨节拉入"
+    assert any(c.get("_dep_linked") for c in r6), "依赖块应打标"
+
+    # 依赖块进入脚手架组装后按教学序排布（知识框架在前）
+    ctx6 = pa.assemble_scaffold_context(r6, user_id=0, max_chars=4800)
+    assert "【知识框架】" in ctx6 and "【典型例题】" in ctx6
+    assert ctx6.index("【知识框架】") < ctx6.index("【典型例题】")
+
     print("\nT4 INTEGRATION PASSED")
 
 if __name__ == "__main__":

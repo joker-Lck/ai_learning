@@ -1,0 +1,41 @@
+{
+ "corpus": {
+  "docs": 7,
+  "chars": 261414,
+  "units": 329,
+  "unit_kinds": {
+   "definition": 0,
+   "theorem": 58,
+   "example": 123,
+   "proof": 147,
+   "note": 1
+  }
+ },
+ "A_unit_alignment": {
+  "struct": 0.3921,
+  "fixed": 0.003
+ },
+ "B_unit_purity": {
+  "struct": 0.9089,
+  "fixed": 0.5756
+ },
+ "C_sentence_boundary": {
+  "struct": 0.497,
+  "fixed": 0.0928
+ },
+ "D_context_coverage": {
+  "struct": 0.795,
+  "fixed": 0.9352,
+  "nofilter": 0.8634
+ },
+ "D_oversized_units_excluded": 4,
+ "E_cross_section_noise": {
+  "struct": 0,
+  "nofilter": 305,
+  "fixed": 226
+ },
+ "chunk_counts": {
+  "struct": 1668,
+  "fixed": 377
+ }
+}

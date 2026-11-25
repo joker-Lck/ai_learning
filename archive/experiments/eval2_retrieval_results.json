@@ -1,0 +1,56 @@
+{
+ "n_queries": 164,
+ "n_chunks": {
+  "struct": 1668,
+  "fixed": 377
+ },
+ "overall": {
+  "fixed_vec": {
+   "recall": 0.6585,
+   "mrr": 0.4317,
+   "ndcg": 0.4959
+  },
+  "struct_vec": {
+   "recall": 0.5305,
+   "mrr": 0.43,
+   "ndcg": 0.4552
+  },
+  "struct_bm25": {
+   "recall": 0.4512,
+   "mrr": 0.3634,
+   "ndcg": 0.3855
+  },
+  "struct_hybrid": {
+   "recall": 0.5183,
+   "mrr": 0.4062,
+   "ndcg": 0.4345
+  },
+  "lear": {
+   "recall": 0.7378,
+   "mrr": 0.622,
+   "ndcg": 0.7882
+  }
+ },
+ "recall_by_kind": {
+  "fixed_vec": {
+   "example": 0.6822,
+   "theorem": 0.614
+  },
+  "struct_vec": {
+   "example": 0.6355,
+   "theorem": 0.3333
+  },
+  "struct_bm25": {
+   "example": 0.5514,
+   "theorem": 0.2632
+  },
+  "struct_hybrid": {
+   "example": 0.6449,
+   "theorem": 0.2807
+  },
+  "lear": {
+   "example": 0.785,
+   "theorem": 0.6491
+  }
+ }
+}

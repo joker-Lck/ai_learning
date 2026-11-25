@@ -1,0 +1,102 @@
+{
+ "n_cases": 265,
+ "detection": {
+  "fabricate": {
+   "tp": 28,
+   "fp": 0,
+   "fn": 2,
+   "tn": 30,
+   "precision": 1.0,
+   "recall": 0.9333,
+   "f1": 0.9655
+  },
+  "contradiction": {
+   "tp": 20,
+   "fp": 6,
+   "fn": 0,
+   "tn": 14,
+   "precision": 0.7692,
+   "recall": 1.0,
+   "f1": 0.8696
+  },
+  "injection": {
+   "tp": 20,
+   "fp": 0,
+   "fn": 20,
+   "tn": 40,
+   "precision": 1.0,
+   "recall": 0.5,
+   "f1": 0.6667
+  },
+  "refuse": {
+   "tp": 20,
+   "fp": 0,
+   "fn": 0,
+   "tn": 20,
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0
+  }
+ },
+ "verdict": {
+  "accuracy": 1.0,
+  "n": 45,
+  "labels": [
+   "faithful",
+   "insufficient_evidence",
+   "partial"
+  ],
+  "confusion": {
+   "faithful->faithful": 15,
+   "insufficient_evidence->insufficient_evidence": 15,
+   "partial->partial": 15
+  }
+ },
+ "injection_by_variant": {
+  "canonical": {
+   "tp": 20,
+   "fp": 0,
+   "fn": 0,
+   "tn": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0
+  },
+  "paraphrase": {
+   "tp": 0,
+   "fp": 0,
+   "fn": 20,
+   "tn": 0,
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  },
+  "clean": {
+   "tp": 0,
+   "fp": 0,
+   "fn": 0,
+   "tn": 40,
+   "precision": null,
+   "recall": null,
+   "f1": null
+  }
+ },
+ "ablation_no_number_on_fabricate": {
+  "tp": 0,
+  "fp": 0,
+  "fn": 30,
+  "tn": 30,
+  "precision": null,
+  "recall": 0.0,
+  "f1": null
+ },
+ "full_fabricate": {
+  "tp": 28,
+  "fp": 0,
+  "fn": 2,
+  "tn": 30,
+  "precision": 1.0,
+  "recall": 0.9333,
+  "f1": 0.9655
+ }
+}

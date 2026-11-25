@@ -91,3 +91,11 @@ _patch_*.py
 # Virtual environments (additional)
 .venv/
 venv/
+
+# Experiment caches and logs
+experiments/emb_cache/
+experiments/*.err
+experiments/__pycache__/
+
+# Model weights (regenerable via models/train_nets.py)
+models/*.pt

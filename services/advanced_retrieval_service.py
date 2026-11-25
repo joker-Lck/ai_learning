@@ -782,43 +782,75 @@ class AdvancedRetrievalService:
             return "simple"
         return "medium"
 
+    _LABEL_PAT = re.compile(r"(定义|定理|引理|例题|例|公式|性质|推论)\s*[：:]?\s*(\d{1,3})")
+    _TERM_PAT = re.compile(r"^(什么是|何谓|什么叫|解释一下|讲一下|说一下|介绍)|的定义是什么|是什么[？?]?$")
+
+    def query_intent(self, query: str) -> str:
+        """查询意图识别（长文本学习资源路由依据）
+
+        label      按教学标记定位（“定理1”“请写出定义2”）→ 精确命中通道
+        term       术语概念询问（“什么是X”“X的定义”）→ 定义/定理簇加权
+        derivation 推导证明（“为什么”“证明”“怎么推”）→ 证明链回链
+        general    其他 → 结构检索默认
+        """
+        q = query.strip()
+        if self._LABEL_PAT.search(q):
+            return "label"
+        if self._TERM_PAT.search(q):
+            return "term"
+        if re.search(r"(为什么|怎么推|推导|证明|怎么证|如何证|来龙去脉)", q):
+            return "derivation"
+        return "general"
+
     def _auto_search(
         self, user_id: int, query: str, subject: str, limit: int
     ) -> list[dict]:
         """
-        自动策略路由（成本感知，T5）：
+        自动策略路由（意图感知，长文本学习资源优先结构检索）：
 
-        查询复杂度 → 策略选择：
-          simple  → BM25 词项检索（最便宜，跳过向量编码）
-          medium  → BM25 优先混合检索（bm25_vector）
-          complex → 结构感知检索（长上下文组装）+ 教学对齐
-        短查询（<15 字）→ HyDE（生成假设答案扩展语义）
+        查询意图 → 策略选择：
+          label      → 教学标记精确命中（免向量）→ 结构检索补充
+          term       → 教学语义簇检索（定义/定理簇加权）
+          derivation → 结构检索（依赖回链组装证明链）
+          general    → 结构检索优先 → 文档级混合兜底
+        与旧版的区别：结构感知检索（分块级）是长文本学习语料的默认主链路，
+        文档级检索降为分块索引缺失时的兜底；短查询不再默认走 HyDE。
         """
-        complexity = self.query_complexity(query)
-        debug(f"[CostRoute] complexity={complexity} query_len={len(query)}")
+        intent = self.query_intent(query)
+        debug(f"[IntentRoute] intent={intent} query_len={len(query)}")
 
-        if len(query) < 15:
+        # label：教学标记精确命中通道（“请写出定理1”不是语义匹配问题）
+        if intent == "label":
             try:
-                return self.hyde_search(query, subject, limit)
+                m = self._LABEL_PAT.search(query)
+                if m:
+                    label_hits = self.rag_kb.search_chunks_by_label(
+                        m.group(1), m.group(2), subject=subject, limit=limit)
+                    if label_hits:
+                        try:
+                            from services.pedagogy_aligner import pedagogy_aligner
+                            label_hits = pedagogy_aligner.align(label_hits, user_id, query)
+                        except Exception:
+                            pass
+                        return label_hits
             except Exception as e:
-                warning(f"auto→HyDE 失败，降级 BM25 混合: {e}")
+                warning(f"label 通道失败，降级结构检索: {e}")
 
-        # simple：轻量 BM25，跳过向量编码成本
+        # 结构感知检索：长文本学习语料的主链路
+        results = self._structural_search(user_id, query, subject, limit)
+        if results:
+            return results
+
+        # 兜底：文档级检索（分块索引为空/失败）
+        complexity = self.query_complexity(query)
         if complexity == "simple":
             try:
-                results = self.rag_kb.search_documents_by_bm25(query, subject=subject, limit=limit)
-                if results:
-                    return results
+                doc_hits = self.rag_kb.search_documents_by_bm25(query, subject=subject, limit=limit)
+                if doc_hits:
+                    return doc_hits
             except Exception as e:
                 warning(f"auto→BM25 失败，降级混合: {e}")
-
         query_embedding = self.embedding_service.get_embedding(query)
-
-        # complex：结构感知检索（T1）+ 教学对齐（T4）
-        if complexity == "complex" and query_embedding:
-            results = self._structural_search(user_id, query, subject, limit, embedding=query_embedding)
-            if results:
-                return results
         return self.rag_kb.search_hybrid_bm25_vector(
             query, query_embedding=query_embedding, subject=subject, limit=limit
         )

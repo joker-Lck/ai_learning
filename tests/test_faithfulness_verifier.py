@@ -75,6 +75,66 @@ def main():
     assert d6["verdict"] in ("partial", "unfaithful"), d6["verdict"]
     assert "待核实" in d6["qualified_answer"], "无支撑句应标注待核实"
 
+    # ── 场景7：符号锚点-数值归一化（3/5 ≡ 0.6 ≡ 60%）──
+    r7 = fv.verify("第二次取到红球的概率是0.6。", evidence1)
+    d7 = r7.to_dict()
+    print(f"\n[7] verdict={d7['verdict']} numeric={d7['numeric_consistency']} "
+          f"missing={d7['claims'][0]['missing_numbers']}")
+    assert d7["numeric_consistency"] == 1.0, f"0.6 应命中 3/5: {d7['claims'][0]['missing_numbers']}"
+    assert d7["refusal_level"] < 3
+
+    # ── 场景8：绑定值锚点（P(A)=1/2 ≠ 证据 P(A)=3/5）──
+    evidence8 = [
+        {"content_text": "例题：袋中3个红球2个白球，取到红球的概率P(A)=3/5。",
+         "title": "概率论", "section_path": "第3章 › 3.2", "similarity": 0.9},
+    ]
+    r8 = fv.verify("由例题可得，P(A)=1/2。", evidence8)
+    d8 = r8.to_dict()
+    miss8 = d8["claims"][0]["missing_numbers"]
+    print(f"[8] missing={miss8}")
+    assert any("P(A)" in m for m in miss8), f"绑定值冲突应被捕获: {miss8}"
+
+    # ── 场景9：公式等价（改写型伪忠实）──
+    r9 = fv.verify("条件概率公式是P(A|B)=P(B|A)。", evidence1)
+    d9 = r9.to_dict()
+    miss9 = d9["claims"][0]["missing_numbers"]
+    print(f"[9] missing={miss9}")
+    assert any(m.startswith("公式:") for m in miss9), f"改写公式应被标记: {miss9}"
+
+    # ── 场景10：权威度冲突消解（教材 > 网络）──
+    evidence10 = [
+        {"content_text": "圆周率π的近似值是3.14159。", "title": "教材A",
+         "source_type": "textbook", "version": "2024版", "similarity": 0.9},
+        {"content_text": "圆周率π的近似值是3.159。", "title": "网页B",
+         "source_type": "web", "similarity": 0.88},
+    ]
+    r10 = fv.verify("圆周率约为3.14。", evidence10)
+    d10 = r10.to_dict()
+    cons = d10["contradictions"]
+    print(f"[10] resolution={cons[0].get('resolution') if cons else None}")
+    assert cons and cons[0].get("preferred_doc_index") == 0, "应以教材为准消解"
+    assert cons[0].get("resolution"), "应给出消解说明"
+
+    # ── 场景11：分级拒答（大部分无支撑 → level 3）──
+    r11 = fv.verify("牛顿第二定律说明力等于质量。此外光速可以被超越。", evidence1)
+    d11 = r11.to_dict()
+    print(f"[11] refusal_level={d11['refusal_level']} verdict={d11['verdict']}")
+    assert d11["refusal_level"] == 3, d11
+    assert "建议" in d11["qualified_answer"] or "警告" in d11["qualified_answer"]
+
+    # ── 场景12：反事实依赖（重复证据 → 事后合理化标记）──
+    evidence12 = [
+        {"content_text": "袋中3个红球2个白球，第二次取到红球的概率为3/5。",
+         "title": "教材A", "section_path": "3.2", "similarity": 0.9},
+        {"content_text": "袋中3个红球2个白球，第二次取到红球的概率为3/5。",
+         "title": "教辅B", "section_path": "3.2", "similarity": 0.8},
+    ]
+    r12 = fv.verify("第二次取到红球的概率为3/5。", evidence12)
+    d12 = r12.to_dict()
+    print(f"[12] false_dependency={d12['claims'][0]['false_dependency']} "
+          f"drop={d12['claims'][0]['reliance_drop']}")
+    assert d12["claims"][0]["false_dependency"], "重复证据下应标记事后合理化"
+
     print("\nT3 UNIT TESTS PASSED")
 
 if __name__ == "__main__":

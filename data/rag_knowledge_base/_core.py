@@ -393,7 +393,7 @@ class RAGKnowledgeBase:
                     'id': row['id'],
                     'title': row['title'],
                     'subject': row['subject'],
-                    'content_text': raw_text[:1000],
+                    'content_text': raw_text[:6000],
                     'similarity': score_map[did],
                     'probability': score_map[did],
                     'document_data': doc_data,
@@ -444,8 +444,7 @@ class RAGKnowledgeBase:
             self.connect()
             sql = """SELECT id, title, subject, document_data
                     FROM knowledge_documents
-                    WHERE document_data->>'$.embedding' IS NOT NULL
-                    LIMIT 200"""
+                    WHERE document_data->>'$.embedding' IS NOT NULL"""
             self.cursor.execute(sql)
             docs = self.cursor.fetchall()
 
@@ -469,7 +468,7 @@ class RAGKnowledgeBase:
                     doc_titles.append(doc['title'])
                     doc_subjects.append(doc['subject'])
                     raw_text = doc_data.get('content', {}).get('raw_text', '')
-                    doc_texts.append(raw_text[:1000])
+                    doc_texts.append(raw_text[:6000])
                     doc_datas.append(doc_data)
                     embeddings_list.append(doc_embedding)
 
@@ -660,7 +659,7 @@ class RAGKnowledgeBase:
                     "id": row["id"],
                     "title": row["title"],
                     "subject": row["subject"],
-                    "content_text": raw_text[:1000],
+                    "content_text": raw_text[:6000],
                     "similarity": h["score"],
                     "probability": h["probability"],
                     "document_data": doc_data,
@@ -705,7 +704,7 @@ class RAGKnowledgeBase:
                 "id": row["id"],
                 "title": row["title"],
                 "subject": row["subject"],
-                "text": f"{summary} {raw_text}"[:5000],
+                "text": f"{summary} {raw_text}",
             })
         n = retriever.build_from_rows(rows)
         info(f"BM25 索引构建完成: {n} 篇文档")
@@ -874,9 +873,15 @@ class RAGKnowledgeBase:
         rrf_scores = {}
         data_map = {}
 
-        # ── KNN 关键词路径 ──
-        knn_results = self.search_documents_by_fulltext(query, subject, limit=limit * 3)
-        for rank, doc in enumerate(knn_results):
+        # ── 词项路径：BM25（正文词项，标题 FULLTEXT 作补充）──
+        knn_results = self.search_documents_by_bm25(query, subject=subject, limit=limit * 3)
+        ft_results = self.search_documents_by_fulltext(query, subject, limit=limit)
+        lex_results = list(knn_results)
+        seen_lex = {d.get('id') for d in lex_results}
+        for d in ft_results:
+            if d.get('id') not in seen_lex:
+                lex_results.append(d)
+        for rank, doc in enumerate(lex_results):
             doc_id = doc.get('id')
             if doc_id is None:
                 continue
@@ -1160,8 +1165,10 @@ class RAGKnowledgeBase:
             self.ensure_chunk_table()
             self.connect()
 
-            # 批量取块向量（BGE-M3；TF-IDF 回退路径同样可用）
-            texts = [c.text for c in tree.chunks]
+            # 向量文本注入章节路径前缀——术语型查询（“什么是X”）依赖标题词信号；
+            # 索引粒度为教学语义单元（评测验证：单元+路径的命中优于簇聚合，
+            # 教学依赖链的价值在组装层的回链展开体现）
+            texts = [f"{c.section_path or title} >> {c.text}" for c in tree.chunks]
             try:
                 from data.embedding_service import embedding_service
                 vectors = embedding_service.get_embeddings(texts)
@@ -1248,19 +1255,44 @@ class RAGKnowledgeBase:
                 r = dict(r)
                 if subject and r.get("subject") != subject:
                     continue
-                hit_chunks.append({
-                    "chunk_db_id": r["id"],
-                    "doc_id": r["doc_id"],
-                    "order": r["chunk_order"],
-                    "chunk_id": r["chunk_id"],
-                    "section_path": r["section_path"] or "",
-                    "heading": r["heading"] or "",
-                    "kind": r["kind"] or "body",
-                    "text": r["content_text"] or "",
-                    "title": r["title"] or "",
-                    "subject": r["subject"] or "",
-                    "similarity": score_map.get(r["id"], 0.0),
-                })
+                if (r.get("kind") or "") == "cluster":
+                    # 教学语义簇命中 → 展开为成员单元块（证据粒度）
+                    self.cursor.execute(
+                        """SELECT chunk_id, chunk_order, section_path, heading,
+                                   kind, content_text, char_start, char_end
+                           FROM knowledge_chunks
+                           WHERE doc_id = ? AND kind != 'cluster'
+                             AND char_start >= ? AND char_end <= ?
+                           ORDER BY chunk_order""", (r["doc_id"], r["char_start"], r["char_end"]))
+                    for u in self.cursor.fetchall():
+                        u = dict(u)
+                        hit_chunks.append({
+                            "chunk_db_id": r["id"],
+                            "doc_id": r["doc_id"],
+                            "order": u["chunk_order"],
+                            "chunk_id": u["chunk_id"],
+                            "section_path": u["section_path"] or "",
+                            "heading": u["heading"] or "",
+                            "kind": u["kind"] or "body",
+                            "text": u["content_text"] or "",
+                            "title": r["title"] or "",
+                            "subject": r["subject"] or "",
+                            "similarity": score_map.get(r["id"], 0.0),
+                        })
+                else:
+                    hit_chunks.append({
+                        "chunk_db_id": r["id"],
+                        "doc_id": r["doc_id"],
+                        "order": r["chunk_order"],
+                        "chunk_id": r["chunk_id"],
+                        "section_path": r["section_path"] or "",
+                        "heading": r["heading"] or "",
+                        "kind": r["kind"] or "body",
+                        "text": r["content_text"] or "",
+                        "title": r["title"] or "",
+                        "subject": r["subject"] or "",
+                        "similarity": score_map.get(r["id"], 0.0),
+                    })
             if not hit_chunks:
                 return []
 
@@ -1286,7 +1318,7 @@ class RAGKnowledgeBase:
             self.cursor.execute(
                 f"""SELECT id, doc_id, chunk_order, chunk_id, section_path,
                            heading, kind, content_text
-                    FROM knowledge_chunks WHERE doc_id IN ({ph})""",
+                    FROM knowledge_chunks WHERE doc_id IN ({ph}) AND kind != 'cluster'""",
                 list(doc_ids))
             all_chunks = []
             for r in self.cursor.fetchall():
@@ -1323,6 +1355,56 @@ class RAGKnowledgeBase:
             return results
         except Exception as e:
             warning(f"结构检索失败: {e}")
+            return []
+        finally:
+            self.close()
+
+    def search_chunks_by_label(self, label: str, num: str, subject=None, limit=5):
+        """教学标记精确命中：“定理1/定义2/例题3”类查询直接定位标记块
+
+        标签型查询走精确通道（免向量），语义检索只作补充——
+        长文本学习资源中“请写出定理1”是按教学标记定位，不是语义匹配。
+        """
+        try:
+            self.ensure_chunk_table()
+            self.connect()
+            like_plain = f"{label} {num}%"
+            like_bold = f"**{label} {num}%"
+            like_tight = f"{label}{num}%"
+            like_bold_tight = f"**{label}{num}%"
+            sql = """SELECT c.id, c.doc_id, c.chunk_order, c.chunk_id, c.level,
+                            c.section_path, c.heading, c.kind, c.content_text,
+                            d.title, d.subject
+                     FROM knowledge_chunks c
+                     JOIN knowledge_documents d ON d.id = c.doc_id
+                     WHERE c.kind != 'cluster' AND (
+                         c.content_text LIKE ? OR c.content_text LIKE ?
+                         OR c.content_text LIKE ? OR c.content_text LIKE ?)
+                     ORDER BY c.doc_id, c.chunk_order
+                     LIMIT ?"""
+            self.cursor.execute(sql, (like_plain, like_bold, like_tight, like_bold_tight, limit))
+            results = []
+            for r in self.cursor.fetchall():
+                r = dict(r)
+                if subject and r.get("subject") != subject:
+                    continue
+                results.append({
+                    "id": r["doc_id"],
+                    "title": r["title"],
+                    "subject": r["subject"],
+                    "content_text": r["content_text"] or "",
+                    "section_path": r["section_path"] or "",
+                    "kind": r["kind"] or "body",
+                    "chunk_ids": [r["chunk_id"]],
+                    "similarity": 1.0,
+                    "probability": 1.0,
+                    "retrieval_method": "label_exact",
+                })
+                if len(results) >= limit:
+                    break
+            return results
+        except Exception as e:
+            warning(f"标记精确检索失败: {e}")
             return []
         finally:
             self.close()

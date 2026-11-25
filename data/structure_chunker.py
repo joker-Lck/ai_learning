@@ -16,17 +16,18 @@ import hashlib
 import re
 from dataclasses import dataclass, field, asdict
 
-# ── 标题层级识别（中文教材惯例）──────────────────────────────
+# ── 标题层级识别（中文教材惯例，兼容 Markdown # 前缀）────────
 # L1 章/单元级
 _L1_RE = re.compile(
-    r"^\s*(第\s*[0-9一二三四五六七八九十百千]+\s*[章单元课讲部分篇模块册辑])\s*[：:．.、\-—\s]*(.{0,40})$"
+    r"^\s*#{0,4}\s*(第\s*[0-9一二三四五六七八九十百千]+\s*[章单元课讲部分篇模块册辑])\s*[：:．.、\-—\s]*(.{0,40})$"
 )
-# L2 节级：「3.2 条件概率」「第2节 xxx」
-_L2_DOT_RE = re.compile(r"^\s*([0-9]{1,2}\.[0-9]{1,2})\s+([^\s].{0,40})$")
-_L2_JIE_RE = re.compile(r"^\s*(第\s*[0-9一二三四五六七八九十]+\s*节)\s*[：:．.、\-—\s]*(.{0,40})$")
+# L2 节级：「3.2 条件概率」「第2节 xxx」；三段编号「### 1.7.1 xxx」按 L3 小节嵌套
+_L2_DOT_RE = re.compile(r"^\s*#{0,4}\s*([0-9]{1,2}\.[0-9]{1,2})\s+([^\s].{0,40})$")
+_L2_TRI_RE = re.compile(r"^\s*#{0,4}\s*([0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2})\s+([^\s].{0,40})$")
+_L2_JIE_RE = re.compile(r"^\s*#{0,4}\s*(第\s*[0-9一二三四五六七八九十]+\s*节)\s*[：:．.、\-—\s]*(.{0,40})$")
 # L3 小节：「一、全概率公式」「（一）xxx」「1. xxx」（行首、短行）
 _L3_RE = re.compile(
-    r"^\s*([一二三四五六七八九十]{1,3}、|（[一二三四五六七八九十]{1,3}）|\([一二三四五六七八九十]{1,3}\)|[0-9]{1,2}[.、．]\s)(.{0,40})$"
+    r"^\s*#{0,4}\s*([一二三四五六七八九十]{1,3}、|（[一二三四五六七八九十]{1,3}）|\([一二三四五六七八九十]{1,3}\)|[0-9]{1,2}[.、．]\s)(.{0,40})$"
 )
 
 # 教学语义类型标记
@@ -119,7 +120,7 @@ class StructureChunker:
         m = _L2_DOT_RE.match(s) or _L2_JIE_RE.match(s)
         if m:
             return (2, m.group(1).strip(), (m.group(2) or "").strip())
-        m = _L3_RE.match(s)
+        m = _L2_TRI_RE.match(s) or _L3_RE.match(s)
         if m:
             return (3, m.group(1).strip(), (m.group(2) or "").strip())
         return None
@@ -233,6 +234,22 @@ class StructureChunker:
                 )
                 order += 1
 
+        # 退化块清理：剔除有效内容过短的碎片（分隔线/标题残留等），
+        # 同节则并入前块，孤立则丢弃——防止碎片块凭借标题前缀污染检索排序
+        cleaned: list[Chunk] = []
+        for c in chunks:
+            effective = re.sub(r"[-=#*\s_>|]+", "", c.text)
+            if len(effective) >= 15:
+                cleaned.append(c)
+            elif cleaned and cleaned[-1].section_path == c.section_path:
+                prev = cleaned[-1]
+                if c.text.strip():
+                    prev.text = f"{prev.text}\n{c.text}"
+                prev.char_end = c.char_end
+        chunks = cleaned
+        for i, c in enumerate(chunks):
+            c.order = i
+
         return ChunkTree(
             chunks=chunks,
             sections=sections,
@@ -270,7 +287,10 @@ class StructureChunker:
         offset = 0
         cur = ""
         cur_start = 0
-        marker_re = re.compile(r"^(定义|定理|定律|引理|推论|性质|公式|例题|例\s*[0-9０-９]|证明|推导|注意|练习|习题|小结|归纳)[：:．.、\s（(0-9０-９]")
+        marker_re = re.compile(
+            r"^\s*\*{0,2}\s*(定义|定理|定律|引理|推论|性质|公式|例题|例\s*[0-9０-９]|证明|推导|注意|练习|习题|小结|归纳)"
+            r"[：:．.、\s（(0-9０-９*]"
+        )
         for ln in lines:
             if marker_re.match(ln.strip()) and cur.strip():
                 parts.append((cur_start, cur))
@@ -340,6 +360,49 @@ class StructureChunker:
     def _make_chunk_id(doc_id, order, offset, text) -> str:
         h = hashlib.md5(f"{doc_id}:{order}:{offset}:{text[:32]}".encode("utf-8")).hexdigest()[:12]
         return f"c{h}"
+
+
+def build_clusters(chunks: list, max_cluster: int = 900) -> list[dict]:
+    """教学语义簇：同节相邻教学块按依赖链（定义→定理→例题→证明）聚合为检索单元。
+
+    长文本学习资源的主检索单元：簇内语义完整、簇间以教学/章节边界相隔，
+    既保留单元完整性又解决单元过小导致的术语共现不足。
+    返回 [{text, kind, section_path, char_start, char_end, order,
+          member_chunk_ids, is_cluster: True}]
+    """
+    clusters: list[dict] = []
+    cur: list = []
+    total = 0
+
+    def flush():
+        nonlocal cur, total
+        if not cur:
+            return
+        raw = "\n".join(c.text for c in cur)
+        kinds = [c.kind for c in cur]
+        primary = ("definition" if "definition" in kinds else
+                   "theorem" if "theorem" in kinds else
+                   "example" if "example" in kinds else kinds[0])
+        clusters.append({
+            "text": raw,
+            "kind": primary,
+            "section_path": cur[0].section_path,
+            "char_start": cur[0].char_start,
+            "char_end": cur[-1].char_end,
+            "order": cur[0].order,
+            "member_chunk_ids": [c.chunk_id for c in cur],
+            "is_cluster": True,
+        })
+        cur, total = [], 0
+
+    for c in chunks:
+        if cur and (c.section_path != cur[-1].section_path
+                    or total + len(c.text) > max_cluster):
+            flush()
+        cur.append(c)
+        total += len(c.text)
+    flush()
+    return clusters
 
 
 # ── 长上下文组装（检索后扩展）────────────────────────────────

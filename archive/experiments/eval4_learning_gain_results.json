@@ -1,0 +1,28 @@
+{
+ "simulation": {
+  "n_students": 200,
+  "n_kp": 10,
+  "n_pairs": 2000,
+  "hake_g": {
+   "mean": 0.7211,
+   "std": 0.1569,
+   "min": 0.1737,
+   "max": 0.9958,
+   "bins_pct": {
+    "low(<0.3)": 0.8,
+    "medium(0.3-0.7)": 39.0,
+    "high(>0.7)": 60.3
+   }
+  },
+  "correction_rate": {
+   "mean": 0.8033,
+   "n_students_with_errors": 194
+  },
+  "pairing_completeness": 1.0
+ },
+ "real_coverage": {
+  "n_queries": 164,
+  "coverage_mean": 0.8841,
+  "coverage_full": 0.8354
+ }
+}

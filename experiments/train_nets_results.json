@@ -1,0 +1,66 @@
+{
+  "tcnn": {
+    "best_test_acc": 0.9619,
+    "per_class_f1_real": {
+      "definition": 0.0,
+      "theorem": 0.8302,
+      "example": 1.0,
+      "proof": 0.0,
+      "note": 0.0,
+      "body": 0.9754
+    },
+    "per_class_f1_synth": {
+      "definition": 1.0,
+      "theorem": 0.0,
+      "example": 0.0,
+      "proof": 1.0,
+      "note": 1.0,
+      "body": 0.0
+    },
+    "support_real": {
+      "definition": 0,
+      "theorem": 30,
+      "example": 38,
+      "proof": 0,
+      "note": 2,
+      "body": 219
+    },
+    "n_train": 12137,
+    "n_test_real": 3072,
+    "n_test_synth": 48
+  },
+  "ebilstm": {
+    "best_test_f1": 0.9851
+  },
+  "challenge_neural": {
+    "P": 0.9733,
+    "R": 0.2281,
+    "F1": 0.3696,
+    "FPR": 0.0247
+  },
+  "challenge_fused": {
+    "P": 0.9681,
+    "R": 0.9469,
+    "F1": 0.9573,
+    "FPR": 0.1235
+  },
+  "challenge_by_cat": {
+    "数值篡改(数字集保持)": {
+      "符号": 0.975,
+      "符号⊕神经": 0.975
+    },
+    "绑定值篡改(数字集保持)": {
+      "符号": 1.0,
+      "符号⊕神经": 1.0
+    },
+    "公式改写": {
+      "符号": 0.8125,
+      "符号⊕神经": 0.8125
+    },
+    "无支撑": {
+      "符号": 1.0,
+      "符号⊕神经": 1.0
+    }
+  },
+  "train_seconds": 34.0
+}

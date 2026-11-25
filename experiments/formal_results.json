@@ -1,0 +1,57 @@
+{
+  "thm1_greedy": {
+    "n_trials": 30,
+    "mean_ratio": 0.9266,
+    "min_ratio": 0.7778,
+    "guarantee_bound": 0.6321,
+    "violation_below_bound": 0
+  },
+  "thm2_fragment": {
+    "numeric_fragment": {
+      "claims_with_numbers": 387,
+      "parsed": 387,
+      "parse_coverage": 1.0
+    },
+    "formula_fragment": {
+      "claims_with_eq": 401,
+      "parsed": 384,
+      "parse_coverage": 0.9576
+    }
+  },
+  "thm3_conformal": {
+    "n_cal": 200,
+    "n_test": 201,
+    "by_alpha": {
+      "alpha=0.05": {
+        "threshold": 0.9999,
+        "tie_gamma": 1.0,
+        "neg_leak_rate": 0.0258,
+        "pos_coverage": 0.4348,
+        "empirical_FDR": 0.1667,
+        "retained": 24,
+        "n_test": 201,
+        "guarantee": "P(通过|伪忠实) <= 0.05"
+      },
+      "alpha=0.1": {
+        "threshold": 0.9,
+        "tie_gamma": 1.0,
+        "neg_leak_rate": 0.0774,
+        "pos_coverage": 0.8913,
+        "empirical_FDR": 0.2264,
+        "retained": 53,
+        "n_test": 201,
+        "guarantee": "P(通过|伪忠实) <= 0.1"
+      },
+      "alpha=0.2": {
+        "threshold": 0.9,
+        "tie_gamma": 1.0,
+        "neg_leak_rate": 0.1484,
+        "pos_coverage": 0.8913,
+        "empirical_FDR": 0.3594,
+        "retained": 64,
+        "n_test": 201,
+        "guarantee": "P(通过|伪忠实) <= 0.2"
+      }
+    }
+  }
+}
