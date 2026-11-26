@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { FullBackground } from '@/components/shared/BackgroundEffects';
+import ThemeToggle from '@/components/shared/ThemeToggle';
 import StudentMonitorView from '@/components/teacher/StudentMonitorView';
 import ClassAnalyticsView from '@/components/teacher/ClassAnalyticsView';
 import ClassModule from '@/components/teacher/ClassModule';
@@ -78,7 +79,7 @@ export default function TeacherDashboard() {
   }, {});
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#0a0a0a' }}>
+    <div className="min-h-screen flex" style={{ background: 'var(--bg)' }}>
       <FullBackground />
 
       {/* ── 侧边导航 ── */}
@@ -90,7 +91,7 @@ export default function TeacherDashboard() {
               <GraduationCap className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white leading-tight">灵犀 · 教师端</p>
+              <p className="text-sm font-semibold text-white leading-tight">启智 · 教师端</p>
               <p className="text-[10px] text-white/25 tracking-wider">TEACHER CONSOLE</p>
             </div>
           </div>
@@ -156,9 +157,10 @@ export default function TeacherDashboard() {
       {/* ── 主内容区 ── */}
       <main className="relative z-10 flex-1 overflow-y-auto">
         {/* 顶栏 */}
-        <header className="sticky top-0 z-20 px-8 py-5 border-b border-white/[0.04] bg-[#0a0a0a]/80 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 px-8 py-5 border-b border-[var(--line)] bg-[var(--bg)]/80 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div>
+              <div className="tech-kicker mb-1.5">TEACHER CONSOLE</div>
               <h1 className="text-xl font-bold text-white">
                 {NAV_ITEMS.find(i => i.view === activeView)?.label || '教学概览'}
               </h1>
@@ -166,9 +168,12 @@ export default function TeacherDashboard() {
                 {NAV_ITEMS.find(i => i.view === activeView)?.desc || '欢迎回来，老师'}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-white/50">{currentTime}</p>
-              <p className="text-[10px] text-white/25 mt-0.5">教学管理平台</p>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm text-white/50 font-mono">{currentTime}</p>
+                <p className="text-[10px] text-white/25 mt-0.5 tracking-[0.16em]">教学管理平台</p>
+              </div>
+              <ThemeToggle />
             </div>
           </div>
         </header>
@@ -249,7 +254,7 @@ function OverviewPanel() {
       </div>
       <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8">
         <p className="text-white/30 text-sm">
-          欢迎使用灵犀教师端。左侧选择功能模块开始教学管理。
+          欢迎使用启智教师端。左侧选择功能模块开始教学管理。
         </p>
       </div>
     </div>

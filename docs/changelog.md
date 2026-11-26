@@ -1,5 +1,22 @@
 # 版本变更日志
 
+## v9.2.0 — 前端界面重构（暗黑复古科技主题 + 昼夜双主题）+ 品牌更名「启智」
+
+### 重构 — 前端整体换肤
+- **视觉体系**：参照暗黑复古科技风格重建 —— 纯黑画布 + 琥珀橙 CRT 磷光强调色（夜间 `#FFB020` / 白天 `#B85C00`）+ 细线直角卡片 + 等宽终端字体（Chakra Petch / JetBrains Mono / Noto Sans SC）
+- **签名元素**：故障字效（glitch）标题、终端状态窗（`SYSTEM.STATUS = ...`）、编号区块标题（01/02/03 + 细线）、绿色跑马灯横幅、二进制装饰、HUD 准星四角、网格 + 扫描线 + 二进制雨背景（`BackgroundEffects` 重写）
+- **登录页**：双栏布局（品牌终端展示 + 认证卡片）、像素风 Logo、编号表单、底部跑马灯（`LoginContent` 重排）
+- **主题系统**：`styles/globals.css` 双套 CSS 变量（`data-theme="dark|light"`）；Tailwind `white/black/purple/cyan/green/emerald/teal/lime` 色类映射到 `rgb(var(--x-rgb)/<alpha-value>)` 通道，2000+ 处旧类名与硬编码色值（`#6643FF`/`#1a1a27` 等 22 个文件）自动适配双主题
+- **夜间/白天切换**：右上角硬件拨杆开关（`ThemeToggle`，登录页/仪表盘/教师端/测评页），`localStorage`（`qizhi-theme`）记忆偏好，首屏内联脚本防闪烁，默认跟随系统偏好
+- **组件**：新增 `ThemeToggle`、`Marquee`；`FloatingMenu`、`TeacherDashboard` 顶栏、测评页头部同步换肤
+
+### 更名
+- 品牌：灵犀 → **启智**（`QIZHI.AI`，含二进制装饰与全部文档）
+
+### 修复
+- 生产 CSP `script-src` 缺 `'unsafe-inline'` 拦截 Next.js 内联 flight 脚本，导致页面无法水合/交互（`next.config.js`）
+- PPT 主题预设色数据（`lib/api.ts`）与界面主题色解耦，保持字面色值
+
 ## v9.1.0 — 教师 AI 出题/组卷 + 主观题批改（手写识别 + RAG 评分）
 
 ### 新增 — 教师 AI 出题 / 组卷

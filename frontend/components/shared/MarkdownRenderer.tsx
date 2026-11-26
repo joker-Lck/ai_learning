@@ -43,7 +43,7 @@ const CodeBlock = memo(function CodeBlock({ language, children }: { language: st
   return (
     <div className="group relative my-3 rounded-xl overflow-hidden glass">
       {/* 语言标签 + 操作栏 */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#0d1117] border-b border-glass">
+      <div className="flex items-center justify-between px-4 py-2 bg-[var(--panel-2)] border-b border-glass">
         <span className="text-xs text-white/30 font-mono">{language || 'text'}</span>
         <div className="flex items-center gap-2">
           {isLong && (
@@ -72,20 +72,20 @@ const CodeBlock = memo(function CodeBlock({ language, children }: { language: st
           customStyle={{
             margin: 0,
             borderRadius: 0,
-            background: '#0d1117',
+            background: 'var(--panel-2)',
             fontSize: '0.85em',
             lineHeight: '1.6',
             padding: '1em',
           }}
           showLineNumbers={lineCount > 5}
-          lineNumberStyle={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.75em', minWidth: '2.5em' }}
+          lineNumberStyle={{ color: 'rgb(var(--white-rgb) / 0.15)', fontSize: '0.75em', minWidth: '2.5em' }}
         >
           {children}
         </SyntaxHighlighter>
       </div>
       {/* 折叠遮罩 */}
       {collapsed && (
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0d1117] to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[var(--panel-2)] to-transparent pointer-events-none" />
       )}
     </div>
   );

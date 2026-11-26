@@ -17,7 +17,7 @@ export default function QuizResultPanel({ session, answers, onBack }: Props) {
 
   const grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F';
   const gradeColor = score >= 90 ? 'text-emerald-400' : score >= 70 ? 'text-amber-400' : 'text-red-400';
-  const ringColor = score >= 90 ? '#10b981' : score >= 70 ? '#f59e0b' : '#ef4444';
+  const ringColor = score >= 90 ? 'var(--accent)' : score >= 70 ? '#f59e0b' : '#ef4444';
 
   const circumference = 2 * Math.PI * 54;
   const dashOffset = circumference - (score / 100) * circumference;
@@ -28,7 +28,7 @@ export default function QuizResultPanel({ session, answers, onBack }: Props) {
       <div className="text-center mb-8">
         <div className="relative w-36 h-36 mx-auto mb-4">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+            <circle cx="60" cy="60" r="54" fill="none" stroke="rgb(var(--white-rgb) / 0.05)" strokeWidth="8" />
             <circle cx="60" cy="60" r="54" fill="none" stroke={ringColor} strokeWidth="8"
               strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset}
               className="transition-all duration-1000" />
@@ -45,15 +45,15 @@ export default function QuizResultPanel({ session, answers, onBack }: Props) {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
           <div className="text-2xl font-bold text-white">{total}</div>
           <div className="text-xs text-white/40">总题数</div>
         </div>
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
           <div className="text-2xl font-bold text-emerald-400">{correct}</div>
           <div className="text-xs text-white/40">答对</div>
         </div>
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
           <div className="text-2xl font-bold text-red-400">{wrong}</div>
           <div className="text-xs text-white/40">答错</div>
         </div>
@@ -65,7 +65,7 @@ export default function QuizResultPanel({ session, answers, onBack }: Props) {
           <h4 className="text-sm font-medium text-white/60 mb-3">错题回顾</h4>
           <div className="space-y-3">
             {session.answers && session.answers.filter(a => !a.is_correct).map((a, i) => (
-              <div key={i} className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4">
+              <div key={i} className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4">
                 <div className="flex items-start gap-2 mb-2">
                   <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0">错题</span>
                   <p className="text-sm text-white/80">{a.question_text}</p>

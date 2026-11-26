@@ -1,5 +1,11 @@
 import type { Config } from 'tailwindcss';
 
+/**
+ * 主题色全部映射到 CSS 变量（globals.css 中按 data-theme 切换）。
+ * - white / black 使用 <alpha-value> 通道，text-white/xx、bg-white/[0.04] 等
+ *   透明度写法在夜间/白天自动换算为「白墨」或「黑墨」。
+ * - purple / cyan 保留类名兼容旧代码，实际输出强调色（荧光绿 / 深绿）。
+ */
 const config: Config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,35 +15,109 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // 教育主题色系
-        primary: {
-          50: '#e6f0ff',
-          100: '#b3d1ff',
-          200: '#80b3ff',
-          300: '#4d94ff',
-          400: '#1a75ff',
-          500: '#0a192f',
-          600: '#081425',
-          700: '#060f1b',
-          800: '#040a11',
-          900: '#020508',
+        // 画布与面板
+        canvas: 'var(--bg)',
+        panel: 'var(--panel)',
+        'panel-2': 'var(--panel-2)',
+        'panel-3': 'var(--panel-3)',
+
+        // 墨色
+        ink: {
+          DEFAULT: 'var(--ink)',
+          2: 'var(--ink-2)',
+          3: 'var(--ink-3)',
+          4: 'var(--ink-4)',
         },
+
+        // 强调色（荧光绿 / 白天深绿）
         accent: {
-          cyan: '#64ffda',
-          blue: '#00d4ff',
-          purple: '#7c3aed',
-          orange: '#f59e0b',
-          pink: '#ec4899',
+          DEFAULT: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          2: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+          soft: 'var(--accent-soft)',
         },
-        surface: {
-          DEFAULT: '#ffffff',
-          secondary: '#f8fafc',
-          tertiary: '#f1f5f9',
+
+        // 白 / 黑 通道（透明度写法主题感知）
+        white: 'rgb(var(--white-rgb) / <alpha-value>)',
+        black: 'rgb(var(--black-rgb) / <alpha-value>)',
+
+        // 兼容旧类名 → 强调色（琥珀）
+        purple: {
+          50: 'var(--accent-soft)',
+          100: 'var(--accent-soft)',
+          200: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          300: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          400: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          500: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          600: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+          700: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+        },
+        cyan: {
+          300: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          400: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          500: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          600: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+        },
+        // 成功/绿色系旧类名也统一收敛到强调色（用户要求去除绿色）
+        green: {
+          300: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          400: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          500: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          600: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+          700: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+        },
+        emerald: {
+          300: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          400: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          500: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          600: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+          700: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+        },
+        teal: {
+          300: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          400: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          500: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          600: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+        },
+        lime: {
+          300: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          400: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          500: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          600: 'rgb(var(--accent-2-rgb) / <alpha-value>)',
+        },
+
+        // 语义色
+        danger: 'var(--danger)',
+        warn: 'var(--warn)',
+        ok: 'var(--ok)',
+        info: 'var(--info)',
+      },
+      textColor: {
+        skin: {
+          base: 'var(--ink)',
+          muted: 'var(--ink-2)',
+          faint: 'var(--ink-3)',
+          accent: 'var(--accent)',
+          'on-accent': 'var(--on-accent)',
         },
       },
       fontFamily: {
         sans: ['Inter', 'Noto Sans SC', 'Microsoft YaHei', 'sans-serif'],
+        display: ['Chakra Petch', 'Noto Sans SC', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
+      borderRadius: {
+        none: '0',
+        sm: '2px',
+        DEFAULT: '2px',
+        md: '2px',
+        lg: '3px',
+        xl: '4px',
+        '2xl': '4px',
+        '3xl': '6px',
+      },
+      letterSpacing: {
+        tech: '0.18em',
+        wider2: '0.22em',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',
@@ -49,6 +129,8 @@ const config: Config = {
         'gradient': 'gradient 8s ease infinite',
         'shimmer': 'shimmer 2s linear infinite',
         'bounce-gentle': 'bounceGentle 2s ease-in-out infinite',
+        'blink': 'blink-cursor 1.1s steps(2, start) infinite',
+        'marquee': 'marquee-scroll 30s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -92,26 +174,27 @@ const config: Config = {
         '300%': '300%',
       },
       boxShadow: {
-        'glow': '0 0 20px rgba(100, 255, 218, 0.3)',
-        'glow-blue': '0 0 20px rgba(0, 212, 255, 0.3)',
-        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-        'card-hover': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
-        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.36)',
-        'glass-inset': 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)',
+        'glow': 'var(--glow)',
+        'glow-strong': 'var(--glow-strong)',
+        'glow-blue': 'var(--glow)',
+        'card': 'var(--shadow-card)',
+        'card-hover': 'var(--glow)',
+        'glass': 'var(--shadow-card)',
+        'glass-inset': 'inset 0 1px 1px 0 var(--glass-bg-hover)',
       },
       backdropBlur: {
         'glass': '20px',
       },
       backgroundColor: {
-        'glass': 'rgba(255, 255, 255, 0.05)',
-        'glass-hover': 'rgba(255, 255, 255, 0.08)',
-        'glass-active': 'rgba(255, 255, 255, 0.12)',
-        'glass-dark': 'rgba(0, 0, 0, 0.2)',
+        'glass': 'var(--glass-bg)',
+        'glass-hover': 'var(--glass-bg-hover)',
+        'glass-active': 'var(--glass-bg-active)',
+        'glass-dark': 'var(--overlay)',
       },
       borderColor: {
-        'glass': 'rgba(255, 255, 255, 0.1)',
-        'glass-light': 'rgba(255, 255, 255, 0.15)',
-        'glass-strong': 'rgba(255, 255, 255, 0.2)',
+        'glass': 'var(--line)',
+        'glass-light': 'var(--line)',
+        'glass-strong': 'var(--line-strong)',
       },
     },
   },

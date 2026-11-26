@@ -138,7 +138,7 @@ export default function QuizStartPanel({ onStart, loading }: Props) {
             { key: 'review' as const, label: '错题重练', desc: '巩固记忆', icon: '🔄' },
           ].map(m => (
             <button key={m.key} onClick={() => setMode(m.key)}
-              className={`p-4 rounded-xl border text-left transition-all ${mode === m.key ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/[0.05] bg-[#1a1a27] hover:border-white/[0.1]'}`}>
+              className={`p-4 rounded-xl border text-left transition-all ${mode === m.key ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/[0.05] bg-[var(--panel)] hover:border-white/[0.1]'}`}>
               <div className="text-lg mb-1">{m.icon}</div>
               <div className="text-sm font-medium text-white">{m.label}</div>
               <div className="text-xs text-white/40">{m.desc}</div>

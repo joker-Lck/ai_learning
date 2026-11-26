@@ -23,7 +23,7 @@ export default function DashboardPage() {
   if (!ready) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <FloatingMenu />
       <DashboardContent />
     </div>

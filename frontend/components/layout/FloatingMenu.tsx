@@ -1,8 +1,9 @@
 'use client';
 
 import { useAuthStore } from '@/stores';
-import { GraduationCap, LogIn, LogOut, User } from 'lucide-react';
+import { LogIn, LogOut, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ThemeToggle from '@/components/shared/ThemeToggle';
 
 export default function FloatingMenu() {
   const { user, logout } = useAuthStore();
@@ -44,36 +45,58 @@ export default function FloatingMenu() {
   };
 
   return (
-    <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
-      {/* Logo */}
-      <div className="flex items-center gap-3 mr-4">
-        <div className="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center">
-          <GraduationCap className="w-5 h-5 text-purple-400" />
+    <div className="fixed top-5 right-5 z-50 flex items-center gap-2.5">
+      {/* 品牌标识 */}
+      <div className="flex items-center gap-2.5 mr-2">
+        <div
+          className="w-8 h-8 grid grid-cols-3 grid-rows-3 gap-[2px] p-[2px] border border-[var(--accent)]"
+          aria-hidden="true"
+        >
+          {Array.from({ length: 9 }).map((_, i) => (
+            <span
+              key={i}
+              className="block"
+              style={{ background: [0, 2, 4, 6, 8, 3].includes(i) ? 'var(--accent)' : 'transparent' }}
+            />
+          ))}
         </div>
-        <span className="text-lg font-semibold text-white/70 hidden sm:block">AI 学习助手</span>
+        <span className="font-display font-bold text-sm tracking-[0.22em] text-[var(--ink)] hidden sm:block">
+          QIZHI<span className="text-[var(--accent)]">.AI</span>
+        </span>
       </div>
+
+      {/* 昼夜切换 */}
+      <ThemeToggle />
 
       {/* 用户状态 */}
       {loggedIn ? (
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-            <User className="w-4 h-4 text-white/40" />
-            <span className="text-sm text-white/50">{username}</span>
+        <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2 px-3.5 py-2 rounded-sm border border-[var(--line)]"
+            style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(12px)' }}
+          >
+            <User className="w-3.5 h-3.5 text-[var(--accent)]" />
+            <span className="text-xs font-mono tracking-[0.08em] text-[var(--ink-2)]">{username}</span>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-sm border text-xs font-mono tracking-[0.12em] uppercase transition-colors duration-200"
+            style={{
+              background: 'var(--glass-bg)',
+              borderColor: 'color-mix(in srgb, var(--danger) 45%, transparent)',
+              color: 'var(--danger)',
+            }}
           >
-            <LogOut className="w-4 h-4" />
-            <span>退出登录</span>
+            <LogOut className="w-3.5 h-3.5" />
+            <span>退出</span>
           </button>
         </div>
       ) : (
         <button
           onClick={handleLogin}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-purple-500 text-white text-sm font-medium hover:bg-purple-400 transition-colors"
+          className="btn-solid px-5 py-2 text-xs"
         >
-          <LogIn className="w-4 h-4" />
+          <LogIn className="w-3.5 h-3.5" />
           <span>登录</span>
         </button>
       )}

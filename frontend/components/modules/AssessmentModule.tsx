@@ -193,7 +193,7 @@ export default memo(function AssessmentModule({
                             className="h-1 rounded-full transition-all duration-700"
                             style={{
                               width: `${score * 100}%`,
-                              background: score >= 0.8 ? 'linear-gradient(to right, #6643FF, #8B7AFF)' :
+                              background: score >= 0.8 ? 'linear-gradient(to right, var(--accent), var(--accent-2))' :
                                          score >= 0.6 ? 'linear-gradient(to right, #f59e0b, #fbbf24)' :
                                          'linear-gradient(to right, #ef4444, #f87171)',
                             }}
@@ -252,7 +252,7 @@ export default memo(function AssessmentModule({
                           <div                           className="h-1.5 rounded-full transition-all duration-700"
                                style={{
                                  width: `${item.score}%`,
-                                 background: item.score >= 80 ? 'linear-gradient(to right, #6643FF, #8B7AFF)' :
+                                 background: item.score >= 80 ? 'linear-gradient(to right, var(--accent), var(--accent-2))' :
                                             item.score >= 60 ? 'linear-gradient(to right, #f59e0b, #fbbf24)' :
                                             'linear-gradient(to right, #ef4444, #f87171)',
                                }} />
@@ -441,7 +441,7 @@ export default memo(function AssessmentModule({
                 <input value={analysisTopic} onChange={(e) => setAnalysisTopic(e.target.value)} placeholder="主题（如：神经网络）"
                   className="px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-white/20 rounded-lg text-base focus:border-purple-500/30 focus:outline-none" />
                 <select value={analysisDifficulty} onChange={(e) => setAnalysisDifficulty(e.target.value)}
-                  className="px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white rounded-lg text-base focus:border-purple-500/30 focus:outline-none [&>option]:bg-[#0f0f0f] [&>option]:text-white">
+                  className="px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-white rounded-lg text-base focus:border-purple-500/30 focus:outline-none [&>option]:bg-[var(--panel)] [&>option]:text-white">
                 <option value="beginner">初级</option>
                 <option value="intermediate">中级</option>
                 <option value="advanced">高级</option>

@@ -445,7 +445,7 @@ function ClassDetail({ classData, onBack, onToast }: {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#1a1a2e] rounded-xl border border-white/[0.08] p-6 max-w-sm w-full mx-4"
+              className="bg-[var(--panel)] rounded-xl border border-white/[0.08] p-6 max-w-sm w-full mx-4"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center">

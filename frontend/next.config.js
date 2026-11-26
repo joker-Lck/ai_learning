@@ -30,7 +30,8 @@ const nextConfig = {
 
     const cspDirectives = [
       "default-src 'self'",
-      isDev ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'" : "script-src 'self' 'unsafe-eval'",
+      // Next.js App Router 依赖内联 flight/引导脚本，生产环境同样需要 'unsafe-inline'
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       `img-src 'self' data: blob: ${backendOrigin}`,

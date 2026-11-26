@@ -3,11 +3,11 @@
 <p align="center">
   <b>AI-Powered Personalized Learning Resource Generation System</b><br>
   基于 MiMo 大模型 · 6 智能体协同 · 7 种资源类型 · 9 个 MySQL Schema · RAG 混合检索 · 教师 AI 出题/批改<br>
-  <b>当前版本：v9.1.0</b>
+  <b>当前版本：v9.2.0</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v9.1.0-blue" alt="version">
+  <img src="https://img.shields.io/badge/version-v9.2.0-blue" alt="version">
   <img src="https://img.shields.io/badge/Python-3.14-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/Next.js-14-black?logo=next.js&logoColor=white" alt="Next.js">
@@ -192,7 +192,7 @@
 
 **技术实现**：
 - 共享计算函数：`frontend/lib/radar.ts`
-- Recharts `RadarChart` 组件，紫色主题（`#a78bfa`）
+- Recharts `RadarChart` 组件，琥珀橙主题（`var(--accent)`，夜间/白天双主题自适应）
 - AI 评分缓存：`localStorage`（24小时 TTL）
 - 评定记录持久化：`profile_evaluations` 表（ai_memory schema）
 - API 端点：`POST /api/agent/evaluate-profile`
@@ -418,7 +418,7 @@ JWT_SECRET=your_random_secret_key_here_at_least_32_chars   # JWT 签名密钥（
 
 # ===== 应用配置 =====
 DEBUG=false                                                 # 调试模式
-APP_VERSION=9.1.0                                           # 应用版本
+APP_VERSION=9.2.0                                           # 应用版本
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001  # CORS 白名单
 
 # ===== MiMo AI 配置 =====
@@ -1253,7 +1253,15 @@ cd frontend && npm install && npm run build && npm start
 
 ## 版本变更日志
 
-### v9.1.0（当前版本）— 教师 AI 出题/组卷 + 主观题批改
+### v9.2.0（当前版本）— 前端界面重构 + 品牌更名「启智」
+
+**重构**：
+- 前端整体换肤为**暗黑复古科技风格**（纯黑画布 + 琥珀橙 CRT 磷光强调色 + 等宽终端字体 + 故障字效标题 + 终端状态窗 + 跑马灯横幅）
+- **夜间/白天双主题**：`data-theme` 切换 + 右上角拨杆开关 + `localStorage` 记忆偏好 + 首屏防闪烁；CSS 变量驱动，旧色类自动映射适配
+- 品牌更名：灵犀 → **启智**（`QIZHI.AI`）
+- 修复：生产 CSP 拦截内联脚本导致页面无法水合的问题（`next.config.js` 的 `script-src`）
+
+### v9.1.0 — 教师 AI 出题/组卷 + 主观题批改
 
 **新增**：
 - AI 出题/组卷：RAG 知识库取材 → 题库复用（≤50%）→ LLM 生成 → 分值折算；试卷 CRUD、发布到班级、导出 DOCX（试题卷 + 答案解析分页）

@@ -38,7 +38,7 @@ export default function QuizHistoryPanel() {
         <button onClick={() => setDetail(null)} className="mb-4 text-sm text-white/50 hover:text-white/80 flex items-center gap-1">
           ← 返回列表
         </button>
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5 mb-4">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white font-medium">{detail.subject || '综合'} · {detail.topic || '练习'}</h3>
             <span className={`text-xs px-2 py-0.5 rounded-full ${modeColor(detail.mode)}`}>{modeLabel(detail.mode)}</span>
@@ -53,7 +53,7 @@ export default function QuizHistoryPanel() {
         {detail.answers && (
           <div className="space-y-3">
             {detail.answers.map((a, i) => (
-              <div key={i} className={`bg-[#1a1a27] rounded-xl border p-4 ${a.is_correct ? 'border-emerald-500/10' : 'border-red-500/10'}`}>
+              <div key={i} className={`bg-[var(--panel)] rounded-xl border p-4 ${a.is_correct ? 'border-emerald-500/10' : 'border-red-500/10'}`}>
                 <div className="flex items-start gap-2 mb-2">
                   <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${a.is_correct ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                     {a.is_correct ? '✓' : '✗'}
@@ -97,7 +97,7 @@ export default function QuizHistoryPanel() {
       <div className="space-y-2">
         {sessions.map(s => (
           <button key={s.id} onClick={() => loadDetail(s.id)}
-            className="w-full bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 hover:border-white/[0.1] transition-all text-left">
+            className="w-full bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 hover:border-white/[0.1] transition-all text-left">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${s.score >= 80 ? 'bg-emerald-500/20 text-emerald-400' : s.score >= 60 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>

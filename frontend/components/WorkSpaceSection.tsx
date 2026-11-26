@@ -173,7 +173,7 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
   }, [aiScores, profile]);
 
   return (
-    <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05] mb-5">
+    <div className="p-5 rounded-xl bg-[var(--panel)] border border-white/[0.05] mb-5">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-purple-400" />
@@ -191,10 +191,10 @@ const DashboardRadarChart = memo(function DashboardRadarChart({ profile }: { pro
       <div style={{ height: 240 }}>
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="65%" data={data}>
-            <PolarGrid stroke="rgba(255,255,255,0.06)" />
-            <PolarAngleAxis dataKey="dimension" tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 11 }} />
+            <PolarGrid stroke="rgb(var(--white-rgb) / 0.06)" />
+            <PolarAngleAxis dataKey="dimension" tick={{ fill: 'rgb(var(--white-rgb) / 0.45)', fontSize: 11 }} />
             <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
-            <Radar name="能力值" dataKey="value" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.15} strokeWidth={1.5} />
+            <Radar name="能力值" dataKey="value" stroke="var(--accent-2)" fill="var(--accent-2)" fillOpacity={0.15} strokeWidth={1.5} />
           </RadarChart>
         </ResponsiveContainer>
       </div>
@@ -330,7 +330,7 @@ function ResourcePreview({ resource, onClose }: { resource: ApiResource | null; 
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {hasMedia && isVideo && <video controls autoPlay src={mediaUrl} className="w-full rounded-xl glass mb-4" style={{ maxHeight: 400 }} />}
-          {hasMedia && isSvg && <iframe src={mediaUrl} className="w-full rounded-xl glass mb-4 bg-[#0a0f1e]" style={{ height: 400 }} title={resource.title} />}
+          {hasMedia && isSvg && <iframe src={mediaUrl} className="w-full rounded-xl glass mb-4 bg-[var(--panel)]" style={{ height: 400 }} title={resource.title} />}
           <MarkdownRenderer content={markdown} />
         </div>
       </motion.div>
@@ -462,7 +462,7 @@ function StatCards({ profile, resourceCount, onNavigateModule }: { profile: Prof
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06, duration: 0.35 }}
             onClick={stat.moduleId ? () => onNavigateModule(stat.moduleId!) : undefined}
-            className={`p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-white/[0.08] transition-colors ${stat.moduleId ? `cursor-pointer ${stat.hoverBorder}` : ''}`}
+            className={`p-5 rounded-xl bg-[var(--panel)] border border-white/[0.05] hover:border-white/[0.08] transition-colors ${stat.moduleId ? `cursor-pointer ${stat.hoverBorder}` : ''}`}
           >
             <Icon className={`w-5 h-5 ${stat.color} mb-3`} />
             <div className="text-2xl font-bold text-white">{stat.value}</div>
@@ -544,7 +544,7 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
     return (
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-white mb-4">学习评估</h2>
-        <div className="p-6 rounded-xl bg-[#1a1a27] border border-white/[0.05] flex items-center justify-center">
+        <div className="p-6 rounded-xl bg-[var(--panel)] border border-white/[0.05] flex items-center justify-center">
           <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
         </div>
       </div>
@@ -555,7 +555,7 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
     return (
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-white mb-4">学习评估</h2>
-        <div className="p-6 rounded-xl bg-[#1a1a27] border border-white/[0.05] text-center">
+        <div className="p-6 rounded-xl bg-[var(--panel)] border border-white/[0.05] text-center">
           <TrendingUp className="w-8 h-8 text-white/15 mx-auto mb-3" />
           <p className="text-sm text-white/25 mb-1">暂无学习数据</p>
           <p className="text-xs text-white/15 mb-3">添加课程表、成绩或进行问答后自动生成评估</p>
@@ -575,7 +575,7 @@ function LatestAssessmentCard({ onNavigateModule }: { onNavigateModule: (m: Modu
         <span className="text-[10px] text-white/20">实时更新</span>
       </div>
 
-      <div className={`p-5 rounded-xl bg-[#1a1a27] border ${colors.border}`}>
+      <div className={`p-5 rounded-xl bg-[var(--panel)] border ${colors.border}`}>
         {/* 顶部：等级 + 统计 */}
         <div className="flex items-center gap-5 mb-4">
           <div className={`w-16 h-16 rounded-xl ${colors.bg} flex items-center justify-center flex-shrink-0`}>
@@ -647,7 +647,7 @@ function ResourceCard({ item, compact, onPreview }: { item: ApiResource; compact
   const Icon = typeInfo.icon;
   const preview = compact ? extractPreview(item.content_data, item.resource_type) : '';
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} onClick={() => onPreview(item)} className={`group rounded-xl bg-[#1a1a27] border border-white/[0.05] hover:border-purple-500/20 cursor-pointer transition-all ${compact ? 'p-5' : 'p-4'}`}>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} onClick={() => onPreview(item)} className={`group rounded-xl bg-[var(--panel)] border border-white/[0.05] hover:border-purple-500/20 cursor-pointer transition-all ${compact ? 'p-5' : 'p-4'}`}>
       <div className="flex items-center gap-2.5 mb-3">
         <div className={`rounded-lg bg-white/[0.04] flex items-center justify-center ${compact ? 'w-10 h-10' : 'w-9 h-9'}`}><Icon className={`${compact ? 'w-5 h-5' : 'w-4 h-4'} ${typeInfo.color}`} /></div>
         <div className="flex-1 min-w-0">
@@ -672,7 +672,7 @@ function RecentGeneratedList({ resources, onPreview, compact }: { resources: Api
     return (
       <div>
         <h2 className="text-lg font-semibold text-white mb-4">最近生成</h2>
-        <div className="p-8 rounded-xl bg-[#1a1a27] border border-white/[0.05] text-center">
+        <div className="p-8 rounded-xl bg-[var(--panel)] border border-white/[0.05] text-center">
           <Sparkles className="w-8 h-8 text-white/15 mx-auto mb-3" />
           <p className="text-sm text-white/25">还没有生成过资源</p>
         </div>
@@ -840,7 +840,7 @@ function SuggestionCard({ recommendations, onNavigateModule, compact, dueNotes, 
   const defaultColor = { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' };
 
   return (
-    <div className="p-5 rounded-xl bg-[#1a1a27] border border-white/[0.05]">
+    <div className="p-5 rounded-xl bg-[var(--panel)] border border-white/[0.05]">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-white">今日建议</h3>
@@ -920,7 +920,7 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
           <Users className="w-4 h-4 text-purple-400" />
           <h3 className="text-sm font-semibold text-white">协同动态</h3>
         </div>
-        <div className="p-4 rounded-xl bg-[#1a1a27] border border-white/[0.05] text-center">
+        <div className="p-4 rounded-xl bg-[var(--panel)] border border-white/[0.05] text-center">
           <Users className="w-6 h-6 text-white/15 mx-auto mb-2" />
           <p className="text-xs text-white/25">暂无活动记录</p>
         </div>
@@ -939,7 +939,7 @@ function CollaborationFeed({ logs, onNavigateModule }: { logs: ActivityLog[]; on
           const config = typeConfig[log.type] || typeConfig.profile!;
           const Icon = config.icon;
           return (
-            <motion.div key={log.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.2 }} onClick={() => onNavigateModule(config.moduleId)} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-[#1a1a27] border border-white/[0.04] hover:border-white/[0.08] cursor-pointer transition-colors">
+            <motion.div key={log.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.2 }} onClick={() => onNavigateModule(config.moduleId)} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-[var(--panel)] border border-white/[0.04] hover:border-white/[0.08] cursor-pointer transition-colors">
               <div className={`w-7 h-7 rounded-md ${config.color} flex items-center justify-center flex-shrink-0`}><Icon className="w-3.5 h-3.5" /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-white/50 truncate">{log.action}</p>
@@ -1176,7 +1176,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-[#0a0a0a] items-center justify-center">
+      <div className="flex min-h-screen bg-[var(--bg)] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
           <span className="text-sm text-white/30">加载工作台数据...</span>
@@ -1186,7 +1186,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
   }
 
   return (
-    <div className="flex h-screen overflow-hidden relative" style={{ background: '#0a0a0a' }}>
+    <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--bg)' }}>
       <DashboardBackground />
       <main className="flex-1 overflow-y-auto h-screen relative z-10" data-workspace-scroll>
         <div className="px-8 pt-7 pb-8 max-w-[1200px] mx-auto">
@@ -1219,7 +1219,7 @@ export default memo(function WorkSpaceSection({ onNavigateModule }: WorkSpaceSec
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md"
             style={{ pointerEvents: 'all' }}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#1a1a27] border border-white/[0.08] rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+              className="bg-[var(--panel)] border border-white/[0.08] rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
                   <GraduationCap className="w-8 h-8 text-white" />

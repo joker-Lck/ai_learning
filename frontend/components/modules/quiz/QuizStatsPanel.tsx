@@ -41,25 +41,25 @@ export default function QuizStatsPanel() {
     );
   }
 
-  const subjectColors = ['#a78bfa', '#60a5fa', '#34d399', '#fbbf24', '#f87171', '#f472b6', '#818cf8'];
+  const subjectColors = ['var(--accent-2)', '#60a5fa', 'var(--accent)', '#fbbf24', '#f87171', '#f472b6', '#818cf8'];
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       {/* Overview */}
       <div className="grid grid-cols-4 gap-3">
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
           <div className="text-2xl font-bold text-white">{stats.total_sessions}</div>
           <div className="text-xs text-white/40">做题次数</div>
         </div>
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
           <div className="text-2xl font-bold text-purple-400">{stats.total_questions}</div>
           <div className="text-xs text-white/40">总题数</div>
         </div>
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
           <div className="text-2xl font-bold text-emerald-400">{stats.total_correct}</div>
           <div className="text-xs text-white/40">答对总数</div>
         </div>
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
           <div className="text-2xl font-bold text-amber-400">{stats.avg_score}</div>
           <div className="text-xs text-white/40">平均分</div>
         </div>
@@ -67,7 +67,7 @@ export default function QuizStatsPanel() {
 
       {/* By Subject */}
       {stats.by_subject && stats.by_subject.length > 0 && (
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
           <h4 className="text-sm font-medium text-white/60 mb-4">学科分布</h4>
           <div className="space-y-3">
             {stats.by_subject.map((s, i) => {
@@ -90,7 +90,7 @@ export default function QuizStatsPanel() {
 
       {/* By Difficulty */}
       {stats.by_difficulty && stats.by_difficulty.length > 0 && (
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
           <h4 className="text-sm font-medium text-white/60 mb-4">难度分布</h4>
           <div className="grid grid-cols-3 gap-3">
             {stats.by_difficulty.map((d, i) => {
@@ -110,7 +110,7 @@ export default function QuizStatsPanel() {
 
       {/* Weak Topics */}
       {weakTopics.length > 0 && (
-        <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+        <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
           <h4 className="text-sm font-medium text-white/60 mb-4">薄弱知识点</h4>
           <div className="space-y-2">
             {weakTopics.map((t, i) => (
@@ -121,7 +121,7 @@ export default function QuizStatsPanel() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-20 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${t.accuracy}%`, backgroundColor: t.accuracy >= 80 ? '#10b981' : t.accuracy >= 60 ? '#f59e0b' : '#ef4444' }} />
+                    <div className="h-full rounded-full" style={{ width: `${t.accuracy}%`, backgroundColor: t.accuracy >= 80 ? 'var(--accent)' : t.accuracy >= 60 ? '#f59e0b' : '#ef4444' }} />
                   </div>
                   <span className={`text-xs font-medium ${t.accuracy >= 80 ? 'text-emerald-400' : t.accuracy >= 60 ? 'text-amber-400' : 'text-red-400'}`}>{t.accuracy}%</span>
                 </div>

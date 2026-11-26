@@ -60,8 +60,8 @@ export default function AnalyticsModule() {
     animation: '动画', code_case: '代码', reading: '阅读',
   };
   const typeColors: Record<string, string> = {
-    document: '#a78bfa', mindmap: '#60a5fa', quiz: '#fbbf24', video: '#f87171',
-    animation: '#34d399', code_case: '#818cf8', reading: '#f472b6',
+    document: 'var(--accent-2)', mindmap: '#60a5fa', quiz: '#fbbf24', video: '#f87171',
+    animation: 'var(--accent)', code_case: '#818cf8', reading: '#f472b6',
   };
 
   if (loading) {
@@ -111,7 +111,7 @@ export default function AnalyticsModule() {
                 { label: '做题次数', value: overview.quiz_sessions, color: 'text-amber-400' },
                 { label: '平均分', value: overview.quiz_avg_score || '-', color: 'text-emerald-400' },
               ].map((card, i) => (
-                <div key={i} className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+                <div key={i} className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
                   <div className={`text-2xl font-bold ${card.color}`}>{card.value}</div>
                   <div className="text-xs text-white/40 mt-1">{card.label}</div>
                 </div>
@@ -119,11 +119,11 @@ export default function AnalyticsModule() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+              <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
                 <div className="text-xl font-bold text-white">{overview.login_days}</div>
                 <div className="text-xs text-white/40">活跃天数</div>
               </div>
-              <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-4 text-center">
+              <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-4 text-center">
                 <div className="text-xl font-bold text-white">{overview.quiz_questions}</div>
                 <div className="text-xs text-white/40">总做题数</div>
               </div>
@@ -131,7 +131,7 @@ export default function AnalyticsModule() {
 
             {/* Study Trend Mini Chart */}
             {studyTrend.length > 0 && (
-              <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+              <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
                 <h4 className="text-sm font-medium text-white/60 mb-4">近 30 天学习时长</h4>
                 <div className="flex items-end gap-1 h-24">
                   {studyTrend.slice(-14).map((d, i) => {
@@ -156,12 +156,12 @@ export default function AnalyticsModule() {
             {subjects.length === 0 ? (
               <div className="text-center text-white/30 py-12">暂无学科数据</div>
             ) : (
-              <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+              <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
                 <h4 className="text-sm font-medium text-white/60 mb-4">学科资源分布</h4>
                 <div className="space-y-4">
                   {subjects.map((s, i) => {
                     const maxR = Math.max(...subjects.map(x => x.resource_count));
-                    const colors = ['#a78bfa', '#60a5fa', '#34d399', '#fbbf24', '#f87171', '#f472b6'];
+                    const colors = ['var(--accent-2)', '#60a5fa', 'var(--accent)', '#fbbf24', '#f87171', '#f472b6'];
                     return (
                       <div key={i}>
                         <div className="flex items-center justify-between mb-1">
@@ -182,7 +182,7 @@ export default function AnalyticsModule() {
             )}
 
             {types.length > 0 && (
-              <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+              <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
                 <h4 className="text-sm font-medium text-white/60 mb-4">资源类型分布</h4>
                 <div className="grid grid-cols-2 gap-3">
                   {types.map((t, i) => (
@@ -204,7 +204,7 @@ export default function AnalyticsModule() {
             {quizTrend.length === 0 ? (
               <div className="text-center text-white/30 py-12">暂无做题数据，完成一些练习后查看</div>
             ) : (
-              <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+              <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
                 <h4 className="text-sm font-medium text-white/60 mb-4">做题趋势（近 30 天）</h4>
                 <div className="flex items-end gap-1 h-32">
                   {quizTrend.map((d, i) => {
@@ -212,7 +212,7 @@ export default function AnalyticsModule() {
                       <div key={i} className="flex-1 flex flex-col items-center gap-1">
                         <div className="w-full rounded-t transition-all" style={{
                           height: `${Math.max(4, d.avg_score)}%`,
-                          backgroundColor: d.avg_score >= 80 ? '#10b981' : d.avg_score >= 60 ? '#f59e0b' : '#ef4444',
+                          backgroundColor: d.avg_score >= 80 ? 'var(--accent)' : d.avg_score >= 60 ? '#f59e0b' : '#ef4444',
                           opacity: 0.7
                         }} />
                         <span className="text-[10px] text-white/20">{d.date?.slice(5)}</span>
@@ -236,7 +236,7 @@ export default function AnalyticsModule() {
             {knowledge.length === 0 ? (
               <div className="text-center text-white/30 py-12">暂无知识点数据</div>
             ) : (
-              <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+              <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
                 <h4 className="text-sm font-medium text-white/60 mb-4">知识点掌握度</h4>
                 <div className="space-y-2">
                   {knowledge.map((k, i) => (
@@ -248,7 +248,7 @@ export default function AnalyticsModule() {
                       <div className="w-24 h-2 bg-white/5 rounded-full overflow-hidden shrink-0">
                         <div className="h-full rounded-full transition-all" style={{
                           width: `${k.accuracy}%`,
-                          backgroundColor: k.accuracy >= 80 ? '#10b981' : k.accuracy >= 60 ? '#f59e0b' : '#ef4444',
+                          backgroundColor: k.accuracy >= 80 ? 'var(--accent)' : k.accuracy >= 60 ? '#f59e0b' : '#ef4444',
                         }} />
                       </div>
                       <span className={`text-xs font-medium w-10 text-right ${k.accuracy >= 80 ? 'text-emerald-400' : k.accuracy >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
@@ -269,7 +269,7 @@ export default function AnalyticsModule() {
               <div className="text-center text-white/30 py-12">本周暂无学习数据</div>
             ) : (
               <>
-                <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+                <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
                   <h4 className="text-sm font-medium text-white/60 mb-4">本周学习概览</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="text-center p-3 rounded-lg bg-white/[0.02]">
@@ -292,7 +292,7 @@ export default function AnalyticsModule() {
                 </div>
 
                 {report.weak_topics && report.weak_topics.length > 0 && (
-                  <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-5">
+                  <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-5">
                     <h4 className="text-sm font-medium text-white/60 mb-4">本周薄弱知识点</h4>
                     <div className="space-y-2">
                       {report.weak_topics.map((t: any, i: number) => (

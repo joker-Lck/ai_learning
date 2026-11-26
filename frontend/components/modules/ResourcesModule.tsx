@@ -261,7 +261,7 @@ function ResourceCard({ resource, getTypeName }: { resource: ResourceItem; getTy
           {hasMedia && isSvgAnim && (
             <iframe
               src={mediaUrl}
-              className="w-full rounded-xl glass shadow-lg mb-3 bg-[#0a0f1e]"
+              className="w-full rounded-xl glass shadow-lg mb-3 bg-[var(--panel)]"
               style={{ height: 400 }}
               title={resource.title}
             />
@@ -404,7 +404,7 @@ export default memo(function ResourcesModule({
         <div>
           <label className="block text-base font-medium text-white/60 mb-2">难度级别</label>
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
-            className="w-full px-4 py-3 glass-input text-white rounded-lg text-base focus:outline-none [&>option]:bg-[#0f0f0f] [&>option]:text-white">
+            className="w-full px-4 py-3 glass-input text-white rounded-lg text-base focus:outline-none [&>option]:bg-[var(--panel)] [&>option]:text-white">
             <option value="beginner">初级</option>
             <option value="intermediate">中级</option>
             <option value="advanced">高级</option>

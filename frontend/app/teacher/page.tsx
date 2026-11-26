@@ -39,7 +39,7 @@ export default function TeacherPage() {
 
   if (denied) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0a' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="text-center">
           <p className="text-white/40 text-lg mb-4">仅限老师 / 管理员访问</p>
           <a href="/dashboard" className="text-purple-400 hover:text-purple-300 underline text-sm">

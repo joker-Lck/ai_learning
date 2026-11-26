@@ -444,31 +444,31 @@ const ProfileRadarChart = memo(function ProfileRadarChart({ profileData }: { pro
       <div className="w-full" style={{ height: 320 }}>
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="68%" data={radarData}>
-            <PolarGrid stroke="rgba(255,255,255,0.08)" />
+            <PolarGrid stroke="rgb(var(--white-rgb) / 0.08)" />
             <PolarAngleAxis
               dataKey="dimension"
-              tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 12 }}
+              tick={{ fill: 'rgb(var(--white-rgb) / 0.55)', fontSize: 12 }}
             />
             <PolarRadiusAxis
               angle={30}
               domain={[0, 5]}
-              tick={{ fill: 'rgba(255,255,255,0.25)', fontSize: 10 }}
+              tick={{ fill: 'rgb(var(--white-rgb) / 0.25)', fontSize: 10 }}
               axisLine={false}
             />
             <Radar
               name="能力值"
               dataKey="value"
-              stroke="#a78bfa"
-              fill="#a78bfa"
+              stroke="var(--accent-2)"
+              fill="var(--accent-2)"
               fillOpacity={0.2}
               strokeWidth={2}
             />
             <Tooltip
               contentStyle={{
                 background: 'rgba(0,0,0,0.8)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid rgb(var(--white-rgb) / 0.1)',
                 borderRadius: 8,
-                color: '#fff',
+                color: 'var(--ink)',
                 fontSize: 12,
               }}
               formatter={(value: number) => [`${value}/5`, '能力值']}

@@ -1,6 +1,6 @@
 # 部署指南
 
-> **版本**：v9.1.0
+> **版本**：v9.2.0
 
 ## 方式一：本地开发
 
@@ -151,7 +151,7 @@ makensis 02_打包构建/installer.nsi
 |------|------|--------|
 | JWT_SECRET | JWT 签名密钥（必须配置） | 必填 |
 | DEBUG | 调试模式 | false |
-| APP_VERSION | 应用版本 | 9.1.0 |
+| APP_VERSION | 应用版本 | 9.2.0 |
 | ALLOWED_ORIGINS | CORS 白名单 | localhost:3000 |
 | MYSQL_HOST / MYSQL_PORT / MYSQL_USER / MYSQL_PASSWORD | MySQL 8.0 连接（9 个 schema） | 127.0.0.1:3306/root |
 | MIMO_API_KEY | MiMo API 密钥 | 必填 |

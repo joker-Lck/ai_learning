@@ -264,7 +264,7 @@ export default function DashboardContent() {
   };
 
   return (
-    <div className="relative h-screen overflow-hidden bg-[#0a0a0a]" data-dashboard-container>
+    <div className="relative h-screen overflow-hidden bg-[var(--bg)]" data-dashboard-container>
 
       <AnimatePresence initial={false} custom={direction} mode="wait">
         {/* Page 0: Hero — 装饰背景 */}
@@ -286,15 +286,11 @@ export default function DashboardContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/20 bg-purple-500/5 mb-8">
-                  <GraduationCap className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="text-xs text-purple-300">多智能体协同 · 个性化学习</span>
-                </div>
+                <div className="tech-kicker mb-6">{'// MULTI-AGENT CORE · V9.1'}</div>
 
-                <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-10 leading-none">
-                  多模态 AI
-                  <br />
-                  <span className="text-purple-400">教学智能体</span>
+                <h1 className="glitch text-6xl md:text-7xl lg:text-8xl font-bold mb-10 leading-none">
+                  <span className="block" data-text="多模态 AI">多模态 AI</span>
+                  <span className="block text-[var(--accent)]" data-text="教学智能体">教学智能体</span>
                 </h1>
 
                 <p className="text-white/40 text-xl md:text-2xl mb-14 max-w-2xl mx-auto leading-relaxed">
@@ -303,7 +299,7 @@ export default function DashboardContent() {
 
                 <motion.button
                   onClick={() => goToSection(1)}
-                  className="px-8 py-4 bg-purple-500 text-white rounded-lg text-lg font-medium hover:bg-purple-400 transition-colors flex items-center gap-2 mx-auto"
+                  className="btn-solid px-8 py-4 text-lg"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -321,14 +317,20 @@ export default function DashboardContent() {
                 {STATS.map((stat) => {
                   const Icon = stat.icon;
                   return (
-                    <div key={stat.label} className="text-center">
-                      <Icon className={`w-7 h-7 mx-auto mb-3 ${stat.color}`} />
-                      <div className="text-4xl font-bold text-white">{stat.value}</div>
-                      <div className="text-base text-white/30 mt-1.5">{stat.label}</div>
+                    <div key={stat.label} className="text-center border border-[var(--line)] rounded-sm py-5" style={{ background: 'var(--glass-bg)' }}>
+                      <Icon className={`w-6 h-6 mx-auto mb-3 text-[var(--accent)]`} />
+                      <div className="text-4xl font-bold font-mono text-white">{stat.value}</div>
+                      <div className="text-xs text-white/30 mt-2 tracking-[0.18em] uppercase font-mono">{stat.label}</div>
                     </div>
                   );
                 })}
               </motion.div>
+
+              {/* 状态行 */}
+              <div className="mt-10 status-line flex items-center justify-center gap-3">
+                <span className="w-1.5 h-1.5 rounded-full animate-blink" style={{ background: 'var(--accent)' }} />
+                <span className="k">SYSTEM.STATUS</span> = &quot;READY&quot; · <span className="k">AGENTS.ACTIVE</span> = 6
+              </div>
             </div>
 
             <motion.div
@@ -370,7 +372,7 @@ export default function DashboardContent() {
             animate="visible"
             exit="exit"
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 z-30 bg-[#0a0a0a]/95 backdrop-blur-sm overflow-y-auto"
+            className="absolute inset-0 z-30 bg-[var(--bg)]/95 backdrop-blur-sm overflow-y-auto"
           >
             <div className="px-8 py-8 max-w-7xl mx-auto">
               <motion.button

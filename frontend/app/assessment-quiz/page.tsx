@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/stores';
 import api from '@/lib/api';
-import { GraduationCap, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import ThemeToggle from '@/components/shared/ThemeToggle';
 
 interface Question {
   id: number;
@@ -110,7 +111,7 @@ export default function AssessmentQuizPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-purple-400 animate-spin mx-auto mb-4" />
           <p className="text-white/40 text-sm">加载评估题目...</p>
@@ -121,9 +122,9 @@ export default function AssessmentQuizPage() {
 
   if (completed && result) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-lg bg-[#1a1a27] rounded-2xl border border-white/[0.05] p-8 text-center">
+          className="w-full max-w-lg bg-[var(--panel)] rounded-2xl border border-white/[0.05] p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-8 h-8 text-emerald-400" />
           </div>
@@ -177,13 +178,14 @@ export default function AssessmentQuizPage() {
   const answeredCount = Object.keys(answers).length;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] py-8 px-4">
+    <div className="min-h-screen bg-[var(--bg)] py-8 px-4">
+      <div className="fixed top-5 right-5 z-50">
+        <ThemeToggle />
+      </div>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
-            <GraduationCap className="w-6 h-6 text-purple-400" />
-          </div>
+          <div className="tech-kicker mb-3">{'// LEARNING PROFILER · V9.1'}</div>
           <h1 className="text-2xl font-bold text-white mb-2">学习能力评估</h1>
           <p className="text-white/40 text-sm">回答以下问题，帮助我们了解你的学习特点，为你生成个性化学习方案</p>
         </div>
@@ -191,12 +193,12 @@ export default function AssessmentQuizPage() {
         {/* Progress */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-white/40">已完成 {answeredCount}/{questions.length} 题</span>
-            <span className="text-xs text-white/40">{Math.round(answeredCount / questions.length * 100)}%</span>
+            <span className="text-xs text-white/40 font-mono tracking-[0.12em]">已完成 {answeredCount}/{questions.length} 题</span>
+            <span className="text-xs text-[var(--accent)] font-mono">{Math.round(answeredCount / questions.length * 100)}%</span>
           </div>
-          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-purple-500 to-violet-500 rounded-full transition-all duration-500"
-              style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
+          <div className="w-full h-1.5 bg-white/5 rounded-sm overflow-hidden border border-[var(--line)]">
+            <div className="h-full transition-all duration-500"
+              style={{ width: `${(answeredCount / questions.length) * 100}%`, background: 'var(--accent)', boxShadow: 'var(--glow)' }} />
           </div>
         </div>
 
@@ -210,7 +212,7 @@ export default function AssessmentQuizPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03, duration: 0.3 }}
-                className={`bg-[#1a1a27] rounded-xl border p-5 transition-all ${isAnswered ? 'border-purple-500/20' : 'border-white/[0.05]'}`}>
+                className={`bg-[var(--panel)] rounded-xl border p-5 transition-all ${isAnswered ? 'border-purple-500/20' : 'border-white/[0.05]'}`}>
                 <div className="flex items-start gap-3 mb-4">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 shrink-0 mt-0.5">{dimLabel}</span>
                   <p className="text-white text-sm leading-relaxed">{i + 1}. {q.question}</p>

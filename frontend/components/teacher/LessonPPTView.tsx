@@ -59,7 +59,7 @@ function SlidePreview({ slide, style, index, total }: {
 }) {
   const s = STYLES.find(st => st.key === style) ?? STYLES[0]!;
   const isDark = style === 'tech' || slide.type === 'title' || slide.type === 'section' || slide.type === 'qa';
-  const bg = isDark ? '#0F172A' : '#F8FAFC';
+  const bg = isDark ? 'var(--panel-2)' : '#F8FAFC';
   const fg = isDark ? '#F1F5F9' : '#1E293B';
   const accent = s.color;
 
@@ -106,7 +106,7 @@ function SlidePreview({ slide, style, index, total }: {
 
       {slide.type === 'objectives' && (
         <div className="p-10 md:p-14">
-          <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: isDark ? '#fff' : accent }}>{slide.title}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: isDark ? 'var(--ink)' : accent }}>{slide.title}</h2>
           <div className="h-1 w-24 mb-8 rounded-full" style={{ background: accent }} />
           <div className="space-y-5">
             {(slide.bullets || []).map((b, i) => (
@@ -123,7 +123,7 @@ function SlidePreview({ slide, style, index, total }: {
 
       {slide.type === 'content' && (
         <div className="p-10 md:p-14">
-          <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: isDark ? '#fff' : accent }}>{slide.title}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: isDark ? 'var(--ink)' : accent }}>{slide.title}</h2>
           <div className="h-1 w-24 mb-8 rounded-full" style={{ background: accent }} />
           <ul className="space-y-4">
             {(slide.bullets || []).map((b, i) => (
@@ -139,10 +139,10 @@ function SlidePreview({ slide, style, index, total }: {
 
       {slide.type === 'two_column' && (
         <div className="p-8 md:p-12">
-          <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: isDark ? '#fff' : accent }}>{slide.title}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: isDark ? 'var(--ink)' : accent }}>{slide.title}</h2>
           <div className="h-1 w-24 mb-8 rounded-full" style={{ background: accent }} />
           <div className="grid grid-cols-2 gap-6">
-            <div className="rounded-2xl p-6" style={{ background: isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0' }}>
+            <div className="rounded-2xl p-6" style={{ background: isDark ? 'rgb(var(--white-rgb) / 0.05)' : 'var(--ink-2)' }}>
               <h3 className="text-lg font-bold mb-4" style={{ color: accent }}>{slide.left_title}</h3>
               <ul className="space-y-2.5">
                 {(slide.left_bullets || []).map((b, i) => (
@@ -152,7 +152,7 @@ function SlidePreview({ slide, style, index, total }: {
                 ))}
               </ul>
             </div>
-            <div className="rounded-2xl p-6" style={{ background: isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0' }}>
+            <div className="rounded-2xl p-6" style={{ background: isDark ? 'rgb(var(--white-rgb) / 0.05)' : 'var(--ink-2)' }}>
               <h3 className="text-lg font-bold mb-4" style={{ color: accent }}>{slide.right_title}</h3>
               <ul className="space-y-2.5">
                 {(slide.right_bullets || []).map((b, i) => (
@@ -170,7 +170,7 @@ function SlidePreview({ slide, style, index, total }: {
       {slide.type === 'activity' && (
         <div className="p-10 md:p-14">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-2xl md:text-3xl font-bold" style={{ color: isDark ? '#fff' : accent }}>{slide.title}</h2>
+            <h2 className="text-2xl md:text-3xl font-bold" style={{ color: isDark ? 'var(--ink)' : accent }}>{slide.title}</h2>
             {slide.time && (
               <span className="px-4 py-1.5 rounded-full text-white text-sm font-medium" style={{ background: accent }}>
                 ⏱ {slide.time}
@@ -182,7 +182,7 @@ function SlidePreview({ slide, style, index, total }: {
           <div className="space-y-3">
             {(slide.steps || []).map((step, i) => (
               <div key={i} className="flex items-center gap-4 rounded-xl px-5 py-3"
-                   style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }}>
+                   style={{ background: isDark ? 'rgb(var(--white-rgb) / 0.06)' : 'var(--ink-2)' }}>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
                      style={{ background: accent }}>{i + 1}</div>
                 <p className="text-sm md:text-lg" style={{ color: fg }}>{step}</p>
@@ -195,12 +195,12 @@ function SlidePreview({ slide, style, index, total }: {
 
       {slide.type === 'summary' && (
         <div className="p-10 md:p-14">
-          <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: isDark ? '#fff' : accent }}>{slide.title}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: isDark ? 'var(--ink)' : accent }}>{slide.title}</h2>
           <div className="h-1 w-24 mb-8 rounded-full" style={{ background: accent }} />
           <div className="space-y-4">
             {(slide.bullets || []).map((b, i) => (
               <div key={i} className="flex items-center gap-4 rounded-xl px-5 py-4"
-                   style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }}>
+                   style={{ background: isDark ? 'rgb(var(--white-rgb) / 0.06)' : 'var(--ink-2)' }}>
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
                      style={{ background: accent }}>✓</div>
                 <p className="text-base md:text-xl" style={{ color: fg }}>{b}</p>
@@ -520,7 +520,7 @@ export default function LessonPPTView() {
                     className={`flex-shrink-0 rounded-lg border transition-all overflow-hidden ${
                       i === slideIndex ? 'border-purple-500 ring-2 ring-purple-500/30 scale-105' : 'border-white/10 opacity-50 hover:opacity-80'
                     }`}
-                    style={{ width: 110, height: 62, background: (s.type === 'title' || s.type === 'section' || s.type === 'qa' || style === 'tech') ? '#0F172A' : '#F8FAFC' }}>
+                    style={{ width: 110, height: 62, background: (s.type === 'title' || s.type === 'section' || s.type === 'qa' || style === 'tech') ? 'var(--panel-2)' : '#F8FAFC' }}>
                     <div className="w-full h-full flex flex-col items-center justify-center px-2">
                       <span className={`text-[8px] leading-tight text-center line-clamp-2 ${
                         (s.type === 'title' || s.type === 'section' || s.type === 'qa' || style === 'tech') ? 'text-white/80' : 'text-gray-700'

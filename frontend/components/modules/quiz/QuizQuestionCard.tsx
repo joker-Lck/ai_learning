@@ -70,7 +70,7 @@ export default function QuizQuestionCard({ question, index, total, answer, onSub
 
       {/* 实时计分板 */}
       {answeredCount > 0 && (
-        <div className="mb-4 p-3 rounded-xl bg-[#1a1a27] border border-white/[0.05] grid grid-cols-4 gap-3 text-center">
+        <div className="mb-4 p-3 rounded-xl bg-[var(--panel)] border border-white/[0.05] grid grid-cols-4 gap-3 text-center">
           <div>
             <div className="text-lg font-bold text-white">{answeredCount}/{total}</div>
             <div className="text-[10px] text-white/30">已答</div>
@@ -91,7 +91,7 @@ export default function QuizQuestionCard({ question, index, total, answer, onSub
       )}
 
       {/* Question */}
-      <div className="bg-[#1a1a27] rounded-xl border border-white/[0.05] p-6 mb-6">
+      <div className="bg-[var(--panel)] rounded-xl border border-white/[0.05] p-6 mb-6">
         <div className="flex items-start gap-2 mb-4">
           <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
             {question.type === 'multiple_choice' ? '选择题' : question.type === 'judge' ? '判断题' : '填空题'}
